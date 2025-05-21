@@ -1,0 +1,22 @@
+[Unit]
+Description=Aracannabis Prontuario Service
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/aracannabis/backend
+Environment="PATH=/var/www/aracannabis/backend/venv/bin"
+ExecStart=/var/www/aracannabis/backend/venv/bin/gunicorn --workers 3 --bind 127.0.0.1:5000 app:create_app()
+Restart=on-failure
+RestartSec=5s
+
+# Security
+PrivateTmp=true
+ProtectSystem=full
+NoNewPrivileges=true
+PrivateDevices=true
+
+[Install]
+WantedBy=multi-user.target
