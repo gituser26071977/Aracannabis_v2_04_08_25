@@ -10,7 +10,7 @@ APP_NAME="aracannabis"
 APP_DIR="/var/www/$APP_NAME"
 BACKEND_DIR="$APP_DIR/backend"
 FRONTEND_DIR="$APP_DIR/frontend"
-GIT_REPO="your_git_repository_url"
+GIT_REPO="https://github.com/gituser26071977/Sistema-de-prontu-rio-eletr-nico-para-pacientes-de-cannabis-medicinal.git"
 DOMAIN="your_domain.com"
 
 # Colors for output

@@ -31,8 +31,13 @@ class Paciente(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String, nullable=False)
     data_nascimento = db.Column(db.Date, nullable=False)
+    cpf = db.Column(db.String)
+    genero = db.Column(db.String)
     telefone = db.Column(db.String)
     email = db.Column(db.String)
+    endereco = db.Column(db.String)
+    diagnostico = db.Column(db.Text)
+    observacoes = db.Column(db.Text)
     em_tratamento = db.Column(db.Boolean, default=False, nullable=False)
     composicao = db.Column(db.String)
     dosagem = db.Column(db.String)
@@ -49,8 +54,13 @@ class Paciente(db.Model):
             'id': self.id,
             'nome': self.nome,
             'data_nascimento': self.data_nascimento.isoformat() if self.data_nascimento else None,
+            'cpf': self.cpf,
+            'genero': self.genero,
             'telefone': self.telefone,
             'email': self.email,
+            'endereco': self.endereco,
+            'diagnostico': self.diagnostico,
+            'observacoes': self.observacoes,
             'em_tratamento': self.em_tratamento,
             'composicao': self.composicao,
             'dosagem': self.dosagem,
