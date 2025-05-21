@@ -34,6 +34,8 @@ git commit -m "Estrutura inicial do projeto"
 # Adicione o repositório remoto (substitua 'seu-usuario' pelo seu nome de usuário do GitHub)
 git remote add origin https://github.com/seu-usuario/aracannabis-prontuario.git
 
+git remote add origin https://github.com/gituser26071977/aracannabis-prontuario.git
+
 # Faça o push para o GitHub (a branch principal agora é chamada 'main' no GitHub)
 git push -u origin main
 ```

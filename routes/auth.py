@@ -3,8 +3,52 @@ from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identi
 from werkzeug.security import generate_password_hash, check_password_hash
 from models import db, Profissional, LogAtividade
 import re
+import datetime
 
 auth_bp = Blueprint('auth', __name__)
+
+@auth_bp.route('/create-admin', methods=['GET'])
+def create_admin():
+    """Cria um usuário administrador padrão"""
+    # Verificar se já existe um usuário admin
+    admin = Profissional.query.filter_by(usuario='admin').first()
+    
+    if admin:
+        return jsonify({'message': 'Usuário admin já existe!', 'usuario': 'admin'}), 200
+    
+    # Criar usuário admin
+    hashed_password = generate_password_hash('admin123')
+    
+    admin = Profissional(
+        nome='Administrador',
+        crm='ADMIN001',
+        usuario='admin',
+        senha=hashed_password,
+        created_at=datetime.datetime.utcnow()
+    )
+    
+    try:
+        db.session.add(admin)
+        db.session.commit()
+        
+        # Registrar atividade
+        log = LogAtividade(
+            profissional_id=admin.id,
+            acao='Criação de Conta',
+            detalhes='Usuário administrador padrão criado'
+        )
+        db.session.add(log)
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Usuário admin criado com sucesso!',
+            'usuario': 'admin',
+            'senha': 'admin123'
+        }), 201
+    
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Erro ao criar usuário admin: {str(e)}'}), 500
 
 @auth_bp.route('/register', methods=['POST'])
 def register():

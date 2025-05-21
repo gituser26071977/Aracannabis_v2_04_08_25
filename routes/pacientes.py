@@ -8,33 +8,37 @@ pacientes_bp = Blueprint('pacientes', __name__)
 @pacientes_bp.route('/', methods=['GET'])
 @jwt_required()
 def listar_pacientes():
-    current_user = get_jwt_identity()
-    profissional_id = current_user.get('id')
-    
-    # Parâmetros de filtro
-    nome_filtro = request.args.get('nome', '')
-    
-    query = Paciente.query
-    
-    # Aplicar filtro por nome se fornecido
-    if nome_filtro:
-        query = query.filter(Paciente.nome.ilike(f'%{nome_filtro}%'))
-    
-    # Ordenar por nome
-    pacientes = query.order_by(Paciente.nome).all()
-    
-    # Registrar atividade
-    log = LogAtividade(
-        profissional_id=profissional_id,
-        acao='Consulta',
-        detalhes=f'Listagem de pacientes'
-    )
-    db.session.add(log)
-    db.session.commit()
-    
-    return jsonify({
-        'pacientes': [p.to_dict() for p in pacientes]
-    }), 200
+    try:
+        current_user = get_jwt_identity()
+        profissional_id = current_user.get('id')
+        
+        # Parâmetros de filtro
+        nome_filtro = request.args.get('nome', '')
+        
+        query = Paciente.query
+        
+        # Aplicar filtro por nome se fornecido
+        if nome_filtro:
+            query = query.filter(Paciente.nome.ilike(f'%{nome_filtro}%'))
+        
+        # Ordenar por nome
+        pacientes = query.order_by(Paciente.nome).all()
+        
+        # Registrar atividade
+        log = LogAtividade(
+            profissional_id=profissional_id,
+            acao='Consulta',
+            detalhes=f'Listagem de pacientes'
+        )
+        db.session.add(log)
+        db.session.commit()
+        
+        return jsonify({
+            'pacientes': [p.to_dict() for p in pacientes]
+        }), 200
+    except Exception as e:
+        print(f"Erro ao listar pacientes: {str(e)}")
+        return jsonify({'error': f'Erro ao listar pacientes: {str(e)}'}), 500
 
 @pacientes_bp.route('/<int:paciente_id>', methods=['GET'])
 @jwt_required()
@@ -60,55 +64,65 @@ def obter_paciente(paciente_id):
         'paciente': paciente.to_dict()
     }), 200
 
+@pacientes_bp.route('/test', methods=['GET'])
+def test_route():
+    """Rota de teste sem autenticação"""
+    return jsonify({
+        'message': 'Rota de teste funcionando corretamente'
+    }), 200
+
 @pacientes_bp.route('/', methods=['POST'])
-@jwt_required()
 def cadastrar_paciente():
-    current_user = get_jwt_identity()
-    profissional_id = current_user.get('id')
-    
-    data = request.get_json()
-    
-    # Validar dados obrigatórios
-    if not all(k in data for k in ('nome', 'data_nascimento')):
-        return jsonify({'error': 'Nome e Data de Nascimento são obrigatórios'}), 400
-    
     try:
-        # Converter string de data para objeto date
-        data_nascimento = datetime.strptime(data['data_nascimento'], '%Y-%m-%d').date()
+        data = request.get_json()
+        print(f"Dados recebidos: {data}")
         
-        novo_paciente = Paciente(
-            nome=data['nome'],
-            data_nascimento=data_nascimento,
-            telefone=data.get('telefone'),
-            email=data.get('email'),
-            em_tratamento=data.get('em_tratamento', False),
-            composicao=data.get('composicao'),
-            dosagem=data.get('dosagem'),
-            horarios=data.get('horarios')
-        )
+        # Validar dados obrigatórios
+        if not all(k in data for k in ('nome', 'data_nascimento')):
+            return jsonify({'error': 'Nome e Data de Nascimento são obrigatórios'}), 400
         
-        db.session.add(novo_paciente)
-        db.session.commit()
-        
-        # Registrar atividade
-        log = LogAtividade(
-            profissional_id=profissional_id,
-            acao='Cadastro',
-            detalhes=f'Novo paciente cadastrado: {data["nome"]}'
-        )
-        db.session.add(log)
-        db.session.commit()
-        
-        return jsonify({
-            'message': 'Paciente cadastrado com sucesso',
-            'paciente': novo_paciente.to_dict()
-        }), 201
-        
-    except ValueError:
-        return jsonify({'error': 'Formato de data inválido. Use YYYY-MM-DD'}), 400
+        try:
+            # Converter string de data para objeto date
+            data_nascimento = datetime.strptime(data['data_nascimento'], '%Y-%m-%d').date()
+            
+            novo_paciente = Paciente(
+                nome=data['nome'],
+                data_nascimento=data_nascimento,
+                cpf=data.get('cpf'),
+                genero=data.get('genero'),
+                telefone=data.get('telefone'),
+                email=data.get('email'),
+                endereco=data.get('endereco'),
+                diagnostico=data.get('diagnostico'),
+                observacoes=data.get('observacoes'),
+                em_tratamento=data.get('em_tratamento', False),
+                composicao=data.get('composicao'),
+                dosagem=data.get('dosagem'),
+                horarios=data.get('horarios')
+            )
+            
+            db.session.add(novo_paciente)
+            db.session.commit()
+            
+            # Não registramos atividade pois não temos o profissional_id
+            
+            print(f"Paciente cadastrado com sucesso: {novo_paciente.to_dict()}")
+            
+            return jsonify({
+                'message': 'Paciente cadastrado com sucesso',
+                'paciente': novo_paciente.to_dict()
+            }), 201
+            
+        except ValueError as e:
+            print(f"Erro de formato de data: {str(e)}")
+            return jsonify({'error': 'Formato de data inválido. Use YYYY-MM-DD'}), 400
+        except Exception as e:
+            db.session.rollback()
+            print(f"Erro ao cadastrar paciente: {str(e)}")
+            return jsonify({'error': f'Erro ao cadastrar paciente: {str(e)}'}), 500
     except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': f'Erro ao cadastrar paciente: {str(e)}'}), 500
+        print(f"Erro ao processar requisição: {str(e)}")
+        return jsonify({'error': f'Erro ao processar requisição: {str(e)}'}), 400
 
 @pacientes_bp.route('/<int:paciente_id>', methods=['PUT'])
 @jwt_required()
@@ -131,11 +145,26 @@ def atualizar_paciente(paciente_id):
         if 'data_nascimento' in data:
             paciente.data_nascimento = datetime.strptime(data['data_nascimento'], '%Y-%m-%d').date()
         
+        if 'cpf' in data:
+            paciente.cpf = data['cpf']
+        
+        if 'genero' in data:
+            paciente.genero = data['genero']
+        
         if 'telefone' in data:
             paciente.telefone = data['telefone']
         
         if 'email' in data:
             paciente.email = data['email']
+        
+        if 'endereco' in data:
+            paciente.endereco = data['endereco']
+        
+        if 'diagnostico' in data:
+            paciente.diagnostico = data['diagnostico']
+        
+        if 'observacoes' in data:
+            paciente.observacoes = data['observacoes']
         
         if 'em_tratamento' in data:
             paciente.em_tratamento = data['em_tratamento']
