@@ -3,10 +3,12 @@ import os
 
 # Carregar variáveis de ambiente
 load_dotenv()
+print(f"CONFIG.PY: DATABASE_URL lida do .env AQUI: {os.getenv('DATABASE_URL')}") # Log de depuração
 
 class Config:
     # Configuração do banco de dados
-    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5432/aracannabis')
+    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5432/aracannabis') # Restaurada linha original
+    print(f"CONFIG.PY: SQLALCHEMY_DATABASE_URI (from getenv/default): {SQLALCHEMY_DATABASE_URI}") # Log ajustado
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # Configuração do JWT

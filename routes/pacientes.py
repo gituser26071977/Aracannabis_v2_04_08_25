@@ -1,21 +1,83 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from models import db, Paciente, LogAtividade
+from models import db, Paciente, LogAtividade, Profissional, CompartilhamentoPaciente
 from datetime import datetime
+from sqlalchemy import or_
 
 pacientes_bp = Blueprint('pacientes', __name__)
+
+def verificar_acesso_paciente(profissional_id, paciente_id, nivel_necessario='leitura'):
+    """
+    Verifica se o profissional tem acesso ao paciente
+    
+    Args:
+        profissional_id: ID do profissional
+        paciente_id: ID do paciente
+        nivel_necessario: 'leitura', 'escrita' ou 'completo'
+    
+    Returns:
+        tuple: (tem_acesso, eh_responsavel, nivel_acesso)
+    """
+    paciente = Paciente.query.get(paciente_id)
+    if not paciente:
+        return False, False, None
+    
+    # Verificar se é o profissional responsável
+    if paciente.profissional_responsavel_id == profissional_id:
+        return True, True, 'completo'
+    
+    # Verificar compartilhamentos ativos
+    compartilhamento = CompartilhamentoPaciente.query.filter_by(
+        paciente_id=paciente_id,
+        profissional_id=profissional_id,
+        ativo=True
+    ).first()
+    
+    if compartilhamento:
+        # Verificar se o nível de acesso é suficiente
+        niveis = {'leitura': 1, 'escrita': 2, 'completo': 3}
+        nivel_atual = niveis.get(compartilhamento.nivel_acesso, 0)
+        nivel_req = niveis.get(nivel_necessario, 0)
+        
+        if nivel_atual >= nivel_req:
+            return True, False, compartilhamento.nivel_acesso
+    
+    return False, False, None
+
+def obter_pacientes_acessiveis(profissional_id):
+    """
+    Retorna query com pacientes que o profissional pode acessar
+    """
+    # Pacientes onde é responsável
+    pacientes_responsavel = Paciente.query.filter_by(profissional_responsavel_id=profissional_id)
+    
+    # Pacientes compartilhados ativos
+    compartilhamentos_ativos = CompartilhamentoPaciente.query.filter_by(
+        profissional_id=profissional_id,
+        ativo=True
+    ).all()
+    
+    pacientes_compartilhados_ids = [c.paciente_id for c in compartilhamentos_ativos]
+    
+    if pacientes_compartilhados_ids:
+        pacientes_compartilhados = Paciente.query.filter(Paciente.id.in_(pacientes_compartilhados_ids))
+        # Unir as duas queries
+        return pacientes_responsavel.union(pacientes_compartilhados)
+    else:
+        return pacientes_responsavel
 
 @pacientes_bp.route('/', methods=['GET'])
 @jwt_required()
 def listar_pacientes():
     try:
-        current_user = get_jwt_identity()
-        profissional_id = current_user.get('id')
+        current_user_id = get_jwt_identity()
+        profissional_id = int(current_user_id)
         
         # Parâmetros de filtro
         nome_filtro = request.args.get('nome', '')
         
-        query = Paciente.query
+        # Obter apenas pacientes acessíveis ao profissional
+        query = obter_pacientes_acessiveis(profissional_id)
         
         # Aplicar filtro por nome se fornecido
         if nome_filtro:
@@ -24,17 +86,31 @@ def listar_pacientes():
         # Ordenar por nome
         pacientes = query.order_by(Paciente.nome).all()
         
+        # Adicionar informações de acesso para cada paciente
+        pacientes_com_acesso = []
+        for paciente in pacientes:
+            paciente_dict = paciente.to_dict()
+            
+            # Verificar tipo de acesso
+            tem_acesso, eh_responsavel, nivel_acesso = verificar_acesso_paciente(
+                profissional_id, paciente.id
+            )
+            
+            paciente_dict['eh_responsavel'] = eh_responsavel
+            paciente_dict['nivel_acesso'] = nivel_acesso
+            pacientes_com_acesso.append(paciente_dict)
+        
         # Registrar atividade
         log = LogAtividade(
             profissional_id=profissional_id,
             acao='Consulta',
-            detalhes=f'Listagem de pacientes'
+            detalhes=f'Listagem de pacientes - {len(pacientes)} encontrados'
         )
         db.session.add(log)
         db.session.commit()
         
         return jsonify({
-            'pacientes': [p.to_dict() for p in pacientes]
+            'pacientes': pacientes_com_acesso
         }), 200
     except Exception as e:
         print(f"Erro ao listar pacientes: {str(e)}")
@@ -43,13 +119,34 @@ def listar_pacientes():
 @pacientes_bp.route('/<int:paciente_id>', methods=['GET'])
 @jwt_required()
 def obter_paciente(paciente_id):
-    current_user = get_jwt_identity()
-    profissional_id = current_user.get('id')
+    current_user_id = get_jwt_identity()
+    profissional_id = int(current_user_id)
+    
+    # Verificar acesso
+    tem_acesso, eh_responsavel, nivel_acesso = verificar_acesso_paciente(
+        profissional_id, paciente_id
+    )
+    
+    if not tem_acesso:
+        return jsonify({'error': 'Acesso negado a este paciente'}), 403
     
     paciente = Paciente.query.get(paciente_id)
     
     if not paciente:
         return jsonify({'error': 'Paciente não encontrado'}), 404
+    
+    # Adicionar informações de acesso
+    paciente_dict = paciente.to_dict()
+    paciente_dict['eh_responsavel'] = eh_responsavel
+    paciente_dict['nivel_acesso'] = nivel_acesso
+    
+    # Se for responsável, incluir informações de compartilhamento
+    if eh_responsavel:
+        compartilhamentos = CompartilhamentoPaciente.query.filter_by(
+            paciente_id=paciente_id,
+            ativo=True
+        ).all()
+        paciente_dict['compartilhamentos'] = [c.to_dict() for c in compartilhamentos]
     
     # Registrar atividade
     log = LogAtividade(
@@ -61,19 +158,16 @@ def obter_paciente(paciente_id):
     db.session.commit()
     
     return jsonify({
-        'paciente': paciente.to_dict()
-    }), 200
-
-@pacientes_bp.route('/test', methods=['GET'])
-def test_route():
-    """Rota de teste sem autenticação"""
-    return jsonify({
-        'message': 'Rota de teste funcionando corretamente'
+        'paciente': paciente_dict
     }), 200
 
 @pacientes_bp.route('/', methods=['POST'])
+@jwt_required()
 def cadastrar_paciente():
     try:
+        current_user_id = get_jwt_identity()
+        profissional_id = int(current_user_id)
+        
         data = request.get_json()
         print(f"Dados recebidos: {data}")
         
@@ -86,6 +180,7 @@ def cadastrar_paciente():
             data_nascimento = datetime.strptime(data['data_nascimento'], '%Y-%m-%d').date()
             
             novo_paciente = Paciente(
+                profissional_responsavel_id=profissional_id,  # Definir responsável
                 nome=data['nome'],
                 data_nascimento=data_nascimento,
                 cpf=data.get('cpf'),
@@ -104,7 +199,14 @@ def cadastrar_paciente():
             db.session.add(novo_paciente)
             db.session.commit()
             
-            # Não registramos atividade pois não temos o profissional_id
+            # Registrar atividade
+            log = LogAtividade(
+                profissional_id=profissional_id,
+                acao='Cadastro',
+                detalhes=f'Novo paciente cadastrado: {novo_paciente.nome} (ID {novo_paciente.id})'
+            )
+            db.session.add(log)
+            db.session.commit()
             
             print(f"Paciente cadastrado com sucesso: {novo_paciente.to_dict()}")
             
@@ -127,8 +229,16 @@ def cadastrar_paciente():
 @pacientes_bp.route('/<int:paciente_id>', methods=['PUT'])
 @jwt_required()
 def atualizar_paciente(paciente_id):
-    current_user = get_jwt_identity()
-    profissional_id = current_user.get('id')
+    current_user_id = get_jwt_identity()
+    profissional_id = int(current_user_id)
+    
+    # Verificar acesso de escrita
+    tem_acesso, eh_responsavel, nivel_acesso = verificar_acesso_paciente(
+        profissional_id, paciente_id, 'escrita'
+    )
+    
+    if not tem_acesso:
+        return jsonify({'error': 'Acesso negado para editar este paciente'}), 403
     
     paciente = Paciente.query.get(paciente_id)
     
@@ -206,8 +316,16 @@ def atualizar_paciente(paciente_id):
 @pacientes_bp.route('/<int:paciente_id>', methods=['DELETE'])
 @jwt_required()
 def excluir_paciente(paciente_id):
-    current_user = get_jwt_identity()
-    profissional_id = current_user.get('id')
+    current_user_id = get_jwt_identity()
+    profissional_id = int(current_user_id)
+    
+    # Verificar acesso completo (apenas responsável pode excluir)
+    tem_acesso, eh_responsavel, nivel_acesso = verificar_acesso_paciente(
+        profissional_id, paciente_id, 'completo'
+    )
+    
+    if not tem_acesso or not eh_responsavel:
+        return jsonify({'error': 'Apenas o profissional responsável pode excluir pacientes'}), 403
     
     paciente = Paciente.query.get(paciente_id)
     
@@ -236,16 +354,185 @@ def excluir_paciente(paciente_id):
         db.session.rollback()
         return jsonify({'error': f'Erro ao excluir paciente: {str(e)}'}), 500
 
+@pacientes_bp.route('/<int:paciente_id>/compartilhar', methods=['POST'])
+@jwt_required()
+def compartilhar_paciente(paciente_id):
+    """Compartilhar paciente com outro profissional"""
+    current_user_id = get_jwt_identity()
+    profissional_id = int(current_user_id)
+    
+    # Verificar se é o responsável pelo paciente
+    tem_acesso, eh_responsavel, nivel_acesso = verificar_acesso_paciente(
+        profissional_id, paciente_id, 'completo'
+    )
+    
+    if not tem_acesso or not eh_responsavel:
+        return jsonify({'error': 'Apenas o profissional responsável pode compartilhar pacientes'}), 403
+    
+    data = request.get_json()
+    
+    if not data.get('profissional_id') or not data.get('nivel_acesso'):
+        return jsonify({'error': 'profissional_id e nivel_acesso são obrigatórios'}), 400
+    
+    profissional_destino_id = data['profissional_id']
+    nivel_acesso_novo = data['nivel_acesso']
+    
+    # Validar nível de acesso
+    if nivel_acesso_novo not in ['leitura', 'escrita', 'completo']:
+        return jsonify({'error': 'Nível de acesso inválido'}), 400
+    
+    # Verificar se o profissional destino existe
+    profissional_destino = Profissional.query.get(profissional_destino_id)
+    if not profissional_destino:
+        return jsonify({'error': 'Profissional não encontrado'}), 404
+    
+    # Não permitir compartilhar consigo mesmo
+    if profissional_destino_id == profissional_id:
+        return jsonify({'error': 'Não é possível compartilhar consigo mesmo'}), 400
+    
+    try:
+        # Verificar se já existe compartilhamento
+        compartilhamento_existente = CompartilhamentoPaciente.query.filter_by(
+            paciente_id=paciente_id,
+            profissional_id=profissional_destino_id
+        ).first()
+        
+        if compartilhamento_existente:
+            # Atualizar compartilhamento existente
+            compartilhamento_existente.nivel_acesso = nivel_acesso_novo
+            compartilhamento_existente.ativo = True
+            compartilhamento_existente.data_compartilhamento = datetime.utcnow()
+            compartilhamento_existente.compartilhado_por = profissional_id
+        else:
+            # Criar novo compartilhamento
+            novo_compartilhamento = CompartilhamentoPaciente(
+                paciente_id=paciente_id,
+                profissional_id=profissional_destino_id,
+                nivel_acesso=nivel_acesso_novo,
+                compartilhado_por=profissional_id
+            )
+            db.session.add(novo_compartilhamento)
+        
+        db.session.commit()
+        
+        # Registrar atividade
+        log = LogAtividade(
+            profissional_id=profissional_id,
+            acao='Compartilhamento',
+            detalhes=f'Paciente ID {paciente_id} compartilhado com {profissional_destino.nome} (nível: {nivel_acesso_novo})'
+        )
+        db.session.add(log)
+        db.session.commit()
+        
+        return jsonify({
+            'message': f'Paciente compartilhado com sucesso com {profissional_destino.nome}'
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Erro ao compartilhar paciente: {str(e)}'}), 500
+
+@pacientes_bp.route('/<int:paciente_id>/compartilhamentos', methods=['GET'])
+@jwt_required()
+def listar_compartilhamentos(paciente_id):
+    """Listar compartilhamentos de um paciente"""
+    current_user_id = get_jwt_identity()
+    profissional_id = int(current_user_id)
+    
+    # Verificar se é o responsável pelo paciente
+    tem_acesso, eh_responsavel, nivel_acesso = verificar_acesso_paciente(
+        profissional_id, paciente_id
+    )
+    
+    if not tem_acesso or not eh_responsavel:
+        return jsonify({'error': 'Apenas o profissional responsável pode ver compartilhamentos'}), 403
+    
+    compartilhamentos = CompartilhamentoPaciente.query.filter_by(
+        paciente_id=paciente_id,
+        ativo=True
+    ).all()
+    
+    return jsonify({
+        'compartilhamentos': [c.to_dict() for c in compartilhamentos]
+    }), 200
+
+@pacientes_bp.route('/<int:paciente_id>/compartilhamentos/<int:compartilhamento_id>', methods=['DELETE'])
+@jwt_required()
+def remover_compartilhamento(paciente_id, compartilhamento_id):
+    """Remover compartilhamento de paciente"""
+    current_user_id = get_jwt_identity()
+    profissional_id = int(current_user_id)
+    
+    # Verificar se é o responsável pelo paciente
+    tem_acesso, eh_responsavel, nivel_acesso = verificar_acesso_paciente(
+        profissional_id, paciente_id, 'completo'
+    )
+    
+    if not tem_acesso or not eh_responsavel:
+        return jsonify({'error': 'Apenas o profissional responsável pode remover compartilhamentos'}), 403
+    
+    compartilhamento = CompartilhamentoPaciente.query.get(compartilhamento_id)
+    
+    if not compartilhamento or compartilhamento.paciente_id != paciente_id:
+        return jsonify({'error': 'Compartilhamento não encontrado'}), 404
+    
+    try:
+        # Desativar compartilhamento
+        compartilhamento.ativo = False
+        db.session.commit()
+        
+        # Registrar atividade
+        log = LogAtividade(
+            profissional_id=profissional_id,
+            acao='Remoção de Compartilhamento',
+            detalhes=f'Compartilhamento removido: Paciente ID {paciente_id} com {compartilhamento.profissional.nome}'
+        )
+        db.session.add(log)
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Compartilhamento removido com sucesso'
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Erro ao remover compartilhamento: {str(e)}'}), 500
+
+@pacientes_bp.route('/profissionais', methods=['GET'])
+@jwt_required()
+def listar_profissionais():
+    """Listar profissionais para compartilhamento"""
+    current_user_id = get_jwt_identity()
+    profissional_id = int(current_user_id)
+    
+    # Listar todos os profissionais exceto o atual
+    profissionais = Profissional.query.filter(Profissional.id != profissional_id).all()
+    
+    return jsonify({
+        'profissionais': [p.to_dict() for p in profissionais]
+    }), 200
+
 @pacientes_bp.route('/dashboard', methods=['GET'])
 @jwt_required()
 def dashboard():
     """Endpoint para obter estatísticas para o dashboard"""
+    current_user_id = get_jwt_identity()
+    profissional_id = int(current_user_id)
     
-    # Total de pacientes
-    total_pacientes = Paciente.query.count()
+    # Obter apenas pacientes acessíveis ao profissional
+    pacientes_acessiveis = obter_pacientes_acessiveis(profissional_id).all()
+    
+    # Total de pacientes acessíveis
+    total_pacientes = len(pacientes_acessiveis)
     
     # Pacientes em tratamento
-    em_tratamento = Paciente.query.filter_by(em_tratamento=True).count()
+    em_tratamento = len([p for p in pacientes_acessiveis if p.em_tratamento])
+    
+    # Pacientes onde é responsável
+    responsavel_por = len([p for p in pacientes_acessiveis if p.profissional_responsavel_id == profissional_id])
+    
+    # Pacientes compartilhados comigo
+    compartilhados_comigo = total_pacientes - responsavel_por
     
     # Taxa de tratamento
     taxa_tratamento = 0
@@ -255,5 +542,7 @@ def dashboard():
     return jsonify({
         'total_pacientes': total_pacientes,
         'em_tratamento': em_tratamento,
+        'responsavel_por': responsavel_por,
+        'compartilhados_comigo': compartilhados_comigo,
         'taxa_tratamento': round(taxa_tratamento, 1)
     }), 200

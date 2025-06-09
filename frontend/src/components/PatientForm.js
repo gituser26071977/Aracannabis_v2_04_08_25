@@ -11,9 +11,13 @@ import {
   Select,
   MenuItem,
   Snackbar,
-  Alert
+  Alert,
+  FormControlLabel,
+  Checkbox,
+  Divider
 } from '@mui/material';
-import { pacientesService } from '../services/api';
+import { pacientesService, lgpdService } from '../services/api';
+import LGPDBanner from './LGPDBanner';
 
 const PatientForm = ({ onSave, initialData = null }) => {
   const [formData, setFormData] = useState({
@@ -25,7 +29,8 @@ const PatientForm = ({ onSave, initialData = null }) => {
     endereco: initialData?.endereco || '',
     genero: initialData?.genero || '',
     diagnostico: initialData?.diagnostico || '',
-    observacoes: initialData?.observacoes || ''
+    observacoes: initialData?.observacoes || '',
+    consentimento_lgpd: initialData?.consentimento_lgpd || false
   });
   
   const [loading, setLoading] = useState(false);
@@ -61,6 +66,21 @@ const PatientForm = ({ onSave, initialData = null }) => {
       }
       
       console.log('Resposta do servidor:', result);
+      
+      // Registrar consentimento LGPD se for um novo paciente ou se o consentimento foi alterado
+      if (formData.consentimento_lgpd && 
+          (!initialData || initialData.consentimento_lgpd !== formData.consentimento_lgpd)) {
+        try {
+          await lgpdService.registrarConsentimento(
+            result.paciente.id, 
+            formData.consentimento_lgpd
+          );
+          console.log('Consentimento LGPD registrado com sucesso');
+        } catch (consentError) {
+          console.error('Erro ao registrar consentimento LGPD:', consentError);
+          // Não interromper o fluxo principal se houver erro no registro de consentimento
+        }
+      }
       
       setSuccess(true);
       
@@ -104,6 +124,8 @@ const PatientForm = ({ onSave, initialData = null }) => {
       <Typography variant="h6" gutterBottom>
         {initialData ? 'Editar Paciente' : 'Novo Paciente'}
       </Typography>
+      
+      <LGPDBanner variant="form" />
       
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
@@ -225,6 +247,24 @@ const PatientForm = ({ onSave, initialData = null }) => {
               margin="normal"
               multiline
               rows={3}
+            />
+          </Grid>
+          
+          <Grid item xs={12}>
+            <Divider sx={{ my: 2 }} />
+            <Typography variant="subtitle1" color="primary" gutterBottom>
+              Consentimento LGPD
+            </Typography>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={formData.consentimento_lgpd}
+                  onChange={(e) => setFormData({...formData, consentimento_lgpd: e.target.checked})}
+                  name="consentimento_lgpd"
+                  color="primary"
+                />
+              }
+              label="Concordo com a coleta e processamento dos meus dados pessoais conforme a Política de Privacidade"
             />
           </Grid>
           

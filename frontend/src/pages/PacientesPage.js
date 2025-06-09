@@ -3,6 +3,7 @@ import { Box, Tab, Tabs, Paper } from '@mui/material';
 import PatientList from '../components/PatientList';
 import PatientForm from '../components/PatientForm';
 import PatientDetails from '../components/PatientDetails';
+import LGPDBanner from '../components/LGPDBanner';
 
 // Componente TabPanel para exibir o conteúdo da aba selecionada
 function TabPanel(props) {
@@ -54,11 +55,6 @@ const PacientesPage = () => {
     setTabValue(1); // Mudar para a aba de formulário
   };
   
-  // Manipulador para visualizar um paciente
-  const handleViewPatient = (patient) => {
-    setSelectedPatient(patient);
-    setTabValue(2); // Mudar para a aba de detalhes
-  };
   
   // Manipulador para adicionar um novo paciente
   const handleAddPatient = () => {
@@ -74,6 +70,8 @@ const PacientesPage = () => {
   
   return (
     <Box sx={{ width: '100%' }}>
+      <LGPDBanner variant="dashboard" />
+      
       <Paper elevation={3} sx={{ mb: 3 }}>
         <Tabs 
           value={tabValue} 
@@ -90,7 +88,6 @@ const PacientesPage = () => {
       <TabPanel value={tabValue} index={0}>
         <PatientList 
           onEdit={handleEditPatient} 
-          onView={handleViewPatient} 
           onAdd={handleAddPatient}
           refreshTrigger={refreshList}
         />

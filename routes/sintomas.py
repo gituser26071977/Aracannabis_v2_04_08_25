@@ -1,15 +1,15 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, Sintoma, Paciente, LogAtividade
-from datetime import datetime
+from datetime import datetime, timedelta
 
 sintomas_bp = Blueprint('sintomas', __name__)
 
 @sintomas_bp.route('/paciente/<int:paciente_id>', methods=['GET'])
 @jwt_required()
 def listar_sintomas(paciente_id):
-    current_user = get_jwt_identity()
-    profissional_id = current_user.get('id')
+    current_user_id = get_jwt_identity()
+    profissional_id = int(current_user_id)
     
     # Verificar se o paciente existe
     paciente = Paciente.query.get(paciente_id)
@@ -60,8 +60,8 @@ def listar_sintomas(paciente_id):
 @sintomas_bp.route('/paciente/<int:paciente_id>', methods=['POST'])
 @jwt_required()
 def registrar_sintoma(paciente_id):
-    current_user = get_jwt_identity()
-    profissional_id = current_user.get('id')
+    current_user_id = get_jwt_identity()
+    profissional_id = int(current_user_id)
     
     # Verificar se o paciente existe
     paciente = Paciente.query.get(paciente_id)
@@ -143,8 +143,8 @@ def registrar_sintoma(paciente_id):
 @sintomas_bp.route('/<int:sintoma_id>', methods=['DELETE'])
 @jwt_required()
 def excluir_sintoma(sintoma_id):
-    current_user = get_jwt_identity()
-    profissional_id = current_user.get('id')
+    current_user_id = get_jwt_identity()
+    profissional_id = int(current_user_id)
     
     sintoma = Sintoma.query.get(sintoma_id)
     
@@ -191,9 +191,70 @@ def listar_sintomas_padrao():
         'Memória'
     ]
     
+    # Verificar se há sintomas personalizados no banco de dados
+    try:
+        # Obter sintomas únicos registrados que não estão na lista padrão
+        sintomas_unicos = db.session.query(Sintoma.sintoma).distinct().all()
+        sintomas_unicos = [s[0] for s in sintomas_unicos]
+        
+        # Filtrar apenas os sintomas que não estão na lista padrão
+        sintomas_personalizados = [s for s in sintomas_unicos if s not in sintomas_padrao]
+        
+        return jsonify({
+            'sintomas_padrao': sintomas_padrao,
+            'sintomas_personalizados': sintomas_personalizados
+        }), 200
+    except Exception as e:
+        print(f"Erro ao obter sintomas personalizados: {str(e)}")
+        return jsonify({
+            'sintomas_padrao': sintomas_padrao,
+            'sintomas_personalizados': []
+        }), 200
+
+@sintomas_bp.route('/sintoma-personalizado', methods=['POST'])
+@jwt_required()
+def registrar_sintoma_personalizado():
+    """Endpoint para registrar um novo sintoma personalizado"""
+    current_user_id = get_jwt_identity()
+    profissional_id = int(current_user_id)
+    
+    data = request.get_json()
+    
+    # Validar dados obrigatórios
+    if 'nome_sintoma' not in data or not data['nome_sintoma'].strip():
+        return jsonify({'error': 'Nome do sintoma é obrigatório'}), 400
+    
+    nome_sintoma = data['nome_sintoma'].strip()
+    
+    # Verificar se o sintoma já existe na lista padrão
+    sintomas_padrao = [
+        'Dor', 
+        'Ansiedade', 
+        'Medo', 
+        'Dificuldade de raciocínio', 
+        'Qualidade do sono', 
+        'Apetite', 
+        'Humor', 
+        'Energia', 
+        'Memória'
+    ]
+    
+    if nome_sintoma in sintomas_padrao:
+        return jsonify({'error': 'Este sintoma já existe na lista padrão'}), 400
+    
+    # Registrar atividade
+    log = LogAtividade(
+        profissional_id=profissional_id,
+        acao='Registro',
+        detalhes=f'Novo sintoma personalizado registrado: {nome_sintoma}'
+    )
+    db.session.add(log)
+    db.session.commit()
+    
     return jsonify({
-        'sintomas_padrao': sintomas_padrao
-    }), 200
+        'message': 'Sintoma personalizado registrado com sucesso',
+        'sintoma': nome_sintoma
+    }), 201
 
 @sintomas_bp.route('/grafico/paciente/<int:paciente_id>', methods=['GET'])
 @jwt_required()
@@ -205,24 +266,31 @@ def dados_grafico_sintomas(paciente_id):
     if not paciente:
         return jsonify({'error': 'Paciente não encontrado'}), 404
     
-    # Parâmetros de filtro
-    data_inicio = request.args.get('data_inicio')
-    data_fim = request.args.get('data_fim')
+    periodo = request.args.get('periodo', 'integral')
+    data_fim_param = request.args.get('data_fim') # Manter data_fim opcional
+    
+    hoje = datetime.now().date()
+    data_inicio_calculada = None
+
+    if periodo == '1m':
+        data_inicio_calculada = hoje - timedelta(days=30)
+    elif periodo == '3m':
+        data_inicio_calculada = hoje - timedelta(days=90)
+    elif periodo == '6m':
+        data_inicio_calculada = hoje - timedelta(days=180)
+    elif periodo == '1y':
+        data_inicio_calculada = hoje - timedelta(days=365)
+    # Se 'integral', data_inicio_calculada permanece None, sem filtro de data de início.
     
     query = Sintoma.query.filter_by(paciente_id=paciente_id)
     
-    # Aplicar filtros se fornecidos
-    if data_inicio:
-        try:
-            data_inicio = datetime.strptime(data_inicio, '%Y-%m-%d').date()
-            query = query.filter(Sintoma.data >= data_inicio)
-        except ValueError:
-            return jsonify({'error': 'Formato de data_inicio inválido. Use YYYY-MM-DD'}), 400
+    if data_inicio_calculada:
+        query = query.filter(Sintoma.data >= data_inicio_calculada)
     
-    if data_fim:
+    if data_fim_param:
         try:
-            data_fim = datetime.strptime(data_fim, '%Y-%m-%d').date()
-            query = query.filter(Sintoma.data <= data_fim)
+            data_fim_obj = datetime.strptime(data_fim_param, '%Y-%m-%d').date()
+            query = query.filter(Sintoma.data <= data_fim_obj)
         except ValueError:
             return jsonify({'error': 'Formato de data_fim inválido. Use YYYY-MM-DD'}), 400
     

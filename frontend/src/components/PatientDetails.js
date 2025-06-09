@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Paper, 
   Typography, 
@@ -18,7 +19,8 @@ import {
   Edit as EditIcon
 } from '@mui/icons-material';
 
-const PatientDetails = ({ patient, onEdit }) => {
+const PatientDetails = ({ patient, onEdit, onTabChange, showActions = true }) => {
+  const navigate = useNavigate();
   if (!patient) {
     return (
       <Paper elevation={3} sx={{ p: 3 }}>
@@ -206,26 +208,118 @@ const PatientDetails = ({ patient, onEdit }) => {
               <NoteIcon sx={{ mr: 1 }} /> Histórico
             </Typography>
             
-            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
-              <Chip 
-                label="Sintomas" 
-                color="primary" 
-                variant="outlined" 
-                onClick={() => {}} 
-              />
-              <Chip 
-                label="Dosagens" 
-                color="secondary" 
-                variant="outlined" 
-                onClick={() => {}} 
-              />
-              <Chip 
-                label="Evoluções" 
-                color="success" 
-                variant="outlined" 
-                onClick={() => {}} 
-              />
-            </Box>
+            {showActions && patient.id && (
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
+                <Chip 
+                  label="Sintomas" 
+                  color="primary" 
+                  variant="outlined" 
+                  onClick={() => {
+                    const currentPath = window.location.pathname;
+                    if (currentPath.includes('/pacientes/detail/')) {
+                      // Already on detail page, use the onTabChange prop
+                      if (typeof onTabChange === 'function') {
+                        onTabChange(1);
+                      } else {
+                        // Fallback to navigation
+                        navigate(`/pacientes/detail/${patient.id}`, { 
+                          state: { initialTab: 1 },
+                          replace: true
+                        });
+                      }
+                    } else {
+                      // Navigate to detail page with tab
+                      navigate(`/pacientes/detail/${patient.id}`, { 
+                        state: { initialTab: 1 } 
+                      });
+                    }
+                  }}
+                  clickable
+                  sx={{ cursor: 'pointer' }}
+                />
+                <Chip 
+                  label="Dosagens" 
+                  color="secondary" 
+                  variant="outlined" 
+                  onClick={() => {
+                    const currentPath = window.location.pathname;
+                    if (currentPath.includes('/pacientes/detail/')) {
+                      // Already on detail page, use the onTabChange prop
+                      if (typeof onTabChange === 'function') {
+                        onTabChange(2);
+                      } else {
+                        // Fallback to navigation
+                        navigate(`/pacientes/detail/${patient.id}`, { 
+                          state: { initialTab: 2 },
+                          replace: true
+                        });
+                      }
+                    } else {
+                      // Navigate to detail page with tab
+                      navigate(`/pacientes/detail/${patient.id}`, { 
+                        state: { initialTab: 2 } 
+                      });
+                    }
+                  }}
+                  clickable
+                  sx={{ cursor: 'pointer' }}
+                />
+                <Chip 
+                  label="Evoluções" 
+                  color="success" 
+                  variant="outlined" 
+                  onClick={() => {
+                    const currentPath = window.location.pathname;
+                    if (currentPath.includes('/pacientes/detail/')) {
+                      // Already on detail page, use the onTabChange prop
+                      if (typeof onTabChange === 'function') {
+                        onTabChange(3);
+                      } else {
+                        // Fallback to navigation
+                        navigate(`/pacientes/detail/${patient.id}`, { 
+                          state: { initialTab: 3 },
+                          replace: true
+                        });
+                      }
+                    } else {
+                      // Navigate to detail page with tab
+                      navigate(`/pacientes/detail/${patient.id}`, { 
+                        state: { initialTab: 3 } 
+                      });
+                    }
+                  }}
+                  clickable
+                  sx={{ cursor: 'pointer' }}
+                />
+                <Chip 
+                  label="Gráfico Combinado" 
+                  color="info" 
+                  variant="outlined" 
+                  onClick={() => {
+                    const currentPath = window.location.pathname;
+                    if (currentPath.includes('/pacientes/detail/')) {
+                      // Already on detail page, use the onTabChange prop
+                      if (typeof onTabChange === 'function') {
+                        onTabChange(4);
+                      } else {
+                        // Fallback to navigation
+                        navigate(`/pacientes/detail/${patient.id}`, { 
+                          state: { initialTab: 4 },
+                          replace: true
+                        });
+                      }
+                    } else {
+                      // Navigate to detail page with tab
+                      navigate(`/pacientes/detail/${patient.id}`, { 
+                        state: { initialTab: 4 } 
+                      });
+                    }
+                  }}
+                  clickable
+                  sx={{ cursor: 'pointer' }}
+                />
+              </Box>
+            )}
           </Paper>
         </Grid>
       </Grid>
