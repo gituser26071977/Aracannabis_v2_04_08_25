@@ -17,11 +17,12 @@ import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import HomeIcon from '@mui/icons-material/Home';
 import PersonIcon from '@mui/icons-material/Person';
-import MedicationIcon from '@mui/icons-material/Medication';
-import AssessmentIcon from '@mui/icons-material/Assessment';
-import HistoryIcon from '@mui/icons-material/History';
+import EventIcon from '@mui/icons-material/Event';
 import LoginIcon from '@mui/icons-material/Login';
 import LogoutIcon from '@mui/icons-material/Logout';
+import SecurityIcon from '@mui/icons-material/Security';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import PaymentIcon from '@mui/icons-material/Payment';
 import Paper from '@mui/material/Paper';
 import TextField from '@mui/material/TextField';
 import Alert from '@mui/material/Alert';
@@ -29,6 +30,16 @@ import { useAuth } from './contexts/AuthContext';
 
 // Importar páginas
 import PacientesPageComponent from './pages/PacientesPage';
+import PatientDetailPage from './pages/PatientDetailPage';
+import PatientEditPage from './pages/PatientEditPage';
+import SecurityPage from './pages/SecurityPage';
+import ConsultasPage from './pages/ConsultasPage';
+import SimpleLogin from './components/SimpleLogin';
+import CadastroProfissionaisPage from './pages/CadastroProfissionaisPage';
+import PlanosPage from './pages/PlanosPage';
+import PagamentoPage from './pages/PagamentoPage';
+import AdBanner from './components/AdBanner';
+import PrescriptionView from './components/PrescriptionView';
 
 // Tema personalizado
 const theme = createTheme({
@@ -56,87 +67,73 @@ function ProtectedRoute({ children }) {
 // Componentes de página
 function HomePage() {
   const { currentUser } = useAuth();
-  
-  return (
-    <Paper elevation={3} sx={{ p: 4, my: 4, textAlign: 'center' }}>
-      <Typography variant="h3" component="h1" gutterBottom>
-        Aracannabis
-      </Typography>
-      <Typography variant="h5" component="h2" gutterBottom>
-        Sistema de Prontuário Eletrônico para Pacientes de Cannabis Medicinal
-      </Typography>
-      <Typography variant="body1" paragraph>
-        Bem-vindo{currentUser ? `, ${currentUser.nome}` : ''} ao sistema de prontuário eletrônico Aracannabis. 
-        Este sistema permite o gerenciamento completo de pacientes, sintomas, dosagens e evolução 
-        do tratamento com cannabis medicinal.
-      </Typography>
-      <Typography variant="body1">
-        Utilize o menu para navegar entre as diferentes funcionalidades do sistema.
-      </Typography>
-    </Paper>
-  );
-}
 
-function PacientesPage() {
   return (
-    <Paper elevation={3} sx={{ p: 4, my: 4 }}>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Gerenciamento de Pacientes
-      </Typography>
-      <Typography variant="body1" paragraph>
-        Aqui você pode cadastrar, visualizar e editar informações dos pacientes.
-      </Typography>
-      <Alert severity="info">
-        Esta funcionalidade está em desenvolvimento. Em breve você poderá gerenciar pacientes aqui.
-      </Alert>
-    </Paper>
-  );
-}
+    <Paper elevation={3} sx={{ p: { xs: 2, sm: 3, md: 4 }, my: 4 }}>
+      <Box sx={{ textAlign: 'center', mb: 4 }}>
+        <Typography variant="h2" component="h1" gutterBottom sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+          Aracannabis
+        </Typography>
+        <Typography variant="h5" component="h2" color="text.secondary" gutterBottom>
+          Sistema de Prontuário Eletrônico para Pacientes de Cannabis Medicinal
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 2, fontStyle: 'italic' }}>
+          Versão Básica (Sem IA)
+        </Typography>
+      </Box>
 
-function SintomasPage() {
-  return (
-    <Paper elevation={3} sx={{ p: 4, my: 4 }}>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Registro de Sintomas
-      </Typography>
-      <Typography variant="body1" paragraph>
-        Registre e acompanhe os sintomas relatados pelos pacientes.
-      </Typography>
-      <Alert severity="info">
-        Esta funcionalidade está em desenvolvimento. Em breve você poderá registrar sintomas aqui.
-      </Alert>
-    </Paper>
-  );
-}
-
-function DosagensPage() {
-  return (
-    <Paper elevation={3} sx={{ p: 4, my: 4 }}>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Controle de Dosagens
-      </Typography>
-      <Typography variant="body1" paragraph>
-        Gerencie as dosagens de cannabis medicinal prescritas aos pacientes.
-      </Typography>
-      <Alert severity="info">
-        Esta funcionalidade está em desenvolvimento. Em breve você poderá controlar dosagens aqui.
-      </Alert>
-    </Paper>
-  );
-}
-
-function EvolucoesPage() {
-  return (
-    <Paper elevation={3} sx={{ p: 4, my: 4 }}>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Histórico de Evolução
-      </Typography>
-      <Typography variant="body1" paragraph>
-        Acompanhe a evolução do tratamento dos pacientes ao longo do tempo.
-      </Typography>
-      <Alert severity="info">
-        Esta funcionalidade está em desenvolvimento. Em breve você poderá acompanhar evoluções aqui.
-      </Alert>
+      <Box sx={{ textAlign: 'left', maxWidth: '800px', mx: 'auto' }}>
+        <Typography variant="body1" paragraph sx={{ fontSize: '1.1rem', lineHeight: 1.7 }}>
+          Bem-vindo{currentUser ? `, ${currentUser.nome}` : ''} ao sistema de prontuário eletrônico Aracannabis.
+        </Typography>
+        <Typography variant="body1" paragraph sx={{ fontSize: '1.1rem', lineHeight: 1.7 }}>
+          Este sistema foi cuidadosamente desenvolvido para oferecer uma plataforma segura e eficiente 
+          para o gerenciamento completo de informações de pacientes, acompanhamento de sintomas, 
+          ajuste de dosagens e registro da evolução do tratamento com cannabis medicinal.
+        </Typography>
+        <Typography variant="body1" sx={{ fontSize: '1.1rem', lineHeight: 1.7, mt: 3 }}>
+          Utilize o menu lateral para navegar pelas diversas funcionalidades disponíveis e otimizar 
+          o cuidado e acompanhamento dos seus pacientes.
+        </Typography>
+        
+        {!currentUser && (
+          <>
+            <Box sx={{ mt: 4, p: 3, backgroundColor: '#e8f5e9', borderRadius: 2 }}>
+              <Typography variant="h6" gutterBottom color="primary">
+                🌿 Profissional de Saúde?
+              </Typography>
+              <Typography variant="body1" paragraph>
+                Solicite acesso ao sistema Aracannabis e experimente todas as funcionalidades por 7 dias gratuitamente.
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  component={Link}
+                  to="/cadastro-profissionais"
+                  startIcon={<PersonAddIcon />}
+                >
+                  Solicitar Cadastro
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  component={Link}
+                  to="/planos"
+                  startIcon={<PaymentIcon />}
+                >
+                  Ver Planos e Preços
+                </Button>
+              </Box>
+            </Box>
+            
+            {/* Anúncios para usuários não logados */}
+            <Box sx={{ mt: 4 }}>
+              <AdBanner position="banner" maxAds={3} />
+            </Box>
+          </>
+        )}
+      </Box>
     </Paper>
   );
 }
@@ -150,14 +147,19 @@ function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log('LOGIN_PAGE: Iniciando processo de login...');
     setLoginError('');
     setLoading(true);
     
     try {
+      console.log('LOGIN_PAGE: Chamando função login com:', { usuario, senha: '***' });
       await login(usuario, senha);
+      console.log('LOGIN_PAGE: Login bem-sucedido!');
     } catch (error) {
-      setLoginError(error.error || 'Falha ao fazer login');
+      console.error('LOGIN_PAGE: Erro no login:', error);
+      setLoginError(error.error || error.message || 'Falha ao fazer login');
     } finally {
+      console.log('LOGIN_PAGE: Finalizando processo de login...');
       setLoading(false);
     }
   };
@@ -208,7 +210,14 @@ function LoginPage() {
       
       <Box sx={{ mt: 2, textAlign: 'center' }}>
         <Typography variant="body2">
-          Não tem uma conta? Entre em contato com o administrador.
+          Não tem uma conta?{' '}
+          <Link to="/cadastro-profissionais" style={{ color: '#2e7d32', textDecoration: 'none' }}>
+            Solicite seu cadastro aqui
+          </Link>
+          {' ou '}
+          <Link to="/planos" style={{ color: '#2e7d32', textDecoration: 'none' }}>
+            veja nossos planos
+          </Link>
         </Typography>
       </Box>
     </Paper>
@@ -223,9 +232,10 @@ function NavigationMenu({ open, onClose }) {
   const menuItems = [
     { text: 'Início', icon: <HomeIcon />, path: '/', auth: false },
     { text: 'Pacientes', icon: <PersonIcon />, path: '/pacientes', auth: true },
-    { text: 'Sintomas', icon: <MedicationIcon />, path: '/sintomas', auth: true },
-    { text: 'Dosagens', icon: <AssessmentIcon />, path: '/dosagens', auth: true },
-    { text: 'Evoluções', icon: <HistoryIcon />, path: '/evolucoes', auth: true },
+    { text: 'Consultas', icon: <EventIcon />, path: '/consultas', auth: true },
+    { text: 'Planos e Preços', icon: <PaymentIcon />, path: '/planos', auth: false },
+    { text: 'Segurança e LGPD', icon: <SecurityIcon />, path: '/seguranca', auth: false },
+    { text: 'Cadastro Profissionais', icon: <PersonAddIcon />, path: '/cadastro-profissionais', auth: false },
   ];
 
   const authItems = currentUser
@@ -295,7 +305,7 @@ function App() {
             <MenuIcon />
           </IconButton>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            Aracannabis Prontuário
+            Aracannabis Prontuário - Versão Básica
           </Typography>
           {currentUser && (
             <Typography variant="body1" sx={{ mr: 2 }}>
@@ -303,7 +313,7 @@ function App() {
             </Typography>
           )}
           {currentUser ? (
-            <Button color="inherit" onClick={() => window.location.href = '/api/status'} target="_blank">
+            <Button color="inherit" onClick={() => window.open('http://localhost:5010/api/status', '_blank')} target="_blank">
               API
             </Button>
           ) : (
@@ -318,6 +328,10 @@ function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/planos" element={<PlanosPage />} />
+          <Route path="/pagamento" element={<PagamentoPage />} />
+          <Route path="/cadastro-profissionais" element={<CadastroProfissionaisPage />} />
+          <Route path="/test-login" element={<SimpleLogin />} />
           <Route 
             path="/pacientes" 
             element={
@@ -327,29 +341,38 @@ function App() {
             } 
           />
           <Route 
-            path="/sintomas" 
+            path="/pacientes/detail/:patientId" 
             element={
               <ProtectedRoute>
-                <SintomasPage />
+                <PatientDetailPage />
               </ProtectedRoute>
             } 
           />
           <Route 
-            path="/dosagens" 
+            path="/pacientes/edit/:patientId" 
             element={
               <ProtectedRoute>
-                <DosagensPage />
+                <PatientEditPage />
               </ProtectedRoute>
             } 
           />
           <Route 
-            path="/evolucoes" 
+            path="/consultas" 
             element={
               <ProtectedRoute>
-                <EvolucoesPage />
+                <ConsultasPage />
               </ProtectedRoute>
             } 
           />
+          <Route 
+            path="/consultas/:consultaId/prescricao" 
+            element={
+              <ProtectedRoute>
+                <PrescriptionView />
+              </ProtectedRoute>
+            } 
+          />
+          <Route path="/seguranca" element={<SecurityPage />} />
         </Routes>
       </Container>
     </ThemeProvider>

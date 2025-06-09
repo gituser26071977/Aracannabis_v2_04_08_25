@@ -1,15 +1,15 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, Dosagem, Paciente, LogAtividade
-from datetime import datetime
+from datetime import datetime, timedelta
 
 dosagens_bp = Blueprint('dosagens', __name__)
 
 @dosagens_bp.route('/paciente/<int:paciente_id>', methods=['GET'])
 @jwt_required()
 def listar_dosagens(paciente_id):
-    current_user = get_jwt_identity()
-    profissional_id = current_user.get('id')
+    current_user_id = get_jwt_identity()
+    profissional_id = int(current_user_id)
     
     # Verificar se o paciente existe
     paciente = Paciente.query.get(paciente_id)
@@ -56,8 +56,8 @@ def listar_dosagens(paciente_id):
 @dosagens_bp.route('/paciente/<int:paciente_id>', methods=['POST'])
 @jwt_required()
 def registrar_dosagem(paciente_id):
-    current_user = get_jwt_identity()
-    profissional_id = current_user.get('id')
+    current_user_id = get_jwt_identity()
+    profissional_id = int(current_user_id)
     
     # Verificar se o paciente existe
     paciente = Paciente.query.get(paciente_id)
@@ -74,11 +74,18 @@ def registrar_dosagem(paciente_id):
         # Converter string de data para objeto date
         data_dosagem = datetime.strptime(data['data'], '%Y-%m-%d').date()
         
-        # Criar nova dosagem
+        # Criar nova dosagem com os novos campos
         nova_dosagem = Dosagem(
             paciente_id=paciente_id,
             data=data_dosagem,
-            dosagem=data['dosagem']
+            dosagem=data['dosagem'],
+            gotas=data.get('gotas', 0),
+            frequencia_diaria=data.get('frequencia_diaria', 1),
+            concentracao_cbd=data.get('concentracao_cbd', 0.0),
+            concentracao_thc=data.get('concentracao_thc', 0.0),
+            concentracao_cbg=data.get('concentracao_cbg', 0.0),
+            concentracao_cbn=data.get('concentracao_cbn', 0.0),
+            gotas_por_ml=data.get('gotas_por_ml', 30)  # Padrão 30 gotas/ml
         )
         
         db.session.add(nova_dosagem)
@@ -112,8 +119,8 @@ def registrar_dosagem(paciente_id):
 @dosagens_bp.route('/<int:dosagem_id>', methods=['DELETE'])
 @jwt_required()
 def excluir_dosagem(dosagem_id):
-    current_user = get_jwt_identity()
-    profissional_id = current_user.get('id')
+    current_user_id = get_jwt_identity()
+    profissional_id = int(current_user_id)
     
     dosagem = Dosagem.query.get(dosagem_id)
     
@@ -153,51 +160,112 @@ def dados_grafico_dosagens(paciente_id):
     if not paciente:
         return jsonify({'error': 'Paciente não encontrado'}), 404
     
-    # Parâmetros de filtro
-    data_inicio = request.args.get('data_inicio')
-    data_fim = request.args.get('data_fim')
-    
+    periodo = request.args.get('periodo', 'integral')
+    data_fim_param = request.args.get('data_fim') # Manter data_fim opcional
+
+    hoje = datetime.now().date()
+    data_inicio_calculada = None
+
+    if periodo == '1m':
+        data_inicio_calculada = hoje - timedelta(days=30)
+    elif periodo == '3m':
+        data_inicio_calculada = hoje - timedelta(days=90)
+    elif periodo == '6m':
+        data_inicio_calculada = hoje - timedelta(days=180)
+    elif periodo == '1y':
+        data_inicio_calculada = hoje - timedelta(days=365)
+    # Se 'integral', data_inicio_calculada permanece None, sem filtro de data de início.
+
     query = Dosagem.query.filter_by(paciente_id=paciente_id)
-    
-    # Aplicar filtros se fornecidos
-    if data_inicio:
+
+    if data_inicio_calculada:
+        query = query.filter(Dosagem.data >= data_inicio_calculada)
+
+    if data_fim_param:
         try:
-            data_inicio = datetime.strptime(data_inicio, '%Y-%m-%d').date()
-            query = query.filter(Dosagem.data >= data_inicio)
-        except ValueError:
-            return jsonify({'error': 'Formato de data_inicio inválido. Use YYYY-MM-DD'}), 400
-    
-    if data_fim:
-        try:
-            data_fim = datetime.strptime(data_fim, '%Y-%m-%d').date()
-            query = query.filter(Dosagem.data <= data_fim)
+            data_fim_obj = datetime.strptime(data_fim_param, '%Y-%m-%d').date()
+            query = query.filter(Dosagem.data <= data_fim_obj)
         except ValueError:
             return jsonify({'error': 'Formato de data_fim inválido. Use YYYY-MM-DD'}), 400
     
     # Ordenar por data
     dosagens = query.order_by(Dosagem.data).all()
     
-    # Extrair valores numéricos das dosagens para o gráfico
-    import re
-    
+    # Preparar dados para o gráfico
     dados_grafico = []
+    dados_cbd = []
+    dados_thc = []
+    dados_cbg = []
+    dados_cbn = []
+    dados_canabinoides_totais = []
     
     for dosagem in dosagens:
-        # Tentar extrair valor numérico da dosagem (ex: "10 gotas" -> 10)
-        valor_numerico = None
-        match = re.search(r'(\d+(\.\d+)?)', dosagem.dosagem)
-        if match:
-            valor_numerico = float(match.group(1))
+        # Calcular dose diária
+        dose_diaria = dosagem.calcular_dose_diaria()
         
+        # Dados para o gráfico principal (gotas)
         dados_grafico.append({
             'x': dosagem.data.isoformat(),
-            'y': valor_numerico,
-            'dosagem_texto': dosagem.dosagem
+            'y': dosagem.gotas,
+            'dosagem_texto': f"{dosagem.gotas} gotas, {dosagem.frequencia_diaria}x ao dia"
+        })
+        
+        # Dados para gráficos de canabinoides
+        dados_cbd.append({
+            'x': dosagem.data.isoformat(),
+            'y': dose_diaria['cbd_mg'],
+            'dosagem_texto': f"CBD: {dose_diaria['cbd_mg']} mg/dia"
+        })
+        
+        dados_thc.append({
+            'x': dosagem.data.isoformat(),
+            'y': dose_diaria['thc_mg'],
+            'dosagem_texto': f"THC: {dose_diaria['thc_mg']} mg/dia"
+        })
+        
+        dados_cbg.append({
+            'x': dosagem.data.isoformat(),
+            'y': dose_diaria['cbg_mg'],
+            'dosagem_texto': f"CBG: {dose_diaria['cbg_mg']} mg/dia"
+        })
+        
+        dados_cbn.append({
+            'x': dosagem.data.isoformat(),
+            'y': dose_diaria['cbn_mg'],
+            'dosagem_texto': f"CBN: {dose_diaria['cbn_mg']} mg/dia"
+        })
+        
+        dados_canabinoides_totais.append({
+            'x': dosagem.data.isoformat(),
+            'y': dose_diaria['canabinoides_totais'],
+            'dosagem_texto': f"Total: {dose_diaria['canabinoides_totais']} mg/dia"
         })
     
     return jsonify({
         'dados_grafico': {
-            'label': 'Dosagem',
+            'label': 'Gotas',
             'data': dados_grafico
+        },
+        'dados_canabinoides': {
+            'cbd': {
+                'label': 'CBD (mg/dia)',
+                'data': dados_cbd
+            },
+            'thc': {
+                'label': 'THC (mg/dia)',
+                'data': dados_thc
+            },
+            'cbg': {
+                'label': 'CBG (mg/dia)',
+                'data': dados_cbg
+            },
+            'cbn': {
+                'label': 'CBN (mg/dia)',
+                'data': dados_cbn
+            },
+            'total': {
+                'label': 'Canabinoides Totais (mg/dia)',
+                'data': dados_canabinoides_totais
+            }
         }
     }), 200

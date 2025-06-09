@@ -17,8 +17,11 @@ def create_admin_user():
             print("Usuário admin já existe!")
             return
         
-        # Criar usuário admin
-        hashed_password = generate_password_hash('admin123')
+        # Senha forte que atende aos requisitos de segurança
+        senha_segura = "Aracannabis@2025"
+        
+        # Criar usuário admin com hash seguro
+        hashed_password = generate_password_hash(senha_segura, method='pbkdf2:sha256:100000')
         
         admin = Profissional(
             nome='Administrador',
@@ -32,8 +35,9 @@ def create_admin_user():
         db.session.commit()
         
         print("Usuário admin criado com sucesso!")
-        print("Usuário: admin")
-        print("Senha: admin123")
+        print(f"Usuário: admin")
+        print(f"Senha: {senha_segura}")
+        print("Nota: Esta senha atende aos requisitos de segurança. Recomendamos alterá-la após o primeiro login, se desejar.")
 
 if __name__ == '__main__':
     create_admin_user()

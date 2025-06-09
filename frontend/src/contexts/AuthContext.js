@@ -22,8 +22,16 @@ export const AuthProvider = ({ children }) => {
     const checkAuth = async () => {
       try {
         if (authService.isAuthenticated()) {
-          const user = authService.getUser();
-          setCurrentUser(user);
+          try {
+            // Obter perfil do usuário do servidor
+            const response = await authService.getProfile();
+            setCurrentUser(response.user);
+          } catch (profileError) {
+            console.error('Erro ao obter perfil:', profileError);
+            // Se falhar, usar dados do localStorage como fallback
+            const user = authService.getUser();
+            setCurrentUser(user);
+          }
         }
       } catch (error) {
         console.error('Erro ao verificar autenticação:', error);
@@ -37,14 +45,24 @@ export const AuthProvider = ({ children }) => {
 
   // Função para fazer login
   const login = async (usuario, senha) => {
+    console.log('AUTH_CONTEXT: Iniciando login...');
     setError('');
     try {
+      console.log('AUTH_CONTEXT: Chamando authService.login...');
       const data = await authService.login(usuario, senha);
+      console.log('AUTH_CONTEXT: Resposta recebida:', data);
       setCurrentUser(data.user);
-      navigate('/');
+      console.log('AUTH_CONTEXT: Usuário definido, navegando para home...');
+      
+      // Usar setTimeout para garantir que o estado seja atualizado antes da navegação
+      setTimeout(() => {
+        navigate('/');
+      }, 100);
+      
       return data;
     } catch (error) {
-      setError(error.error || 'Erro ao fazer login');
+      console.error('AUTH_CONTEXT: Erro capturado:', error);
+      setError(error.error || error.message || 'Erro ao fazer login');
       throw error;
     }
   };
