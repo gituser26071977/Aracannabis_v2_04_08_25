@@ -177,32 +177,35 @@ def excluir_sintoma(sintoma_id):
 @sintomas_bp.route('/sintomas-padrao', methods=['GET'])
 @jwt_required()
 def listar_sintomas_padrao():
-    """Endpoint para obter a lista de sintomas padrão"""
+    """Endpoint para obter a lista de sintomas padrão e personalizados"""
     
     sintomas_padrao = [
         'Dor', 
         'Ansiedade', 
         'Medo', 
         'Dificuldade de raciocínio', 
-        'Qualidade do sono', 
+        'Insônia', 
         'Apetite', 
         'Humor', 
         'Energia', 
         'Memória'
     ]
     
-    # Verificar se há sintomas personalizados no banco de dados
     try:
-        # Obter sintomas únicos registrados que não estão na lista padrão
-        sintomas_unicos = db.session.query(Sintoma.sintoma).distinct().all()
-        sintomas_unicos = [s[0] for s in sintomas_unicos]
+        # Obter sintomas personalizados da tabela dedicada
+        from sqlalchemy import text
+        result = db.session.execute(text("""
+            SELECT nome FROM sintomas_personalizados 
+            ORDER BY nome
+        """))
+        sintomas_personalizados = [row[0] for row in result.fetchall()]
         
-        # Filtrar apenas os sintomas que não estão na lista padrão
-        sintomas_personalizados = [s for s in sintomas_unicos if s not in sintomas_padrao]
+        # Combinar sintomas padrão e personalizados em uma única lista
+        todos_sintomas = sintomas_padrao + sintomas_personalizados
         
         return jsonify({
-            'sintomas_padrao': sintomas_padrao,
-            'sintomas_personalizados': sintomas_personalizados
+            'sintomas_padrao': todos_sintomas,  # Agora inclui personalizados
+            'sintomas_personalizados': sintomas_personalizados  # Mantém separado para compatibilidade
         }), 200
     except Exception as e:
         print(f"Erro ao obter sintomas personalizados: {str(e)}")
@@ -232,7 +235,7 @@ def registrar_sintoma_personalizado():
         'Ansiedade', 
         'Medo', 
         'Dificuldade de raciocínio', 
-        'Qualidade do sono', 
+        'Insônia', 
         'Apetite', 
         'Humor', 
         'Energia', 
@@ -242,19 +245,96 @@ def registrar_sintoma_personalizado():
     if nome_sintoma in sintomas_padrao:
         return jsonify({'error': 'Este sintoma já existe na lista padrão'}), 400
     
-    # Registrar atividade
-    log = LogAtividade(
-        profissional_id=profissional_id,
-        acao='Registro',
-        detalhes=f'Novo sintoma personalizado registrado: {nome_sintoma}'
-    )
-    db.session.add(log)
-    db.session.commit()
+    try:
+        # Verificar se já existe na tabela de personalizados
+        from sqlalchemy import text
+        result = db.session.execute(text("""
+            SELECT id FROM sintomas_personalizados 
+            WHERE nome = :nome
+        """), {'nome': nome_sintoma})
+        
+        if result.fetchone():
+            return jsonify({'error': 'Este sintoma personalizado já existe'}), 400
+        
+        # Inserir na tabela de sintomas personalizados
+        db.session.execute(text("""
+            INSERT INTO sintomas_personalizados (nome) 
+            VALUES (:nome)
+        """), {
+            'nome': nome_sintoma
+        })
+        
+        # Registrar atividade
+        log = LogAtividade(
+            profissional_id=profissional_id,
+            acao='Registro',
+            detalhes=f'Novo sintoma personalizado registrado: {nome_sintoma}'
+        )
+        db.session.add(log)
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Sintoma personalizado registrado com sucesso',
+            'sintoma': nome_sintoma
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Erro ao registrar sintoma personalizado: {str(e)}'}), 500
+
+@sintomas_bp.route('/sintoma-personalizado/<int:sintoma_id>', methods=['DELETE'])
+@jwt_required()
+def remover_sintoma_personalizado(sintoma_id):
+    """Endpoint para remover um sintoma personalizado"""
+    current_user_id = get_jwt_identity()
+    profissional_id = int(current_user_id)
     
-    return jsonify({
-        'message': 'Sintoma personalizado registrado com sucesso',
-        'sintoma': nome_sintoma
-    }), 201
+    try:
+        from sqlalchemy import text
+        
+        # Verificar se o sintoma existe
+        result = db.session.execute(text("""
+            SELECT nome FROM sintomas_personalizados 
+            WHERE id = :id
+        """), {'id': sintoma_id})
+        
+        sintoma_row = result.fetchone()
+        if not sintoma_row:
+            return jsonify({'error': 'Sintoma personalizado não encontrado'}), 404
+        
+        nome_sintoma = sintoma_row[0]
+        
+        # Verificar se há registros de sintomas usando este sintoma personalizado
+        sintomas_em_uso = Sintoma.query.filter_by(sintoma=nome_sintoma).count()
+        
+        if sintomas_em_uso > 0:
+            return jsonify({
+                'error': f'Não é possível remover este sintoma pois há {sintomas_em_uso} registro(s) de pacientes usando-o'
+            }), 400
+        
+        # Remover o sintoma personalizado
+        db.session.execute(text("""
+            DELETE FROM sintomas_personalizados 
+            WHERE id = :id
+        """), {'id': sintoma_id})
+        
+        # Registrar atividade
+        log = LogAtividade(
+            profissional_id=profissional_id,
+            acao='Exclusão',
+            detalhes=f'Sintoma personalizado removido: {nome_sintoma}'
+        )
+        db.session.add(log)
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Sintoma personalizado removido com sucesso',
+            'sintoma': nome_sintoma
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Erro ao remover sintoma personalizado: {str(e)}'}), 500
 
 @sintomas_bp.route('/grafico/paciente/<int:paciente_id>', methods=['GET'])
 @jwt_required()
@@ -314,6 +394,10 @@ def dados_grafico_sintomas(paciente_id):
             'x': data_str,
             'y': sintoma.intensidade
         })
+    
+    # Ordenar os dados de cada sintoma por data para garantir ordem cronológica crescente
+    for sintoma_nome in dados_grafico:
+        dados_grafico[sintoma_nome]['data'].sort(key=lambda x: x['x'])
     
     return jsonify({
         'dados_grafico': list(dados_grafico.values())
