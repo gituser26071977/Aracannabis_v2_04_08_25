@@ -48,7 +48,10 @@ import {
   Title,
   Tooltip as ChartTooltip,
   Legend,
+  TimeScale,
 } from 'chart.js';
+import 'chartjs-adapter-date-fns';
+import { ptBR } from 'date-fns/locale';
 
 // Registrar componentes do Chart.js
 ChartJS.register(
@@ -58,7 +61,8 @@ ChartJS.register(
   LineElement,
   Title,
   ChartTooltip,
-  Legend
+  Legend,
+  TimeScale
 );
 
 const SymptomsManager = ({ patientId }) => {
@@ -80,7 +84,8 @@ const SymptomsManager = ({ patientId }) => {
   
   // Estado para o gráfico
   const [chartData, setChartData] = useState(null);
-  const [showChart, setShowChart] = useState(false);
+  const [showChart, setShowChart] = useState(true);
+  const [chartLoading, setChartLoading] = useState(false);
   
   // Estado para diálogo de confirmação de exclusão
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -100,6 +105,9 @@ const SymptomsManager = ({ patientId }) => {
         setStandardSymptoms(standardData.sintomas_padrao || []);
         setCustomSymptoms(standardData.sintomas_personalizados || []);
         
+        // Carregar dados do gráfico automaticamente
+        await loadChartData();
+        
         setError('');
       } catch (err) {
         console.error('Erro ao carregar dados de sintomas:', err);
@@ -116,13 +124,16 @@ const SymptomsManager = ({ patientId }) => {
   
   // Carregar dados do gráfico
   const loadChartData = async () => {
+    setChartLoading(true);
     try {
       const data = await sintomasService.obterDadosGrafico(patientId);
       setChartData(data.dados_grafico);
-      setShowChart(true);
     } catch (err) {
       console.error('Erro ao carregar dados do gráfico:', err);
-      setError('Não foi possível carregar o gráfico de sintomas');
+      // Não mostrar erro se não houver dados suficientes
+      setChartData(null);
+    } finally {
+      setChartLoading(false);
     }
   };
   
@@ -219,6 +230,9 @@ const SymptomsManager = ({ patientId }) => {
       
       setSymptoms(updatedSymptoms);
       
+      // Recarregar dados do gráfico
+      await loadChartData();
+      
       // Resetar formulário
       setNewSymptom({
         data: new Date().toISOString().split('T')[0],
@@ -252,6 +266,10 @@ const SymptomsManager = ({ patientId }) => {
     try {
       await sintomasService.excluir(symptomToDelete.id);
       setSymptoms(symptoms.filter(s => s.id !== symptomToDelete.id));
+      
+      // Recarregar dados do gráfico
+      await loadChartData();
+      
       handleCloseDeleteDialog();
     } catch (err) {
       console.error('Erro ao excluir sintoma:', err);
@@ -259,28 +277,68 @@ const SymptomsManager = ({ patientId }) => {
     }
   };
   
-  // Formatar data
+  // Formatar data para dd/mm/yyyy
   const formatDate = (dateString) => {
     if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('pt-BR');
+    const date = new Date(dateString + 'T00:00:00'); // Evitar problemas de timezone
+    return date.toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
   };
   
   // Configuração do gráfico
   const chartOptions = {
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
       legend: {
         position: 'top',
+        labels: {
+          usePointStyle: true,
+          padding: 20,
+          font: {
+            size: 14,
+            weight: 'bold'
+          }
+        }
       },
       title: {
         display: true,
-        text: 'Evolução dos Sintomas',
+        text: '📊 Evolução dos Sintomas ao Longo do Tempo',
+        font: {
+          size: 18,
+          weight: 'bold'
+        },
+        padding: 20
       },
       tooltip: {
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        titleColor: 'white',
+        bodyColor: 'white',
+        borderColor: 'rgba(255, 255, 255, 0.2)',
+        borderWidth: 1,
+        cornerRadius: 8,
+        displayColors: true,
         callbacks: {
+          title: function(context) {
+            const dateStr = context[0].label;
+            const formattedDate = formatDate(dateStr);
+            return `Data: ${formattedDate}`;
+          },
           label: function(context) {
-            return `${context.dataset.label}: ${context.parsed.y}`;
+            return `${context.dataset.label}: ${context.parsed.y}/10`;
+          },
+          afterLabel: function(context) {
+            const intensity = context.parsed.y;
+            let description = '';
+            if (intensity <= 2) description = '(Muito Leve)';
+            else if (intensity <= 4) description = '(Leve)';
+            else if (intensity <= 6) description = '(Moderado)';
+            else if (intensity <= 8) description = '(Intenso)';
+            else description = '(Muito Intenso)';
+            return description;
           }
         }
       }
@@ -291,21 +349,127 @@ const SymptomsManager = ({ patientId }) => {
         max: 10,
         title: {
           display: true,
-          text: 'Intensidade'
+          text: 'Intensidade (0-10)',
+          font: {
+            size: 14,
+            weight: 'bold'
+          }
+        },
+        grid: {
+          color: 'rgba(0, 0, 0, 0.1)'
+        },
+        ticks: {
+          font: {
+            size: 12,
+            weight: 'bold'
+          },
+          callback: function(value) {
+            return value + '/10';
+          }
         }
       },
       x: {
+        type: 'time',
+        time: {
+          unit: 'month',
+          stepSize: 1,
+          displayFormats: {
+            month: 'MMM/yyyy'
+          },
+          tooltipFormat: 'dd/MM/yyyy'
+        },
+        adapters: {
+          date: {
+            locale: ptBR
+          }
+        },
         title: {
           display: true,
-          text: 'Data'
+          text: 'Período',
+          font: {
+            size: 14,
+            weight: 'bold'
+          }
+        },
+        grid: {
+          color: 'rgba(0, 0, 0, 0.1)'
+        },
+        ticks: {
+          font: {
+            size: 12,
+            weight: 'bold'
+          },
+          maxTicksLimit: 8,
+          autoSkip: true,
+          source: 'auto'
         }
       }
+    },
+    onClick: (event, elements) => {
+      if (elements.length > 0) {
+        const element = elements[0];
+        const datasetIndex = element.datasetIndex;
+        const dataIndex = element.index;
+        const dataset = chartData[datasetIndex];
+        const point = dataset.data[dataIndex];
+        
+        // Função robusta para formatar data
+        const formatDateRobust = (dateValue) => {
+          try {
+            let date;
+            
+            // Se já é um objeto Date
+            if (dateValue instanceof Date) {
+              date = dateValue;
+            }
+            // Se é uma string
+            else if (typeof dateValue === 'string') {
+              // Tentar diferentes formatos
+              if (dateValue.includes('T')) {
+                date = new Date(dateValue);
+              } else {
+                date = new Date(dateValue + 'T00:00:00');
+              }
+            }
+            // Se é um timestamp
+            else if (typeof dateValue === 'number') {
+              date = new Date(dateValue);
+            }
+            // Fallback
+            else {
+              date = new Date(dateValue);
+            }
+            
+            // Verificar se a data é válida
+            if (isNaN(date.getTime())) {
+              return 'Data inválida';
+            }
+            
+            return date.toLocaleDateString('pt-BR', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric'
+            });
+          } catch (error) {
+            console.error('Erro ao formatar data:', error, dateValue);
+            return 'Data inválida';
+          }
+        };
+        
+        const dataFormatada = formatDateRobust(point.x);
+        
+        // Mostrar informações detalhadas do ponto clicado
+        alert(`Sintoma: ${dataset.label}\nData: ${dataFormatada}\nIntensidade: ${point.y}/10`);
+      }
+    },
+    onHover: (event, elements) => {
+      event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
     }
   };
   
   // Preparar dados para o gráfico
   const prepareChartData = () => {
-    if (!chartData) return null;
+    if (!chartData || chartData.length === 0) return null;
     
     const colors = [
       'rgba(75, 192, 192, 1)',
@@ -313,17 +477,37 @@ const SymptomsManager = ({ patientId }) => {
       'rgba(54, 162, 235, 1)',
       'rgba(255, 206, 86, 1)',
       'rgba(153, 102, 255, 1)',
-      'rgba(255, 159, 64, 1)'
+      'rgba(255, 159, 64, 1)',
+      'rgba(255, 193, 7, 1)',
+      'rgba(76, 175, 80, 1)',
+      'rgba(156, 39, 176, 1)',
+      'rgba(233, 30, 99, 1)'
     ];
     
     return {
-      datasets: chartData.map((dataset, index) => ({
-        label: dataset.label,
-        data: dataset.data,
-        borderColor: colors[index % colors.length],
-        backgroundColor: colors[index % colors.length].replace('1)', '0.2)'),
-        tension: 0.2
-      }))
+      datasets: chartData.map((dataset, index) => {
+        // Garantir que os dados estão ordenados cronologicamente
+        const sortedData = [...dataset.data].sort((a, b) => {
+          const dateA = new Date(a.x);
+          const dateB = new Date(b.x);
+          return dateA - dateB;
+        });
+        
+        return {
+          label: dataset.label,
+          data: sortedData,
+          borderColor: colors[index % colors.length],
+          backgroundColor: colors[index % colors.length].replace('1)', '0.3)'),
+          pointBackgroundColor: colors[index % colors.length],
+          pointBorderColor: '#fff',
+          pointBorderWidth: 2,
+          pointRadius: 6,
+          pointHoverRadius: 8,
+          tension: 0.3,
+          borderWidth: 3,
+          fill: false
+        };
+      })
     };
   };
   
@@ -366,18 +550,6 @@ const SymptomsManager = ({ patientId }) => {
               </Grid>
               
               <Grid item xs={12} sm={4}>
-                <Box sx={{ width: '100%', mb: 2 }}>
-                  <Tabs
-                    value={activeTab}
-                    onChange={handleTabChange}
-                    variant="fullWidth"
-                    sx={{ borderBottom: 1, borderColor: 'divider' }}
-                  >
-                    <Tab label="Padrão" />
-                    <Tab label="Personalizado" />
-                  </Tabs>
-                </Box>
-                
                 <FormControl fullWidth required>
                   <InputLabel>Sintoma</InputLabel>
                   <Select
@@ -386,45 +558,25 @@ const SymptomsManager = ({ patientId }) => {
                     onChange={handleInputChange}
                     label="Sintoma"
                   >
-                    {activeTab === 0 ? (
-                      // Sintomas padrão
-                      standardSymptoms.map((symptom) => (
-                        <MenuItem key={symptom} value={symptom}>
-                          {symptom}
-                        </MenuItem>
-                      ))
-                    ) : (
-                      // Sintomas personalizados
-                      <>
-                        {customSymptoms.length > 0 ? (
-                          customSymptoms.map((symptom) => (
-                            <MenuItem key={symptom} value={symptom}>
-                              {symptom}
-                            </MenuItem>
-                          ))
-                        ) : (
-                          <MenuItem disabled>
-                            Nenhum sintoma personalizado
-                          </MenuItem>
-                        )}
-                      </>
-                    )}
+                    {standardSymptoms.map((symptom) => (
+                      <MenuItem key={symptom} value={symptom}>
+                        {symptom}
+                      </MenuItem>
+                    ))}
                   </Select>
                 </FormControl>
                 
-                {activeTab === 1 && (
-                  <Button
-                    variant="outlined"
-                    color="primary"
-                    size="small"
-                    startIcon={<AddCustomIcon />}
-                    onClick={handleOpenCustomSymptomDialog}
-                    sx={{ mt: 1 }}
-                    fullWidth
-                  >
-                    Adicionar Sintoma Personalizado
-                  </Button>
-                )}
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  size="small"
+                  startIcon={<AddCustomIcon />}
+                  onClick={handleOpenCustomSymptomDialog}
+                  sx={{ mt: 1 }}
+                  fullWidth
+                >
+                  Adicionar Sintoma Personalizado
+                </Button>
               </Grid>
               
               <Grid item xs={12} sm={3}>
@@ -456,32 +608,54 @@ const SymptomsManager = ({ patientId }) => {
             </Grid>
           </Box>
           
-          {/* Botões para gráficos */}
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2, gap: 2 }}>
-            <Button
-              variant="outlined"
-              color="primary"
-              startIcon={<ChartIcon />}
-              onClick={loadChartData}
-            >
-              Ver Gráfico
-            </Button>
-            <Button
-              variant="outlined"
-              color="info"
-              startIcon={<ChartIcon />}
-              onClick={() => {
-                // Navegar para a aba de gráfico combinado
-                const currentPath = window.location.pathname;
-                if (currentPath.includes('/pacientes/detail/')) {
-                  // Usar o router para navegar para a aba de gráfico combinado
-                  window.dispatchEvent(new CustomEvent('navigateToTab', { detail: { tabIndex: 4 } }));
-                }
+          {/* Gráfico de Sintomas */}
+          <Paper 
+            elevation={2} 
+            sx={{ 
+              p: 3, 
+              mb: 3,
+              background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)',
+              border: '2px solid #28a745',
+              borderRadius: 2
+            }}
+          >
+            <Typography 
+              variant="h6" 
+              gutterBottom 
+              sx={{ 
+                color: 'success.main',
+                fontWeight: 'bold',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1
               }}
             >
-              Gráfico Combinado
-            </Button>
-          </Box>
+              📊 Gráfico de Evolução dos Sintomas
+            </Typography>
+            
+            {chartLoading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+                <CircularProgress />
+              </Box>
+            ) : chartData && chartData.length > 0 ? (
+              <>
+                <Typography 
+                  variant="body2" 
+                  color="text.secondary" 
+                  sx={{ mb: 2, fontStyle: 'italic' }}
+                >
+                  Clique nos pontos do gráfico para ver detalhes. Passe o mouse sobre as linhas para informações adicionais.
+                </Typography>
+                <Box sx={{ height: 400, width: '100%' }}>
+                  <Line data={prepareChartData()} options={chartOptions} />
+                </Box>
+              </>
+            ) : (
+              <Alert severity="info" sx={{ mt: 2 }}>
+                Registre alguns sintomas para visualizar o gráfico de evolução.
+              </Alert>
+            )}
+          </Paper>
           
           {/* Tabela de sintomas */}
           {symptoms.length === 0 ? (
@@ -521,15 +695,6 @@ const SymptomsManager = ({ patientId }) => {
             </TableContainer>
           )}
           
-          {/* Gráfico de sintomas */}
-          {showChart && chartData && (
-            <Box sx={{ mt: 4, height: 400 }}>
-              <Typography variant="h6" gutterBottom>
-                Evolução dos Sintomas
-              </Typography>
-              <Line options={chartOptions} data={prepareChartData()} />
-            </Box>
-          )}
           
           {/* Diálogo de confirmação de exclusão */}
           <Dialog

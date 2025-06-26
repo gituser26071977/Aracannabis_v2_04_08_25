@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Paper, 
   Typography, 
@@ -19,36 +19,24 @@ import {
   DialogActions,
   DialogContent,
   DialogContentText,
-  DialogTitle
+  DialogTitle,
+  Tabs,
+  Tab,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Divider
 } from '@mui/material';
 import { 
   Add as AddIcon, 
   Delete as DeleteIcon,
-  BarChart as ChartIcon
+  BarChart as ChartIcon,
+  Inventory as ProductIcon
 } from '@mui/icons-material';
-import { dosagensService } from '../services/api';
-import { Line } from 'react-chartjs-2';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-} from 'chart.js';
-
-// Registrar componentes do Chart.js
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend
-);
+import { dosagensService, produtosService } from '../services/api';
+import ProductForm from './ProductForm';
+import DosageChart from './DosageChart';
 
 const DosageManager = ({ patientId }) => {
   const [dosages, setDosages] = useState([]);
@@ -70,13 +58,34 @@ const DosageManager = ({ patientId }) => {
   
   // Estado para o gráfico
   const [chartData, setChartData] = useState(null);
-  const [showChart, setShowChart] = useState(false);
+  const [showChart, setShowChart] = useState(true);
+  const [chartLoading, setChartLoading] = useState(false);
   
   // Estado para diálogo de confirmação de exclusão
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [dosageToDelete, setDosageToDelete] = useState(null);
   
-  // Carregar dosagens
+  // Estados para produtos
+  const [produtos, setProdutos] = useState([]);
+  const [produtoSelecionado, setProdutoSelecionado] = useState('');
+  const [showProdutoForm, setShowProdutoForm] = useState(false);
+  const [novoProduto, setNovoProduto] = useState({
+    nome: '',
+    tipo: 'oleo',
+    concentracao_cbd: 0,
+    concentracao_thc: 0,
+    concentracao_cbg: 0,
+    concentracao_cbn: 0,
+    gotas_por_ml: 30,
+    volume_ml: 30,
+    fabricante: '',
+    descricao: ''
+  });
+  
+  // Estado para abas
+  const [tabValue, setTabValue] = useState(0);
+  
+  // Carregar dosagens e produtos
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -84,6 +93,14 @@ const DosageManager = ({ patientId }) => {
         // Carregar dosagens do paciente
         const dosagesData = await dosagensService.listar(patientId);
         setDosages(dosagesData.dosagens || []);
+        
+        // Carregar produtos disponíveis
+        const produtosData = await produtosService.listar();
+        setProdutos(produtosData.produtos || []);
+        
+        // Carregar dados do gráfico automaticamente
+        await loadChartData();
+        
         setError('');
       } catch (err) {
         console.error('Erro ao carregar dados de dosagens:', err);
@@ -100,13 +117,16 @@ const DosageManager = ({ patientId }) => {
   
   // Carregar dados do gráfico
   const loadChartData = async () => {
+    setChartLoading(true);
     try {
       const data = await dosagensService.obterDadosGrafico(patientId);
       setChartData(data.dados_grafico);
-      setShowChart(true);
     } catch (err) {
       console.error('Erro ao carregar dados do gráfico:', err);
-      setError('Não foi possível carregar o gráfico de dosagens');
+      // Não mostrar erro se não houver dados suficientes
+      setChartData(null);
+    } finally {
+      setChartLoading(false);
     }
   };
   
@@ -168,6 +188,9 @@ const DosageManager = ({ patientId }) => {
       // Adicionar nova dosagem à lista
       setDosages([response.dosagem, ...dosages]);
       
+      // Recarregar dados do gráfico
+      await loadChartData();
+      
       // Resetar formulário
       setNewDosage({
         data: new Date().toISOString().split('T')[0],
@@ -207,6 +230,10 @@ const DosageManager = ({ patientId }) => {
     try {
       await dosagensService.excluir(dosageToDelete.id);
       setDosages(dosages.filter(d => d.id !== dosageToDelete.id));
+      
+      // Recarregar dados do gráfico
+      await loadChartData();
+      
       handleCloseDeleteDialog();
     } catch (err) {
       console.error('Erro ao excluir dosagem:', err);
@@ -214,69 +241,277 @@ const DosageManager = ({ patientId }) => {
     }
   };
   
-  // Formatar data
+  // Formatar data para dd/mm/yyyy
   const formatDate = (dateString) => {
     if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('pt-BR');
+    const date = new Date(dateString + 'T00:00:00'); // Evitar problemas de timezone
+    return date.toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
   };
   
   // Configuração do gráfico
   const chartOptions = {
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
       legend: {
         position: 'top',
+        labels: {
+          usePointStyle: true,
+          padding: 20,
+          font: {
+            size: 14,
+            weight: 'bold'
+          }
+        }
       },
       title: {
         display: true,
-        text: 'Evolução das Dosagens',
+        text: '💊 Evolução das Dosagens ao Longo do Tempo',
+        font: {
+          size: 18,
+          weight: 'bold'
+        },
+        padding: 20
       },
       tooltip: {
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        titleColor: 'white',
+        bodyColor: 'white',
+        borderColor: 'rgba(255, 255, 255, 0.2)',
+        borderWidth: 1,
+        cornerRadius: 8,
+        displayColors: true,
         callbacks: {
+          title: function(context) {
+            return `Data: ${context[0].label}`;
+          },
           label: function(context) {
-            const dataPoint = chartData.data[context.dataIndex];
-            return `${dataPoint.dosagem_texto}`;
+            return `Dosagem: ${context.parsed.y} gotas`;
+          },
+          afterLabel: function(context) {
+            const dataPoint = chartData && chartData.data ? chartData.data[context.dataIndex] : null;
+            if (dataPoint && dataPoint.dosagem_texto) {
+              return `Descrição: ${dataPoint.dosagem_texto}`;
+            }
+            return '';
           }
         }
       }
     },
     scales: {
       y: {
+        min: 0,
         title: {
           display: true,
-          text: 'Dosagem'
+          text: 'Quantidade (gotas)',
+          font: {
+            size: 14,
+            weight: 'bold'
+          }
+        },
+        grid: {
+          color: 'rgba(0, 0, 0, 0.1)'
+        },
+        ticks: {
+          font: {
+            size: 12,
+            weight: 'bold'
+          },
+          callback: function(value) {
+            return value + ' gotas';
+          }
         }
       },
       x: {
         title: {
           display: true,
-          text: 'Data'
+          text: 'Período',
+          font: {
+            size: 14,
+            weight: 'bold'
+          }
+        },
+        grid: {
+          color: 'rgba(0, 0, 0, 0.1)'
+        },
+        ticks: {
+          font: {
+            size: 12,
+            weight: 'bold'
+          }
         }
       }
+    },
+    onClick: (event, elements) => {
+      if (elements.length > 0) {
+        const element = elements[0];
+        const dataIndex = element.index;
+        const dataPoint = chartData && chartData.data ? chartData.data[dataIndex] : null;
+        
+        if (dataPoint) {
+          // Mostrar informações detalhadas do ponto clicado
+          alert(`Data: ${dataPoint.x}\nDosagem: ${dataPoint.y} gotas\nDescrição: ${dataPoint.dosagem_texto || 'N/A'}`);
+        }
+      }
+    },
+    onHover: (event, elements) => {
+      event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
     }
   };
   
   // Preparar dados para o gráfico
   const prepareChartData = () => {
-    if (!chartData) return null;
+    if (!chartData || !chartData.data || chartData.data.length === 0) return null;
+    
+    const colors = [
+      'rgba(54, 162, 235, 1)',   // Azul
+      'rgba(255, 99, 132, 1)',   // Vermelho
+      'rgba(75, 192, 192, 1)',   // Verde
+      'rgba(255, 206, 86, 1)',   // Amarelo
+      'rgba(153, 102, 255, 1)',  // Roxo
+      'rgba(255, 159, 64, 1)'    // Laranja
+    ];
     
     return {
       datasets: [{
-        label: chartData.label,
+        label: chartData.label || 'Dosagens',
         data: chartData.data,
-        borderColor: 'rgba(75, 192, 192, 1)',
-        backgroundColor: 'rgba(75, 192, 192, 0.2)',
-        tension: 0.2
+        borderColor: colors[0],
+        backgroundColor: colors[0].replace('1)', '0.3)'),
+        pointBackgroundColor: colors[0],
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        pointRadius: 6,
+        pointHoverRadius: 8,
+        tension: 0.3,
+        borderWidth: 3,
+        fill: false
       }]
     };
   };
   
+  // Manipuladores para produtos
+  const handleProdutoSelecionado = (e) => {
+    const produtoId = e.target.value;
+    setProdutoSelecionado(produtoId);
+    
+    if (produtoId) {
+      const produto = produtos.find(p => p.id === parseInt(produtoId));
+      if (produto) {
+        setNewDosage(prev => ({
+          ...prev,
+          dosagem: produto.nome,
+          concentracao_cbd: produto.concentracao_cbd,
+          concentracao_thc: produto.concentracao_thc,
+          concentracao_cbg: produto.concentracao_cbg,
+          concentracao_cbn: produto.concentracao_cbn,
+          gotas_por_ml: produto.gotas_por_ml
+        }));
+      }
+    }
+  };
+
+  const handleNovoProdutoChange = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const { name, value } = e.target;
+    
+    setNovoProduto(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  }, []);
+
+  const handleCriarProduto = async (e) => {
+    e.preventDefault();
+    
+    if (!novoProduto.nome.trim()) {
+      setError('Nome do produto é obrigatório');
+      return;
+    }
+    
+    try {
+      const response = await produtosService.criar(novoProduto);
+      
+      // Atualizar lista de produtos
+      setProdutos([...produtos, response.produto]);
+      
+      // Resetar formulário
+      setNovoProduto({
+        nome: '',
+        tipo: 'oleo',
+        concentracao_cbd: 0,
+        concentracao_thc: 0,
+        concentracao_cbg: 0,
+        concentracao_cbn: 0,
+        gotas_por_ml: 30,
+        volume_ml: 30,
+        fabricante: '',
+        descricao: ''
+      });
+      
+      setShowProdutoForm(false);
+      setError('');
+      alert('Produto criado com sucesso!');
+    } catch (err) {
+      console.error('Erro ao criar produto:', err);
+      setError('Não foi possível criar o produto');
+    }
+  };
+
+  const handleTabChange = (event, newValue) => {
+    setTabValue(newValue);
+  };
+
+  // Componente TabPanel
+  function TabPanel(props) {
+    const { children, value, index, ...other } = props;
+    return (
+      <div
+        role="tabpanel"
+        hidden={value !== index}
+        id={`dosage-tabpanel-${index}`}
+        aria-labelledby={`dosage-tab-${index}`}
+        {...other}
+      >
+        {value === index && (
+          <Box sx={{ p: 3 }}>
+            {children}
+          </Box>
+        )}
+      </div>
+    );
+  }
+
+  function a11yProps(index) {
+    return {
+      id: `dosage-tab-${index}`,
+      'aria-controls': `dosage-tabpanel-${index}`,
+    };
+  }
+
   return (
-    <Paper elevation={3} sx={{ p: 3 }}>
+    <Box sx={{ width: '100%' }}>
       <Typography variant="h6" gutterBottom>
-        Gerenciamento de Dosagens
+        Gerenciamento de Dosagens e Produtos
       </Typography>
+      
+      {/* Abas */}
+      <Paper elevation={3} sx={{ mb: 3 }}>
+        <Tabs 
+          value={tabValue} 
+          onChange={handleTabChange} 
+          aria-label="Abas de dosagens e produtos"
+          variant="fullWidth"
+        >
+          <Tab label="Dosagens" {...a11yProps(0)} />
+          <Tab label="📦 Produtos" {...a11yProps(1)} />
+        </Tabs>
+      </Paper>
       
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
@@ -290,6 +525,9 @@ const DosageManager = ({ patientId }) => {
         </Box>
       ) : (
         <>
+          {/* Conteúdo das abas */}
+          <TabPanel value={tabValue} index={0}>
+            <Paper elevation={3} sx={{ p: 3 }}>
           {/* Formulário para registrar nova dosagem */}
           <Box component="form" onSubmit={handleSubmit} sx={{ mb: 4 }}>
             <Typography variant="subtitle1" gutterBottom>
@@ -311,6 +549,26 @@ const DosageManager = ({ patientId }) => {
               </Grid>
               
               <Grid item xs={12} sm={6} md={3}>
+                <FormControl fullWidth>
+                  <InputLabel>Produto</InputLabel>
+                  <Select
+                    value={produtoSelecionado}
+                    onChange={handleProdutoSelecionado}
+                    label="Produto"
+                  >
+                    <MenuItem value="">
+                      <em>Selecione um produto ou digite manualmente</em>
+                    </MenuItem>
+                    {produtos.map((produto) => (
+                      <MenuItem key={produto.id} value={produto.id}>
+                        {produto.nome} (CBD: {produto.concentracao_cbd}mg/ml)
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              
+              <Grid item xs={12} sm={6} md={3}>
                 <TextField
                   name="dosagem"
                   label="Descrição da Dosagem"
@@ -318,7 +576,7 @@ const DosageManager = ({ patientId }) => {
                   onChange={handleInputChange}
                   fullWidth
                   required
-                  helperText="Ex: Óleo Full Spectrum 10%"
+                  helperText="Preenchido automaticamente ao selecionar produto"
                 />
               </Grid>
               
@@ -502,32 +760,33 @@ const DosageManager = ({ patientId }) => {
             </Grid>
           </Box>
           
-          {/* Botões para gráficos */}
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2, gap: 2 }}>
-            <Button
-              variant="outlined"
-              color="primary"
-              startIcon={<ChartIcon />}
-              onClick={loadChartData}
-            >
-              Ver Gráfico
-            </Button>
-            <Button
-              variant="outlined"
-              color="info"
-              startIcon={<ChartIcon />}
-              onClick={() => {
-                // Navegar para a aba de gráfico combinado
-                const currentPath = window.location.pathname;
-                if (currentPath.includes('/pacientes/detail/')) {
-                  // Usar o evento personalizado para navegar para a aba de gráfico combinado
-                  window.dispatchEvent(new CustomEvent('navigateToTab', { detail: { tabIndex: 4 } }));
-                }
+          {/* Gráfico de Dosagens */}
+          <Paper 
+            elevation={2} 
+            sx={{ 
+              p: 3, 
+              mb: 3,
+              background: 'linear-gradient(135deg, #f8f9fa 0%, #e3f2fd 100%)',
+              border: '2px solid #2196f3',
+              borderRadius: 2
+            }}
+          >
+            <Typography 
+              variant="h6" 
+              gutterBottom 
+              sx={{ 
+                color: 'primary.main',
+                fontWeight: 'bold',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1
               }}
             >
-              Gráfico Combinado
-            </Button>
-          </Box>
+              💊 Gráfico de Evolução das Dosagens
+            </Typography>
+            
+            <DosageChart dosages={dosages} />
+          </Paper>
           
           {/* Tabela de dosagens */}
           {dosages.length === 0 ? (
@@ -588,16 +847,109 @@ const DosageManager = ({ patientId }) => {
               </Table>
             </TableContainer>
           )}
+            </Paper>
+          </TabPanel>
           
-          {/* Gráfico de dosagens */}
-          {showChart && chartData && (
-            <Box sx={{ mt: 4, height: 400 }}>
+          <TabPanel value={tabValue} index={1}>
+            <Paper elevation={3} sx={{ p: 3 }}>
               <Typography variant="h6" gutterBottom>
-                Evolução das Dosagens
+                Gerenciamento de Produtos
               </Typography>
-              <Line options={chartOptions} data={prepareChartData()} />
-            </Box>
-          )}
+              
+              {/* Botão para adicionar produto */}
+              <Box sx={{ mb: 3 }}>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  startIcon={<AddIcon />}
+                  onClick={() => setShowProdutoForm(!showProdutoForm)}
+                >
+                  {showProdutoForm ? 'Cancelar' : 'Adicionar Produto'}
+                </Button>
+              </Box>
+              
+              {/* Formulário de novo produto */}
+              {showProdutoForm && (
+                <ProductForm
+                  onSubmit={async (produtoData) => {
+                    try {
+                      const response = await produtosService.criar(produtoData);
+                      setProdutos([...produtos, response.produto]);
+                      setShowProdutoForm(false);
+                      setError('');
+                      alert('Produto criado com sucesso!');
+                    } catch (err) {
+                      console.error('Erro ao criar produto:', err);
+                      setError('Não foi possível criar o produto');
+                    }
+                  }}
+                  onCancel={() => setShowProdutoForm(false)}
+                />
+              )}
+              
+              <Divider sx={{ my: 3 }} />
+              
+              {/* Lista de produtos */}
+              <Typography variant="subtitle1" gutterBottom>
+                Produtos Cadastrados ({produtos.length})
+              </Typography>
+              
+              {produtos.length === 0 ? (
+                <Alert severity="info">
+                  Nenhum produto cadastrado.
+                </Alert>
+              ) : (
+                <TableContainer>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Nome</TableCell>
+                        <TableCell>Fabricante</TableCell>
+                        <TableCell>CBD (mg/ml)</TableCell>
+                        <TableCell>THC (mg/ml)</TableCell>
+                        <TableCell>CBG (mg/ml)</TableCell>
+                        <TableCell>CBN (mg/ml)</TableCell>
+                        <TableCell>Gotas/ml</TableCell>
+                        <TableCell align="center">Ações</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {produtos.map((produto) => (
+                        <TableRow key={produto.id}>
+                          <TableCell>{produto.nome}</TableCell>
+                          <TableCell>{produto.fabricante || '-'}</TableCell>
+                          <TableCell>{produto.concentracao_cbd}</TableCell>
+                          <TableCell>{produto.concentracao_thc}</TableCell>
+                          <TableCell>{produto.concentracao_cbg}</TableCell>
+                          <TableCell>{produto.concentracao_cbn}</TableCell>
+                          <TableCell>{produto.gotas_por_ml}</TableCell>
+                          <TableCell align="center">
+                            <IconButton
+                              color="error"
+                              onClick={() => {
+                                if (window.confirm('Tem certeza que deseja excluir este produto?')) {
+                                  produtosService.excluir(produto.id).then(() => {
+                                    setProdutos(produtos.filter(p => p.id !== produto.id));
+                                    alert('Produto excluído com sucesso!');
+                                  }).catch(err => {
+                                    console.error('Erro ao excluir produto:', err);
+                                    setError('Não foi possível excluir o produto');
+                                  });
+                                }
+                              }}
+                              title="Excluir"
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+            </Paper>
+          </TabPanel>
           
           {/* Diálogo de confirmação de exclusão */}
           <Dialog
@@ -623,7 +975,7 @@ const DosageManager = ({ patientId }) => {
           </Dialog>
         </>
       )}
-    </Paper>
+    </Box>
   );
 };
 
