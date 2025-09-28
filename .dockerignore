@@ -1,0 +1,34 @@
+# .dockerignore
+
+# Pastas de dependências e ambientes virtuais
+node_modules
+venv
+instance
+__pycache__
+
+# Arquivos de configuração e git
+.git
+.gitignore
+Dockerfile
+docker-compose.yml
+.env
+
+# Arquivos de teste
+test_*.py
+
+*.test.js
+
+# Documentação
+*.md
+*.txt
+!requirements_basic.txt
+docs/
+
+# Scripts de deploy e utilitários
+*.sh
+*.sql
+
+# Backups e arquivos de SO
+*.bak
+*.swp
+.DS_Store

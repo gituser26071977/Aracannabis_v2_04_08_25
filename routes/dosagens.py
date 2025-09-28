@@ -90,9 +90,10 @@ def registrar_dosagem(paciente_id):
         
         db.session.add(nova_dosagem)
         
-        # Atualizar a dosagem atual do paciente
+        # Atualizar a dosagem atual do paciente e marcar como em tratamento
         paciente.dosagem = data['dosagem']
         paciente.updated_at = datetime.utcnow()
+        paciente.em_tratamento = True
         
         db.session.commit()
         
@@ -242,30 +243,61 @@ def dados_grafico_dosagens(paciente_id):
         })
     
     return jsonify({
-        'dados_grafico': {
-            'label': 'Gotas',
-            'data': dados_grafico
-        },
+        'dados_grafico': dados_grafico,
         'dados_canabinoides': {
-            'cbd': {
-                'label': 'CBD (mg/dia)',
-                'data': dados_cbd
-            },
-            'thc': {
-                'label': 'THC (mg/dia)',
-                'data': dados_thc
-            },
-            'cbg': {
-                'label': 'CBG (mg/dia)',
-                'data': dados_cbg
-            },
-            'cbn': {
-                'label': 'CBN (mg/dia)',
-                'data': dados_cbn
-            },
-            'total': {
-                'label': 'Canabinoides Totais (mg/dia)',
-                'data': dados_canabinoides_totais
-            }
+            'cbd': dados_cbd,
+            'thc': dados_thc,
+            'cbg': dados_cbg,
+            'cbn': dados_cbn,
+            'total': dados_canabinoides_totais
         }
+    }), 200
+
+# Add this new endpoint for the dosage chart
+@dosagens_bp.route('/dosagens/grafico/paciente/<int:paciente_id>', methods=['GET'])
+@jwt_required()
+def get_dosage_chart_data(paciente_id):
+    """Endpoint para obter dados do gráfico de dosagens"""
+    # Verificar se o paciente existe
+    paciente = Paciente.query.get(paciente_id)
+    if not paciente:
+        return jsonify({'error': 'Paciente não encontrado'}), 404
+    
+    # Obter parâmetros da URL
+    periodo = request.args.get('periodo', 'integral')
+    
+    # Calcular datas com base no período
+    hoje = datetime.utcnow().date()
+    if periodo == '1m':
+        start_date = hoje - timedelta(days=30)
+    elif periodo == '3m':
+        start_date = hoje - timedelta(days=90)
+    elif periodo == '6m':
+        start_date = hoje - timedelta(days=180)
+    elif periodo == '1y':
+        start_date = hoje - timedelta(days=365)
+    else:  # 'integral'
+        start_date = None
+    
+    # Construir a query
+    query = Dosagem.query.filter_by(paciente_id=paciente_id)
+    if start_date:
+        query = query.filter(Dosagem.data >= start_date)
+    
+    # Ordenar por data
+    dosagens = query.order_by(Dosagem.data.asc()).all()
+    
+    # Preparar dados para o gráfico
+    dados_grafico = []
+    
+    for dosagem in dosagens:
+        dose_diaria = dosagem.calcular_dose_diaria()
+        dados_grafico.append({
+            'x': dosagem.data.strftime('%Y-%m-%d'),
+            'y': dose_diaria['cbd_mg'],
+            'dosagem_texto': f"Dosagem: {dosagem.dosagem}, {dosagem.gotas} gotas, {dosagem.frequencia_diaria}x/dia"
+        })
+    
+    return jsonify({
+        'dados_grafico': dados_grafico
     }), 200

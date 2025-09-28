@@ -209,115 +209,120 @@ const PatientDetails = ({ patient, onEdit, onTabChange, showActions = true }) =>
             </Typography>
             
             {showActions && patient.id && (
-              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
-                <Chip 
-                  label="Sintomas" 
-                  color="primary" 
-                  variant="outlined" 
-                  onClick={() => {
-                    const currentPath = window.location.pathname;
-                    if (currentPath.includes('/pacientes/detail/')) {
-                      // Already on detail page, use the onTabChange prop
-                      if (typeof onTabChange === 'function') {
-                        onTabChange(1);
-                      } else {
-                        // Fallback to navigation
-                        navigate(`/pacientes/detail/${patient.id}`, { 
-                          state: { initialTab: 1 },
-                          replace: true
-                        });
-                      }
-                    } else {
-                      // Navigate to detail page with tab
-                      navigate(`/pacientes/detail/${patient.id}`, { 
-                        state: { initialTab: 1 } 
-                      });
-                    }
-                  }}
-                  clickable
-                  sx={{ cursor: 'pointer' }}
-                />
-                <Chip 
-                  label="Dosagens" 
-                  color="secondary" 
-                  variant="outlined" 
-                  onClick={() => {
-                    const currentPath = window.location.pathname;
-                    if (currentPath.includes('/pacientes/detail/')) {
-                      // Already on detail page, use the onTabChange prop
-                      if (typeof onTabChange === 'function') {
-                        onTabChange(2);
-                      } else {
-                        // Fallback to navigation
-                        navigate(`/pacientes/detail/${patient.id}`, { 
-                          state: { initialTab: 2 },
-                          replace: true
-                        });
-                      }
-                    } else {
-                      // Navigate to detail page with tab
-                      navigate(`/pacientes/detail/${patient.id}`, { 
-                        state: { initialTab: 2 } 
-                      });
-                    }
-                  }}
-                  clickable
-                  sx={{ cursor: 'pointer' }}
-                />
-                <Chip 
-                  label="Evoluções" 
-                  color="success" 
-                  variant="outlined" 
-                  onClick={() => {
-                    const currentPath = window.location.pathname;
-                    if (currentPath.includes('/pacientes/detail/')) {
-                      // Already on detail page, use the onTabChange prop
-                      if (typeof onTabChange === 'function') {
-                        onTabChange(3);
-                      } else {
-                        // Fallback to navigation
-                        navigate(`/pacientes/detail/${patient.id}`, { 
-                          state: { initialTab: 3 },
-                          replace: true
-                        });
-                      }
-                    } else {
-                      // Navigate to detail page with tab
-                      navigate(`/pacientes/detail/${patient.id}`, { 
-                        state: { initialTab: 3 } 
-                      });
-                    }
-                  }}
-                  clickable
-                  sx={{ cursor: 'pointer' }}
-                />
-                <Chip 
-                  label="Gráfico Combinado" 
-                  color="info" 
-                  variant="outlined" 
-                  onClick={() => {
-                    const currentPath = window.location.pathname;
-                    if (currentPath.includes('/pacientes/detail/')) {
-                      // Already on detail page, use the onTabChange prop
-                      if (typeof onTabChange === 'function') {
-                        onTabChange(4);
-                      } else {
-                        // Fallback to navigation
-                        navigate(`/pacientes/detail/${patient.id}`, { 
-                          state: { initialTab: 4 },
-                          replace: true
-                        });
-                      }
-                    } else {
-                      // Navigate to detail page with tab
-                      navigate(`/pacientes/detail/${patient.id}`, { 
-                        state: { initialTab: 4 } 
-                      });
-                    }
-                  }}
-                  clickable
-                  sx={{ cursor: 'pointer' }}
-                />
+              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+                <Grid container spacing={2} sx={{ maxWidth: '85%' }}>
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Button 
+                      fullWidth
+                      variant="contained" 
+                      color="primary" 
+                      onClick={() => {
+                        const currentPath = window.location.pathname;
+                        if (currentPath.includes('/pacientes/detail/')) {
+                          if (typeof onTabChange === 'function') {
+                            onTabChange(2); // Sintomas tab index
+                          } else {
+                            navigate(`/pacientes/detail/${patient.id}`, { 
+                              state: { initialTab: 2 },
+                              replace: true
+                            });
+                          }
+                        } else {
+                          navigate(`/pacientes/detail/${patient.id}`, { 
+                            state: { initialTab: 2 } 
+                          });
+                        }
+                      }}
+                      sx={{ py: 1.275, fontSize: '0.85rem', borderRadius: '20px' }}
+                    >
+                      Sintomas
+                    </Button>
+                  </Grid>
+                  
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Button 
+                      fullWidth
+                      variant="contained" 
+                      color="secondary" 
+                      onClick={() => {
+                        const currentPath = window.location.pathname;
+                        if (currentPath.includes('/pacientes/detail/')) {
+                          if (typeof onTabChange === 'function') {
+                            onTabChange(3); // Dosagens tab index
+                          } else {
+                            navigate(`/pacientes/detail/${patient.id}`, { 
+                              state: { initialTab: 3 },
+                              replace: true
+                            });
+                          }
+                        } else {
+                          navigate(`/pacientes/detail/${patient.id}`, { 
+                            state: { initialTab: 3 } 
+                          });
+                        }
+                      }}
+                      sx={{ py: 1.275, fontSize: '0.85rem', borderRadius: '20px' }}
+                    >
+                      Dosagens
+                    </Button>
+                  </Grid>
+                  
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Button 
+                      fullWidth
+                      variant="contained" 
+                      color="success" 
+                      onClick={() => {
+                        const currentPath = window.location.pathname;
+                        if (currentPath.includes('/pacientes/detail/')) {
+                          if (typeof onTabChange === 'function') {
+                            onTabChange(1); // Evoluções tab index
+                          } else {
+                            navigate(`/pacientes/detail/${patient.id}`, { 
+                              state: { initialTab: 1 },
+                              replace: true
+                            });
+                          }
+                        } else {
+                          navigate(`/pacientes/detail/${patient.id}`, { 
+                            state: { initialTab: 1 } 
+                          });
+                        }
+                      }}
+                      sx={{ py: 1.275, fontSize: '0.85rem', borderRadius: '20px' }}
+                    >
+                      Evoluções
+                    </Button>
+                  </Grid>
+                  
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Button 
+                      fullWidth
+                      variant="contained" 
+                      color="info" 
+                      onClick={() => {
+                        const currentPath = window.location.pathname;
+                        if (currentPath.includes('/pacientes/detail/')) {
+                          if (typeof onTabChange === 'function') {
+                            onTabChange(5); // Gráficos tab index
+                          } else {
+                            navigate(`/pacientes/detail/${patient.id}`, { 
+                              state: { initialTab: 5 },
+                              replace: true
+                            });
+                          }
+                        } else {
+                          navigate(`/pacientes/detail/${patient.id}`, { 
+                            state: { initialTab: 5 } 
+                          });
+                        }
+                      }}
+                      sx={{ py: 1.275, fontSize: '0.85rem', borderRadius: '20px' }}
+                    >
+                      📊 Gráficos
+                    </Button>
+                  </Grid>
+                </Grid>
               </Box>
             )}
           </Paper>

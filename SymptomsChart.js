@@ -120,9 +120,11 @@ const SymptomsChart = ({ pacienteId }) => {
       
       const generateRandomData = (symptom) => {
         const data = [];
-        let currentDate = new Date(oneMonthAgo);
+        const start = startDate || oneMonthAgo;
+        const end = endDate || today;
+        let currentDate = new Date(start);
         
-        while (currentDate <= today) {
+        while (currentDate <= end) {
           // Gerar pontuação aleatória entre 0 e 10
           const intensity = Math.floor(Math.random() * 11);
           
@@ -266,7 +268,7 @@ const SymptomsChart = ({ pacienteId }) => {
         </Typography>
         
         <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid item xs={12} md={6}>
+          <Grid item xs={12} sm={6} md={4}>
             <FormControl fullWidth size="small">
               <InputLabel id="symptoms-select-label" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
                 Sintomas
@@ -303,7 +305,7 @@ const SymptomsChart = ({ pacienteId }) => {
             </FormControl>
           </Grid>
           
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid item xs={12} sm={6} md={4}>
             <DatePicker
               label="Data Inicial"
               value={startDate}
@@ -334,7 +336,7 @@ const SymptomsChart = ({ pacienteId }) => {
             />
           </Grid>
           
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid item xs={12} sm={6} md={4}>
             <DatePicker
               label="Data Final"
               value={endDate}
@@ -365,14 +367,16 @@ const SymptomsChart = ({ pacienteId }) => {
             />
           </Grid>
           
-          <Grid item xs={12}>
+          <Grid item xs={12} md={4}>
             <Button 
               variant="contained" 
               onClick={handleApplyFilters}
               disabled={loading}
+              fullWidth
               sx={{ 
                 bgcolor: '#8A2BE2', 
-                '&:hover': { bgcolor: '#6A0DAD' } 
+                '&:hover': { bgcolor: '#6A0DAD' },
+                height: '40px'
               }}
             >
               {loading ? <CircularProgress size={24} color="inherit" /> : 'Aplicar Filtros'}

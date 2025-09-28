@@ -36,10 +36,8 @@ import SecurityPage from './pages/SecurityPage';
 import ConsultasPage from './pages/ConsultasPage';
 import SimpleLogin from './components/SimpleLogin';
 import CadastroProfissionaisPage from './pages/CadastroProfissionaisPage';
-import PlanosPage from './pages/PlanosPage';
 import PagamentoPage from './pages/PagamentoPage';
 import AdBanner from './components/AdBanner';
-import PrescriptionView from './components/PrescriptionView';
 
 // Tema personalizado
 const theme = createTheme({
@@ -105,26 +103,16 @@ function HomePage() {
               <Typography variant="body1" paragraph>
                 Solicite acesso ao sistema Aracannabis e experimente todas as funcionalidades por 7 dias gratuitamente.
               </Typography>
-              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  component={Link}
-                  to="/cadastro-profissionais"
-                  startIcon={<PersonAddIcon />}
-                >
-                  Solicitar Cadastro
-                </Button>
-                <Button
-                  variant="outlined"
-                  color="primary"
-                  component={Link}
-                  to="/planos"
-                  startIcon={<PaymentIcon />}
-                >
-                  Ver Planos e Preços
-                </Button>
-              </Box>
+              <Button
+                variant="contained"
+                color="primary"
+                component={Link}
+                to="/cadastro-profissionais"
+                startIcon={<PersonAddIcon />}
+                sx={{ mt: 2 }}
+              >
+                Solicitar Cadastro
+              </Button>
             </Box>
             
             {/* Anúncios para usuários não logados */}
@@ -214,10 +202,7 @@ function LoginPage() {
           <Link to="/cadastro-profissionais" style={{ color: '#2e7d32', textDecoration: 'none' }}>
             Solicite seu cadastro aqui
           </Link>
-          {' ou '}
-          <Link to="/planos" style={{ color: '#2e7d32', textDecoration: 'none' }}>
-            veja nossos planos
-          </Link>
+          {''}
         </Typography>
       </Box>
     </Paper>
@@ -231,11 +216,11 @@ function NavigationMenu({ open, onClose }) {
   
   const menuItems = [
     { text: 'Início', icon: <HomeIcon />, path: '/', auth: false },
+    // Novo atalho para cadastro de profissionais (visível apenas antes do login)
+    { text: 'Cadastro de Profissionais', icon: <PersonAddIcon />, path: '/cadastro-profissionais', auth: false, hideWhenLoggedIn: true },
     { text: 'Pacientes', icon: <PersonIcon />, path: '/pacientes', auth: true },
     { text: 'Consultas', icon: <EventIcon />, path: '/consultas', auth: true },
-    { text: 'Planos e Preços', icon: <PaymentIcon />, path: '/planos', auth: false },
     { text: 'Segurança e LGPD', icon: <SecurityIcon />, path: '/seguranca', auth: false },
-    { text: 'Cadastro Profissionais', icon: <PersonAddIcon />, path: '/cadastro-profissionais', auth: false },
   ];
 
   const authItems = currentUser
@@ -247,7 +232,11 @@ function NavigationMenu({ open, onClose }) {
       <Box sx={{ width: 250 }} role="presentation" onClick={onClose}>
         <List>
           {menuItems
-            .filter(item => !item.auth || (item.auth && currentUser))
+            .filter(item => 
+              (!item.auth || (item.auth && currentUser)) && 
+              // Esconder itens marcados como hideWhenLoggedIn quando o usuário estiver logado
+              !(currentUser && item.hideWhenLoggedIn)
+            )
             .map((item) => (
               <ListItem 
                 button 
@@ -313,9 +302,9 @@ function App() {
             </Typography>
           )}
           {currentUser ? (
-            <Button color="inherit" onClick={() => window.open('http://localhost:5010/api/status', '_blank')} target="_blank">
-              API
-            </Button>
+<Button color="inherit" onClick={() => window.open(`${process.env.REACT_APP_API_BASE_URL}/api/status`, '_blank')} target="_blank">
+  API
+</Button>
           ) : (
             <Button color="inherit" component={Link} to="/login">
               Login
@@ -328,7 +317,6 @@ function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/planos" element={<PlanosPage />} />
           <Route path="/pagamento" element={<PagamentoPage />} />
           <Route path="/cadastro-profissionais" element={<CadastroProfissionaisPage />} />
           <Route path="/test-login" element={<SimpleLogin />} />
@@ -361,14 +349,6 @@ function App() {
             element={
               <ProtectedRoute>
                 <ConsultasPage />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/consultas/:consultaId/prescricao" 
-            element={
-              <ProtectedRoute>
-                <PrescriptionView />
               </ProtectedRoute>
             } 
           />

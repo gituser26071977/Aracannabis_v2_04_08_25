@@ -7,7 +7,7 @@ print(f"CONFIG.PY: DATABASE_URL lida do .env AQUI: {os.getenv('DATABASE_URL')}")
 
 class Config:
     # Configuração do banco de dados
-    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5432/aracannabis') # Restaurada linha original
+    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', 'postgresql+psycopg2://postgres:postgres@localhost:5432/aracannabis') # Added psycopg2 driver
     print(f"CONFIG.PY: SQLALCHEMY_DATABASE_URI (from getenv/default): {SQLALCHEMY_DATABASE_URI}") # Log ajustado
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
@@ -21,6 +21,11 @@ class Config:
     
     # Configuração CORS
     CORS_HEADERS = 'Content-Type'
+    
+    # Configuração de upload de arquivos
+    UPLOAD_FOLDER_EXAMES = os.path.join(os.getcwd(), 'uploads', 'exames')
+    MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file size
+    ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'doc', 'docx'}
 
 class DevelopmentConfig(Config):
     DEBUG = True
@@ -31,7 +36,7 @@ class ProductionConfig(Config):
     
 class TestingConfig(Config):
     TESTING = True
-    SQLALCHEMY_DATABASE_URI = 'postgresql://postgres:postgres@localhost:5432/aracannabis_test'
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
     
 # Dicionário de configurações
 config_by_name = {

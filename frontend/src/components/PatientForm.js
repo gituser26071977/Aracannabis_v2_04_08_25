@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { 
-  Box, 
-  Button, 
-  TextField, 
-  Grid, 
-  Typography, 
+import {
+  Box,
+  Button,
+  TextField,
+  Grid,
+  Typography,
   Paper,
   FormControl,
   InputLabel,
@@ -14,8 +14,11 @@ import {
   Alert,
   FormControlLabel,
   Checkbox,
-  Divider
+  Divider,
+  Avatar,
+  IconButton
 } from '@mui/material';
+import { PhotoCamera, Delete } from '@mui/icons-material';
 import { pacientesService, lgpdService } from '../services/api';
 import LGPDBanner from './LGPDBanner';
 
@@ -32,7 +35,10 @@ const PatientForm = ({ onSave, initialData = null }) => {
     observacoes: initialData?.observacoes || '',
     consentimento_lgpd: initialData?.consentimento_lgpd || false
   });
-  
+
+  const [fotoFile, setFotoFile] = useState(null);
+  const [fotoPreview, setFotoPreview] = useState(initialData?.foto_nome ? `${process.env.REACT_APP_API_URL}/pacientes/foto/${initialData.foto_nome}` : null);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -44,35 +50,76 @@ const PatientForm = ({ onSave, initialData = null }) => {
       [name]: value
     }));
   };
+
+  const handleFotoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validar tipo de arquivo
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+      if (!allowedTypes.includes(file.type)) {
+        setError('Tipo de arquivo não permitido. Use apenas JPG, PNG ou GIF.');
+        return;
+      }
+
+      // Validar tamanho (máximo 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Arquivo muito grande. Máximo 5MB.');
+        return;
+      }
+
+      setFotoFile(file);
+      setFotoPreview(URL.createObjectURL(file));
+      setError('');
+    }
+  };
+
+  const handleRemoverFoto = () => {
+    setFotoFile(null);
+    setFotoPreview(null);
+  };
   
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    
+
     console.log('Enviando dados do formulário:', formData);
-    
+
     try {
       let result;
-      
+
+      // Preparar dados para envio (FormData se houver foto, JSON caso contrário)
+      let dadosEnvio;
+      if (fotoFile) {
+        dadosEnvio = new FormData();
+        // Adicionar todos os campos do formulário
+        Object.keys(formData).forEach(key => {
+          dadosEnvio.append(key, formData[key]);
+        });
+        // Adicionar arquivo de foto
+        dadosEnvio.append('foto', fotoFile);
+      } else {
+        dadosEnvio = formData;
+      }
+
       if (initialData?.id) {
         // Atualizar paciente existente
         console.log('Atualizando paciente existente com ID:', initialData.id);
-        result = await pacientesService.atualizar(initialData.id, formData);
+        result = await pacientesService.atualizar(initialData.id, dadosEnvio);
       } else {
         // Criar novo paciente
         console.log('Criando novo paciente');
-        result = await pacientesService.criar(formData);
+        result = await pacientesService.criar(dadosEnvio);
       }
-      
+
       console.log('Resposta do servidor:', result);
-      
+
       // Registrar consentimento LGPD se for um novo paciente ou se o consentimento foi alterado
-      if (formData.consentimento_lgpd && 
+      if (formData.consentimento_lgpd &&
           (!initialData || initialData.consentimento_lgpd !== formData.consentimento_lgpd)) {
         try {
           await lgpdService.registrarConsentimento(
-            result.paciente.id, 
+            result.paciente.id,
             formData.consentimento_lgpd
           );
           console.log('Consentimento LGPD registrado com sucesso');
@@ -81,9 +128,9 @@ const PatientForm = ({ onSave, initialData = null }) => {
           // Não interromper o fluxo principal se houver erro no registro de consentimento
         }
       }
-      
+
       setSuccess(true);
-      
+
       // Limpar formulário se for um novo paciente
       if (!initialData) {
         setFormData({
@@ -97,13 +144,15 @@ const PatientForm = ({ onSave, initialData = null }) => {
           diagnostico: '',
           observacoes: ''
         });
+        setFotoFile(null);
+        setFotoPreview(null);
       }
-      
+
       // Notificar componente pai
       if (onSave) {
         onSave(result.paciente);
       }
-      
+
     } catch (err) {
       console.error('Erro detalhado ao salvar paciente:', err);
       if (err.response) {
@@ -146,7 +195,7 @@ const PatientForm = ({ onSave, initialData = null }) => {
               margin="normal"
             />
           </Grid>
-          
+
           <Grid item xs={12} sm={6}>
             <TextField
               name="data_nascimento"
@@ -159,6 +208,56 @@ const PatientForm = ({ onSave, initialData = null }) => {
               margin="normal"
               InputLabelProps={{ shrink: true }}
             />
+          </Grid>
+
+          <Grid item xs={12}>
+            <Divider sx={{ my: 2 }} />
+            <Typography variant="subtitle1" gutterBottom>
+              Foto do Paciente
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+              <Avatar
+                src={fotoPreview}
+                sx={{ width: 80, height: 80 }}
+              >
+                {!fotoPreview && formData.nome.charAt(0).toUpperCase()}
+              </Avatar>
+              <Box>
+                <input
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  id="foto-upload"
+                  type="file"
+                  onChange={handleFotoChange}
+                />
+                <label htmlFor="foto-upload">
+                  <Button
+                    variant="outlined"
+                    component="span"
+                    startIcon={<PhotoCamera />}
+                    size="small"
+                  >
+                    Escolher Foto
+                  </Button>
+                </label>
+                {fotoFile && (
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    size="small"
+                    startIcon={<Delete />}
+                    onClick={handleRemoverFoto}
+                    sx={{ ml: 1 }}
+                  >
+                    Remover
+                  </Button>
+                )}
+              </Box>
+            </Box>
+            <Typography variant="caption" color="text.secondary">
+              Formatos aceitos: JPG, PNG, GIF. Tamanho máximo: 5MB
+            </Typography>
+            <Divider sx={{ my: 2 }} />
           </Grid>
           
           <Grid item xs={12} sm={6}>

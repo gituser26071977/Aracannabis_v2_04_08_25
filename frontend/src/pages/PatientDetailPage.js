@@ -20,8 +20,8 @@ import PatientDetails from '../components/PatientDetails';
 import SymptomsManager from '../components/SymptomsManager';
 import DosageManager from '../components/DosageManager';
 import EvolutionManager from '../components/EvolutionManager';
-import ExameManager from '../components/ExameManager';
 import CombinedChartView from '../components/CombinedChartView';
+import ExameManager from '../components/ExameManager';
 
 // Componente TabPanel para exibir o conteúdo da aba selecionada
 function TabPanel(props) {
@@ -187,11 +187,12 @@ const PatientDetailPage = () => {
           variant="scrollable"
           scrollButtons="auto"
         >
-          <Tab label="Informações" {...a11yProps(0)} />
-          <Tab label="Sintomas" {...a11yProps(1)} />
-          <Tab label="Dosagens" {...a11yProps(2)} />
-          <Tab label="Evoluções" {...a11yProps(3)} />
-          <Tab label="Gráfico Combinado" {...a11yProps(4)} />
+        <Tab label="Informações" {...a11yProps(0)} />
+        <Tab label="Evoluções" {...a11yProps(1)} />
+        <Tab label="Sintomas" {...a11yProps(2)} />
+        <Tab label="Dosagens" {...a11yProps(3)} />
+          <Tab label="Exames" {...a11yProps(4)} />
+          <Tab label="📊 Gráficos" {...a11yProps(5)} />
         </Tabs>
       </Paper>
       
@@ -205,18 +206,22 @@ const PatientDetailPage = () => {
       </TabPanel>
       
       <TabPanel value={tabValue} index={1}>
-        <SymptomsManager patientId={patientId} />
-      </TabPanel>
-      
-      <TabPanel value={tabValue} index={2}>
-        <DosageManager patientId={patientId} />
-      </TabPanel>
-      
-      <TabPanel value={tabValue} index={3}>
         <EvolutionManager patientId={patientId} />
       </TabPanel>
       
+      <TabPanel value={tabValue} index={2}>
+        <SymptomsManager patientId={patientId} />
+      </TabPanel>
+      
+      <TabPanel value={tabValue} index={3}>
+        <DosageManager patientId={patientId} />
+      </TabPanel>
+      
       <TabPanel value={tabValue} index={4}>
+        <ExameManager patientId={patientId} />
+      </TabPanel>
+      
+      <TabPanel value={tabValue} index={5}>
         <CombinedChartView patientId={patientId} />
       </TabPanel>
       
