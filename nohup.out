@@ -1,0 +1,55 @@
+Starting backend...
+Backend started with PID 28474
+CONFIG.PY: DATABASE_URL lida do .env AQUI: postgresql://postgres:postgres@localhost:5432/aracannabis
+CONFIG.PY: SQLALCHEMY_DATABASE_URI (from getenv/default): postgresql://postgres:postgres@localhost:5432/aracannabis
+🚀 SERVIDOR COM CORS LIVRE INICIADO!
+🔓 CORS: Totalmente permissivo para teste
+🔑 CSRF: Desabilitado para teste
+📡 Porta: 5004
+ * Serving Flask app 'app_cors_livre'
+ * Debug mode: on
+[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5004
+ * Running on http://10.10.44.15:5004
+[33mPress CTRL+C to quit[0m
+ * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 475-462-189
+Starting frontend on a free port...
+npm warn Unknown cli config "--reset-cache". This will stop working in the next major version of npm.
+
+> aracannabis-frontend@1.0.0 start
+> react-scripts start
+
+(node:28553) [DEP0176] DeprecationWarning: fs.F_OK is deprecated, use fs.constants.F_OK instead
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:28553) [DEP_WEBPACK_DEV_SERVER_ON_AFTER_SETUP_MIDDLEWARE] DeprecationWarning: 'onAfterSetupMiddleware' option is deprecated. Please use the 'setupMiddlewares' option.
+(node:28553) [DEP_WEBPACK_DEV_SERVER_ON_BEFORE_SETUP_MIDDLEWARE] DeprecationWarning: 'onBeforeSetupMiddleware' option is deprecated. Please use the 'setupMiddlewares' option.
+Starting the development server...
+
+Compiled successfully!
+
+You can now view aracannabis-frontend in the browser.
+
+  Local:            http://localhost:3001
+  On Your Network:  http://10.10.44.15:3001
+
+Note that the development build is not optimized.
+To create a production build, use npm run build.
+
+webpack compiled successfully
+(node:28553) [DEP0060] DeprecationWarning: The `util._extend` API is deprecated. Please use Object.assign() instead.
+127.0.0.1 - - [19/Aug/2025 10:31:33] "[33mGET /api/anuncios?limite=3 HTTP/1.1[0m" 404 -
+127.0.0.1 - - [19/Aug/2025 10:31:33] "[33mGET /api/anuncios?limite=3 HTTP/1.1[0m" 404 -
+127.0.0.1 - - [19/Aug/2025 10:31:33] "[33mGET /Flor%20óleo.jpeg HTTP/1.1[0m" 404 -
+127.0.0.1 - - [19/Aug/2025 10:45:03] "[33mGET /logo192.png HTTP/1.1[0m" 404 -
+127.0.0.1 - - [19/Aug/2025 10:45:03] "[33mGET /api/anuncios?limite=3 HTTP/1.1[0m" 404 -
+127.0.0.1 - - [19/Aug/2025 10:45:03] "[33mGET /api/anuncios?limite=3 HTTP/1.1[0m" 404 -
+127.0.0.1 - - [19/Aug/2025 10:45:03] "[33mGET /Flor%20óleo.jpeg HTTP/1.1[0m" 404 -
+127.0.0.1 - - [19/Aug/2025 10:48:10] "[33mGET /logo192.png HTTP/1.1[0m" 404 -
+127.0.0.1 - - [19/Aug/2025 10:48:10] "[33mGET /api/anuncios?limite=3 HTTP/1.1[0m" 404 -
+127.0.0.1 - - [19/Aug/2025 10:48:10] "[33mGET /api/anuncios?limite=3 HTTP/1.1[0m" 404 -
+127.0.0.1 - - [19/Aug/2025 10:48:10] "[33mGET /Flor%20óleo.jpeg HTTP/1.1[0m" 404 -
+start_app.sh, linha 25: 28534 Desconexão             PORT=3001 npm start --reset-cache
+Stopping processes...

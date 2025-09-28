@@ -8,7 +8,8 @@ class Profissional(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String, nullable=False)
-    crm = db.Column(db.String, unique=True, nullable=False)
+    crm = db.Column(db.String, nullable=False)
+    uf_crm = db.Column(db.String, nullable=False)
     usuario = db.Column(db.String, unique=True, nullable=False)
     senha = db.Column(db.String, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -17,12 +18,15 @@ class Profissional(db.Model):
     logs = db.relationship('LogAtividade', backref='profissional', lazy=True)
     consultas = db.relationship('Consulta', backref='profissional', lazy=True)
     exames = db.relationship('Exame', backref='profissional', lazy=True)
+
+    __table_args__ = (db.UniqueConstraint('crm', 'uf_crm', name='uq_crm_uf'),)
     
     def to_dict(self):
         return {
             'id': self.id,
             'nome': self.nome,
             'crm': self.crm,
+            'uf_crm': self.uf_crm,
             'usuario': self.usuario,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
@@ -45,6 +49,10 @@ class Paciente(db.Model):
     composicao = db.Column(db.String)
     dosagem = db.Column(db.String)
     horarios = db.Column(db.String)
+    foto_nome = db.Column(db.String)  # Nome original do arquivo da foto
+    foto_caminho = db.Column(db.String)  # Caminho do arquivo no servidor
+    foto_tipo = db.Column(db.String)  # MIME type (image/jpeg, image/png, etc.)
+    foto_tamanho = db.Column(db.Integer)  # Tamanho em bytes
     consentimento_lgpd = db.Column(db.Boolean, default=False)
     data_consentimento = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -57,6 +65,8 @@ class Paciente(db.Model):
     evolucoes = db.relationship('Evolucao', backref='paciente', lazy=True, cascade="all, delete-orphan")
     consultas = db.relationship('Consulta', backref='paciente', lazy=True, cascade="all, delete-orphan")
     exames = db.relationship('Exame', backref='paciente', lazy=True, cascade="all, delete-orphan")
+    # Relationships to exam images and lab results are handled through the Exame model
+    # Removed direct relationships to ExameImagem and ExameLabResultado
     compartilhamentos = db.relationship('CompartilhamentoPaciente', backref='paciente', lazy=True, cascade="all, delete-orphan")
     
     def to_dict(self):
@@ -75,6 +85,9 @@ class Paciente(db.Model):
             'composicao': self.composicao,
             'dosagem': self.dosagem,
             'horarios': self.horarios,
+            'foto_nome': self.foto_nome,
+            'foto_tipo': self.foto_tipo,
+            'foto_tamanho': self.foto_tamanho,
             'consentimento_lgpd': self.consentimento_lgpd,
             'data_consentimento': self.data_consentimento.isoformat() if self.data_consentimento else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
@@ -226,46 +239,25 @@ class Consulta(db.Model):
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
 
-
-class Prescricao(db.Model):
-    __tablename__ = 'prescricoes'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    consulta_id = db.Column(db.Integer, db.ForeignKey('consultas.id'), unique=True)
-    composicao = db.Column(db.JSON)  # Estrutura: [{nome: string, dosagem: string}]
-    observacoes = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    consulta = db.relationship('Consulta', backref=db.backref('prescricao', uselist=False))
-    
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'consulta_id': self.consulta_id,
-            'composicao': self.composicao,
-            'observacoes': self.observacoes,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None
-        }
-
 class Exame(db.Model):
     __tablename__ = 'exames'
     
     id = db.Column(db.Integer, primary_key=True)
     paciente_id = db.Column(db.Integer, db.ForeignKey('pacientes.id', ondelete='CASCADE'), nullable=False)
     profissional_id = db.Column(db.Integer, db.ForeignKey('profissionais.id', ondelete='SET NULL'))
-    tipo_exame = db.Column(db.String, nullable=False)  # Hemograma, Raio-X, Ressonância, etc.
     data_exame = db.Column(db.Date, nullable=False)
-    data_resultado = db.Column(db.Date)
-    observacoes = db.Column(db.Text)
-    arquivo_nome = db.Column(db.String)  # Nome original do arquivo
-    arquivo_path = db.Column(db.String)  # Caminho do arquivo no servidor
-    arquivo_tipo = db.Column(db.String)  # MIME type (image/jpeg, application/pdf, etc.)
-    arquivo_tamanho = db.Column(db.Integer)  # Tamanho em bytes
-    arquivo_hash = db.Column(db.String)  # Hash MD5 para verificação de integridade
+    tipo_exame = db.Column(db.String, nullable=False)  # 'texto', 'arquivo', 'numerico'
+    titulo = db.Column(db.String, nullable=True)
+    descricao = db.Column(db.Text, nullable=True)
+    valor = db.Column(db.Float, nullable=True)
+    unidade = db.Column(db.String, nullable=True)
+    is_chartable = db.Column(db.Boolean, default=False, nullable=False)  # Flag para dados gráficos
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    imagens = db.relationship('ExameImagem', backref='exame', lazy=True, cascade="all, delete-orphan")
+    resultados_lab = db.relationship('ExameLabResultado', backref='exame', lazy=True, cascade="all, delete-orphan")
     
     def to_dict(self):
         return {
@@ -273,16 +265,56 @@ class Exame(db.Model):
             'paciente_id': self.paciente_id,
             'profissional_id': self.profissional_id,
             'profissional_nome': self.profissional.nome if self.profissional else None,
-            'tipo_exame': self.tipo_exame,
             'data_exame': self.data_exame.isoformat() if self.data_exame else None,
-            'data_resultado': self.data_resultado.isoformat() if self.data_resultado else None,
-            'observacoes': self.observacoes,
-            'arquivo_nome': self.arquivo_nome,
-            'arquivo_tipo': self.arquivo_tipo,
-            'arquivo_tamanho': self.arquivo_tamanho,
-            'arquivo_hash': self.arquivo_hash,
+            'tipo_exame': self.tipo_exame,
+            'titulo': self.titulo,
+            'descricao': self.descricao,
+            'valor': self.valor,
+            'unidade': self.unidade,
+            'is_chartable': self.is_chartable,  # Incluir flag de gráfico
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+
+class ExameImagem(db.Model):
+    __tablename__ = 'exame_imagens'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    exame_id = db.Column(db.Integer, db.ForeignKey('exames.id', ondelete='CASCADE'), nullable=False)
+    arquivo_nome = db.Column(db.String, nullable=False)
+    arquivo_caminho = db.Column(db.String, nullable=False)
+    laudo = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'exame_id': self.exame_id,
+            'arquivo_nome': self.arquivo_nome,
+            'arquivo_caminho': self.arquivo_caminho,
+            'laudo': self.laudo,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+
+class ExameLabResultado(db.Model):
+    __tablename__ = 'exame_lab_resultados'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    exame_id = db.Column(db.Integer, db.ForeignKey('exames.id', ondelete='CASCADE'), nullable=False)
+    teste_nome = db.Column(db.String, nullable=False)
+    valor = db.Column(db.Numeric, nullable=False)
+    unidade = db.Column(db.String, nullable=False)
+    valor_referencia = db.Column(db.String, nullable=False)
+    # created_at column will be added after migration is complete
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'exame_id': self.exame_id,
+            'teste_nome': self.teste_nome,
+            'valor': float(self.valor) if self.valor is not None else None,
+            'unidade': self.unidade,
+            'valor_referencia': self.valor_referencia
         }
 
 class LogAtividade(db.Model):
@@ -335,4 +367,145 @@ class CompartilhamentoPaciente(db.Model):
             'compartilhado_por': self.compartilhado_por,
             'compartilhador_nome': self.compartilhador.nome if self.compartilhador else None,
             'ativo': self.ativo
+        }
+
+class Produto(db.Model):
+    __tablename__ = 'produtos'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String, nullable=False)
+    tipo = db.Column(db.String, default='oleo')
+    concentracao_cbd = db.Column(db.Float, default=0)
+    concentracao_thc = db.Column(db.Float, default=0)
+    concentracao_cbg = db.Column(db.Float, default=0)
+    concentracao_cbn = db.Column(db.Float, default=0)
+    gotas_por_ml = db.Column(db.Integer, default=30)
+    volume_ml = db.Column(db.Float, default=30)
+    fabricante = db.Column(db.String)
+    descricao = db.Column(db.Text)
+    ativo = db.Column(db.Boolean, default=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'nome': self.nome,
+            'tipo': self.tipo,
+            'concentracao_cbd': self.concentracao_cbd,
+            'concentracao_thc': self.concentracao_thc,
+            'concentracao_cbg': self.concentracao_cbg,
+            'concentracao_cbn': self.concentracao_cbn,
+            'gotas_por_ml': self.gotas_por_ml,
+            'volume_ml': self.volume_ml,
+            'fabricante': self.fabricante,
+            'descricao': self.descricao,
+            'ativo': self.ativo,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+
+class ReminderSettings(db.Model):
+    __tablename__ = 'reminder_settings'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    profissional_id = db.Column(db.Integer, db.ForeignKey('profissionais.id'), nullable=False)
+    lead_time_hours = db.Column(db.Integer, default=24, nullable=False)  # Horas antes da consulta
+    email_template = db.Column(db.Text, default='Lembrete de consulta', nullable=False)
+    active = db.Column(db.Boolean, default=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    profissional = db.relationship('Profissional', backref='reminder_settings')
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'profissional_id': self.profissional_id,
+            'lead_time_hours': self.lead_time_hours,
+            'email_template': self.email_template,
+            'active': self.active,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+
+class SolicitacoesCadastro(db.Model):
+    __tablename__ = 'solicitacoes_cadastro'
+
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String, nullable=False)
+    email = db.Column(db.String, unique=True, nullable=False)
+    crm = db.Column(db.String, nullable=False)
+    uf_crm = db.Column(db.String, nullable=False)
+    telefone = db.Column(db.String)
+    especialidade = db.Column(db.String)
+    instituicao = db.Column(db.String)
+    status = db.Column(db.String, default='pendente', nullable=False)
+    data_solicitacao = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    data_aprovacao = db.Column(db.DateTime)
+    observacoes = db.Column(db.Text)
+    aprovado_por = db.Column(db.Integer, db.ForeignKey('profissionais.id'))
+
+    aprovador = db.relationship('Profissional', backref='solicitacoes_aprovadas', foreign_keys=[aprovado_por])
+
+    __table_args__ = (db.UniqueConstraint('crm', 'uf_crm', name='uq_solicitacao_crm_uf'),)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'nome': self.nome,
+            'email': self.email,
+            'crm': self.crm,
+            'uf_crm': self.uf_crm,
+            'telefone': self.telefone,
+            'especialidade': self.especialidade,
+            'instituicao': self.instituicao,
+            'status': self.status,
+            'data_solicitacao': self.data_solicitacao.isoformat(),
+            'data_aprovacao': self.data_aprovacao.isoformat() if self.data_aprovacao else None,
+            'observacoes': self.observacoes,
+            'aprovado_por': self.aprovado_por,
+            'aprovador_nome': self.aprovador.nome if self.aprovador else None
+        }
+
+class SintomaPersonalizado(db.Model):
+    __tablename__ = 'sintomas_personalizados'
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String, unique=True, nullable=False)
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'nome': self.nome,
+            'criado_em': self.criado_em.isoformat() if self.criado_em else None
+        }
+
+class OCRResultado(db.Model):
+    __tablename__ = 'ocr_resultados'
+
+    id = db.Column(db.Integer, primary_key=True)
+    exame_imagem_id = db.Column(db.Integer, db.ForeignKey('exame_imagens.id', ondelete='CASCADE'), nullable=False)
+    texto_extraido = db.Column(db.Text, nullable=False)
+    dados_estruturados = db.Column(db.JSON, nullable=True)  # Dados extraídos em formato JSON para IA
+    confianca = db.Column(db.Float, nullable=True)  # Confiança do OCR (0-100)
+    status_processamento = db.Column(db.String, default='pendente', nullable=False)  # pendente, processando, concluido, erro
+    erro_processamento = db.Column(db.Text, nullable=True)
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow)
+    processado_em = db.Column(db.DateTime, nullable=True)
+
+    # Relacionamento
+    exame_imagem = db.relationship('ExameImagem', backref='ocr_resultados')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'exame_imagem_id': self.exame_imagem_id,
+            'texto_extraido': self.texto_extraido,
+            'dados_estruturados': self.dados_estruturados,
+            'confianca': self.confianca,
+            'status_processamento': self.status_processamento,
+            'erro_processamento': self.erro_processamento,
+            'criado_em': self.criado_em.isoformat() if self.criado_em else None,
+            'processado_em': self.processado_em.isoformat() if self.processado_em else None
         }

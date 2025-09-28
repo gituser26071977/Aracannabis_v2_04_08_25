@@ -135,7 +135,7 @@ const CadastroProfissionaisPage = () => {
     setError('');
     
     try {
-      const response = await api.post('/cadastro-profissionais/solicitar-cadastro', formData);
+      const response = await api.post('/cadastro_profissionais/solicitar-cadastro', formData);
       
       if (response.data.success) {
         setSolicitacaoId(response.data.solicitacao_id);

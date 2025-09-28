@@ -226,8 +226,11 @@ def registrar_sintoma_personalizado():
     # Validar dados obrigatórios
     if 'nome_sintoma' not in data or not data['nome_sintoma'].strip():
         return jsonify({'error': 'Nome do sintoma é obrigatório'}), 400
+    if 'paciente_id' not in data:
+        return jsonify({'error': 'ID do paciente é obrigatório'}), 400
     
     nome_sintoma = data['nome_sintoma'].strip()
+    paciente_id = data['paciente_id']
     
     # Verificar se o sintoma já existe na lista padrão
     sintomas_padrao = [
@@ -246,22 +249,23 @@ def registrar_sintoma_personalizado():
         return jsonify({'error': 'Este sintoma já existe na lista padrão'}), 400
     
     try:
-        # Verificar se já existe na tabela de personalizados
+        # Verificar se já existe na tabela de personalizados para este paciente
         from sqlalchemy import text
         result = db.session.execute(text("""
             SELECT id FROM sintomas_personalizados 
-            WHERE nome = :nome
-        """), {'nome': nome_sintoma})
+            WHERE nome = :nome AND paciente_id = :paciente_id
+        """), {'nome': nome_sintoma, 'paciente_id': paciente_id})
         
         if result.fetchone():
-            return jsonify({'error': 'Este sintoma personalizado já existe'}), 400
+            return jsonify({'error': 'Este sintoma já existe para este paciente'}), 400
         
         # Inserir na tabela de sintomas personalizados
         db.session.execute(text("""
-            INSERT INTO sintomas_personalizados (nome) 
-            VALUES (:nome)
+            INSERT INTO sintomas_personalizados (nome, paciente_id) 
+            VALUES (:nome, :paciente_id)
         """), {
-            'nome': nome_sintoma
+            'nome': nome_sintoma,
+            'paciente_id': paciente_id
         })
         
         # Registrar atividade
@@ -303,6 +307,66 @@ def remover_sintoma_personalizado(sintoma_id):
             return jsonify({'error': 'Sintoma personalizado não encontrado'}), 404
         
         nome_sintoma = sintoma_row[0]
+        
+        # Verificar se há registros de sintomas usando este sintoma personalizado
+        sintomas_em_uso = Sintoma.query.filter_by(sintoma=nome_sintoma).count()
+        
+        if sintomas_em_uso > 0:
+            return jsonify({
+                'error': f'Não é possível remover este sintoma pois há {sintomas_em_uso} registro(s) de pacientes usando-o'
+            }), 400
+        
+        # Remover o sintoma personalizado
+        db.session.execute(text("""
+            DELETE FROM sintomas_personalizados 
+            WHERE id = :id
+        """), {'id': sintoma_id})
+        
+        # Registrar atividade
+        log = LogAtividade(
+            profissional_id=profissional_id,
+            acao='Exclusão',
+            detalhes=f'Sintoma personalizado removido: {nome_sintoma}'
+        )
+        db.session.add(log)
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Sintoma personalizado removido com sucesso',
+            'sintoma': nome_sintoma
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Erro ao remover sintoma personalizado: {str(e)}'}), 500
+
+@sintomas_bp.route('/sintoma-personalizado', methods=['DELETE'])
+@jwt_required()
+def excluir_sintoma_personalizado_por_nome():
+    """Endpoint para excluir um sintoma personalizado por nome"""
+    current_user_id = get_jwt_identity()
+    profissional_id = int(current_user_id)
+    
+    data = request.get_json()
+    if not data or 'nome_sintoma' not in data:
+        return jsonify({'error': 'Nome do sintoma é obrigatório'}), 400
+    
+    nome_sintoma = data['nome_sintoma'].strip()
+    
+    try:
+        from sqlalchemy import text
+        
+        # Buscar ID do sintoma pelo nome
+        result = db.session.execute(text("""
+            SELECT id FROM sintomas_personalizados 
+            WHERE nome = :nome
+        """), {'nome': nome_sintoma})
+        
+        sintoma_row = result.fetchone()
+        if not sintoma_row:
+            return jsonify({'error': 'Sintoma personalizado não encontrado'}), 404
+        
+        sintoma_id = sintoma_row[0]
         
         # Verificar se há registros de sintomas usando este sintoma personalizado
         sintomas_em_uso = Sintoma.query.filter_by(sintoma=nome_sintoma).count()

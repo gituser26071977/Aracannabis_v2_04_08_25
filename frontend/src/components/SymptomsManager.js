@@ -187,6 +187,25 @@ const SymptomsManager = ({ patientId }) => {
       setError(err.error || 'Não foi possível adicionar o sintoma personalizado');
     }
   };
+
+  // Remover sintoma personalizado
+  const handleRemoveCustomSymptom = async (symptom) => {
+    try {
+      await sintomasService.excluirPersonalizado(symptom);
+      
+      // Atualizar lista de sintomas personalizados
+      setCustomSymptoms(prev => prev.filter(s => s !== symptom));
+      
+      // Atualizar sintomas padrão também (caso o sintoma removido esteja na lista)
+      const standardData = await sintomasService.listarPadrao();
+      setStandardSymptoms(standardData.sintomas_padrao || []);
+      
+      setError('');
+    } catch (err) {
+      console.error('Erro ao remover sintoma personalizado:', err);
+      setError('Não foi possível remover o sintoma personalizado');
+    }
+  };
   
   // Manipulador de mudança de tab
   const handleTabChange = (event, newValue) => {
@@ -280,12 +299,48 @@ const SymptomsManager = ({ patientId }) => {
   // Formatar data para dd/mm/yyyy
   const formatDate = (dateString) => {
     if (!dateString) return '';
-    const date = new Date(dateString + 'T00:00:00'); // Evitar problemas de timezone
+    // Handle ISO dates (with 'T') and simple date strings
+    let date;
+    if (dateString.includes('T')) {
+      date = new Date(dateString);
+    } else {
+      date = new Date(dateString + 'T00:00:00');
+    }
     return date.toLocaleDateString('pt-BR', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric'
     });
+  };
+  
+  // Função robusta para formatar data
+  const formatDateRobust = (dateValue) => {
+    try {
+      let date;
+      
+      // Se já é um objeto Date
+      if (dateValue instanceof Date) {
+        date = dateValue;
+      }
+      // Se é uma string ou timestamp
+      else {
+        date = new Date(dateValue);
+      }
+      
+      // Verificar se a data é válida
+      if (isNaN(date.getTime())) {
+        return 'Data inválida';
+      }
+      
+      return date.toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+    } catch (error) {
+      console.error('Erro ao formatar data:', error, dateValue);
+      return 'Data inválida';
+    }
   };
   
   // Configuração do gráfico
@@ -323,9 +378,9 @@ const SymptomsManager = ({ patientId }) => {
         displayColors: true,
         callbacks: {
           title: function(context) {
-            const dateStr = context[0].label;
-            const formattedDate = formatDate(dateStr);
-            return `Data: ${formattedDate}`;
+            const rawData = context[0].raw;
+            if (!rawData || !rawData.x) return 'Data: N/A';
+            return `Data: ${formatDateRobust(rawData.x)}`;
           },
           label: function(context) {
             return `${context.dataset.label}: ${context.parsed.y}/10`;
@@ -413,49 +468,6 @@ const SymptomsManager = ({ patientId }) => {
         const dataset = chartData[datasetIndex];
         const point = dataset.data[dataIndex];
         
-        // Função robusta para formatar data
-        const formatDateRobust = (dateValue) => {
-          try {
-            let date;
-            
-            // Se já é um objeto Date
-            if (dateValue instanceof Date) {
-              date = dateValue;
-            }
-            // Se é uma string
-            else if (typeof dateValue === 'string') {
-              // Tentar diferentes formatos
-              if (dateValue.includes('T')) {
-                date = new Date(dateValue);
-              } else {
-                date = new Date(dateValue + 'T00:00:00');
-              }
-            }
-            // Se é um timestamp
-            else if (typeof dateValue === 'number') {
-              date = new Date(dateValue);
-            }
-            // Fallback
-            else {
-              date = new Date(dateValue);
-            }
-            
-            // Verificar se a data é válida
-            if (isNaN(date.getTime())) {
-              return 'Data inválida';
-            }
-            
-            return date.toLocaleDateString('pt-BR', {
-              day: '2-digit',
-              month: '2-digit',
-              year: 'numeric'
-            });
-          } catch (error) {
-            console.error('Erro ao formatar data:', error, dateValue);
-            return 'Data inválida';
-          }
-        };
-        
         const dataFormatada = formatDateRobust(point.x);
         
         // Mostrar informações detalhadas do ponto clicado
@@ -486,16 +498,15 @@ const SymptomsManager = ({ patientId }) => {
     
     return {
       datasets: chartData.map((dataset, index) => {
-        // Garantir que os dados estão ordenados cronologicamente
-        const sortedData = [...dataset.data].sort((a, b) => {
-          const dateA = new Date(a.x);
-          const dateB = new Date(b.x);
-          return dateA - dateB;
-        });
+        // Converter strings de data para objetos Date e ordenar cronologicamente
+        const processedData = dataset.data.map(point => ({
+          ...point,
+          x: new Date(point.x)
+        })).sort((a, b) => new Date(a.x) - new Date(b.x));
         
         return {
           label: dataset.label,
-          data: sortedData,
+          data: processedData,
           borderColor: colors[index % colors.length],
           backgroundColor: colors[index % colors.length].replace('1)', '0.3)'),
           pointBackgroundColor: colors[index % colors.length],
@@ -719,18 +730,54 @@ const SymptomsManager = ({ patientId }) => {
             </DialogActions>
           </Dialog>
           
-          {/* Diálogo para adicionar sintoma personalizado */}
+          {/* Diálogo para gerenciar sintomas personalizados */}
           <Dialog
             open={customSymptomDialogOpen}
             onClose={handleCloseCustomSymptomDialog}
             maxWidth="sm"
             fullWidth
           >
-            <DialogTitle>Adicionar Sintoma Personalizado</DialogTitle>
+            <DialogTitle>Gerenciar Sintomas Personalizados</DialogTitle>
             <DialogContent>
-              <DialogContentText sx={{ mb: 2 }}>
-                Adicione um novo sintoma personalizado para monitorar. Este sintoma estará disponível para todos os pacientes.
-              </DialogContentText>
+              <Typography variant="h6" gutterBottom>
+                Sintomas Personalizados Existentes
+              </Typography>
+              
+              {customSymptoms.length === 0 ? (
+                <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+                  Nenhum sintoma personalizado cadastrado.
+                </Typography>
+              ) : (
+                <Box sx={{ maxHeight: 200, overflow: 'auto', mb: 2 }}>
+                  {customSymptoms.map((symptom, index) => (
+                    <Box 
+                      key={index}
+                      sx={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center', 
+                        py: 1,
+                        borderBottom: '1px solid rgba(0, 0, 0, 0.12)'
+                      }}
+                    >
+                      <Typography>{symptom}</Typography>
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => handleRemoveCustomSymptom(symptom)}
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  ))}
+                </Box>
+              )}
+              
+              <Divider sx={{ my: 2 }} />
+              
+              <Typography variant="h6" gutterBottom>
+                Adicionar Novo Sintoma Personalizado
+              </Typography>
               <TextField
                 autoFocus
                 margin="dense"

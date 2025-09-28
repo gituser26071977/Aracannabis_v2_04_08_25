@@ -1,10 +1,46 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, send_from_directory
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, Paciente, LogAtividade, Profissional, CompartilhamentoPaciente
+from security_config import sanitize_input
 from datetime import datetime
 from sqlalchemy import or_
+import os
+from werkzeug.utils import secure_filename
 
 pacientes_bp = Blueprint('pacientes', __name__)
+
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+UPLOAD_FOLDER = 'uploads/pacientes'
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def salvar_foto_paciente(foto_file, paciente_id):
+    """Salva a foto do paciente e retorna os metadados"""
+    if not foto_file or foto_file.filename == '':
+        return None
+
+    if not allowed_file(foto_file.filename):
+        raise ValueError('Tipo de arquivo não permitido. Use PNG, JPG, JPEG ou GIF.')
+
+    # Criar nome único para o arquivo
+    filename = secure_filename(foto_file.filename)
+    ext = filename.rsplit('.', 1)[1].lower()
+    unique_filename = f"paciente_{paciente_id}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.{ext}"
+
+    # Caminho completo
+    filepath = os.path.join(UPLOAD_FOLDER, unique_filename)
+
+    # Salvar arquivo
+    foto_file.save(filepath)
+
+    # Retornar metadados
+    return {
+        'nome': unique_filename,
+        'caminho': filepath,
+        'tipo': foto_file.content_type,
+        'tamanho': os.path.getsize(filepath)
+    }
 
 def verificar_acesso_paciente(profissional_id, paciente_id, nivel_necessario='leitura'):
     """
@@ -167,18 +203,32 @@ def cadastrar_paciente():
     try:
         current_user_id = get_jwt_identity()
         profissional_id = int(current_user_id)
-        
-        data = request.get_json()
+
+        # Verificar se é multipart/form-data (com foto) ou JSON
+        if request.content_type and 'multipart/form-data' in request.content_type:
+            # Dados do formulário
+            data = {}
+            for key in request.form:
+                data[key] = request.form[key]
+
+            # Arquivo de foto
+            foto_file = request.files.get('foto')
+        else:
+            # Dados JSON tradicionais
+            data = request.get_json()
+            foto_file = None
+
+        data = sanitize_input(data)
         print(f"Dados recebidos: {data}")
-        
+
         # Validar dados obrigatórios
         if not all(k in data for k in ('nome', 'data_nascimento')):
             return jsonify({'error': 'Nome e Data de Nascimento são obrigatórios'}), 400
-        
+
         try:
             # Converter string de data para objeto date
             data_nascimento = datetime.strptime(data['data_nascimento'], '%Y-%m-%d').date()
-            
+
             novo_paciente = Paciente(
                 profissional_responsavel_id=profissional_id,  # Definir responsável
                 nome=data['nome'],
@@ -195,10 +245,25 @@ def cadastrar_paciente():
                 dosagem=data.get('dosagem'),
                 horarios=data.get('horarios')
             )
-            
+
             db.session.add(novo_paciente)
+            db.session.flush()  # Para obter o ID do paciente
+
+            # Processar foto se fornecida
+            if foto_file:
+                try:
+                    foto_metadata = salvar_foto_paciente(foto_file, novo_paciente.id)
+                    if foto_metadata:
+                        novo_paciente.foto_nome = foto_metadata['nome']
+                        novo_paciente.foto_caminho = foto_metadata['caminho']
+                        novo_paciente.foto_tipo = foto_metadata['tipo']
+                        novo_paciente.foto_tamanho = foto_metadata['tamanho']
+                except ValueError as e:
+                    db.session.rollback()
+                    return jsonify({'error': str(e)}), 400
+
             db.session.commit()
-            
+
             # Registrar atividade
             log = LogAtividade(
                 profissional_id=profissional_id,
@@ -207,14 +272,14 @@ def cadastrar_paciente():
             )
             db.session.add(log)
             db.session.commit()
-            
+
             print(f"Paciente cadastrado com sucesso: {novo_paciente.to_dict()}")
-            
+
             return jsonify({
                 'message': 'Paciente cadastrado com sucesso',
                 'paciente': novo_paciente.to_dict()
             }), 201
-            
+
         except ValueError as e:
             print(f"Erro de formato de data: {str(e)}")
             return jsonify({'error': 'Formato de data inválido. Use YYYY-MM-DD'}), 400
@@ -231,68 +296,94 @@ def cadastrar_paciente():
 def atualizar_paciente(paciente_id):
     current_user_id = get_jwt_identity()
     profissional_id = int(current_user_id)
-    
+
     # Verificar acesso de escrita
     tem_acesso, eh_responsavel, nivel_acesso = verificar_acesso_paciente(
         profissional_id, paciente_id, 'escrita'
     )
-    
+
     if not tem_acesso:
         return jsonify({'error': 'Acesso negado para editar este paciente'}), 403
-    
+
     paciente = Paciente.query.get(paciente_id)
-    
+
     if not paciente:
         return jsonify({'error': 'Paciente não encontrado'}), 404
-    
-    data = request.get_json()
-    
+
+    # Verificar se é multipart/form-data (com foto) ou JSON
+    if request.content_type and 'multipart/form-data' in request.content_type:
+        # Dados do formulário
+        data = {}
+        for key in request.form:
+            data[key] = request.form[key]
+
+        # Arquivo de foto
+        foto_file = request.files.get('foto')
+    else:
+        # Dados JSON tradicionais
+        data = request.get_json()
+        foto_file = None
+
+    data = sanitize_input(data)
+
     try:
         # Atualizar campos se fornecidos
         if 'nome' in data:
             paciente.nome = data['nome']
-        
+
         if 'data_nascimento' in data:
             paciente.data_nascimento = datetime.strptime(data['data_nascimento'], '%Y-%m-%d').date()
-        
+
         if 'cpf' in data:
             paciente.cpf = data['cpf']
-        
+
         if 'genero' in data:
             paciente.genero = data['genero']
-        
+
         if 'telefone' in data:
             paciente.telefone = data['telefone']
-        
+
         if 'email' in data:
             paciente.email = data['email']
-        
+
         if 'endereco' in data:
             paciente.endereco = data['endereco']
-        
+
         if 'diagnostico' in data:
             paciente.diagnostico = data['diagnostico']
-        
+
         if 'observacoes' in data:
             paciente.observacoes = data['observacoes']
-        
+
         if 'em_tratamento' in data:
             paciente.em_tratamento = data['em_tratamento']
-        
+
         if 'composicao' in data:
             paciente.composicao = data['composicao']
-        
+
         if 'dosagem' in data:
             paciente.dosagem = data['dosagem']
-        
+
         if 'horarios' in data:
             paciente.horarios = data['horarios']
-        
+
+        # Processar foto se fornecida
+        if foto_file:
+            try:
+                foto_metadata = salvar_foto_paciente(foto_file, paciente.id)
+                if foto_metadata:
+                    paciente.foto_nome = foto_metadata['nome']
+                    paciente.foto_caminho = foto_metadata['caminho']
+                    paciente.foto_tipo = foto_metadata['tipo']
+                    paciente.foto_tamanho = foto_metadata['tamanho']
+            except ValueError as e:
+                return jsonify({'error': str(e)}), 400
+
         # Atualizar timestamp
         paciente.updated_at = datetime.utcnow()
-        
+
         db.session.commit()
-        
+
         # Registrar atividade
         log = LogAtividade(
             profissional_id=profissional_id,
@@ -301,12 +392,12 @@ def atualizar_paciente(paciente_id):
         )
         db.session.add(log)
         db.session.commit()
-        
+
         return jsonify({
             'message': 'Paciente atualizado com sucesso',
             'paciente': paciente.to_dict()
         }), 200
-        
+
     except ValueError:
         return jsonify({'error': 'Formato de data inválido. Use YYYY-MM-DD'}), 400
     except Exception as e:
@@ -370,7 +461,8 @@ def compartilhar_paciente(paciente_id):
         return jsonify({'error': 'Apenas o profissional responsável pode compartilhar pacientes'}), 403
     
     data = request.get_json()
-    
+    data = sanitize_input(data)
+
     if not data.get('profissional_id') or not data.get('nivel_acesso'):
         return jsonify({'error': 'profissional_id e nivel_acesso são obrigatórios'}), 400
     
@@ -504,13 +596,42 @@ def listar_profissionais():
     """Listar profissionais para compartilhamento"""
     current_user_id = get_jwt_identity()
     profissional_id = int(current_user_id)
-    
+
     # Listar todos os profissionais exceto o atual
     profissionais = Profissional.query.filter(Profissional.id != profissional_id).all()
-    
+
     return jsonify({
         'profissionais': [p.to_dict() for p in profissionais]
     }), 200
+
+@pacientes_bp.route('/foto/<filename>')
+@jwt_required()
+def obter_foto_paciente(filename):
+    """Servir foto do paciente com verificação de acesso"""
+    current_user_id = get_jwt_identity()
+    profissional_id = int(current_user_id)
+
+    # Extrair ID do paciente do nome do arquivo (formato: paciente_{id}_{timestamp}.{ext})
+    try:
+        paciente_id_str = filename.split('_')[1]
+        paciente_id = int(paciente_id_str)
+    except (IndexError, ValueError):
+        return jsonify({'error': 'Arquivo inválido'}), 400
+
+    # Verificar acesso ao paciente
+    tem_acesso, eh_responsavel, nivel_acesso = verificar_acesso_paciente(
+        profissional_id, paciente_id
+    )
+
+    if not tem_acesso:
+        return jsonify({'error': 'Acesso negado à foto do paciente'}), 403
+
+    # Verificar se o arquivo existe
+    filepath = os.path.join(UPLOAD_FOLDER, filename)
+    if not os.path.exists(filepath):
+        return jsonify({'error': 'Arquivo não encontrado'}), 404
+
+    return send_from_directory(UPLOAD_FOLDER, filename)
 
 @pacientes_bp.route('/dashboard', methods=['GET'])
 @jwt_required()

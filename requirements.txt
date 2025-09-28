@@ -8,18 +8,12 @@ python-dotenv>=1.0.0
 psycopg2-binary
 Werkzeug # Flexibilizar Werkzeug
 gunicorn
-openai
-crewai
-crewai_tools
-langchain # Adicionar langchain base, deixar pip escolher a versão
-langchain-openai
-langchain-groq
-langchain-community
-langchain-ollama # Adicionar para a nova importação de ChatOllama
-groq
 pandas>=2.0.0
 mercadopago==2.2.1
-PyPDF2==3.0.1
+# OCR dependencies
+Pillow>=9.0.0
+pytesseract>=0.3.10
+opencv-python-headless>=4.5.0
 # As seguintes podem ser puxadas como dependências, mas se continuarmos com problemas,
 # podemos tentar adicioná-las sem versão também:
 # embedchain
@@ -27,3 +21,4 @@ PyPDF2==3.0.1
 # Adicione python-magic e pydub se for lidar com uploads de arquivos e manipulação de áudio diretamente no backend
 # python-magic==0.4.27
 # pydub==0.25.1
+requests

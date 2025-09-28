@@ -785,7 +785,7 @@ const DosageManager = ({ patientId }) => {
               💊 Gráfico de Evolução das Dosagens
             </Typography>
             
-            <DosageChart dosages={dosages} />
+            <DosageChart patientId={patientId} />
           </Paper>
           
           {/* Tabela de dosagens */}

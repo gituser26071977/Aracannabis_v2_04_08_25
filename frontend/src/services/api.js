@@ -1,8 +1,11 @@
 import axios from 'axios';
 
+// Definir a URL base da API
+const API_BASE_URL = process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL}/api` : 'http://localhost:5005/api';
+
 // Criar uma instância do axios com a URL base da API
 const api = axios.create({
-  baseURL: 'http://localhost:5000/api',
+  baseURL: API_BASE_URL,
 });
 
 // Interceptor para adicionar o token de autenticação e CSRF em todas as requisições
@@ -15,10 +18,10 @@ api.interceptors.request.use(
     }
     
     // Adicionar token CSRF para métodos não seguros
-    const csrfToken = localStorage.getItem('csrf_token');
-    if (csrfToken && ['post', 'put', 'delete', 'patch'].includes(config.method)) {
-      config.headers['X-CSRF-Token'] = csrfToken;
-    }
+    // const csrfToken = localStorage.getItem('csrf_token');
+    // if (csrfToken && ['post', 'put', 'delete', 'patch'].includes(config.method)) {
+    //   config.headers['X-CSRF-Token'] = csrfToken;
+    // }
     
     return config;
   },
@@ -31,9 +34,9 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => {
     // Armazenar token CSRF se estiver presente na resposta
-    if (response.data && response.data.csrf_token) {
-      localStorage.setItem('csrf_token', response.data.csrf_token);
-    }
+    // if (response.data && response.data.csrf_token) {
+    //   localStorage.setItem('csrf_token', response.data.csrf_token);
+    // }
     return response;
   },
   (error) => {
@@ -55,10 +58,10 @@ api.interceptors.response.use(
 export const authService = {
   login: async (usuario, senha) => {
     try {
-      console.log('AUTH_SERVICE_LOGIN: Tentando obter token CSRF...'); // NOVO LOG
-      const csrfResponse = await api.get('/csrf-token');
-      console.log('AUTH_SERVICE_LOGIN: Token CSRF obtido:', csrfResponse.data); // NOVO LOG
-      localStorage.setItem('csrf_token', csrfResponse.data.csrf_token);
+      // console.log('AUTH_SERVICE_LOGIN: Tentando obter token CSRF...'); // NOVO LOG
+      // const csrfResponse = await api.get('/csrf-token');
+      // console.log('AUTH_SERVICE_LOGIN: Token CSRF obtido:', csrfResponse.data); // NOVO LOG
+      // localStorage.setItem('csrf_token', csrfResponse.data.csrf_token);
       
       console.log('AUTH_SERVICE_LOGIN: Tentando fazer login...'); // NOVO LOG
       // Fazer login com o token CSRF
@@ -69,13 +72,13 @@ export const authService = {
       localStorage.setItem('user', JSON.stringify(response.data.user));
       
       // Armazenar o token CSRF da resposta de login
-      if (response.data.csrf_token) {
-        localStorage.setItem('csrf_token', response.data.csrf_token);
-      }
+      // if (response.data.csrf_token) {
+      //   localStorage.setItem('csrf_token', response.data.csrf_token);
+      // }
       
       return response.data;
     } catch (error) {
-      console.error('AUTH_SERVICE_LOGIN: Erro no processo de login:', error); // LOG ATUALIZADO
+      console.error('AUTH_SERVICE_LOGIN: Erro no processo de login:', error);
       if (error.response) {
         console.error('AUTH_SERVICE_LOGIN: Dados do erro da resposta:', error.response.data);
         throw new Error(JSON.stringify(error.response.data));
@@ -147,7 +150,16 @@ export const pacientesService = {
   criar: async (paciente) => {
     try {
       console.log('Enviando dados para API:', paciente);
-      const response = await api.post('/pacientes/', paciente);
+
+      // Verificar se é FormData (com foto) ou objeto JSON
+      const isFormData = paciente instanceof FormData;
+      const config = isFormData ? {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      } : {};
+
+      const response = await api.post('/pacientes/', paciente, config);
       console.log('Resposta da API:', response);
       return response.data;
     } catch (error) {
@@ -155,10 +167,18 @@ export const pacientesService = {
       throw error.response ? error.response.data : { error: 'Erro de conexão' };
     }
   },
-  
+
   atualizar: async (id, paciente) => {
     try {
-      const response = await api.put(`/pacientes/${id}`, paciente);
+      // Verificar se é FormData (com foto) ou objeto JSON
+      const isFormData = paciente instanceof FormData;
+      const config = isFormData ? {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      } : {};
+
+      const response = await api.put(`/pacientes/${id}`, paciente, config);
       return response.data;
     } catch (error) {
       throw error.response ? error.response.data : { error: 'Erro de conexão' };
@@ -260,6 +280,26 @@ export const sintomasService = {
       throw error.response ? error.response.data : { error: 'Erro de conexão' };
     }
   },
+
+  excluirPersonalizado: async (nomeSintoma) => {
+    try {
+      const response = await api.delete(`/sintomas/sintoma-personalizado`, {
+        data: { nome_sintoma: nomeSintoma }
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  
+  removerPersonalizado: async (sintomaId) => {
+    try {
+      const response = await api.delete(`/sintomas/sintoma-personalizado/${sintomaId}`);
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
   
   obterDadosGrafico: async (pacienteId, period = 'integral') => {
     try {
@@ -302,7 +342,141 @@ export const dosagensService = {
   
   obterDadosGrafico: async (pacienteId, period = 'integral') => {
     try {
-      const response = await api.get(`/dosagens/grafico/paciente/${pacienteId}?periodo=${period}`);
+      const response = await api.get(`/dosagens/grafico/paciente/${pacienteId}`, {
+        params: { periodo: period }
+      });
+      return response.data;
+    } catch (error) {
+      throw new Error(`Erro ao obter dados do gráfico: ${error.response?.data?.error || error.message}`);
+    }
+  },
+  
+  obterDadosGraficoNovo: async (pacienteId, period = 'integral') => {
+    try {
+      const response = await api.get(`/dosagens/grafico/paciente/${pacienteId}`, {
+        params: { periodo: period }
+      });
+      return response.data;
+    } catch (error) {
+      throw new Error(`Erro ao obter dados do gráfico: ${error.response?.data?.error || error.message}`);
+    }
+  }
+};
+
+// Serviço de exames
+export const exameService = {
+  listarPorPaciente: async (pacienteId) => {
+    try {
+      const response = await api.get(`/pacientes/${pacienteId}/exames`);
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+
+  criar: async (formData) => {
+    try {
+      const response = await api.post('/exames', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      
+      // Extrair dados do exame da resposta (ignorando email_status)
+      const { email_status, ...examData } = response.data;
+      return examData;
+    } catch (error) {
+      const errorMessage = error.response?.data?.error || 
+                           error.response?.data?.message || 
+                           'Erro ao criar exame';
+      throw new Error(errorMessage);
+    }
+  },
+
+  excluir: async (id) => {
+    try {
+      const response = await api.delete(`/exames/${id}`);
+      return response.data; // Retorna o objeto de resposta completo
+    } catch (error) {
+      const errorMessage = error.response?.data?.error || 
+                           error.response?.data?.message || 
+                           'Erro ao excluir exame';
+      throw new Error(errorMessage);
+    }
+  },
+
+  obter: async (id) => {
+    try {
+      const response = await api.get(`/exames/${id}`);
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+
+  listarImagens: async (exameId) => {
+    try {
+      const response = await api.get(`/exames/${exameId}/imagens`);
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+
+  obterUrlImagem: (filename) => {
+    return `${API_BASE_URL}/exames/arquivos/${filename}`;
+  },
+
+  processarOCR: async (exameId) => {
+    try {
+      const response = await api.post(`/exames/${exameId}/ocr`);
+      return response.data;
+    } catch (error) {
+      const errorMessage = error.response?.data?.error || 
+                           error.response?.data?.message || 
+                           'Erro ao processar OCR';
+      throw new Error(errorMessage);
+    }
+  },
+
+  obterDadosGrafico: async (pacienteId, period = 'integral') => {
+    try {
+      const response = await api.get(`/pacientes/${pacienteId}/exames`);
+      const exames = response.data;
+
+      // Filtrar apenas exames numéricos
+      const examesNumericos = exames.filter(exame =>
+        exame.tipo_exame === 'numerico' && exame.valor !== null
+      );
+
+      // Agrupar por título e ordenar por data
+      const dadosGrafico = {};
+      examesNumericos.forEach(exame => {
+        const titulo = exame.titulo;
+        if (!dadosGrafico[titulo]) {
+          dadosGrafico[titulo] = [];
+        }
+        dadosGrafico[titulo].push({
+          data: exame.data_exame,
+          valor: parseFloat(exame.valor),
+          unidade: exame.unidade || ''
+        });
+      });
+
+      // Ordenar cada série por data
+      Object.keys(dadosGrafico).forEach(titulo => {
+        dadosGrafico[titulo].sort((a, b) => new Date(a.data) - new Date(b.data));
+      });
+
+      return dadosGrafico;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+
+  obterNomesExamesUnicos: async () => {
+    try {
+      const response = await api.get('/exames/nomes-unicos');
       return response.data;
     } catch (error) {
       throw error.response ? error.response.data : { error: 'Erro de conexão' };
@@ -495,47 +669,49 @@ export const consultasService = {
   }
 };
 
-// Serviço de configuração de IA
-export const aiConfigService = {
-  obterProvedores: async () => {
+
+
+// Serviço de produtos
+export const produtosService = {
+  listar: async () => {
     try {
-      const response = await api.get('/ai-config/providers');
+      const response = await api.get('/produtos');
       return response.data;
     } catch (error) {
       throw error.response ? error.response.data : { error: 'Erro de conexão' };
     }
   },
   
-  obterConfiguracao: async () => {
+  obter: async (id) => {
     try {
-      const response = await api.get('/ai-config/config');
+      const response = await api.get(`/produtos/${id}`);
       return response.data;
     } catch (error) {
       throw error.response ? error.response.data : { error: 'Erro de conexão' };
     }
   },
   
-  atualizarConfiguracao: async (config) => {
+  criar: async (produto) => {
     try {
-      const response = await api.post('/ai-config/config', config);
+      const response = await api.post('/produtos', produto);
       return response.data;
     } catch (error) {
       throw error.response ? error.response.data : { error: 'Erro de conexão' };
     }
   },
   
-  testarConfiguracao: async (config) => {
+  atualizar: async (id, produto) => {
     try {
-      const response = await api.post('/ai-config/test', config);
+      const response = await api.put(`/produtos/${id}`, produto);
       return response.data;
     } catch (error) {
       throw error.response ? error.response.data : { error: 'Erro de conexão' };
     }
   },
   
-  obterModelosProvedor: async (provider) => {
+  excluir: async (id) => {
     try {
-      const response = await api.get(`/ai-config/models/${provider}`);
+      const response = await api.delete(`/produtos/${id}`);
       return response.data;
     } catch (error) {
       throw error.response ? error.response.data : { error: 'Erro de conexão' };
@@ -613,16 +789,7 @@ export const importExportService = {
     }
   },
   
-  chatComDados: async (pacienteId, pergunta) => {
-    try {
-      const response = await api.post(`/import-export/chat/patient/${pacienteId}`, {
-        question: pergunta
-      });
-      return response.data;
-    } catch (error) {
-      throw error.response ? error.response.data : { error: 'Erro de conexão' };
-    }
-  }
+  
 };
 
 export default api;

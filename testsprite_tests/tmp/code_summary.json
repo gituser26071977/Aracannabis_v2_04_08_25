@@ -1,0 +1,73 @@
+{
+  "tech_stacks": {
+    "frontend": {
+      "framework": "React",
+      "ui_library": "Material-UI (MUI)",
+      "charting": "Chart.js, Recharts",
+      "calendar": "FullCalendar",
+      "http_client": "Axios",
+      "routing": "React Router DOM",
+      "state_management": "React Context API",
+      "build_tool": "React Scripts"
+    },
+    "backend": {
+      "framework": "Flask",
+      "orm": "SQLAlchemy",
+      "authentication": "Flask-JWT-Extended",
+      "cors": "Flask-CORS",
+      "database": "SQLite/PostgreSQL",
+      "rate_limiting": "Flask-Limiter",
+      "migrations": "Flask-Migrate",
+      "environment": "python-dotenv"
+    },
+    "additional": {
+      "payment": "MercadoPago",
+      "data_processing": "Pandas"
+    }
+  },
+  "features": [
+    "Patient management system",
+    "Symptom tracking and charting",
+    "Medication dosage management",
+    "Medical evolution records",
+    "Exam and document management",
+    "LGPD (Brazilian GDPR) compliance",
+    "Professional registration",
+    "Import/export functionality",
+    "Appointment scheduling",
+    "Payment integration",
+    "Security measures implementation",
+    "Privacy policy management",
+    "Consent forms",
+    "Data subject rights management"
+  ],
+  "project_structure": {
+    "frontend": "React application with component-based architecture",
+    "backend": "Flask application with blueprint modular structure",
+    "database": "SQLAlchemy models with migrations",
+    "routes": "Modular API endpoints for different functionalities"
+  },
+  "key_components": {
+    "frontend": [
+      "PatientList",
+      "PatientDetails",
+      "SymptomsChart",
+      "DosageManager",
+      "EvolutionManager",
+      "ExameManager",
+      "Login components",
+      "Security measures",
+      "LGPD compliance"
+    ],
+    "backend": [
+      "Authentication routes",
+      "Patient management routes",
+      "Symptom tracking routes",
+      "Dosage management routes",
+      "Evolution management routes",
+      "Exam management routes",
+      "Import/export routes",
+      "LGPD compliance routes"
+    ]
+  }
+}

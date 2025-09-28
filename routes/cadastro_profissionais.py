@@ -4,40 +4,21 @@ Rotas para cadastro de profissionais
 
 from flask import Blueprint, request, jsonify, current_app
 from werkzeug.security import generate_password_hash
-import sqlite3
-import os
+from models import db, Profissional, SolicitacoesCadastro
 import re
 import secrets
 import string
 from datetime import datetime, timedelta
-from services.email_service import email_service
+from services.email_service import EmailService
+from sqlalchemy.exc import IntegrityError
+
+email_service = EmailService()
 
 cadastro_profissionais_bp = Blueprint('cadastro_profissionais', __name__)
 
-def get_db_connection():
-    """Conectar ao banco de dados SQLite"""
-    db_path = os.path.join('instance', 'aracannabis.db')
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    return conn
-
 def validar_crm(crm, uf):
     """Validar formato do CRM"""
-    if not crm or not uf:
-        return False
-    
-    # Remover espaços e caracteres especiais
-    crm_clean = re.sub(r'[^\d]', '', crm)
-    
-    # CRM deve ter entre 4 e 6 dígitos
-    if len(crm_clean) < 4 or len(crm_clean) > 6:
-        return False
-    
-    # UF deve ter 2 caracteres
-    if len(uf) != 2:
-        return False
-    
-    return True
+    return crm and uf and crm.isdigit() and 4 <= len(crm) <= 6 and len(uf) == 2
 
 def validar_email(email):
     """Validar formato do email"""
@@ -46,388 +27,131 @@ def validar_email(email):
 
 def gerar_senha_temporaria():
     """Gerar senha temporária segura"""
-    # Gerar senha com 12 caracteres: letras maiúsculas, minúsculas e números
     alphabet = string.ascii_letters + string.digits
-    senha = ''.join(secrets.choice(alphabet) for _ in range(12))
-    return senha
+    return ''.join(secrets.choice(alphabet) for _ in range(12))
 
 @cadastro_profissionais_bp.route('/solicitar-cadastro', methods=['POST'])
 def solicitar_cadastro():
     """Solicitar cadastro de novo profissional"""
     try:
         data = request.get_json()
-        
-        # Validar dados obrigatórios
         required_fields = ['nome', 'email', 'crm', 'uf_crm']
-        for field in required_fields:
-            if not data.get(field):
-                return jsonify({
-                    'success': False,
-                    'error': f'Campo {field} é obrigatório'
-                }), 400
-        
+        if not all(field in data and data[field] for field in required_fields):
+            return jsonify({'success': False, 'error': 'Todos os campos obrigatórios devem ser preenchidos.'}), 400
+
         nome = data['nome'].strip()
         email = data['email'].strip().lower()
         crm = data['crm'].strip()
         uf_crm = data['uf_crm'].strip().upper()
-        telefone = data.get('telefone', '').strip()
-        especialidade = data.get('especialidade', '').strip()
-        instituicao = data.get('instituicao', '').strip()
-        
-        # Validações
+
         if len(nome) < 2:
-            return jsonify({
-                'success': False,
-                'error': 'Nome deve ter pelo menos 2 caracteres'
-            }), 400
-        
+            return jsonify({'success': False, 'error': 'Nome deve ter pelo menos 2 caracteres'}), 400
         if not validar_email(email):
-            return jsonify({
-                'success': False,
-                'error': 'Email inválido'
-            }), 400
-        
+            return jsonify({'success': False, 'error': 'Email inválido'}), 400
         if not validar_crm(crm, uf_crm):
-            return jsonify({
-                'success': False,
-                'error': 'CRM ou UF inválidos'
-            }), 400
-        
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        try:
-            # Verificar se email já existe
-            cursor.execute(
-                'SELECT id FROM solicitacoes_cadastro WHERE email = ?',
-                (email,)
-            )
-            if cursor.fetchone():
-                return jsonify({
-                    'success': False,
-                    'error': 'Email já cadastrado'
-                }), 400
-            
-            # Verificar se CRM já existe
-            cursor.execute(
-                'SELECT id FROM solicitacoes_cadastro WHERE crm = ? AND uf_crm = ?',
-                (crm, uf_crm)
-            )
-            if cursor.fetchone():
-                return jsonify({
-                    'success': False,
-                    'error': 'CRM já cadastrado'
-                }), 400
-            
-            # Verificar se já existe na tabela de profissionais
-            cursor.execute(
-                'SELECT id FROM profissionais WHERE crm = ? AND uf_crm = ?',
-                (crm, uf_crm)
-            )
-            if cursor.fetchone():
-                return jsonify({
-                    'success': False,
-                    'error': 'CRM já cadastrado no sistema'
-                }), 400
-            
-            # Inserir solicitação
-            cursor.execute('''
-                INSERT INTO solicitacoes_cadastro 
-                (nome, email, crm, uf_crm, telefone, especialidade, instituicao, status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 'pendente')
-            ''', (nome, email, crm, uf_crm, telefone, especialidade, instituicao))
-            
-            solicitacao_id = cursor.lastrowid
-            conn.commit()
-            
-            return jsonify({
-                'success': True,
-                'message': 'Solicitação de cadastro enviada com sucesso',
-                'solicitacao_id': solicitacao_id
-            })
-            
-        finally:
-            conn.close()
-            
+            return jsonify({'success': False, 'error': 'CRM ou UF inválidos'}), 400
+
+        if SolicitacoesCadastro.query.filter_by(email=email).first() or Profissional.query.filter_by(email=email).first():
+            return jsonify({'success': False, 'error': 'Email já cadastrado'}), 409
+        if SolicitacoesCadastro.query.filter_by(crm=crm, uf_crm=uf_crm).first() or Profissional.query.filter_by(crm=crm, uf_crm=uf_crm).first():
+            return jsonify({'success': False, 'error': 'CRM já cadastrado'}), 409
+
+        nova_solicitacao = SolicitacoesCadastro(
+            nome=nome, email=email, crm=crm, uf_crm=uf_crm,
+            telefone=data.get('telefone', '').strip(),
+            especialidade=data.get('especialidade', '').strip(),
+            instituicao=data.get('instituicao', '').strip()
+        )
+        db.session.add(nova_solicitacao)
+        db.session.commit()
+
+        return jsonify({'success': True, 'message': 'Solicitação enviada.', 'id': nova_solicitacao.id}), 201
+
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': 'Dados duplicados.'}), 409
     except Exception as e:
-        current_app.logger.error(f"Erro ao solicitar cadastro: {e}")
-        return jsonify({
-            'success': False,
-            'error': 'Erro interno do servidor'
-        }), 500
+        db.session.rollback()
+        current_app.logger.error(f"Erro: {e}")
+        return jsonify({'success': False, 'error': 'Erro interno.'}), 500
 
 @cadastro_profissionais_bp.route('/listar-solicitacoes', methods=['GET'])
 def listar_solicitacoes():
-    """Listar solicitações de cadastro (apenas para admins)"""
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-            SELECT 
-                s.*,
-                p.nome as aprovado_por_nome
-            FROM solicitacoes_cadastro s
-            LEFT JOIN profissionais p ON s.aprovado_por = p.id
-            ORDER BY s.data_solicitacao DESC
-        ''')
-        
-        solicitacoes = []
-        for row in cursor.fetchall():
-            solicitacoes.append({
-                'id': row['id'],
-                'nome': row['nome'],
-                'email': row['email'],
-                'crm': row['crm'],
-                'uf_crm': row['uf_crm'],
-                'telefone': row['telefone'],
-                'especialidade': row['especialidade'],
-                'instituicao': row['instituicao'],
-                'status': row['status'],
-                'data_solicitacao': row['data_solicitacao'],
-                'data_aprovacao': row['data_aprovacao'],
-                'observacoes': row['observacoes'],
-                'aprovado_por_nome': row['aprovado_por_nome']
-            })
-        
-        conn.close()
-        
-        return jsonify({
-            'success': True,
-            'solicitacoes': solicitacoes
-        })
-        
+        solicitacoes = SolicitacoesCadastro.query.order_by(SolicitacoesCadastro.data_solicitacao.desc()).all()
+        return jsonify({'success': True, 'solicitacoes': [s.to_dict() for s in solicitacoes]})
     except Exception as e:
-        current_app.logger.error(f"Erro ao listar solicitações: {e}")
-        return jsonify({
-            'success': False,
-            'error': 'Erro interno do servidor'
-        }), 500
+        current_app.logger.error(f"Erro: {e}")
+        return jsonify({'success': False, 'error': 'Erro interno.'}), 500
 
 @cadastro_profissionais_bp.route('/aprovar-solicitacao/<int:solicitacao_id>', methods=['POST'])
 def aprovar_solicitacao(solicitacao_id):
-    """Aprovar solicitação e criar conta temporária"""
     try:
-        data = request.get_json()
-        observacoes = data.get('observacoes', '')
-        
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        try:
-            # Buscar solicitação
-            cursor.execute(
-                'SELECT * FROM solicitacoes_cadastro WHERE id = ? AND status = "pendente"',
-                (solicitacao_id,)
-            )
-            solicitacao = cursor.fetchone()
-            
-            if not solicitacao:
-                return jsonify({
-                    'success': False,
-                    'error': 'Solicitação não encontrada ou já processada'
-                }), 404
-            
-            # Gerar senha temporária
-            senha_temporaria = gerar_senha_temporaria()
-            senha_hash = generate_password_hash(senha_temporaria)
-            
-            # Gerar nome de usuário único
-            usuario_base = solicitacao['email'].split('@')[0]
-            usuario = usuario_base
-            contador = 1
-            
-            while True:
-                cursor.execute('SELECT id FROM profissionais WHERE usuario = ?', (usuario,))
-                if not cursor.fetchone():
-                    break
-                usuario = f"{usuario_base}{contador}"
-                contador += 1
-            
-            data_expiracao = datetime.now() + timedelta(days=7)
-            
-            # Criar profissional
-            cursor.execute('''
-                INSERT INTO profissionais 
-                (nome, crm, uf_crm, usuario, senha, email, telefone, especialidade, instituicao, 
-                 ativo, tipo_conta, data_expiracao)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'temporaria', ?)
-            ''', (
-                solicitacao['nome'],
-                solicitacao['crm'],
-                solicitacao['uf_crm'],
-                usuario,
-                senha_hash,
-                solicitacao['email'],
-                solicitacao['telefone'],
-                solicitacao['especialidade'],
-                solicitacao['instituicao'],
-                data_expiracao.isoformat()
-            ))
-            
-            profissional_id = cursor.lastrowid
-            
-            # Criar registro de senha temporária
-            cursor.execute('''
-                INSERT INTO senhas_temporarias 
-                (usuario_id, senha_hash, data_expiracao, usado)
-                VALUES (?, ?, ?, 0)
-            ''', (
-                profissional_id,
-                senha_hash,
-                data_expiracao.isoformat()
-            ))
-            
-            # Atualizar solicitação
-            cursor.execute('''
-                UPDATE solicitacoes_cadastro 
-                SET status = 'aprovada', data_aprovacao = ?, observacoes = ?, aprovado_por = ?
-                WHERE id = ?
-            ''', (datetime.now().isoformat(), observacoes, 1, solicitacao_id))  # TODO: usar ID do admin logado
-            
-            conn.commit()
-            
-            # Enviar email real
-            email_enviado = email_service.send_approval_email(
-                solicitacao['email'], 
-                solicitacao['nome'], 
-                usuario, 
-                senha_temporaria, 
-                data_expiracao
-            )
-            
-            if not email_enviado:
-                current_app.logger.warning(f"Falha ao enviar email para {solicitacao['email']}")
-                # Continuar mesmo se o email falhar
-            
-            return jsonify({
-                'success': True,
-                'message': 'Solicitação aprovada e conta criada com sucesso',
-                'profissional_id': profissional_id,
-                'usuario': usuario,
-                'email_enviado': email_enviado,
-                'data_expiracao': data_expiracao.isoformat()
-            })
-            
-        finally:
-            conn.close()
-            
+        solicitacao = SolicitacoesCadastro.query.get(solicitacao_id)
+        if not solicitacao or solicitacao.status != 'pendente':
+            return jsonify({'success': False, 'error': 'Solicitação inválida.'}), 404
+
+        # Gerar credenciais
+        senha_temporaria = gerar_senha_temporaria()
+        usuario_base = solicitacao.email.split('@')[0]
+        usuario = usuario_base
+        contador = 1
+        while Profissional.query.filter_by(usuario=usuario).first():
+            usuario = f"{usuario_base}{contador}"
+            contador += 1
+
+        novo_profissional = Profissional(
+            nome=solicitacao.nome, 
+            crm=solicitacao.crm, 
+            uf_crm=solicitacao.uf_crm,
+            usuario=usuario, 
+            senha=generate_password_hash(senha_temporaria), 
+            email=solicitacao.email,
+            telefone=solicitacao.telefone, 
+            especialidade=solicitacao.especialidade, 
+            instituicao=solicitacao.instituicao,
+            ativo=True, 
+            tipo_conta='temporaria', 
+            data_expiracao=datetime.now() + timedelta(days=7)
+        )
+        db.session.add(novo_profissional)
+
+        solicitacao.status = 'aprovada'
+        solicitacao.data_aprovacao = datetime.now()
+        # solicitacao.aprovado_por = admin_id # Implementar com autenticação de admin
+
+        db.session.commit()
+
+        email_service.send_approval_email(solicitacao.email, solicitacao.nome, usuario, senha_temporaria, novo_profissional.data_expiracao)
+
+        return jsonify({'success': True, 'message': 'Solicitação aprovada.'})
+
     except Exception as e:
-        current_app.logger.error(f"Erro ao aprovar solicitação: {e}")
-        return jsonify({
-            'success': False,
-            'error': 'Erro interno do servidor'
-        }), 500
+        db.session.rollback()
+        current_app.logger.error(f"Erro: {e}")
+        return jsonify({'success': False, 'error': 'Erro interno.'}), 500
 
 @cadastro_profissionais_bp.route('/rejeitar-solicitacao/<int:solicitacao_id>', methods=['POST'])
 def rejeitar_solicitacao(solicitacao_id):
-    """Rejeitar solicitação de cadastro"""
     try:
+        solicitacao = SolicitacoesCadastro.query.get(solicitacao_id)
+        if not solicitacao or solicitacao.status != 'pendente':
+            return jsonify({'success': False, 'error': 'Solicitação inválida.'}), 404
+
         data = request.get_json()
         observacoes = data.get('observacoes', '')
-        
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        try:
-            # Buscar solicitação
-            cursor.execute(
-                'SELECT * FROM solicitacoes_cadastro WHERE id = ? AND status = "pendente"',
-                (solicitacao_id,)
-            )
-            solicitacao = cursor.fetchone()
-            
-            if not solicitacao:
-                return jsonify({
-                    'success': False,
-                    'error': 'Solicitação não encontrada ou já processada'
-                }), 404
-            
-            # Atualizar solicitação
-            cursor.execute('''
-                UPDATE solicitacoes_cadastro 
-                SET status = 'rejeitada', observacoes = ?, aprovado_por = ?
-                WHERE id = ?
-            ''', (observacoes, 1, solicitacao_id))  # TODO: usar ID do admin logado
-            
-            conn.commit()
-            
-            # Enviar email de rejeição
-            email_enviado = email_service.send_rejection_email(
-                solicitacao['email'], 
-                solicitacao['nome'], 
-                observacoes
-            )
-            
-            if not email_enviado:
-                current_app.logger.warning(f"Falha ao enviar email de rejeição para {solicitacao['email']}")
-            
-            return jsonify({
-                'success': True,
-                'message': 'Solicitação rejeitada com sucesso',
-                'email_enviado': email_enviado
-            })
-            
-        finally:
-            conn.close()
-            
-    except Exception as e:
-        current_app.logger.error(f"Erro ao rejeitar solicitação: {e}")
-        return jsonify({
-            'success': False,
-            'error': 'Erro interno do servidor'
-        }), 500
 
-@cadastro_profissionais_bp.route('/status-solicitacao/<email>', methods=['GET'])
-def status_solicitacao(email):
-    """Verificar status de solicitação por email"""
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute(
-            'SELECT status, data_solicitacao, data_aprovacao, observacoes FROM solicitacoes_cadastro WHERE email = ?',
-            (email.lower(),)
-        )
-        
-        solicitacao = cursor.fetchone()
-        conn.close()
-        
-        if not solicitacao:
-            return jsonify({
-                'success': False,
-                'error': 'Solicitação não encontrada'
-            }), 404
-        
-        return jsonify({
-            'success': True,
-            'status': solicitacao['status'],
-            'data_solicitacao': solicitacao['data_solicitacao'],
-            'data_aprovacao': solicitacao['data_aprovacao'],
-            'observacoes': solicitacao['observacoes']
-        })
-        
-    except Exception as e:
-        current_app.logger.error(f"Erro ao verificar status: {e}")
-        return jsonify({
-            'success': False,
-            'error': 'Erro interno do servidor'
-        }), 500
+        solicitacao.status = 'rejeitada'
+        solicitacao.observacoes = observacoes
+        # solicitacao.aprovado_por = admin_id # Implementar com autenticação de admin
 
-@cadastro_profissionais_bp.route('/testar-email', methods=['POST'])
-def testar_email():
-    """Testar configuração de email"""
-    try:
-        success, message = email_service.test_connection()
-        
-        return jsonify({
-            'success': success,
-            'message': message
-        })
-        
+        db.session.commit()
+
+        email_service.send_rejection_email(solicitacao.email, solicitacao.nome, observacoes)
+
+        return jsonify({'success': True, 'message': 'Solicitação rejeitada.'})
+
     except Exception as e:
-        current_app.logger.error(f"Erro ao testar email: {e}")
-        return jsonify({
-            'success': False,
-            'error': 'Erro interno do servidor'
-        }), 500
+        db.session.rollback()
+        current_app.logger.error(f"Erro: {e}")
+        return jsonify({'success': False, 'error': 'Erro interno.'}), 500
