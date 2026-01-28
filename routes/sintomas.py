@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from models import db, Sintoma, Paciente, LogAtividade
+from models import db, Sintoma, Paciente, LogAtividade, SnapIVTeste, PHQ9Teste, GAD7Teste
 from datetime import datetime, timedelta
 
 sintomas_bp = Blueprint('sintomas', __name__)
@@ -182,13 +182,8 @@ def listar_sintomas_padrao():
     sintomas_padrao = [
         'Dor', 
         'Ansiedade', 
-        'Medo', 
-        'Dificuldade de raciocínio', 
-        'Insônia', 
-        'Apetite', 
-        'Humor', 
-        'Energia', 
-        'Memória'
+        'Insônia',
+        'Depressão'
     ]
     
     try:
@@ -236,13 +231,8 @@ def registrar_sintoma_personalizado():
     sintomas_padrao = [
         'Dor', 
         'Ansiedade', 
-        'Medo', 
-        'Dificuldade de raciocínio', 
-        'Insônia', 
-        'Apetite', 
-        'Humor', 
-        'Energia', 
-        'Memória'
+        'Insônia',
+        'Depressão'
     ]
     
     if nome_sintoma in sintomas_padrao:
@@ -456,8 +446,106 @@ def dados_grafico_sintomas(paciente_id):
         
         dados_grafico[nome_sintoma]['data'].append({
             'x': data_str,
-            'y': sintoma.intensidade
+            'y': sintoma.intensidade,
+            'original_value': sintoma.intensidade,
+            'max_value': 10
         })
+
+    # Adicionar dados do SNAP-IV (TDAH)
+    snap_query = SnapIVTeste.query.filter_by(paciente_id=paciente_id)
+    if data_inicio_calculada:
+        snap_query = snap_query.filter(SnapIVTeste.data_realizacao >= data_inicio_calculada)
+    if data_fim_param:
+        try:
+            data_fim_obj = datetime.strptime(data_fim_param, '%Y-%m-%d').date()
+            snap_query = snap_query.filter(SnapIVTeste.data_realizacao <= datetime.combine(data_fim_obj, datetime.max.time()))
+        except:
+            pass
+            
+    snap_tests = snap_query.order_by(SnapIVTeste.data_realizacao).all()
+    
+    if snap_tests:
+        dados_grafico['TDAH - Desatenção'] = {'label': 'TDAH - Desatenção', 'data': []}
+        dados_grafico['TDAH - Hiperatividade'] = {'label': 'TDAH - Hiperatividade', 'data': []}
+        
+        for teste in snap_tests:
+            data_str = teste.data_realizacao.date().isoformat()
+            
+            # Normalizar Desatenção (Max 27 -> 10)
+            y_desatencao = round((teste.pontos_desatencao / 27) * 10, 2)
+            dados_grafico['TDAH - Desatenção']['data'].append({
+                'x': data_str,
+                'y': y_desatencao,
+                'original_value': teste.pontos_desatencao,
+                'max_value': 27
+            })
+            
+            # Normalizar Hiperatividade (Max 27 -> 10)
+            y_hiperatividade = round((teste.pontos_hiperatividade / 27) * 10, 2)
+            dados_grafico['TDAH - Hiperatividade']['data'].append({
+                'x': data_str,
+                'y': y_hiperatividade,
+                'original_value': teste.pontos_hiperatividade,
+                'max_value': 27
+            })
+
+    # Adicionar dados do PHQ-9 (Depressão)
+    phq9_query = PHQ9Teste.query.filter_by(paciente_id=paciente_id)
+    if data_inicio_calculada:
+        phq9_query = phq9_query.filter(PHQ9Teste.data_realizacao >= data_inicio_calculada)
+    if data_fim_param:
+        try:
+            data_fim_obj = datetime.strptime(data_fim_param, '%Y-%m-%d').date()
+            phq9_query = phq9_query.filter(PHQ9Teste.data_realizacao <= datetime.combine(data_fim_obj, datetime.max.time()))
+        except:
+            pass
+            
+    phq9_tests = phq9_query.order_by(PHQ9Teste.data_realizacao).all()
+    
+    if phq9_tests:
+        dados_grafico['Teste Depressão (PHQ-9)'] = {'label': 'Teste Depressão (PHQ-9)', 'data': []}
+        
+        for teste in phq9_tests:
+            data_str = teste.data_realizacao.date().isoformat()
+            
+            # Normalizar PHQ-9 (Max 27 -> 10)
+            y_phq9 = round((teste.pontuacao_total / 27) * 10, 2)
+            
+            dados_grafico['Teste Depressão (PHQ-9)']['data'].append({
+                'x': data_str,
+                'y': y_phq9,
+                'original_value': teste.pontuacao_total,
+                'max_value': 27
+            })
+
+    # Adicionar dados do GAD-7 (Ansiedade)
+    gad7_query = GAD7Teste.query.filter_by(paciente_id=paciente_id)
+    if data_inicio_calculada:
+        gad7_query = gad7_query.filter(GAD7Teste.data_realizacao >= data_inicio_calculada)
+    if data_fim_param:
+        try:
+            data_fim_obj = datetime.strptime(data_fim_param, '%Y-%m-%d').date()
+            gad7_query = gad7_query.filter(GAD7Teste.data_realizacao <= datetime.combine(data_fim_obj, datetime.max.time()))
+        except:
+            pass
+
+    gad7_tests = gad7_query.order_by(GAD7Teste.data_realizacao).all()
+
+    if gad7_tests:
+        dados_grafico['Teste Ansiedade (GAD-7)'] = {'label': 'Teste Ansiedade (GAD-7)', 'data': []}
+
+        for teste in gad7_tests:
+            data_str = teste.data_realizacao.date().isoformat()
+
+            # Normalizar GAD-7 (Max 21 -> 10)
+            y_gad7 = round((teste.pontuacao_total / 21) * 10, 2)
+
+            dados_grafico['Teste Ansiedade (GAD-7)']['data'].append({
+                'x': data_str,
+                'y': y_gad7,
+                'original_value': teste.pontuacao_total,
+                'max_value': 21
+            })
     
     # Ordenar os dados de cada sintoma por data para garantir ordem cronológica crescente
     for sintoma_nome in dados_grafico:

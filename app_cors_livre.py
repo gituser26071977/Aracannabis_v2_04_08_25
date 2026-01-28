@@ -42,12 +42,14 @@ def create_app():
     # Inicializar rate limiter
     limiter = init_limiter(app)
 
-    # CORS com origens permitidas
+    # CORS amplo para front (localhost:3000) e acessos externos; se quiser restringir, ajuste ALLOWED_ORIGINS em security_config
     CORS(app,
          origins=ALLOWED_ORIGINS,
          methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-         allow_headers=["Content-Type", "Authorization", "X-CSRF-Token"],
-         supports_credentials=True)
+         allow_headers=["Content-Type", "Authorization", "X-CSRF-Token", "X-Requested-With"],
+         expose_headers=["Content-Type", "Authorization", "X-CSRF-Token"],
+         supports_credentials=True,
+         max_age=86400)
     
     # Handler para arquivos muito grandes
     @app.errorhandler(413)
@@ -112,8 +114,17 @@ def create_app():
     from routes.cadastro_profissionais import cadastro_profissionais_bp as cadastro_prof_bp
     from routes.exames import exames_bp
     from routes.anuncios import anuncios_bp
-    # from routes.ai_config import ai_config_bp  # TEMPORARIAMENTE DESABILITADO
-    
+    from routes.snap_iv import snap_iv_bp
+    from routes.beck_depression import beck_depression_bp
+    from routes.phq9 import phq9_bp
+    from routes.ai_config import ai_config_bp
+    from routes.admin import admin_bp
+    from routes.ai_management import ai_management_bp
+    from routes.crew_ai import crew_ai_bp
+    from routes.billing import billing_bp
+    from routes.ai_chat_simples import ai_chat_simples_bp
+    from routes.gad7 import gad7_bp
+
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(exames_bp)
     app.register_blueprint(pacientes_bp, url_prefix='/api/pacientes')
@@ -127,7 +138,29 @@ def create_app():
     app.register_blueprint(produtos_bp, url_prefix='/api')
     app.register_blueprint(cadastro_prof_bp, url_prefix='/api/cadastro_profissionais')
     app.register_blueprint(anuncios_bp, url_prefix='/api')
-    # app.register_blueprint(ai_config_bp, url_prefix='/api/ai-config')  # TEMPORARIAMENTE DESABILITADO
+    app.register_blueprint(snap_iv_bp, url_prefix='/api/snap-iv')
+    app.register_blueprint(beck_depression_bp, url_prefix='/api/beck-depression')
+    app.register_blueprint(phq9_bp, url_prefix='/api/phq9')
+    app.register_blueprint(gad7_bp, url_prefix='/api/gad7')
+    from routes.mercadopago import mercadopago_bp
+    app.register_blueprint(mercadopago_bp, url_prefix='/api/mercadopago')
+    from routes.dashboard import dashboard_bp
+    app.register_blueprint(dashboard_bp, url_prefix='/api/dashboard')
+    from routes.planos import planos_bp
+    app.register_blueprint(planos_bp, url_prefix='/api/planos')
+    app.register_blueprint(ai_config_bp, url_prefix='/api/ai-config')
+    from routes.mobile_upload import mobile_upload_bp
+    app.register_blueprint(mobile_upload_bp, url_prefix='/api')
+    app.register_blueprint(admin_bp, url_prefix='/api/admin')
+    app.register_blueprint(ai_management_bp, url_prefix='/api/ai-management')
+    app.register_blueprint(crew_ai_bp, url_prefix='/api/crew-ai')
+    app.register_blueprint(billing_bp, url_prefix='/api/billing')
+    app.register_blueprint(ai_chat_simples_bp, url_prefix='/api')
+
+    # Inicializar anúncios dentro do contexto da aplicação
+    with app.app_context():
+        from routes.anuncios import init_anuncios_table
+        init_anuncios_table()
 
     # Adicionar headers de segurança a todas as respostas
     @app.after_request

@@ -15,9 +15,10 @@ class EmailService:
         self.password = os.getenv('SMTP_PASSWORD', '')
         self.use_tls = os.getenv('SMTP_USE_TLS', 'True').lower() == 'true'
         self.use_ssl = os.getenv('SMTP_USE_SSL', 'False').lower() == 'true'
-        self.email_from = os.getenv('EMAIL_FROM', 'suporte@agentesinteligentes.pro')
+        self.email_from = os.getenv('EMAIL_FROM', 'suporte.aracannabis@arapath.com.br')
         self.email_from_name = os.getenv('EMAIL_FROM_NAME', 'Aracannabis Sistema')
         self.development_mode = os.getenv('EMAIL_DEVELOPMENT_MODE', 'True').lower() == 'true'
+        print(f"DEBUG: EmailService initialized. User={self.username}, DevMode={self.development_mode}")
         
     def test_connection(self):
         # Testar conexão com o servidor SMTP
@@ -153,6 +154,27 @@ class EmailService:
         # Send email
         return self.send_email(email, subject, html_body)
 
+    def send_password_setup_email(self, email, nome, link_definicao, data_expiracao):
+        subject = "🔐 Defina sua senha - Aracannabis Sistema"
+
+        try:
+            if isinstance(data_expiracao, str):
+                exp_date = datetime.fromisoformat(data_expiracao.replace('Z', '+00:00'))
+            else:
+                exp_date = data_expiracao
+            data_formatada = exp_date.strftime('%d/%m/%Y %H:%M')
+        except Exception:
+            data_formatada = "em 24 horas"
+
+        html_body = f"<p>Olá {nome},</p>"
+        html_body += "<p>Recebemos sua solicitação para definir a senha de acesso ao Aracannabis.</p>"
+        html_body += f"<p><strong>Link para definir senha:</strong> <a href=\"{link_definicao}\">Definir senha</a></p>"
+        html_body += f"<p>Este link expira em: <strong>{data_formatada}</strong></p>"
+        html_body += "<p>Se você não solicitou, ignore este email.</p>"
+        html_body += "<p>Atenciosamente,<br>Equipe Aracannabis</p>"
+
+        return self.send_email(email, subject, html_body)
+
     def send_exam_email(self, to_email, paciente_nome, exame_titulo, exame_data, exame_resultados, observacoes):
         # Enviar email de notificação de exame
         subject = f"🔬 Resultado de Exame - {exame_titulo} - Aracannabis"
@@ -180,3 +202,31 @@ class EmailService:
         
         # Send email
         return self.send_email(to_email, subject, html_body)
+
+    def send_trial_expired_email(self, email, nome):
+        subject = "⏳ Seu período de testes acabou - Aracannabis"
+        
+        html_body = f"<p>Olá {nome},</p>"
+        html_body += "<p>Esperamos que tenha aproveitado seu período de testes no Aracannabis!</p>"
+        html_body += "<p>Seu acesso gratuito de 7 dias expirou.</p>"
+        html_body += "<h3>Para continuar usando o sistema, escolha um de nossos planos:</h3>"
+        html_body += "<ul>"
+        html_body += "<li><strong>Plano Sem IA:</strong> R$ 99,00/mês ou R$ 1.092,96/ano (8% OFF)</li>"
+        html_body += "<li><strong>Plano Com IA:</strong> R$ 250,00/mês ou R$ 2.550,00/ano (15% OFF)</li>"
+        html_body += "</ul>"
+        html_body += "<p>Acesse nossa página de pagamentos para regularizar sua assinatura e desbloquear seu acesso imediatamente:</p>"
+        html_body += f"<p><a href='http://localhost:3010/pagamento?plano=sem_ia'>Regularizar Assinatura</a></p>" # Ajustar URL em produção
+        html_body += "<p>Se tiver dúvidas, entre em contato com nosso suporte.</p>"
+        
+        return self.send_email(email, subject, html_body)
+
+    def send_registration_received_email(self, email, nome):
+        subject = "🌿 Solicitação de Cadastro Recebida - Aracannabis"
+        
+        html_body = f"<p>Olá {nome},</p>"
+        html_body += "<p>Recebemos sua solicitação de cadastro no sistema Aracannabis.</p>"
+        html_body += "<p>Nossa equipe irá analisar seus dados (CRM, etc) e em breve você receberá um email com o resultado.</p>"
+        html_body += "<p>Se aprovado, você terá 7 dias de acesso gratuito para testar a plataforma.</p>"
+        html_body += "<p>Atenciosamente,<br>Equipe Aracannabis</p>"
+        
+        return self.send_email(email, subject, html_body)

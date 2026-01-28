@@ -21,10 +21,11 @@ class MercadoPagoService:
         self.notification_url = os.getenv('MERCADOPAGO_NOTIFICATION_URL')
         
         if not self.access_token:
-            raise ValueError("MERCADOPAGO_ACCESS_TOKEN não configurado no .env")
-        
-        # Inicializar SDK do Mercado Pago
-        self.sdk = mercadopago.SDK(self.access_token)
+            logger.warning("⚠️ MERCADOPAGO_ACCESS_TOKEN não configurado. Funcionalidades de pagamento estarão indisponíveis.")
+            self.sdk = None
+        else:
+            # Inicializar SDK do Mercado Pago
+            self.sdk = mercadopago.SDK(self.access_token)
         
         # Configurar sandbox se necessário
         if self.sandbox:
@@ -43,16 +44,20 @@ class MercadoPagoService:
             Dict com dados da preferência criada
         """
         try:
+            if not self.sdk:
+                return {"success": False, "error": "Integração Mercado Pago não configurada (Token ausente)"}
+
             # Calcular preços
-            preco_info = self._calcular_preco(dados_pedido['periodo'])
+            preco_info = self._calcular_preco(dados_pedido['plano'], dados_pedido['periodo'])
+            plano_nome = self._get_plano_nome(dados_pedido['plano'])
             
             # Dados da preferência
             preference_data = {
                 "items": [
                     {
                         "id": f"aracannabis_{dados_pedido['plano']}_{dados_pedido['periodo']}",
-                        "title": f"Aracannabis - Plano {dados_pedido['plano'].title()}",
-                        "description": f"Assinatura {self._get_periodo_texto(dados_pedido['periodo'])} do sistema Aracannabis",
+                        "title": f"Aracannabis - {plano_nome}",
+                        "description": f"Assinatura {self._get_periodo_texto(dados_pedido['periodo'])} ({plano_nome})",
                         "category_id": "services",
                         "quantity": 1,
                         "currency_id": "BRL",
@@ -87,6 +92,8 @@ class MercadoPagoService:
                     "plano": dados_pedido['plano'],
                     "periodo": dados_pedido['periodo'],
                     "user_id": dados_pedido.get('user_id'),
+                    "email": dados_pedido.get('email'),
+                    "nome": dados_pedido.get('nome'),
                     "sistema": "aracannabis",
                     "versao": "1.0"
                 }
@@ -274,9 +281,13 @@ class MercadoPagoService:
             logger.error(f"Erro ao ativar assinatura: {str(e)}")
             return {"success": False, "error": str(e)}
 
-    def _calcular_preco(self, periodo: str) -> Dict[str, float]:
+    def _calcular_preco(self, plano: str, periodo: str) -> Dict[str, float]:
         """Calcula preço baseado no período"""
-        preco_base = 180.00
+        precos_base = {
+            'sem_ia': 99.00,
+            'com_ia': 250.00
+        }
+        preco_base = precos_base.get(plano, precos_base['sem_ia'])
         
         descontos = {
             'mensal': 0,
@@ -328,13 +339,21 @@ class MercadoPagoService:
         }
         return textos.get(periodo, '1 mês')
 
+    def _get_plano_nome(self, plano: str) -> str:
+        """Converte plano para nome legível"""
+        nomes = {
+            'sem_ia': 'Plano Sem IA',
+            'com_ia': 'Plano Com IA'
+        }
+        return nomes.get(plano, 'Plano Sem IA')
+
     def _get_base_url(self) -> str:
         """Retorna URL base da aplicação"""
         # Em produção, isso viria de uma variável de ambiente
         if self.sandbox:
             return "http://localhost:3000"
         else:
-            return os.getenv('BASE_URL', 'https://seu-dominio.com')
+            return os.getenv('FRONTEND_BASE_URL') or os.getenv('BASE_URL', 'https://seu-dominio.com')
 
 # Instância global do serviço
 mercadopago_service = MercadoPagoService()

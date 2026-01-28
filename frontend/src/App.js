@@ -23,6 +23,11 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import SecurityIcon from '@mui/icons-material/Security';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import PaymentIcon from '@mui/icons-material/Payment';
+import SmartToyIcon from '@mui/icons-material/SmartToy';
+import ChatIcon from '@mui/icons-material/Chat';
+import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
+import SpeedIcon from '@mui/icons-material/Speed';
+import SettingsIcon from '@mui/icons-material/Settings';
 import Paper from '@mui/material/Paper';
 import TextField from '@mui/material/TextField';
 import Alert from '@mui/material/Alert';
@@ -37,7 +42,21 @@ import ConsultasPage from './pages/ConsultasPage';
 import SimpleLogin from './components/SimpleLogin';
 import CadastroProfissionaisPage from './pages/CadastroProfissionaisPage';
 import PagamentoPage from './pages/PagamentoPage';
+import PlanosPage from './pages/PlanosPage';
+import AdminPage from './pages/AdminPage';
+import LandingPage from './pages/LandingPage';
+import InternalDashboard from './pages/InternalDashboard';
+import AIDashboard from './pages/AIDashboard';
+import AIChatPage from './pages/AIChatPage';
+import BillingPage from './pages/BillingPage';
 import AdBanner from './components/AdBanner';
+import AIConfigPage from './pages/AIConfigPage';
+import PasswordSetupRequestPage from './pages/PasswordSetupRequestPage';
+import DefinePasswordPage from './pages/DefinePasswordPage';
+import MobileUploadPage from './pages/MobileUploadPage';
+
+const APP_TITLE = 'Aracannabis Prontuário';
+const APP_SUBTITLE = 'Sistema de Prontuário Eletrônico para Pacientes em Tratamento com Cannabis Medicinal';
 
 // Tema personalizado
 const theme = createTheme({
@@ -54,77 +73,15 @@ const theme = createTheme({
 // Componente de rota protegida
 function ProtectedRoute({ children }) {
   const { currentUser } = useAuth();
-  
+
   if (!currentUser) {
     return <Navigate to="/login" replace />;
   }
-  
+
   return children;
 }
 
-// Componentes de página
-function HomePage() {
-  const { currentUser } = useAuth();
 
-  return (
-    <Paper elevation={3} sx={{ p: { xs: 2, sm: 3, md: 4 }, my: 4 }}>
-      <Box sx={{ textAlign: 'center', mb: 4 }}>
-        <Typography variant="h2" component="h1" gutterBottom sx={{ fontWeight: 'bold', color: 'primary.main' }}>
-          Aracannabis
-        </Typography>
-        <Typography variant="h5" component="h2" color="text.secondary" gutterBottom>
-          Sistema de Prontuário Eletrônico para Pacientes de Cannabis Medicinal
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 2, fontStyle: 'italic' }}>
-          Versão Básica (Sem IA)
-        </Typography>
-      </Box>
-
-      <Box sx={{ textAlign: 'left', maxWidth: '800px', mx: 'auto' }}>
-        <Typography variant="body1" paragraph sx={{ fontSize: '1.1rem', lineHeight: 1.7 }}>
-          Bem-vindo{currentUser ? `, ${currentUser.nome}` : ''} ao sistema de prontuário eletrônico Aracannabis.
-        </Typography>
-        <Typography variant="body1" paragraph sx={{ fontSize: '1.1rem', lineHeight: 1.7 }}>
-          Este sistema foi cuidadosamente desenvolvido para oferecer uma plataforma segura e eficiente 
-          para o gerenciamento completo de informações de pacientes, acompanhamento de sintomas, 
-          ajuste de dosagens e registro da evolução do tratamento com cannabis medicinal.
-        </Typography>
-        <Typography variant="body1" sx={{ fontSize: '1.1rem', lineHeight: 1.7, mt: 3 }}>
-          Utilize o menu lateral para navegar pelas diversas funcionalidades disponíveis e otimizar 
-          o cuidado e acompanhamento dos seus pacientes.
-        </Typography>
-        
-        {!currentUser && (
-          <>
-            <Box sx={{ mt: 4, p: 3, backgroundColor: '#e8f5e9', borderRadius: 2 }}>
-              <Typography variant="h6" gutterBottom color="primary">
-                🌿 Profissional de Saúde?
-              </Typography>
-              <Typography variant="body1" paragraph>
-                Solicite acesso ao sistema Aracannabis e experimente todas as funcionalidades por 7 dias gratuitamente.
-              </Typography>
-              <Button
-                variant="contained"
-                color="primary"
-                component={Link}
-                to="/cadastro-profissionais"
-                startIcon={<PersonAddIcon />}
-                sx={{ mt: 2 }}
-              >
-                Solicitar Cadastro
-              </Button>
-            </Box>
-            
-            {/* Anúncios para usuários não logados */}
-            <Box sx={{ mt: 4 }}>
-              <AdBanner position="banner" maxAds={3} />
-            </Box>
-          </>
-        )}
-      </Box>
-    </Paper>
-  );
-}
 
 function LoginPage() {
   const [usuario, setUsuario] = useState('');
@@ -138,7 +95,7 @@ function LoginPage() {
     console.log('LOGIN_PAGE: Iniciando processo de login...');
     setLoginError('');
     setLoading(true);
-    
+
     try {
       console.log('LOGIN_PAGE: Chamando função login com:', { usuario, senha: '***' });
       await login(usuario, senha);
@@ -155,15 +112,15 @@ function LoginPage() {
   return (
     <Paper elevation={3} sx={{ p: 4, my: 4, maxWidth: 500, mx: 'auto' }}>
       <Typography variant="h4" component="h1" gutterBottom align="center">
-        Login
+        Acesso ao Sistema
       </Typography>
-      
+
       {(loginError || error) && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {loginError || error}
         </Alert>
       )}
-      
+
       <form onSubmit={handleSubmit}>
         <TextField
           label="Usuário"
@@ -184,26 +141,48 @@ function LoginPage() {
           onChange={(e) => setSenha(e.target.value)}
           required
         />
+
+        {/* LINK DE RECUPERAÇÃO SECUNDÁRIO */}
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
+          <Button
+            component={Link}
+            to="/definir-senha/solicitar"
+            size="medium"
+            color="secondary"
+            sx={{ textTransform: 'none', fontWeight: 'bold' }}
+          >
+            Esqueceu a senha? Clique aqui.
+          </Button>
+        </Box>
+
         <Button
           type="submit"
           variant="contained"
           color="primary"
           fullWidth
-          sx={{ mt: 2 }}
+          sx={{ mt: 2, height: 50, fontSize: '1.1rem' }}
           disabled={loading}
         >
           {loading ? 'Entrando...' : 'Entrar'}
         </Button>
       </form>
-      
-      <Box sx={{ mt: 2, textAlign: 'center' }}>
-        <Typography variant="body2">
-          Não tem uma conta?{' '}
-          <Link to="/cadastro-profissionais" style={{ color: '#2e7d32', textDecoration: 'none' }}>
+
+      <Box sx={{ mt: 4, display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center' }}>
+
+        <Box sx={{ mt: 1, textAlign: 'center' }}>
+          <Typography variant="body1" color="text.secondary">
+            Não tem uma conta?
+          </Typography>
+          <Button
+            component={Link}
+            to="/cadastro-profissionais"
+            variant="outlined"
+            size="large"
+            sx={{ mt: 1, textTransform: 'none' }}
+          >
             Solicite seu cadastro aqui
-          </Link>
-          {''}
-        </Typography>
+          </Button>
+        </Box>
       </Box>
     </Paper>
   );
@@ -213,14 +192,21 @@ function LoginPage() {
 function NavigationMenu({ open, onClose }) {
   const location = useLocation();
   const { currentUser, logout } = useAuth();
-  
+
   const menuItems = [
     { text: 'Início', icon: <HomeIcon />, path: '/', auth: false },
+    { text: 'Dashboard', icon: <SpeedIcon />, path: '/dashboard', auth: true },
+    { text: 'Assine Agora', icon: <MonetizationOnIcon />, path: '/planos', auth: false, hideWhenLoggedIn: true },
     // Novo atalho para cadastro de profissionais (visível apenas antes do login)
     { text: 'Cadastro de Profissionais', icon: <PersonAddIcon />, path: '/cadastro-profissionais', auth: false, hideWhenLoggedIn: true },
     { text: 'Pacientes', icon: <PersonIcon />, path: '/pacientes', auth: true },
     { text: 'Consultas', icon: <EventIcon />, path: '/consultas', auth: true },
+    { text: 'Chat IA', icon: <ChatIcon />, path: '/assistente-ia', auth: true },
+    { text: 'Configuração de IA/LLM', icon: <SettingsIcon />, path: '/ai-config', auth: true, adminOnly: true },
+    { text: 'Dashboard de IA', icon: <SmartToyIcon />, path: '/ai-dashboard', auth: true, adminOnly: true },
     { text: 'Segurança e LGPD', icon: <SecurityIcon />, path: '/seguranca', auth: false },
+    // Painel administrativo (apenas para admins)
+    { text: 'Painel Admin', icon: <SecurityIcon />, path: '/admin', auth: true, adminOnly: true },
   ];
 
   const authItems = currentUser
@@ -232,16 +218,20 @@ function NavigationMenu({ open, onClose }) {
       <Box sx={{ width: 250 }} role="presentation" onClick={onClose}>
         <List>
           {menuItems
-            .filter(item => 
-              (!item.auth || (item.auth && currentUser)) && 
+            .filter(item => {
+              // Verificar autenticação
+              if (item.auth && !currentUser) return false;
               // Esconder itens marcados como hideWhenLoggedIn quando o usuário estiver logado
-              !(currentUser && item.hideWhenLoggedIn)
-            )
+              if (currentUser && item.hideWhenLoggedIn) return false;
+              // Verificar se é apenas para admin
+              if (item.adminOnly && (!currentUser || currentUser.role !== 'admin')) return false;
+              return true;
+            })
             .map((item) => (
-              <ListItem 
-                button 
-                key={item.text} 
-                component={Link} 
+              <ListItem
+                button
+                key={item.text}
+                component={Link}
                 to={item.path}
                 selected={location.pathname === item.path}
               >
@@ -249,13 +239,13 @@ function NavigationMenu({ open, onClose }) {
                 <ListItemText primary={item.text} />
               </ListItem>
             ))}
-          
+
           <Box sx={{ borderTop: 1, borderColor: 'divider', my: 1 }} />
-          
+
           {authItems.map((item) => (
-            <ListItem 
-              button 
-              key={item.text} 
+            <ListItem
+              button
+              key={item.text}
               component={item.path ? Link : 'div'}
               to={item.path}
               onClick={item.onClick}
@@ -294,7 +284,7 @@ function App() {
             <MenuIcon />
           </IconButton>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            Aracannabis Prontuário - Versão Básica
+            {APP_TITLE}
           </Typography>
           {currentUser && (
             <Typography variant="body1" sx={{ mr: 2 }}>
@@ -302,9 +292,9 @@ function App() {
             </Typography>
           )}
           {currentUser ? (
-<Button color="inherit" onClick={() => window.open(`${process.env.REACT_APP_API_BASE_URL}/api/status`, '_blank')} target="_blank">
-  API
-</Button>
+            <Button color="inherit" onClick={() => window.open(`${process.env.REACT_APP_API_URL || 'http://localhost:5002'}/api/status`, '_blank')} target="_blank">
+              API
+            </Button>
           ) : (
             <Button color="inherit" component={Link} to="/login">
               Login
@@ -315,42 +305,94 @@ function App() {
       <NavigationMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
       <Container maxWidth="lg">
         <Routes>
-          <Route path="/" element={<HomePage />} />
+          <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/dashboard" element={
+            <ProtectedRoute>
+              <InternalDashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/definir-senha/solicitar" element={<PasswordSetupRequestPage />} />
+          <Route path="/definir-senha" element={<DefinePasswordPage />} />
           <Route path="/pagamento" element={<PagamentoPage />} />
+          <Route path="/planos" element={<PlanosPage />} />
           <Route path="/cadastro-profissionais" element={<CadastroProfissionaisPage />} />
           <Route path="/test-login" element={<SimpleLogin />} />
-          <Route 
-            path="/pacientes" 
+          <Route
+            path="/pacientes"
             element={
               <ProtectedRoute>
                 <PacientesPageComponent />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/pacientes/detail/:patientId" 
+          <Route
+            path="/pacientes/detail/:patientId"
             element={
               <ProtectedRoute>
                 <PatientDetailPage />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/pacientes/edit/:patientId" 
+          <Route
+            path="/pacientes/edit/:patientId"
             element={
               <ProtectedRoute>
                 <PatientEditPage />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/consultas" 
+          <Route
+            path="/consultas"
             element={
               <ProtectedRoute>
                 <ConsultasPage />
               </ProtectedRoute>
-            } 
+            }
+          />
+          <Route
+            path="/assistente-ia"
+            element={
+              <ProtectedRoute>
+                <AIChatPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/billing"
+            element={
+              <ProtectedRoute>
+                <BillingPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute>
+                <AdminPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/ai-dashboard"
+            element={
+              <ProtectedRoute>
+                <AIDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/ai-config"
+            element={
+              <ProtectedRoute>
+                <AIConfigPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/mobile-upload/:token"
+            element={<MobileUploadPage />}
           />
           <Route path="/seguranca" element={<SecurityPage />} />
         </Routes>

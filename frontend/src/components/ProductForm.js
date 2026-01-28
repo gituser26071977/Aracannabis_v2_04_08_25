@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
-import { 
-  Grid, 
-  TextField, 
-  Button, 
+import React, { useState, useEffect } from 'react';
+import {
+  Grid,
+  TextField,
+  Button,
   Box,
   Typography
 } from '@mui/material';
 import { Add as AddIcon } from '@mui/icons-material';
 
-const ProductForm = ({ onSubmit, onCancel }) => {
+const ProductForm = ({ onSubmit, onCancel, initialData = {} }) => {
   const [formData, setFormData] = useState({
     nome: '',
     tipo: 'oleo',
@@ -19,7 +19,8 @@ const ProductForm = ({ onSubmit, onCancel }) => {
     gotas_por_ml: 30,
     volume_ml: 30,
     fabricante: '',
-    descricao: ''
+    descricao: '',
+    data_registro: ''
   });
 
   const handleChange = (e) => {
@@ -32,12 +33,12 @@ const ProductForm = ({ onSubmit, onCancel }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
+
     if (!formData.nome.trim()) {
       alert('Nome do produto é obrigatório');
       return;
     }
-    
+
     // Converter valores numéricos
     const processedData = {
       ...formData,
@@ -47,17 +48,34 @@ const ProductForm = ({ onSubmit, onCancel }) => {
       concentracao_cbn: parseFloat(formData.concentracao_cbn) || 0,
       gotas_por_ml: parseInt(formData.gotas_por_ml) || 30,
       volume_ml: parseFloat(formData.volume_ml) || 30
+      // data_registro already string, backend parses it
     };
-    
+
     onSubmit(processedData);
   };
+
+  useEffect(() => {
+    setFormData({
+      nome: initialData.nome || '',
+      tipo: initialData.tipo || 'oleo',
+      concentracao_cbd: initialData.concentracao_cbd ?? '',
+      concentracao_thc: initialData.concentracao_thc ?? '',
+      concentracao_cbg: initialData.concentracao_cbg ?? '',
+      concentracao_cbn: initialData.concentracao_cbn ?? '',
+      gotas_por_ml: initialData.gotas_por_ml ?? 30,
+      volume_ml: initialData.volume_ml ?? 30,
+      fabricante: initialData.fabricante || '',
+      descricao: initialData.descricao || '',
+      data_registro: initialData.data_registro || new Date().toISOString().split('T')[0] // Default to today if new
+    });
+  }, [initialData]);
 
   return (
     <Box component="form" onSubmit={handleSubmit} sx={{ mb: 4 }}>
       <Typography variant="subtitle1" gutterBottom>
         Cadastrar Novo Produto
       </Typography>
-      
+
       <Grid container spacing={2}>
         <Grid item xs={12} sm={6}>
           <TextField
@@ -70,7 +88,7 @@ const ProductForm = ({ onSubmit, onCancel }) => {
             placeholder="Ex: Óleo CBD 10%"
           />
         </Grid>
-        
+
         <Grid item xs={12} sm={6}>
           <TextField
             name="fabricante"
@@ -81,7 +99,21 @@ const ProductForm = ({ onSubmit, onCancel }) => {
             placeholder="Ex: Empresa XYZ"
           />
         </Grid>
-        
+
+        <Grid item xs={12} sm={6}>
+          <TextField
+            name="data_registro"
+            label="Data de Registro"
+            type="date"
+            value={formData.data_registro}
+            onChange={handleChange}
+            fullWidth
+            InputLabelProps={{
+              shrink: true,
+            }}
+          />
+        </Grid>
+
         <Grid item xs={6} sm={3}>
           <TextField
             name="concentracao_cbd"
@@ -93,7 +125,7 @@ const ProductForm = ({ onSubmit, onCancel }) => {
             inputProps={{ min: 0, step: 0.1 }}
           />
         </Grid>
-        
+
         <Grid item xs={6} sm={3}>
           <TextField
             name="concentracao_thc"
@@ -105,7 +137,7 @@ const ProductForm = ({ onSubmit, onCancel }) => {
             inputProps={{ min: 0, step: 0.1 }}
           />
         </Grid>
-        
+
         <Grid item xs={6} sm={3}>
           <TextField
             name="concentracao_cbg"
@@ -117,7 +149,7 @@ const ProductForm = ({ onSubmit, onCancel }) => {
             inputProps={{ min: 0, step: 0.1 }}
           />
         </Grid>
-        
+
         <Grid item xs={6} sm={3}>
           <TextField
             name="concentracao_cbn"
@@ -129,7 +161,7 @@ const ProductForm = ({ onSubmit, onCancel }) => {
             inputProps={{ min: 0, step: 0.1 }}
           />
         </Grid>
-        
+
         <Grid item xs={6} sm={3}>
           <TextField
             name="gotas_por_ml"
@@ -141,7 +173,7 @@ const ProductForm = ({ onSubmit, onCancel }) => {
             inputProps={{ min: 1, max: 50 }}
           />
         </Grid>
-        
+
         <Grid item xs={6} sm={3}>
           <TextField
             name="volume_ml"
@@ -153,7 +185,7 @@ const ProductForm = ({ onSubmit, onCancel }) => {
             inputProps={{ min: 1 }}
           />
         </Grid>
-        
+
         <Grid item xs={12}>
           <TextField
             name="descricao"
@@ -166,7 +198,7 @@ const ProductForm = ({ onSubmit, onCancel }) => {
             placeholder="Descrição detalhada do produto"
           />
         </Grid>
-        
+
         <Grid item xs={12}>
           <Box sx={{ display: 'flex', gap: 2 }}>
             <Button

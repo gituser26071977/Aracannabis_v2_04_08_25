@@ -51,7 +51,8 @@ def solicitar_cadastro():
         if not validar_crm(crm, uf_crm):
             return jsonify({'success': False, 'error': 'CRM ou UF inválidos'}), 400
 
-        if SolicitacoesCadastro.query.filter_by(email=email).first() or Profissional.query.filter_by(email=email).first():
+        # Profissional não possui coluna de email; validamos apenas em solicitações
+        if SolicitacoesCadastro.query.filter_by(email=email).first():
             return jsonify({'success': False, 'error': 'Email já cadastrado'}), 409
         if SolicitacoesCadastro.query.filter_by(crm=crm, uf_crm=uf_crm).first() or Profissional.query.filter_by(crm=crm, uf_crm=uf_crm).first():
             return jsonify({'success': False, 'error': 'CRM já cadastrado'}), 409
@@ -64,6 +65,12 @@ def solicitar_cadastro():
         )
         db.session.add(nova_solicitacao)
         db.session.commit()
+
+        # Enviar email de confirmação de recebimento (novo)
+        try:
+             email_service.send_registration_received_email(nova_solicitacao.email, nova_solicitacao.nome)
+        except Exception as e:
+             current_app.logger.error(f"Erro ao enviar email de boas-vindas: {e}")
 
         return jsonify({'success': True, 'message': 'Solicitação enviada.', 'id': nova_solicitacao.id}), 201
 
@@ -100,18 +107,15 @@ def aprovar_solicitacao(solicitacao_id):
             usuario = f"{usuario_base}{contador}"
             contador += 1
 
+        # Criar profissional apenas com campos existentes na tabela
         novo_profissional = Profissional(
-            nome=solicitacao.nome, 
-            crm=solicitacao.crm, 
+            nome=solicitacao.nome,
+            crm=solicitacao.crm,
             uf_crm=solicitacao.uf_crm,
-            usuario=usuario, 
-            senha=generate_password_hash(senha_temporaria), 
+            usuario=usuario,
             email=solicitacao.email,
-            telefone=solicitacao.telefone, 
-            especialidade=solicitacao.especialidade, 
-            instituicao=solicitacao.instituicao,
-            ativo=True, 
-            tipo_conta='temporaria', 
+            senha=generate_password_hash(senha_temporaria),
+            role='profissional',
             data_expiracao=datetime.now() + timedelta(days=7)
         )
         db.session.add(novo_profissional)

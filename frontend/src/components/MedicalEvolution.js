@@ -209,7 +209,16 @@ const MedicalEvolution = ({ pacienteId, pacienteNome }) => {
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Paper elevation={3} sx={{ p: 3, borderRadius: 2, mb: 4 }}>
+      <Paper
+        elevation={3}
+        sx={{
+          p: 3,
+          borderRadius: 2,
+          mb: 4,
+          bgcolor: '#f8fbf5',
+          border: '1px solid #e0e8db',
+        }}
+      >
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
           <Typography variant="h5" component="h1" color="primary" fontWeight="bold">
             Evolução Médica - {pacienteNome || `Paciente #${pacienteId}`}
@@ -312,13 +321,13 @@ const MedicalEvolution = ({ pacienteId, pacienteNome }) => {
       </Paper>
       
       {/* Diálogo para adicionar/editar evolução */}
-      <Dialog open={openDialog} onClose={handleCloseDialog} fullWidth maxWidth="md">
+      <Dialog open={openDialog} onClose={handleCloseDialog} fullWidth maxWidth="lg">
         <DialogTitle>
           {editingId ? 'Editar Evolução Médica' : 'Nova Evolução Médica'}
         </DialogTitle>
-        <DialogContent>
-          <DialogContentText sx={{ mb: 2 }}>
-            Registre suas observações clínicas, avaliações e recomendações para o tratamento do paciente.
+        <DialogContent sx={{ bgcolor: 'grey.50' }}>
+          <DialogContentText sx={{ mb: 2, fontWeight: 500 }}>
+            Registre a evolução com detalhes. Área ampliada para textos longos e mais conforto de leitura.
           </DialogContentText>
           <TextField
             autoFocus
@@ -328,10 +337,21 @@ const MedicalEvolution = ({ pacienteId, pacienteNome }) => {
             type="text"
             fullWidth
             multiline
-            rows={8}
+            minRows={16}
             variant="outlined"
             value={evolucaoText}
             onChange={(e) => setEvolucaoText(e.target.value)}
+            InputProps={{
+              sx: {
+                fontSize: 16,
+                lineHeight: 1.7,
+                bgcolor: 'white',
+                p: 2,
+                borderRadius: 2,
+              }
+            }}
+            FormHelperTextProps={{ sx: { mt: 1 } }}
+            helperText="Dica: separe por datas, marcadores e sinais vitais para leitura rápida."
           />
         </DialogContent>
         <DialogActions>

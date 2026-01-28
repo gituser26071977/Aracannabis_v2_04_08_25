@@ -24,7 +24,13 @@ import {
   ListItemText,
   ListItemIcon,
   FormControlLabel,
-  Switch
+  Switch,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Divider,
+  Stack
 } from '@mui/material';
 import {
   ExpandMore as ExpandMoreIcon,
@@ -36,9 +42,10 @@ import {
   CheckCircle as CheckCircleIcon,
   Error as ErrorIcon,
   Settings as SettingsIcon,
-  Add as AddIcon
+  Add as AddIcon,
+  Edit as EditIcon
 } from '@mui/icons-material';
-import { aiConfigService } from '../services/api';
+import { aiConfigService, aiManagementService } from '../services/api';
 
 function AIConfigPage() {
   const [providers, setProviders] = useState({});
@@ -55,9 +62,22 @@ function AIConfigPage() {
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('info');
   const [testResult, setTestResult] = useState(null);
+  const [agents, setAgents] = useState([]);
+  const [llmConfigs, setLLMConfigs] = useState([]);
+  const [agentDialogOpen, setAgentDialogOpen] = useState(false);
+  const [agentForm, setAgentForm] = useState({
+    nome: '',
+    role: '',
+    goal: '',
+    backstory: '',
+    llm_config_id: ''
+  });
+  const [editingAgent, setEditingAgent] = useState(null);
+  const [agentSaving, setAgentSaving] = useState(false);
 
   useEffect(() => {
     loadProviders();
+    loadAgentManagement();
   }, []);
 
   const loadProviders = async () => {
@@ -86,6 +106,20 @@ function AIConfigPage() {
       setMessageType('error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadAgentManagement = async () => {
+    try {
+      const [agentData, llmData] = await Promise.all([
+        aiManagementService.getAgents(),
+        aiManagementService.getLLMConfigs()
+      ]);
+      setAgents(agentData.agents || []);
+      setLLMConfigs(llmData.llm_configs || []);
+    } catch (error) {
+      setMessage(`Erro ao carregar agentes/LLMs: ${error.error || error.message}`);
+      setMessageType('error');
     }
   };
 
@@ -121,6 +155,46 @@ function AIConfigPage() {
       if (providers[selectedProvider]) {
         setSelectedModel(providers[selectedProvider].default_model);
       }
+    }
+  };
+
+  const openAgentDialog = (agent) => {
+    setEditingAgent(agent);
+    setAgentForm({
+      nome: agent.nome,
+      role: agent.role,
+      goal: agent.goal,
+      backstory: agent.backstory || '',
+      llm_config_id: agent.llm_config_id ?? ''
+    });
+    setAgentDialogOpen(true);
+  };
+
+  const handleAgentFormChange = (field, value) => {
+    setAgentForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleAgentSave = async () => {
+    if (!editingAgent) return;
+    setAgentSaving(true);
+    try {
+      const payload = {
+        nome: agentForm.nome,
+        role: agentForm.role,
+        goal: agentForm.goal,
+        backstory: agentForm.backstory,
+        llm_config_id: agentForm.llm_config_id || null
+      };
+      await aiManagementService.updateAgent(editingAgent.id, payload);
+      setMessage('Agente atualizado com sucesso');
+      setMessageType('success');
+      await loadAgentManagement();
+      setAgentDialogOpen(false);
+    } catch (error) {
+      setMessage(`Erro ao atualizar agente: ${error.error || error.message}`);
+      setMessageType('error');
+    } finally {
+      setAgentSaving(false);
     }
   };
 
@@ -526,9 +600,122 @@ function AIConfigPage() {
                 </Grid>
               </AccordionDetails>
             </Accordion>
-          ))}
+        ))}
+      </Grid>
+
+        {/* Agentes e seleções de LLM */}
+        <Grid item xs={12}>
+          <Paper elevation={3} sx={{ p: 3, mt: 2 }}>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
+              <Typography variant="h6">Agentes registrados</Typography>
+              <Typography variant="body2" color="text.secondary">
+                {agents.length} agente(s) visível(eis)
+              </Typography>
+            </Stack>
+
+            {agents.length === 0 ? (
+              <Alert severity="info" sx={{ mb: 2 }}>
+                Nenhum agente cadastrado. Crie um agente para começar a delegar tarefas ao Crew.
+              </Alert>
+            ) : (
+              <Stack spacing={2}>
+                {agents.map((agent) => (
+                  <Paper key={agent.id} variant="outlined" sx={{ p: 2 }}>
+                    <Stack direction="row" justifyContent="space-between" alignItems="center">
+                      <Box>
+                        <Typography variant="subtitle1">{agent.nome}</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Papel: {agent.role} • LLM atual: {agent.llm_config?.nome || 'Sem configuração específica'}
+                        </Typography>
+                      </Box>
+                      <Button
+                        variant="outlined"
+                        startIcon={<EditIcon />}
+                        onClick={() => openAgentDialog(agent)}
+                      >
+                        Editar
+                      </Button>
+                    </Stack>
+                  </Paper>
+                ))}
+              </Stack>
+            )}
+
+            <Divider sx={{ my: 3 }} />
+
+            <Typography variant="subtitle1" gutterBottom>
+              LLMs disponíveis ({llmConfigs.length})
+            </Typography>
+            <Stack direction="row" flexWrap="wrap" gap={1}>
+              {llmConfigs.map((config) => (
+                <Chip
+                  key={config.id}
+                  label={`${config.nome} (${config.provider}/${config.model})`}
+                  variant={config.is_default ? 'filled' : 'outlined'}
+                  color={config.is_active ? 'success' : 'default'}
+                />
+              ))}
+            </Stack>
+          </Paper>
         </Grid>
       </Grid>
+
+      <Dialog open={agentDialogOpen} onClose={() => setAgentDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Editar Agente</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2}>
+            <TextField
+              label="Nome"
+              value={agentForm.nome}
+              onChange={(e) => handleAgentFormChange('nome', e.target.value)}
+              fullWidth
+            />
+            <TextField
+              label="Papel"
+              value={agentForm.role}
+              onChange={(e) => handleAgentFormChange('role', e.target.value)}
+              fullWidth
+            />
+            <TextField
+              label="Objetivo (goal)"
+              value={agentForm.goal}
+              onChange={(e) => handleAgentFormChange('goal', e.target.value)}
+              fullWidth
+              multiline
+              minRows={3}
+            />
+            <TextField
+              label="Histórico (backstory)"
+              value={agentForm.backstory}
+              onChange={(e) => handleAgentFormChange('backstory', e.target.value)}
+              fullWidth
+              multiline
+              minRows={2}
+            />
+            <FormControl fullWidth>
+              <InputLabel>LLM dedicado (opcional)</InputLabel>
+              <Select
+                value={agentForm.llm_config_id || ''}
+                label="LLM dedicado (opcional)"
+                onChange={(e) => handleAgentFormChange('llm_config_id', e.target.value)}
+              >
+                <MenuItem value="">Usa LLM padrão</MenuItem>
+                {llmConfigs.map((config) => (
+                  <MenuItem key={config.id} value={config.id}>
+                    {config.nome} ({config.provider} / {config.model})
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setAgentDialogOpen(false)}>Cancelar</Button>
+          <Button onClick={handleAgentSave} variant="contained" disabled={agentSaving}>
+            {agentSaving ? 'Salvando...' : 'Salvar agente'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 }

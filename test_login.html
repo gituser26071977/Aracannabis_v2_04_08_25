@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Teste de Login</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            font-size: 14px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        pre {
+            background: #f4f4f4;
+            padding: 10px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔐 Teste de Login - Aracannabis</h1>
+
+    <form id="loginForm">
+        <div class="form-group">
+            <label for="usuario">Usuário:</label>
+            <input type="text" id="usuario" value="admin" required>
+        </div>
+
+        <div class="form-group">
+            <label for="senha">Senha:</label>
+            <input type="password" id="senha" value="admin123" required>
+        </div>
+
+        <button type="submit">Fazer Login</button>
+    </form>
+
+    <div id="result"></div>
+
+    <script>
+        const form = document.getElementById('loginForm');
+        const result = document.getElementById('result');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const usuario = document.getElementById('usuario').value;
+            const senha = document.getElementById('senha').value;
+
+            const payload = {
+                usuario: usuario,
+                senha: senha
+            };
+
+            console.log('Enviando:', payload);
+            result.style.display = 'none';
+
+            try {
+                const response = await fetch('http://localhost:5002/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+
+                console.log('Status:', response.status);
+                console.log('Resposta:', data);
+
+                result.style.display = 'block';
+
+                if (response.ok) {
+                    result.className = 'success';
+                    result.innerHTML = `
+                        <h3>✅ Login bem-sucedido!</h3>
+                        <p><strong>Usuário:</strong> ${data.user.nome}</p>
+                        <p><strong>Token:</strong> ${data.access_token.substring(0, 50)}...</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    result.className = 'error';
+                    result.innerHTML = `
+                        <h3>❌ Erro no login</h3>
+                        <p><strong>Status:</strong> ${response.status}</p>
+                        <p><strong>Mensagem:</strong> ${data.error || data.message}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                result.style.display = 'block';
+                result.className = 'error';
+                result.innerHTML = `
+                    <h3>❌ Erro de conexão</h3>
+                    <p>${error.message}</p>
+                `;
+            }
+        });
+
+        console.log('Página de teste carregada. Pronto para fazer login!');
+    </script>
+</body>
+</html>
