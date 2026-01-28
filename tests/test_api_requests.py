@@ -1,9 +1,9 @@
 import requests
 
 # Configurações
-BASE_URL = "http://localhost:5005/api"
-TEST_USER = "teste_debug"  # Usuário criado pelo script create_test_user.py
-TEST_PASSWORD = "123456"   # Senha do usuário teste
+BASE_URL = "http://localhost:5002/api"
+TEST_USER = "admin"  # Usuário admin
+TEST_PASSWORD = "Aracannabis@2025"   # Senha do usuário admin
 
 def test_api_endpoint(endpoint, method="GET", data=None, headers=None):
     try:

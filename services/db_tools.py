@@ -1,5 +1,17 @@
-from models import db, Evolucao, Paciente, Dosagem, LogAtividade 
+from sqlalchemy import or_
+from models import (
+    db,
+    Evolucao,
+    Paciente,
+    Dosagem,
+    LogAtividade,
+    Sintoma,
+    Exame,
+    CompartilhamentoPaciente
+)
 from datetime import datetime
+import json
+from typing import Dict, List, Any, Optional, Tuple
 # from langchain_core.tools import tool # Remover importação do decorador @tool
 
 # É importante que estas funções sejam chamadas dentro de um contexto de aplicação Flask
@@ -94,6 +106,186 @@ def save_dosage_to_db(paciente_id: int, data_dosagem_str: str, dosage_text: str,
     except Exception as e:
         db.session.rollback()
         return {"success": False, "error": f"Erro ao salvar dosagem no BD: {str(e)}"}
+
+# ========== DatabaseTools Class for CrewAI ==========
+
+class DatabaseTools:
+    """Classe para ferramentas de banco de dados usadas pelo sistema multi-agente"""
+    
+    def __init__(self, profissional_id: Optional[int] = None):
+        self.profissional_id = profissional_id or None
+
+    def _paciente_acessivel(self, paciente: Paciente) -> bool:
+        if not paciente:
+            return False
+
+        if not self.profissional_id:
+            return True
+
+        if paciente.profissional_responsavel_id == self.profissional_id:
+            return True
+
+        compartilhado = CompartilhamentoPaciente.query.filter_by(
+            paciente_id=paciente.id,
+            profissional_id=self.profissional_id,
+            ativo=True
+        ).first()
+        if compartilhado:
+            return True
+
+        return False
+
+    def obter_paciente_com_acesso(self, paciente_id: int) -> Tuple[Optional[Paciente], Optional[str]]:
+        """Retorna o paciente se o profissional tiver acesso, caso contrário sinaliza erro."""
+        paciente = Paciente.query.get(paciente_id)
+        if not paciente:
+            return None, f"Paciente com ID {paciente_id} não encontrado"
+        if not self._paciente_acessivel(paciente):
+            return None, "Acesso negado ao paciente solicitado"
+        return paciente, None
+   
+    def buscar_paciente(self, paciente_id: int) -> Dict:
+        """Busca informações de um paciente pelo ID"""
+        paciente, error = self.obter_paciente_com_acesso(paciente_id)
+        if error:
+            return {"error": error}
+
+        return {
+            "id": paciente.id,
+            "nome": paciente.nome,
+            "email": paciente.email,
+            "telefone": paciente.telefone,
+            "data_nascimento": paciente.data_nascimento.isoformat() if paciente.data_nascimento else None,
+            "condicao_medica": paciente.condicao_medica,
+            "dosagem": paciente.dosagem,
+            "created_at": paciente.created_at.isoformat() if paciente.created_at else None
+        }
+    
+    def buscar_exames_paciente(self, paciente_id: int) -> List[Dict]:
+        """Busca exames de um paciente"""
+        paciente = Paciente.query.get(paciente_id)
+        if not paciente or not self._paciente_acessivel(paciente):
+            return [{"error": "Acesso negado ao paciente"}]
+
+        try:
+            exames = Exame.query.filter_by(paciente_id=paciente_id).order_by(Exame.data.desc()).all()
+            return [
+                {
+                    "id": exame.id,
+                    "titulo": exame.titulo,
+                    "data": exame.data.isoformat() if exame.data else None,
+                    "resultados": exame.resultados,
+                    "observacoes": exame.observacoes,
+                    "created_at": exame.created_at.isoformat() if exame.created_at else None
+                }
+                for exame in exames
+            ]
+        except Exception as e:
+            return [{"error": f"Erro ao buscar exames: {str(e)}"}]
+    
+    def buscar_evolucoes_paciente(self, paciente_id: int) -> List[Dict]:
+        """Busca evoluções clínicas de um paciente"""
+        paciente = Paciente.query.get(paciente_id)
+        if not paciente or not self._paciente_acessivel(paciente):
+            return [{"error": "Acesso negado ao paciente"}]
+
+        try:
+            evolucoes = Evolucao.query.filter_by(paciente_id=paciente_id).order_by(Evolucao.data_evolucao.desc()).all()
+            return [
+                {
+                    "id": evolucao.id,
+                    "data_evolucao": evolucao.data_evolucao.isoformat() if evolucao.data_evolucao else None,
+                    "nota_evolucao": evolucao.nota_evolucao,
+                    "created_at": evolucao.created_at.isoformat() if evolucao.created_at else None
+                }
+                for evolucao in evolucoes
+            ]
+        except Exception as e:
+            return [{"error": f"Erro ao buscar evoluções: {str(e)}"}]
+    
+    def buscar_dosagens_paciente(self, paciente_id: int) -> List[Dict]:
+        """Busca dosagens de medicamentos de um paciente"""
+        paciente = Paciente.query.get(paciente_id)
+        if not paciente or not self._paciente_acessivel(paciente):
+            return [{"error": "Acesso negado ao paciente"}]
+
+        try:
+            dosagens = Dosagem.query.filter_by(paciente_id=paciente_id).order_by(Dosagem.data.desc()).all()
+            return [
+                {
+                    "id": dosagem.id,
+                    "data": dosagem.data.isoformat() if dosagem.data else None,
+                    "dosagem": dosagem.dosagem,
+                    "gotas": dosagem.gotas,
+                    "frequencia_diaria": dosagem.frequencia_diaria,
+                    "concentracao_cbd": dosagem.concentracao_cbd,
+                    "concentracao_thc": dosagem.concentracao_thc,
+                    "concentracao_cbg": dosagem.concentracao_cbg,
+                    "concentracao_cbn": dosagem.concentracao_cbn,
+                    "created_at": dosagem.created_at.isoformat() if dosagem.created_at else None
+                }
+                for dosagem in dosagens
+            ]
+        except Exception as e:
+            return [{"error": f"Erro ao buscar dosagens: {str(e)}"}]
+    
+    def buscar_sintomas_paciente(self, paciente_id: int) -> List[Dict]:
+        """Busca sintomas relatados por um paciente"""
+        paciente = Paciente.query.get(paciente_id)
+        if not paciente or not self._paciente_acessivel(paciente):
+            return [{"error": "Acesso negado ao paciente"}]
+
+        try:
+            sintomas = Sintoma.query.filter_by(paciente_id=paciente_id).order_by(Sintoma.data.desc()).all()
+            return [
+                {
+                    "id": sintoma.id,
+                    "data": sintoma.data.isoformat() if sintoma.data else None,
+                    "descricao": sintoma.descricao,
+                    "intensidade": sintoma.intensidade,
+                    "created_at": sintoma.created_at.isoformat() if sintoma.created_at else None
+                }
+                for sintoma in sintomas
+            ]
+        except Exception as e:
+            return [{"error": f"Erro ao buscar sintomas: {str(e)}"}]
+
+    def listar_pacientes_profissional(self, limit: int = 50) -> List[Dict]:
+        """Lista pacientes atribuídos ou compartilhados com o profissional"""
+        query = Paciente.query
+        if self.profissional_id:
+            query = query.filter(
+                or_(
+                    Paciente.profissional_responsavel_id == self.profissional_id,
+                    Paciente.compartilhamentos.any(
+                        CompartilhamentoPaciente.profissional_id == self.profissional_id,
+                        CompartilhamentoPaciente.ativo == True
+                    )
+                )
+            )
+
+        pacientes = query.order_by(Paciente.nome.asc()).limit(limit).all()
+        result = []
+        for paciente in pacientes:
+            result.append({
+                "id": paciente.id,
+                "nome": paciente.nome,
+                "condicao_medica": paciente.condicao_medica,
+                "profissional_responsavel": paciente.profissional_responsavel_id,
+                "email": paciente.email
+            })
+        return result
+    
+    def execute_query(self, query: str) -> Any:
+        """Executa uma query SQL direta"""
+        try:
+            result = db.session.execute(query)
+            if result.returns_rows:
+                return [dict(row) for row in result]
+            else:
+                return {"rows_affected": result.rowcount}
+        except Exception as e:
+            return {"error": f"Erro ao executar query: {str(e)}"}
 
 # Nota: A função de atualizar o resumo da dosagem do paciente foi integrada em save_dosage_to_db.
 # Se precisarmos dela separadamente, podemos criar update_patient_dosage_summary_tool.

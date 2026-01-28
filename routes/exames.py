@@ -5,7 +5,7 @@ from datetime import datetime
 import os
 import uuid
 from services.email_service import EmailService
-# from services.ocr_service import ocr_service  # OCR service - will be implemented later
+from services.ocr_service import ocr_service  # OCR service - now implemented
 email_service = EmailService()  # Create an instance of the email service
 
 exames_bp = Blueprint('exames', __name__, url_prefix='/api')
@@ -368,30 +368,20 @@ def processar_ocr_exame(exame_id):
                 db.session.add(ocr_resultado)
                 db.session.commit()
 
-                # Processar OCR (implementação básica por enquanto)
+                # Processar OCR usando o serviço real
                 try:
-                    # Placeholder OCR - será substituído pela implementação real com Tesseract
-                    ocr_result = {
-                        'texto_extraido': f'OCR processado para imagem: {imagem.arquivo_nome}. Implementação completa será adicionada em breve.',
-                        'dados_estruturados': {
-                            'tipo_exame': 'placeholder',
-                            'valores': [],
-                            'parametros': [],
-                            'data_exame': None,
-                            'paciente_info': {},
-                            'unidades': [],
-                            'valores_referencia': []
-                        },
-                        'confianca': 85.0,
-                        'status': 'concluido'
-                    }
-
-                    # Atualizar registro com resultados
-                    ocr_resultado.texto_extraido = ocr_result['texto_extraido']
-                    ocr_resultado.dados_estruturados = ocr_result['dados_estruturados']
-                    ocr_resultado.confianca = ocr_result['confianca']
-                    ocr_resultado.status_processamento = 'concluido'
-
+                    ocr_result = ocr_service.process_exam_image(filepath)
+                    
+                    if ocr_result.get('status') == 'concluido':
+                        # Atualizar registro com resultados reais
+                        ocr_resultado.texto_extraido = ocr_result['texto_extraido']
+                        ocr_resultado.dados_estruturados = ocr_result['dados_estruturados']
+                        ocr_resultado.confianca = ocr_result['confianca']
+                        ocr_resultado.status_processamento = 'concluido'
+                    else:
+                        ocr_resultado.erro_processamento = f"Erro no OCR: {ocr_result.get('erro', 'Erro desconhecido')}"
+                        ocr_resultado.status_processamento = 'erro'
+                        
                 except Exception as e:
                     ocr_resultado.erro_processamento = f'Erro no processamento OCR: {str(e)}'
                     ocr_resultado.status_processamento = 'erro'

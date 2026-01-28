@@ -1,7 +1,8 @@
 # Dockerfile para o frontend React
 FROM node:18-alpine
 
-ARG REACT_APP_API_URL=http://localhost:5005
+# IMPORTANT: Declare ARG before any RUN commands that need it
+ARG REACT_APP_API_URL=http://localhost:5002
 
 WORKDIR /app
 
@@ -14,7 +15,7 @@ RUN npm install
 # Copiar o restante do código da aplicação
 COPY . .
 
-# Set environment variable for build
+# CRITICAL: Set ENV before npm run build so React bakes it into the bundle
 ENV REACT_APP_API_URL=$REACT_APP_API_URL
 
 # Construir a aplicação React para produção

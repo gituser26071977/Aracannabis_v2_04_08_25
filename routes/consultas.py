@@ -344,8 +344,8 @@ def enviar_email_lembrete(consulta):
         # Configurações do email (devem estar no .env)
         smtp_server = os.getenv('SMTP_SERVER', 'smtp.hostinger.com')
         smtp_port = int(os.getenv('SMTP_PORT', '465'))
-        email_user = os.getenv('EMAIL_USER')
-        email_password = os.getenv('EMAIL_PASSWORD')
+        email_user = os.getenv('SMTP_USERNAME')
+        email_password = os.getenv('SMTP_PASSWORD')
         
         if not email_user or not email_password:
             print("Configurações de email não encontradas")

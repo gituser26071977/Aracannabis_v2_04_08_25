@@ -33,14 +33,29 @@ API_SEARCH_RATE_LIMIT = "200 per minute"
 # Lista de origens permitidas para CORS
 ALLOWED_ORIGINS = [
     'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:3002',
+    'http://localhost:3003',
+    'http://localhost:3004',
+    'http://localhost:3005',
+    'http://localhost:3006',
+    'http://localhost:3007',
+    'http://localhost:3008',
+    'http://localhost:3009',
+    'http://localhost:3010',
     'http://localhost:5000',
+    'http://localhost:5002',
+    'http://localhost:5003',
+    'http://localhost:5010',
+    'http://backend:5002',
     'https://aracannabis.com.br',
     'https://app.aracannabis.com.br'
 ]
 
 # Cabeçalhos de segurança HTTP
+connect_src_origins = " ".join(ALLOWED_ORIGINS)
 SECURITY_HEADERS = {
-    'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'",
+    'Content-Security-Policy': f"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self' {connect_src_origins}",
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'SAMEORIGIN',
     'X-XSS-Protection': '1; mode=block',

@@ -28,12 +28,12 @@ import {
   Divider,
   Autocomplete
 } from '@mui/material';
-import { 
-  CloudUpload, 
-  Delete, 
-  TextFields, 
-  InsertChart, 
-  Visibility, 
+import {
+  CloudUpload,
+  Delete,
+  TextFields,
+  InsertChart,
+  Visibility,
   TrendingUp,
   Image as ImageIcon,
   Description,
@@ -54,6 +54,9 @@ import {
 } from 'chart.js';
 import { exameService } from '../services/api';
 import ImageViewer from './ImageViewer';
+import MediaCapture from './MediaCapture';
+import MobileConnectQR from './MobileConnectQR'; // Importação do componente de QR Code
+import { CameraAlt, PhonelinkRing } from '@mui/icons-material';
 
 // Registrar componentes do Chart.js
 ChartJS.register(
@@ -72,6 +75,7 @@ const ExameManager = ({ patientId }) => {
   const [error, setError] = useState('');
   const [openDialog, setOpenDialog] = useState(false);
   const [openViewDialog, setOpenViewDialog] = useState(false);
+  const [openQRDialog, setOpenQRDialog] = useState(false);
   const [selectedExame, setSelectedExame] = useState(null);
   const [tabValue, setTabValue] = useState(0);
   const [tipoExame, setTipoExame] = useState('texto');
@@ -134,6 +138,21 @@ const ExameManager = ({ patientId }) => {
     });
   };
 
+  const handleCapture = (file) => {
+    setNewExame({
+      ...newExame,
+      arquivo: file
+    });
+  };
+
+  const handleMobileUpload = (file) => {
+    setNewExame({
+      ...newExame,
+      arquivo: file
+    });
+    setOpenQRDialog(false); // Fecha o QR code
+  };
+
   const handleTipoExameChange = (event, newTipo) => {
     if (newTipo !== null) {
       setTipoExame(newTipo);
@@ -186,10 +205,10 @@ const ExameManager = ({ patientId }) => {
       }
 
       const response = await exameService.criar(formData);
-      
+
       setExames([...exames, response]);
-      setNewExame({ 
-        titulo: '', 
+      setNewExame({
+        titulo: '',
         descricao: '',
         arquivo: null,
         valor: '',
@@ -233,7 +252,7 @@ const ExameManager = ({ patientId }) => {
         const dateStr = dateString.split('T')[0];
         const [year, month, day] = dateStr.split('-');
         const date = new Date(year, month - 1, day);
-        
+
         if (!isNaN(date.getTime())) {
           return date.toLocaleDateString('pt-BR');
         }
@@ -250,11 +269,11 @@ const ExameManager = ({ patientId }) => {
 
   const getNumericExamsChart = () => {
     const numericExams = getExamesByType('numerico');
-    
+
     if (numericExams.length === 0) {
       return null;
     }
-    
+
     // Agrupar por título/tipo de exame
     const groupedExams = {};
     numericExams.forEach(exame => {
@@ -267,11 +286,11 @@ const ExameManager = ({ patientId }) => {
 
     // Criar labels únicos (datas)
     const allDates = [...new Set(numericExams.map(exame => formatDate(exame.data_exame)))].sort();
-    
+
     const datasets = Object.keys(groupedExams).map((titulo, index) => {
       const examsGroup = groupedExams[titulo].sort((a, b) => new Date(a.data_exame) - new Date(b.data_exame));
       const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'];
-      
+
       return {
         label: titulo,
         data: examsGroup.map(exame => parseFloat(exame.valor) || 0),
@@ -322,16 +341,16 @@ const ExameManager = ({ patientId }) => {
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h6">Exames do Paciente</Typography>
         <Box>
-          <Button 
-            variant="outlined" 
+          <Button
+            variant="outlined"
             startIcon={<TrendingUp />}
             onClick={() => setTabValue(1)}
             sx={{ mr: 1 }}
           >
             Gráficos
           </Button>
-          <Button 
-            variant="contained" 
+          <Button
+            variant="contained"
             startIcon={<CloudUpload />}
             onClick={() => setOpenDialog(true)}
           >
@@ -379,7 +398,7 @@ const ExameManager = ({ patientId }) => {
                   {exames.map((exame) => (
                     <TableRow key={exame.id}>
                       <TableCell>
-                        <Chip 
+                        <Chip
                           icon={getTypeIcon(exame.tipo_exame)}
                           label={exame.tipo_exame}
                           color={getTypeColor(exame.tipo_exame)}
@@ -418,7 +437,7 @@ const ExameManager = ({ patientId }) => {
               {(() => {
                 const chartData = getNumericExamsChart();
                 return chartData ? (
-                  <Line 
+                  <Line
                     data={chartData}
                     options={{
                       responsive: true,
@@ -580,7 +599,7 @@ const ExameManager = ({ patientId }) => {
               InputLabelProps={{ shrink: true }}
               required
             />
-            
+
             {tipoExame === 'texto' && (
               <TextField
                 fullWidth
@@ -605,9 +624,34 @@ const ExameManager = ({ patientId }) => {
                 />
                 <label htmlFor="file-upload">
                   <Button variant="outlined" component="span" startIcon={<CloudUpload />}>
-                    Selecionar arquivo
+                    Upload
                   </Button>
                 </label>
+
+                <MediaCapture
+                  mode="camera"
+                  onCapture={handleCapture}
+                  triggerButton={
+                    <Button
+                      variant="outlined"
+                      color="secondary"
+                      startIcon={<CameraAlt />}
+                      sx={{ ml: 2 }}
+                    >
+                      Tirar Foto
+                    </Button>
+                  }
+                />
+
+                <Button
+                  variant="text"
+                  startIcon={<PhonelinkRing />}
+                  sx={{ ml: 2 }}
+                  onClick={() => setOpenQRDialog(true)}
+                >
+                  Usar Celular
+                </Button>
+
                 {newExame.arquivo && (
                   <Typography variant="body2" sx={{ mt: 1 }}>
                     Arquivo selecionado: {newExame.arquivo.name}
@@ -615,6 +659,17 @@ const ExameManager = ({ patientId }) => {
                 )}
               </Box>
             )}
+
+            {/* Dialog específico para QR Code */}
+            <Dialog open={openQRDialog} onClose={() => setOpenQRDialog(false)} maxWidth="xs">
+              <DialogTitle>Conectar Celular</DialogTitle>
+              <DialogContent>
+                <MobileConnectQR onUploadComplete={handleMobileUpload} />
+              </DialogContent>
+              <DialogActions>
+                <Button onClick={() => setOpenQRDialog(false)}>Cancelar</Button>
+              </DialogActions>
+            </Dialog>
 
             {tipoExame === 'numerico' && (
               <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
@@ -646,8 +701,8 @@ const ExameManager = ({ patientId }) => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
-          <Button 
-            variant="contained" 
+          <Button
+            variant="contained"
             onClick={handleSubmit}
             disabled={loading}
           >
@@ -657,10 +712,10 @@ const ExameManager = ({ patientId }) => {
       </Dialog>
 
       {/* Dialog para visualizar exame */}
-      <Dialog 
-        open={openViewDialog} 
-        onClose={() => setOpenViewDialog(false)} 
-        fullWidth 
+      <Dialog
+        open={openViewDialog}
+        onClose={() => setOpenViewDialog(false)}
+        fullWidth
         maxWidth="md"
       >
         <DialogTitle>
@@ -690,7 +745,7 @@ const ExameManager = ({ patientId }) => {
                   <Typography variant="subtitle2" color="text.secondary">
                     Tipo
                   </Typography>
-                  <Chip 
+                  <Chip
                     icon={getTypeIcon(selectedExame.tipo_exame)}
                     label={selectedExame.tipo_exame}
                     color={getTypeColor(selectedExame.tipo_exame)}

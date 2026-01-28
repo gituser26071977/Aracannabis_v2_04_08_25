@@ -12,6 +12,9 @@ class Profissional(db.Model):
     uf_crm = db.Column(db.String, nullable=False)
     usuario = db.Column(db.String, unique=True, nullable=False)
     senha = db.Column(db.String, nullable=False)
+    email = db.Column(db.String, unique=True)
+    role = db.Column(db.String, default='profissional', nullable=False)  # 'admin', 'profissional', 'auxiliar'
+    data_expiracao = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     evolucoes = db.relationship('Evolucao', backref='profissional', lazy=True)
@@ -28,12 +31,35 @@ class Profissional(db.Model):
             'crm': self.crm,
             'uf_crm': self.uf_crm,
             'usuario': self.usuario,
+            'email': self.email,
+            'role': self.role,
+            'data_expiracao': self.data_expiracao.isoformat() if self.data_expiracao else None,
             'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+
+
+class SenhaTemporaria(db.Model):
+    __tablename__ = 'senhas_temporarias'
+
+    id = db.Column(db.Integer, primary_key=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey('profissionais.id', ondelete='CASCADE'), nullable=False)
+    senha_hash = db.Column(db.String, nullable=False)
+    data_expiracao = db.Column(db.DateTime, nullable=False)
+    usado = db.Column(db.Boolean, default=False, nullable=False)
+
+    profissional = db.relationship('Profissional', backref='senhas_temporarias')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'usuario_id': self.usuario_id,
+            'data_expiracao': self.data_expiracao.isoformat() if self.data_expiracao else None,
+            'usado': self.usado
         }
 
 class Paciente(db.Model):
     __tablename__ = 'pacientes'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     profissional_responsavel_id = db.Column(db.Integer, db.ForeignKey('profissionais.id', ondelete='SET NULL'), nullable=False)
     nome = db.Column(db.String, nullable=False)
@@ -44,6 +70,7 @@ class Paciente(db.Model):
     email = db.Column(db.String)
     endereco = db.Column(db.String)
     diagnostico = db.Column(db.Text)
+    condicao_medica = db.Column(db.String)  # alias mais amigável para diagnóstico/condição principal
     observacoes = db.Column(db.Text)
     em_tratamento = db.Column(db.Boolean, default=False, nullable=False)
     composicao = db.Column(db.String)
@@ -55,6 +82,10 @@ class Paciente(db.Model):
     foto_tamanho = db.Column(db.Integer)  # Tamanho em bytes
     consentimento_lgpd = db.Column(db.Boolean, default=False)
     data_consentimento = db.Column(db.DateTime)
+    # Novo campo para TDAH
+    tdah_positivo = db.Column(db.Boolean, default=False, nullable=True)
+    # Novo campo para depressão
+    depressao_positiva = db.Column(db.Boolean, default=False, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -68,6 +99,7 @@ class Paciente(db.Model):
     # Relationships to exam images and lab results are handled through the Exame model
     # Removed direct relationships to ExameImagem and ExameLabResultado
     compartilhamentos = db.relationship('CompartilhamentoPaciente', backref='paciente', lazy=True, cascade="all, delete-orphan")
+    snap_iv_testes = db.relationship('SnapIVTeste', back_populates='paciente', lazy=True, cascade="all, delete-orphan")
     
     def to_dict(self):
         return {
@@ -80,6 +112,7 @@ class Paciente(db.Model):
             'email': self.email,
             'endereco': self.endereco,
             'diagnostico': self.diagnostico,
+            'condicao_medica': self.condicao_medica or self.diagnostico,
             'observacoes': self.observacoes,
             'em_tratamento': self.em_tratamento,
             'composicao': self.composicao,
@@ -90,6 +123,8 @@ class Paciente(db.Model):
             'foto_tamanho': self.foto_tamanho,
             'consentimento_lgpd': self.consentimento_lgpd,
             'data_consentimento': self.data_consentimento.isoformat() if self.data_consentimento else None,
+            'tdah_positivo': self.tdah_positivo,
+            'depressao_positiva': self.depressao_positiva,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
@@ -305,7 +340,7 @@ class ExameLabResultado(db.Model):
     valor = db.Column(db.Numeric, nullable=False)
     unidade = db.Column(db.String, nullable=False)
     valor_referencia = db.Column(db.String, nullable=False)
-    # created_at column will be added after migration is complete
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     def to_dict(self):
         return {
@@ -384,6 +419,7 @@ class Produto(db.Model):
     fabricante = db.Column(db.String)
     descricao = db.Column(db.Text)
     ativo = db.Column(db.Boolean, default=True, nullable=False)
+    data_registro = db.Column(db.Date, default=datetime.utcnow) # Nova coluna: Data de registro manual ou automática
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -401,6 +437,7 @@ class Produto(db.Model):
             'fabricante': self.fabricante,
             'descricao': self.descricao,
             'ativo': self.ativo,
+            'data_registro': self.data_registro.isoformat() if self.data_registro else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
@@ -425,6 +462,127 @@ class ReminderSettings(db.Model):
             'lead_time_hours': self.lead_time_hours,
             'email_template': self.email_template,
             'active': self.active,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+
+# ========== BILLING / SAAS ==========
+
+class Plano(db.Model):
+    __tablename__ = 'planos'
+
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String, nullable=False)
+    descricao = db.Column(db.Text)
+    preco_mensal = db.Column(db.Float, nullable=False, default=0)
+    limite_pacientes = db.Column(db.Integer, default=50)
+    limite_agentes_ia = db.Column(db.Integer, default=3)
+    limite_armazenamento_mb = db.Column(db.Integer, default=1024)
+    cor = db.Column(db.String, default='#1976d2') # Cor Hex para UI
+    is_popular = db.Column(db.Boolean, default=False) # Destaque na UI
+    ativo = db.Column(db.Boolean, default=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'nome': self.nome,
+            'descricao': self.descricao,
+            'preco_mensal': self.preco_mensal,
+            'limite_pacientes': self.limite_pacientes,
+            'limite_agentes_ia': self.limite_agentes_ia,
+            'limite_armazenamento_mb': self.limite_armazenamento_mb,
+            'cor': self.cor,
+            'is_popular': self.is_popular,
+            'ativo': self.ativo,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+
+
+class Assinatura(db.Model):
+    __tablename__ = 'assinaturas'
+
+    id = db.Column(db.Integer, primary_key=True)
+    profissional_id = db.Column(db.Integer, db.ForeignKey('profissionais.id'), nullable=False)
+    plano_id = db.Column(db.Integer, db.ForeignKey('planos.id'), nullable=False)
+    status = db.Column(db.String, default='trial')  # trial, ativa, cancelada, inadimplente
+    trial_ends_at = db.Column(db.DateTime)
+    renovacao_em = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    plano = db.relationship('Plano')
+    profissional = db.relationship('Profissional')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'profissional_id': self.profissional_id,
+            'plano_id': self.plano_id,
+            'plano': self.plano.to_dict() if self.plano else None,
+            'status': self.status,
+            'trial_ends_at': self.trial_ends_at.isoformat() if self.trial_ends_at else None,
+            'renovacao_em': self.renovacao_em.isoformat() if self.renovacao_em else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+
+
+class Fatura(db.Model):
+    __tablename__ = 'faturas'
+
+    id = db.Column(db.Integer, primary_key=True)
+    assinatura_id = db.Column(db.Integer, db.ForeignKey('assinaturas.id'), nullable=False)
+    valor = db.Column(db.Float, nullable=False)
+    status = db.Column(db.String, default='pendente')  # pendente, paga, cancelada
+    vencimento = db.Column(db.DateTime)
+    cobranca_id = db.Column(db.String)  # id de cobrança no PSP (mock)
+    metodo = db.Column(db.String, default='pix')  # pix, boleto, card
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    assinatura = db.relationship('Assinatura')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'assinatura_id': self.assinatura_id,
+            'valor': self.valor,
+            'status': self.status,
+            'vencimento': self.vencimento.isoformat() if self.vencimento else None,
+            'cobranca_id': self.cobranca_id,
+            'metodo': self.metodo,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+
+
+class PagamentoRegistro(db.Model):
+    __tablename__ = 'pagamentos_registros'
+
+    id = db.Column(db.Integer, primary_key=True)
+    fatura_id = db.Column(db.Integer, db.ForeignKey('faturas.id'), nullable=False)
+    status = db.Column(db.String, default='pending')  # pending, paid, failed, canceled
+    metodo = db.Column(db.String, default='pix')
+    valor = db.Column(db.Float, nullable=False)
+    referencia_psp = db.Column(db.String)
+    payload = db.Column(db.JSON)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    fatura = db.relationship('Fatura')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'fatura_id': self.fatura_id,
+            'status': self.status,
+            'metodo': self.metodo,
+            'valor': self.valor,
+            'referencia_psp': self.referencia_psp,
+            'payload': self.payload,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
@@ -508,4 +666,366 @@ class OCRResultado(db.Model):
             'erro_processamento': self.erro_processamento,
             'criado_em': self.criado_em.isoformat() if self.criado_em else None,
             'processado_em': self.processado_em.isoformat() if self.processado_em else None
+        }
+
+class SnapIVTeste(db.Model):
+    __tablename__ = 'snap_iv_testes'
+
+    id = db.Column(db.Integer, primary_key=True)
+    paciente_id = db.Column(db.Integer, db.ForeignKey('pacientes.id', ondelete='CASCADE'), nullable=False)
+    profissional_id = db.Column(db.Integer, db.ForeignKey('profissionais.id', ondelete='SET NULL'))
+
+    # Respostas das perguntas (0-3)
+    # Desatenção (itens 1-9)
+    desatencao_1 = db.Column(db.Integer, nullable=False)
+    desatencao_2 = db.Column(db.Integer, nullable=False)
+    desatencao_3 = db.Column(db.Integer, nullable=False)
+    desatencao_4 = db.Column(db.Integer, nullable=False)
+    desatencao_5 = db.Column(db.Integer, nullable=False)
+    desatencao_6 = db.Column(db.Integer, nullable=False)
+    desatencao_7 = db.Column(db.Integer, nullable=False)
+    desatencao_8 = db.Column(db.Integer, nullable=False)
+    desatencao_9 = db.Column(db.Integer, nullable=False)
+
+    # Hiperatividade/Impulsividade (itens 10-18)
+    hiperatividade_10 = db.Column(db.Integer, nullable=False)
+    hiperatividade_11 = db.Column(db.Integer, nullable=False)
+    hiperatividade_12 = db.Column(db.Integer, nullable=False)
+    hiperatividade_13 = db.Column(db.Integer, nullable=False)
+    hiperatividade_14 = db.Column(db.Integer, nullable=False)
+    hiperatividade_15 = db.Column(db.Integer, nullable=False)
+    hiperatividade_16 = db.Column(db.Integer, nullable=False)
+    hiperatividade_17 = db.Column(db.Integer, nullable=False)
+    hiperatividade_18 = db.Column(db.Integer, nullable=False)
+
+    # Resultados da análise
+    pontos_desatencao = db.Column(db.Integer, nullable=False)
+    pontos_hiperatividade = db.Column(db.Integer, nullable=False)
+    sugestivo_desatencao = db.Column(db.Boolean, nullable=False)
+    sugestivo_hiperatividade = db.Column(db.Boolean, nullable=False)
+    tdah_positivo = db.Column(db.Boolean, nullable=False)
+
+    # Metadados
+    data_realizacao = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    observacoes = db.Column(db.Text)
+
+    # Relacionamentos
+    paciente = db.relationship('Paciente', back_populates='snap_iv_testes')
+    profissional = db.relationship('Profissional', backref='snap_iv_testes')
+
+    def calcular_resultados(self):
+        """Calcula os resultados baseado nas respostas"""
+        # Contagem para Desatenção (itens 1-9)
+        pontos_desatencao = 0
+        for i in range(1, 10):
+            resposta = getattr(self, f'desatencao_{i}')
+            if resposta >= 2:  # 2 ou 3 = clinicamente significativo
+                pontos_desatencao += 1
+
+        # Contagem para Hiperatividade/Impulsividade (itens 10-18)
+        pontos_hiperatividade = 0
+        for i in range(10, 19):
+            resposta = getattr(self, f'hiperatividade_{i}')
+            if resposta >= 2:  # 2 ou 3 = clinicamente significativo
+                pontos_hiperatividade += 1
+
+        # Critérios de corte: 6 ou mais itens marcados como >= 2
+        sugestivo_desatencao = pontos_desatencao >= 6
+        sugestivo_hiperatividade = pontos_hiperatividade >= 6
+        tdah_positivo = sugestivo_desatencao or sugestivo_hiperatividade
+
+        return {
+            'pontos_desatencao': pontos_desatencao,
+            'pontos_hiperatividade': pontos_hiperatividade,
+            'sugestivo_desatencao': sugestivo_desatencao,
+            'sugestivo_hiperatividade': sugestivo_hiperatividade,
+            'tdah_positivo': tdah_positivo
+        }
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'paciente_id': self.paciente_id,
+            'profissional_id': self.profissional_id,
+            'profissional_nome': self.profissional.nome if self.profissional else None,
+            'respostas': {
+                'desatencao': {f'item_{i}': getattr(self, f'desatencao_{i}') for i in range(1, 10)},
+                'hiperatividade': {f'item_{i}': getattr(self, f'hiperatividade_{i}') for i in range(10, 19)}
+            },
+            'resultados': {
+                'pontos_desatencao': self.pontos_desatencao,
+                'pontos_hiperatividade': self.pontos_hiperatividade,
+                'sugestivo_desatencao': self.sugestivo_desatencao,
+                'sugestivo_hiperatividade': self.sugestivo_hiperatividade,
+                'tdah_positivo': self.tdah_positivo
+            },
+            'data_realizacao': self.data_realizacao.isoformat() if self.data_realizacao else None,
+            'observacoes': self.observacoes
+        }
+
+class BeckDepressionTeste(db.Model):
+    __tablename__ = 'beck_depression_testes'
+
+    id = db.Column(db.Integer, primary_key=True)
+    paciente_id = db.Column(db.Integer, db.ForeignKey('pacientes.id', ondelete='CASCADE'), nullable=False)
+    profissional_id = db.Column(db.Integer, db.ForeignKey('profissionais.id', ondelete='SET NULL'))
+
+    # Respostas das 21 perguntas do BDI-II (0-3)
+    item_1 = db.Column(db.Integer, nullable=False)   # Tristeza
+    item_2 = db.Column(db.Integer, nullable=False)   # Pessimismo
+    item_3 = db.Column(db.Integer, nullable=False)   # Fracasso passado
+    item_4 = db.Column(db.Integer, nullable=False)   # Perda de prazer
+    item_5 = db.Column(db.Integer, nullable=False)   # Sentimentos de culpa
+    item_6 = db.Column(db.Integer, nullable=False)   # Sentimentos de punição
+    item_7 = db.Column(db.Integer, nullable=False)   # Autoaversão
+    item_8 = db.Column(db.Integer, nullable=False)   # Autocrítica
+    item_9 = db.Column(db.Integer, nullable=False)   # Pensamentos suicidas
+    item_10 = db.Column(db.Integer, nullable=False)  # Choro
+    item_11 = db.Column(db.Integer, nullable=False)  # Agitação
+    item_12 = db.Column(db.Integer, nullable=False)  # Perda de interesse
+    item_13 = db.Column(db.Integer, nullable=False)  # Indecisão
+    item_14 = db.Column(db.Integer, nullable=False)  # Desvalia
+    item_15 = db.Column(db.Integer, nullable=False)  # Perda de energia
+    item_16 = db.Column(db.Integer, nullable=False)  # Mudanças no sono
+    item_17 = db.Column(db.Integer, nullable=False)  # Irritabilidade
+    item_18 = db.Column(db.Integer, nullable=False)  # Mudanças no apetite
+    item_19 = db.Column(db.Integer, nullable=False)  # Dificuldade de concentração
+    item_20 = db.Column(db.Integer, nullable=False)  # Cansaço/fadiga
+    item_21 = db.Column(db.Integer, nullable=False)  # Perda de interesse sexual
+
+    # Resultados da análise
+    pontuacao_total = db.Column(db.Integer, nullable=False)
+    nivel_depressao = db.Column(db.String, nullable=False)  # minima, leve, moderada, grave
+    depressao_positiva = db.Column(db.Boolean, nullable=False)  # True se pontuação >= 14
+
+    # Metadados
+    data_realizacao = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    observacoes = db.Column(db.Text)
+
+    # Relacionamentos
+    paciente = db.relationship('Paciente', backref='beck_depression_testes')
+    profissional = db.relationship('Profissional', backref='beck_depression_testes')
+
+    def calcular_resultados(self):
+        """Calcula os resultados baseado nas respostas"""
+        # Soma de todos os itens
+        pontuacao_total = sum(getattr(self, f'item_{i}') for i in range(1, 22))
+
+        # Classificação baseada na pontuação total
+        if pontuacao_total <= 13:
+            nivel_depressao = 'minima'
+        elif pontuacao_total <= 19:
+            nivel_depressao = 'leve'
+        elif pontuacao_total <= 28:
+            nivel_depressao = 'moderada'
+        else:
+            nivel_depressao = 'grave'
+
+        # Depressão positiva se pontuação >= 14 (critério clínico)
+        depressao_positiva = pontuacao_total >= 14
+
+        return {
+            'pontuacao_total': pontuacao_total,
+            'nivel_depressao': nivel_depressao,
+            'depressao_positiva': depressao_positiva
+        }
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'paciente_id': self.paciente_id,
+            'profissional_id': self.profissional_id,
+            'profissional_nome': self.profissional.nome if self.profissional else None,
+            'respostas': {f'item_{i}': getattr(self, f'item_{i}') for i in range(1, 22)},
+            'resultados': {
+                'pontuacao_total': self.pontuacao_total,
+                'nivel_depressao': self.nivel_depressao,
+                'depressao_positiva': self.depressao_positiva
+            },
+            'data_realizacao': self.data_realizacao.isoformat() if self.data_realizacao else None,
+            'observacoes': self.observacoes
+        }
+
+class PHQ9Teste(db.Model):
+    __tablename__ = 'phq9_testes'
+
+    id = db.Column(db.Integer, primary_key=True)
+    paciente_id = db.Column(db.Integer, db.ForeignKey('pacientes.id', ondelete='CASCADE'), nullable=False)
+    profissional_id = db.Column(db.Integer, db.ForeignKey('profissionais.id', ondelete='SET NULL'))
+
+    # Respostas das 9 perguntas do PHQ-9 (0-3)
+    q1 = db.Column(db.Integer, nullable=False)  # Pouco interesse ou pouco prazer em fazer as coisas
+    q2 = db.Column(db.Integer, nullable=False)  # Sentir-se para baixo, deprimido ou sem esperanças
+    q3 = db.Column(db.Integer, nullable=False)  # Dificuldade para pegar no sono ou permanecer dormindo, ou dormir demais
+    q4 = db.Column(db.Integer, nullable=False)  # Sentir-se cansado ou com pouca energia
+    q5 = db.Column(db.Integer, nullable=False)  # Falta de apetite ou comer demais
+    q6 = db.Column(db.Integer, nullable=False)  # Sentir-se mal consigo mesmo
+    q7 = db.Column(db.Integer, nullable=False)  # Dificuldade de concentração nas atividades
+    q8 = db.Column(db.Integer, nullable=False)  # Lentidão ou agitação excessiva
+    q9 = db.Column(db.Integer, nullable=False)  # Pensamentos de que seria melhor estar morto ou de se ferir
+
+    # Resultados da análise
+    pontuacao_total = db.Column(db.Integer, nullable=False)
+    nivel_depressao = db.Column(db.String, nullable=False)  # minima, leve, moderada, moderadamente_grave, grave
+    depressao_positiva = db.Column(db.Boolean, nullable=False)  # True se pontuação >= 10
+    risco_suicida = db.Column(db.Boolean, nullable=False)  # True se Q9 >= 1
+
+    # Metadados
+    data_realizacao = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    observacoes = db.Column(db.Text)
+
+    # Relacionamentos
+    paciente = db.relationship('Paciente', backref='phq9_testes')
+    profissional = db.relationship('Profissional', backref='phq9_testes')
+
+    def calcular_resultados(self):
+        """Calcula os resultados baseado nas respostas do PHQ-9"""
+        # Soma de todos os itens (0-27)
+        pontuacao_total = sum([
+            self.q1, self.q2, self.q3, self.q4, self.q5,
+            self.q6, self.q7, self.q8, self.q9
+        ])
+
+        # Classificação baseada na pontuação total
+        if pontuacao_total <= 4:
+            nivel_depressao = 'minima'
+        elif pontuacao_total <= 9:
+            nivel_depressao = 'leve'
+        elif pontuacao_total <= 14:
+            nivel_depressao = 'moderada'
+        elif pontuacao_total <= 19:
+            nivel_depressao = 'moderadamente_grave'
+        else:
+            nivel_depressao = 'grave'
+
+        # Depressão positiva se pontuação >= 10 (critério clínico)
+        depressao_positiva = pontuacao_total >= 10
+        
+        # Risco suicida se Q9 >= 1
+        risco_suicida = self.q9 >= 1
+
+        return {
+            'pontuacao_total': pontuacao_total,
+            'nivel_depressao': nivel_depressao,
+            'depressao_positiva': depressao_positiva,
+            'risco_suicida': risco_suicida
+        }
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'paciente_id': self.paciente_id,
+            'profissional_id': self.profissional_id,
+            'profissional_nome': self.profissional.nome if self.profissional else None,
+            'respostas': {
+                'q1': self.q1, 'q2': self.q2, 'q3': self.q3,
+                'q4': self.q4, 'q5': self.q5, 'q6': self.q6,
+                'q7': self.q7, 'q8': self.q8, 'q9': self.q9
+            },
+            'resultados': {
+                'pontuacao_total': self.pontuacao_total,
+                'nivel_depressao': self.nivel_depressao,
+                'depressao_positiva': self.depressao_positiva,
+                'risco_suicida': self.risco_suicida
+            },
+            'data_realizacao': self.data_realizacao.isoformat() if self.data_realizacao else None,
+            'observacoes': self.observacoes
+        }
+
+class GAD7Teste(db.Model):
+    __tablename__ = 'gad7_testes'
+
+    id = db.Column(db.Integer, primary_key=True)
+    paciente_id = db.Column(db.Integer, db.ForeignKey('pacientes.id', ondelete='CASCADE'), nullable=False)
+    profissional_id = db.Column(db.Integer, db.ForeignKey('profissionais.id', ondelete='SET NULL'))
+
+    # Respostas das 7 perguntas do GAD-7 (0-3)
+    q1 = db.Column(db.Integer, nullable=False) # Sentindo-se nervoso, ansioso ou muito tenso
+    q2 = db.Column(db.Integer, nullable=False) # Não sendo capaz de impedir ou de controlar as preocupações
+    q3 = db.Column(db.Integer, nullable=False) # Preocupando-se muito com diversas coisas
+    q4 = db.Column(db.Integer, nullable=False) # Tendo dificuldade para relaxar
+    q5 = db.Column(db.Integer, nullable=False) # Ficando tão agitado que se torna difícil permanecer sentado
+    q6 = db.Column(db.Integer, nullable=False) # Ficando facilmente aborrecido ou irritado
+    q7 = db.Column(db.Integer, nullable=False) # Sentindo medo como se algo horrível fosse acontecer
+
+    # Resultados da análise
+    pontuacao_total = db.Column(db.Integer, nullable=False)
+    nivel_ansiedade = db.Column(db.String, nullable=False) # minima, leve, moderada, grave
+    ansiedade_positiva = db.Column(db.Boolean, nullable=False) # True se pontuação >= 10
+
+    # Metadados
+    data_realizacao = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    observacoes = db.Column(db.Text)
+
+    # Relacionamentos
+    paciente = db.relationship('Paciente', backref='gad7_testes')
+    profissional = db.relationship('Profissional', backref='gad7_testes')
+
+    def calcular_resultados(self):
+        """Calcula os resultados baseado nas respostas do GAD-7"""
+        # Soma de todos os itens (0-21)
+        pontuacao_total = sum([
+            self.q1, self.q2, self.q3, self.q4, self.q5, self.q6, self.q7
+        ])
+
+        # Classificação baseada na pontuação total
+        if pontuacao_total <= 4:
+            nivel_ansiedade = 'minima'
+        elif pontuacao_total <= 9:
+            nivel_ansiedade = 'leve'
+        elif pontuacao_total <= 14:
+            nivel_ansiedade = 'moderada'
+        else:
+            nivel_ansiedade = 'grave'
+
+        # Ansiedade positiva se pontuação >= 10 (critério clínico comum)
+        ansiedade_positiva = pontuacao_total >= 10
+
+        return {
+            'pontuacao_total': pontuacao_total,
+            'nivel_ansiedade': nivel_ansiedade,
+            'ansiedade_positiva': ansiedade_positiva
+        }
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'paciente_id': self.paciente_id,
+            'profissional_id': self.profissional_id,
+            'profissional_nome': self.profissional.nome if self.profissional else None,
+            'respostas': {
+                'q1': self.q1, 'q2': self.q2, 'q3': self.q3,
+                'q4': self.q4, 'q5': self.q5, 'q6': self.q6, 'q7': self.q7
+            },
+            'resultados': {
+                'pontuacao_total': self.pontuacao_total,
+                'nivel_ansiedade': self.nivel_ansiedade,
+                'ansiedade_positiva': self.ansiedade_positiva
+            },
+            'data_realizacao': self.data_realizacao.isoformat() if self.data_realizacao else None,
+            'observacoes': self.observacoes
+        }
+
+class UploadSession(db.Model):
+    __tablename__ = 'upload_sessions'
+
+    id = db.Column(db.Integer, primary_key=True)
+    token = db.Column(db.String, unique=True, nullable=False)
+    status = db.Column(db.String, default='pending', nullable=False)  # pending, completed, failed
+    file_path = db.Column(db.String, nullable=True)
+    file_type = db.Column(db.String, nullable=True)  # image/jpeg, audio/webm, etc
+    original_filename = db.Column(db.String, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    expires_at = db.Column(db.DateTime, nullable=False)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'token': self.token,
+            'status': self.status,
+            'file_path': self.file_path,
+            'file_type': self.file_type,
+            'original_filename': self.original_filename,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'expires_at': self.expires_at.isoformat() if self.expires_at else None
         }

@@ -116,7 +116,7 @@ def main():
     print("   SMTP_USERNAME=suporte@agentesinteligentes.pro")
     print("   SMTP_PASSWORD=SUA_SENHA_REAL_AQUI")
     print("   SMTP_USE_TLS=True")
-    print("   EMAIL_FROM=suporte@agentesinteligentes.pro")
+    print("   EMAIL_FROM=suporte.aracannabis@arapath.com.br")
     print("   EMAIL_FROM_NAME=Aracannabis Sistema")
     
     print("\n🎉 Testes concluídos!")

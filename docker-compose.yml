@@ -10,7 +10,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
-      - "5433:5432"
+      - "5434:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -30,27 +30,49 @@ services:
       - JWT_SECRET_KEY=super_secret_key_12345
       - SECRET_KEY=another_super_secret_key_67890
       - DEBUG=True
+      - OLLAMA_HOST=http://host.docker.internal:11434
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434 # Ollama local fora do cluster
+      - OLLAMA_CLOUD_URL=${OLLAMA_CLOUD_URL:-} # opcional para ollama cloud/edge
+      - OLLAMA_API_KEY=${OLLAMA_API_KEY:-} # se sua instância cloud exigir token
+      - DEFAULT_LLM_PROVIDER=ollama_local
+      - DEFAULT_LLM_MODEL=gemma3:4b
+      - DEFAULT_LLM_VISION_PROVIDER=${DEFAULT_LLM_VISION_PROVIDER:-openai}
+      - DEFAULT_LLM_VISION_MODEL=${DEFAULT_LLM_VISION_MODEL:-gpt-4o-mini}
+      - DEFAULT_LLM_MULTIMODAL_PROVIDER=${DEFAULT_LLM_MULTIMODAL_PROVIDER:-ollama_cloud}
+      - DEFAULT_LLM_MULTIMODAL_MODEL=${DEFAULT_LLM_MULTIMODAL_MODEL:-qwen3-vl:8b}
+      - OTEL_SDK_DISABLED=true
+      - CREWAI_DISABLE_TELEMETRY=true
+      - CREWAI_DISABLE_TRACKING=true
     volumes:
       - .:/app
     depends_on:
       - db
     networks:
       - app-network
-    command: ["gunicorn", "--bind", "0.0.0.0:5002", "--reload", "app_cors_livre:create_app()"]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command: [ "gunicorn", "--bind", "0.0.0.0:5002", "--reload", "--timeout", "300", "--workers", "2", "--threads", "2", "app_cors_livre:create_app()" ]
 
   # Frontend React Application
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        REACT_APP_API_URL: http://localhost:5002
     container_name: aracannabis_frontend
     ports:
       - "3000:3000"
     environment:
-      - REACT_APP_API_URL=http://backend:5002
+      - REACT_APP_API_URL=http://localhost:5002
+      - CHOKIDAR_USEPOLLING=true
+      - HOST=0.0.0.0
     volumes:
       - ./frontend:/app
       - /app/node_modules
+    stdin_open: true
+    tty: true
+    command: npm start
     depends_on:
       - backend
     networks:
@@ -58,6 +80,7 @@ services:
 
 volumes:
   postgres_data:
+
 
 networks:
   app-network:
