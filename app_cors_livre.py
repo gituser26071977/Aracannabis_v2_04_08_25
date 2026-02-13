@@ -25,7 +25,7 @@ def create_app():
     app.config['CSRF_TOKEN'] = secrets.token_hex(32)
     
     # Configurações de upload de arquivos
-    app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max file size
+    app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500MB max file size
     app.config['UPLOAD_FOLDER_EXAMES'] = os.path.join(os.getcwd(), 'uploads', 'exames')
     app.config['ALLOWED_EXTENSIONS'] = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'doc', 'docx'}
     
@@ -136,12 +136,14 @@ def create_app():
     from routes.import_export import import_export_bp
     app.register_blueprint(import_export_bp, url_prefix='/api/import-export')
     app.register_blueprint(produtos_bp, url_prefix='/api')
-    app.register_blueprint(cadastro_prof_bp, url_prefix='/api/cadastro_profissionais')
+    app.register_blueprint(cadastro_prof_bp, url_prefix='/api/cadastro-profissionais')
     app.register_blueprint(anuncios_bp, url_prefix='/api')
     app.register_blueprint(snap_iv_bp, url_prefix='/api/snap-iv')
     app.register_blueprint(beck_depression_bp, url_prefix='/api/beck-depression')
     app.register_blueprint(phq9_bp, url_prefix='/api/phq9')
     app.register_blueprint(gad7_bp, url_prefix='/api/gad7')
+    from routes.prescricoes import prescricoes_bp
+    app.register_blueprint(prescricoes_bp, url_prefix='/api/prescricoes')
     from routes.mercadopago import mercadopago_bp
     app.register_blueprint(mercadopago_bp, url_prefix='/api/mercadopago')
     from routes.dashboard import dashboard_bp
@@ -157,6 +159,28 @@ def create_app():
     app.register_blueprint(billing_bp, url_prefix='/api/billing')
     app.register_blueprint(ai_chat_simples_bp, url_prefix='/api')
 
+    from routes.patient_import_agent import patient_import_bp
+    app.register_blueprint(patient_import_bp, url_prefix='/api/import-agent')
+    
+    # Patient Portal (NEW)
+    from routes.patient_auth import patient_auth_bp
+    from routes.patient_portal import patient_portal_bp
+    app.register_blueprint(patient_auth_bp, url_prefix='/api/patient-auth')
+    app.register_blueprint(patient_portal_bp, url_prefix='/api/patient-portal')
+    
+    # Association Management Module
+    from association.routes import association_bp
+    from association.routes import association_bp
+    app.register_blueprint(association_bp, url_prefix='/api/association')
+
+    # [NEW] AI Clinical Pipeline
+    from routes.ai_clinical import ai_clinical_bp
+    app.register_blueprint(ai_clinical_bp, url_prefix='/api/ai-clinical')
+
+    # [NEW] Tenant Middleware
+    from middleware.tenant_middleware import register_tenant_middleware
+    register_tenant_middleware(app)
+
     # Inicializar anúncios dentro do contexto da aplicação
     with app.app_context():
         from routes.anuncios import init_anuncios_table
@@ -169,7 +193,10 @@ def create_app():
 
     # Criar tabelas do banco de dados
     with app.app_context():
-        db.create_all()
+        try:
+            db.create_all()
+        except Exception as e:
+            print(f"⚠️ Aviso: Erro ao criar tabelas (possível race condition em múltiplos workers): {e}")
         
         # Criar diretórios de upload se não existirem
         upload_dir = app.config.get('UPLOAD_FOLDER_EXAMES')
@@ -191,4 +218,5 @@ if __name__ == '__main__':
     print("🔑 CSRF: Habilitado")
     print("🛡️ Rate limiting: Ativo")
     print(f"📡 Porta: {args.port}")
-    app.run(host='0.0.0.0', port=args.port, debug=True)
+    # Desativar debug mode para evitar locks e recarregamentos em background
+    app.run(host='0.0.0.0', port=args.port, debug=False, threaded=True)
