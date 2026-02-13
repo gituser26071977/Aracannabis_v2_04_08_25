@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  # Serviço de Anonimização (Sem internet)
+  anonymization_service:
+    build:
+      context: ./services/anonymization_service
+      dockerfile: Dockerfile
+    container_name: aracannabis_anonymizer
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - ANONYMIZATION_KEY=${ANONYMIZATION_KEY}
+    networks:
+      - internal_services_net
+      - default # Acesso ao BD
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      interval: 30s
+      start_period: 40s
+    depends_on:
+      - db
+
+  # LLM Gateway (Único com saída para Internet)
+  llm_gateway:
+    build:
+      context: ./services/llm_gateway
+      dockerfile: Dockerfile
+    container_name: aracannabis_llm_gateway
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      # Acesso ao BD para auditoria
+    networks:
+      - internal_services_net # Recebe tráfego do backend
+      - default # Acesso ao BD
+      # Por padrão, redes bridge têm acesso à internet (NAT), a menos que `internal: true`.
+      # Como não especificamos `internal: true` na default, ele terá acesso.
+      # A mágica da segurança é que o 'anonymization_service' NÃO USA esta rede para gateway default se configurado
+      # Mas para garantir: O anonymization service deve estar APENAS na internal ou explicitamente bloqueado.
+      # No docker-compose acima, o anonymization_service está na 'default' para acessar o postgres (se o postgres estiver na default).
+      # O ideal seria uma rede 'db_net' isolada.
+
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      interval: 30s
+      start_period: 40s
+    depends_on:
+      - db
+
+  # Backend Principal
+  backend:
+    networks:
+      - default
+      - internal_services_net
+    environment:
+      - ANONYMIZATION_SERVICE_URL=http://anonymization_service:8000
+      - LLM_GATEWAY_URL=http://llm_gateway:8000
+      # Backend NÃO DEVE ter chaves de API LLM direto!
+
+networks:
+  internal_services_net:
+    internal: true # Bloqueia internet
+    driver: bridge

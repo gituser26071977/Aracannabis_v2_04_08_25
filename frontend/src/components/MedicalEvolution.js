@@ -33,10 +33,15 @@ import {
   Person as PersonIcon,
   Save as SaveIcon,
   Cancel as CancelIcon,
-  History as HistoryIcon
+  Save as SaveIcon,
+  Cancel as CancelIcon,
+  History as HistoryIcon,
+  AutoFixHigh as AutoFixHighIcon,
+  ContentPaste as ContentPasteIcon
 } from '@mui/icons-material';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { aiClinicalService } from '../services/aiClinicalService';
 
 const MedicalEvolution = ({ pacienteId, pacienteNome }) => {
   const [evolucoes, setEvolucoes] = useState([]);
@@ -47,18 +52,19 @@ const MedicalEvolution = ({ pacienteId, pacienteNome }) => {
   const [deleteId, setDeleteId] = useState(null);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [evolucaoText, setEvolucaoText] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
 
   // Buscar evoluções do paciente
   useEffect(() => {
     const fetchEvolucoes = async () => {
       setLoading(true);
       setError('');
-      
+
       try {
         // Aqui seria feita a chamada à API para buscar as evoluções
         // const response = await evolucaoService.listarEvolucoes(pacienteId);
         // setEvolucoes(response.data.evolucoes);
-        
+
         // Dados simulados para demonstração
         const mockEvolucoes = [
           {
@@ -86,7 +92,7 @@ const MedicalEvolution = ({ pacienteId, pacienteNome }) => {
             nota_evolucao: 'Consulta inicial. Paciente apresenta quadro de ansiedade generalizada e insônia. Iniciado tratamento com CBD 20mg/ml, 10 gotas 2x ao dia. Orientado sobre possíveis efeitos colaterais e necessidade de acompanhamento regular.'
           }
         ];
-        
+
         setEvolucoes(mockEvolucoes);
       } catch (err) {
         console.error('Erro ao buscar evoluções:', err);
@@ -95,7 +101,7 @@ const MedicalEvolution = ({ pacienteId, pacienteNome }) => {
         setLoading(false);
       }
     };
-    
+
     if (pacienteId) {
       fetchEvolucoes();
     }
@@ -139,25 +145,25 @@ const MedicalEvolution = ({ pacienteId, pacienteNome }) => {
     if (!evolucaoText.trim()) {
       return;
     }
-    
+
     setLoading(true);
     setError('');
-    
+
     try {
       if (editingId) {
         // Editar evolução existente
         // await evolucaoService.atualizarEvolucao(editingId, { nota_evolucao: evolucaoText });
-        
+
         // Simulação para demonstração
-        setEvolucoes(evolucoes.map(ev => 
-          ev.id === editingId 
-            ? { ...ev, nota_evolucao: evolucaoText, data_evolucao: new Date() } 
+        setEvolucoes(evolucoes.map(ev =>
+          ev.id === editingId
+            ? { ...ev, nota_evolucao: evolucaoText, data_evolucao: new Date() }
             : ev
         ));
       } else {
         // Criar nova evolução
         // const response = await evolucaoService.registrarEvolucao(pacienteId, { nota_evolucao: evolucaoText });
-        
+
         // Simulação para demonstração
         const novaEvolucao = {
           id: Date.now(), // ID temporário
@@ -167,10 +173,10 @@ const MedicalEvolution = ({ pacienteId, pacienteNome }) => {
           data_evolucao: new Date(),
           nota_evolucao: evolucaoText
         };
-        
+
         setEvolucoes([novaEvolucao, ...evolucoes]);
       }
-      
+
       handleCloseDialog();
     } catch (err) {
       console.error('Erro ao salvar evolução:', err);
@@ -183,16 +189,16 @@ const MedicalEvolution = ({ pacienteId, pacienteNome }) => {
   // Excluir evolução
   const handleDeleteEvolucao = async () => {
     if (!deleteId) return;
-    
+
     setLoading(true);
     setError('');
-    
+
     try {
       // await evolucaoService.excluirEvolucao(deleteId);
-      
+
       // Simulação para demonstração
       setEvolucoes(evolucoes.filter(ev => ev.id !== deleteId));
-      
+
       handleCloseConfirmDelete();
     } catch (err) {
       console.error('Erro ao excluir evolução:', err);
@@ -205,6 +211,43 @@ const MedicalEvolution = ({ pacienteId, pacienteNome }) => {
   // Formatar data
   const formatDate = (date) => {
     return format(new Date(date), "dd 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR });
+  };
+
+  const handleGenerateSoap = async () => {
+    if (!evolucaoText.trim()) {
+      setError('Digite algum texto (queixas, observações) para gerar o SOAP.');
+      return;
+    }
+
+    setAiLoading(true);
+    setError('');
+
+    try {
+      const response = await aiClinicalService.generateSoap(evolucaoText, pacienteId);
+
+      const soap = response.soap;
+      const formattedSoap = `
+[S] SUBJETIVO:
+${soap.subjective || '-'}
+
+[O] OBJETIVO:
+${soap.objective || '-'}
+
+[A] AVALIAÇÃO:
+${soap.assessment || '-'}
+
+[P] PLANO:
+${soap.plan || '-'}
+      `.trim();
+
+      setEvolucaoText(formattedSoap);
+
+    } catch (err) {
+      console.error('Erro IA:', err);
+      setError('Falha ao gerar resumo IA: ' + (err.error || err.message));
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   return (
@@ -223,23 +266,23 @@ const MedicalEvolution = ({ pacienteId, pacienteNome }) => {
           <Typography variant="h5" component="h1" color="primary" fontWeight="bold">
             Evolução Médica - {pacienteNome || `Paciente #${pacienteId}`}
           </Typography>
-          
-          <Button 
-            variant="contained" 
-            color="primary" 
+
+          <Button
+            variant="contained"
+            color="primary"
             startIcon={<NoteAddIcon />}
             onClick={handleOpenDialog}
           >
             Nova Evolução
           </Button>
         </Box>
-        
+
         {error && (
           <Alert severity="error" sx={{ mb: 3 }}>
             {error}
           </Alert>
         )}
-        
+
         {loading && !openDialog ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
             <CircularProgress />
@@ -260,19 +303,19 @@ const MedicalEvolution = ({ pacienteId, pacienteNome }) => {
             {evolucoes.map((evolucao, index) => (
               <React.Fragment key={evolucao.id}>
                 {index > 0 && <Divider variant="inset" component="li" />}
-                <ListItem 
+                <ListItem
                   alignItems="flex-start"
                   secondaryAction={
                     <Box>
-                      <IconButton 
-                        edge="end" 
+                      <IconButton
+                        edge="end"
                         aria-label="editar"
                         onClick={() => handleEditEvolucao(evolucao)}
                       >
                         <EditIcon />
                       </IconButton>
-                      <IconButton 
-                        edge="end" 
+                      <IconButton
+                        edge="end"
                         aria-label="excluir"
                         onClick={() => handleConfirmDelete(evolucao.id)}
                         sx={{ ml: 1 }}
@@ -293,7 +336,7 @@ const MedicalEvolution = ({ pacienteId, pacienteNome }) => {
                         <Typography variant="subtitle1" color="primary" component="span">
                           {evolucao.profissional_nome}
                         </Typography>
-                        <Chip 
+                        <Chip
                           icon={<HistoryIcon fontSize="small" />}
                           label={formatDate(evolucao.data_evolucao)}
                           size="small"
@@ -319,7 +362,7 @@ const MedicalEvolution = ({ pacienteId, pacienteNome }) => {
           </List>
         )}
       </Paper>
-      
+
       {/* Diálogo para adicionar/editar evolução */}
       <Dialog open={openDialog} onClose={handleCloseDialog} fullWidth maxWidth="lg">
         <DialogTitle>
@@ -353,15 +396,26 @@ const MedicalEvolution = ({ pacienteId, pacienteNome }) => {
             FormHelperTextProps={{ sx: { mt: 1 } }}
             helperText="Dica: separe por datas, marcadores e sinais vitais para leitura rápida."
           />
+          <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
+            <Button
+              variant="outlined"
+              color="secondary"
+              startIcon={aiLoading ? <CircularProgress size={20} /> : <AutoFixHighIcon />}
+              onClick={handleGenerateSoap}
+              disabled={aiLoading || !evolucaoText.trim()}
+            >
+              {aiLoading ? 'Processando IA Auditada...' : 'Gerar SOAP (DeepSeek)'}
+            </Button>
+          </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDialog} startIcon={<CancelIcon />} color="inherit">
             Cancelar
           </Button>
-          <Button 
-            onClick={handleSaveEvolucao} 
-            startIcon={<SaveIcon />} 
-            variant="contained" 
+          <Button
+            onClick={handleSaveEvolucao}
+            startIcon={<SaveIcon />}
+            variant="contained"
             color="primary"
             disabled={!evolucaoText.trim()}
           >
@@ -369,7 +423,7 @@ const MedicalEvolution = ({ pacienteId, pacienteNome }) => {
           </Button>
         </DialogActions>
       </Dialog>
-      
+
       {/* Diálogo de confirmação de exclusão */}
       <Dialog
         open={confirmDeleteOpen}
@@ -392,7 +446,7 @@ const MedicalEvolution = ({ pacienteId, pacienteNome }) => {
           </Button>
         </DialogActions>
       </Dialog>
-      
+
       <Box sx={{ mt: 4, textAlign: 'center' }}>
         <Typography variant="body2" color="text.secondary">
           Aracannabis © {new Date().getFullYear()} - Sistema de Controle de Pacientes
