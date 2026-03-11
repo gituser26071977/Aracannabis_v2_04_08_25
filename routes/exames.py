@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, current_app, send_from_directory
-from models import db, Exame, ExameImagem, ExameLabResultado, OCRResultado, Paciente, Profissional
+from models import db, Exame, ExameImagem, ExameLabResultado, OCRResultado, Paciente
 from werkzeug.utils import secure_filename
 from datetime import datetime
 import os
@@ -46,8 +46,14 @@ def criar_exame():
     if tipo_exame == 'numerico' and titulo and 'hemoglobina' in titulo.lower():
         is_chartable = True
 
+    # Obter paciente para herdar associacao_id (multi-tenant)
+    paciente = Paciente.query.get(paciente_id)
+    if not paciente:
+        return jsonify({"error": "Paciente não encontrado"}), 404
+
     novo_exame = Exame(
         paciente_id=paciente_id,
+        associacao_id=paciente.associacao_id,
         profissional_id=profissional_id,
         data_exame=data_exame,
         tipo_exame=tipo_exame,

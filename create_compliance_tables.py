@@ -2,7 +2,6 @@ import os
 from dotenv import load_dotenv
 from flask import Flask
 from models import db
-from models_ai_compliance import AIClinicalRequest, AIClinicalOutput, AnonymizationMap, PatientConsent
 
 # Carregar variáveis de ambiente
 load_dotenv()

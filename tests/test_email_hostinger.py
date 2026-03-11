@@ -76,7 +76,7 @@ def send_test_email(server, port, username, password, use_tls=True, use_ssl=Fals
         server_conn.send_message(msg)
         server_conn.quit()
         
-        print(f"✅ Email enviado com sucesso!")
+        print("✅ Email enviado com sucesso!")
         return True
         
     except Exception as e:
@@ -116,26 +116,26 @@ def main():
             successful_configs.append((server, port, use_tls, use_ssl))
     
     if successful_configs:
-        print(f"\n🎉 Configurações que funcionaram:")
+        print("\n🎉 Configurações que funcionaram:")
         for i, (server, port, use_tls, use_ssl) in enumerate(successful_configs, 1):
             print(f"   {i}. {server}:{port} (TLS: {use_tls}, SSL: {use_ssl})")
         
         # Testar envio de email com a primeira configuração que funcionou
         server, port, use_tls, use_ssl = successful_configs[0]
-        print(f"\n📤 Testando envio de email com a melhor configuração...")
+        print("\n📤 Testando envio de email com a melhor configuração...")
         
         if send_test_email(server, port, username, password, use_tls, use_ssl):
-            print(f"\n✅ CONFIGURAÇÃO RECOMENDADA:")
+            print("\n✅ CONFIGURAÇÃO RECOMENDADA:")
             print(f"   SMTP_SERVER={server}")
             print(f"   SMTP_PORT={port}")
             print(f"   SMTP_USE_TLS={'True' if use_tls else 'False'}")
             print(f"   SMTP_USE_SSL={'True' if use_ssl else 'False'}")
         
     else:
-        print(f"\n❌ Nenhuma configuração funcionou. Verifique:")
-        print(f"   - Credenciais de email")
-        print(f"   - Configurações do provedor")
-        print(f"   - Firewall/proxy")
+        print("\n❌ Nenhuma configuração funcionou. Verifique:")
+        print("   - Credenciais de email")
+        print("   - Configurações do provedor")
+        print("   - Firewall/proxy")
 
 if __name__ == "__main__":
     main()

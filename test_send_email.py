@@ -2,7 +2,6 @@
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-import os
 
 smtp_server = "smtp.hostinger.com"
 smtp_port = 465

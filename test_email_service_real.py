@@ -17,7 +17,7 @@ def test_real_email():
     print("Initializing EmailService...")
     service = EmailService()
     
-    print(f"Service Configuration:")
+    print("Service Configuration:")
     print(f"SMTP Server: {service.smtp_server}")
     print(f"SMTP Port: {service.smtp_port}")
     print(f"Username: {service.username}")

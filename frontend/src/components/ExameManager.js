@@ -37,10 +37,14 @@ import {
   TrendingUp,
   Image as ImageIcon,
   Description,
-  GetApp
+  GetApp,
+  Print,
+  CheckCircle,
+  RadioButtonUnchecked,
+  ErrorOutline,
+  Assignment
 } from '@mui/icons-material';
-import ToggleButton from '@mui/material/ToggleButton';
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
+import { ToggleButton, ToggleButtonGroup, List as MuiList, ListItem as MuiListItem, ListItemText as MuiListItemText, ListItemIcon as MuiListItemIcon, ListItemSecondaryAction } from '@mui/material';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -56,6 +60,7 @@ import { exameService } from '../services/api';
 import ImageViewer from './ImageViewer';
 import MediaCapture from './MediaCapture';
 import MobileConnectQR from './MobileConnectQR'; // Importação do componente de QR Code
+import ExamChart from './ExamChart';
 import { CameraAlt, PhonelinkRing } from '@mui/icons-material';
 
 // Registrar componentes do Chart.js
@@ -88,6 +93,36 @@ const ExameManager = ({ patientId }) => {
     unidade: '',
     data_exame: new Date().toISOString().split('T')[0] // data de hoje
   });
+
+  const requiredDocuments = [
+    { key: 'receita', label: 'Receita Médica', keywords: ['receita', 'prescrição', 'prescricao'] },
+    { key: 'anvisa', label: 'Autorização ANVISA', keywords: ['anvisa', 'autorização', 'autorizacao'] },
+    { key: 'endereco', label: 'Comprovante de Endereço', keywords: ['endereco', 'residência', 'residencia', 'comprovante'] },
+    { key: 'laudo', label: 'Laudo Médico', keywords: ['laudo', 'relatório', 'relatorio'] },
+    { key: 'ajuizamento', label: 'Ajuizamento', keywords: ['ajuizamento', 'judicial', 'processo'] },
+    { key: 'identidade', label: 'Documento de Identidade', keywords: ['identidade', 'rg', 'cnh', 'cpf'] }
+  ];
+
+  const getDocumentStatus = (docType) => {
+    return exames.find(ex => {
+      const title = (ex.titulo || '').toLowerCase();
+      const desc = (ex.descricao || '').toLowerCase();
+      // Prioridade para matching de tipo_exame === 'arquivo'
+      if (ex.tipo_exame !== 'arquivo' && docType.key !== 'laudo') return false;
+
+      return docType.keywords.some(keyword => title.includes(keyword) || desc.includes(keyword));
+    });
+  };
+
+  const handleUploadForCategory = (category) => {
+    setNewExame({
+      ...newExame,
+      titulo: category.label,
+      descricao: `Documento para ${category.label}`
+    });
+    setTipoExame('arquivo');
+    setOpenDialog(true);
+  };
 
   useEffect(() => {
     const carregarExames = async () => {
@@ -146,11 +181,14 @@ const ExameManager = ({ patientId }) => {
   };
 
   const handleMobileUpload = (file) => {
+    setTipoExame('arquivo');
     setNewExame({
       ...newExame,
-      arquivo: file
+      arquivo: file,
+      // Se quiser limpar outros campos, faça aqui. Por enquanto mantemos o titulo se já tiver.
     });
     setOpenQRDialog(false); // Fecha o QR code
+    setOpenDialog(true); // Abre o formulário principal para preencher título e salvar
   };
 
   const handleTipoExameChange = (event, newTipo) => {
@@ -344,10 +382,18 @@ const ExameManager = ({ patientId }) => {
           <Button
             variant="outlined"
             startIcon={<TrendingUp />}
-            onClick={() => setTabValue(1)}
+            onClick={() => setTabValue(2)}
             sx={{ mr: 1 }}
           >
             Gráficos
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<PhonelinkRing />}
+            onClick={() => setOpenQRDialog(true)}
+            sx={{ mr: 1 }}
+          >
+            Captura Celular
           </Button>
           <Button
             variant="contained"
@@ -366,13 +412,103 @@ const ExameManager = ({ patientId }) => {
       )}
 
       <Tabs value={tabValue} onChange={(e, newValue) => setTabValue(newValue)} sx={{ mb: 2 }}>
-        <Tab label="Lista de Exames" />
+        <Tab label="Checklist de Documentos" />
+        <Tab label="Lista Completa" />
         <Tab label="Gráficos de Tendência" />
         <Tab label="Visualização por Tipo" />
       </Tabs>
 
-      {/* Tab 0: Lista de Exames */}
+      {/* Tab 0: Checklist de Documentos */}
       {tabValue === 0 && (
+        <Box sx={{ mb: 4 }}>
+          <Alert severity="info" icon={<Assignment />} sx={{ mb: 3 }}>
+            Checklist da Ficha de Cadastro: Verifique abaixo os documentos obrigatórios para o prontuário.
+          </Alert>
+          <Grid container spacing={2}>
+            {requiredDocuments.map((doc) => {
+              const foundDoc = getDocumentStatus(doc);
+              return (
+                <Grid item xs={12} md={6} key={doc.key}>
+                  <Card variant="outlined" sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    p: 1,
+                    borderColor: foundDoc ? 'success.light' : 'warning.light',
+                    bgcolor: foundDoc ? 'rgba(76, 175, 80, 0.04)' : 'transparent'
+                  }}>
+                    <Box sx={{ ml: 1, mr: 2 }}>
+                      {foundDoc ? (
+                        <CheckCircle color="success" />
+                      ) : (
+                        <RadioButtonUnchecked color="disabled" />
+                      )}
+                    </Box>
+                    <Box sx={{ flexGrow: 1 }}>
+                      <Typography variant="subtitle1" sx={{ fontWeight: foundDoc ? 'bold' : 'normal' }}>
+                        {doc.label}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {foundDoc ? `Enviado em ${formatDate(foundDoc.data_exame)}` : 'Pendente de envio'}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', gap: 0.5 }}>
+                      {foundDoc ? (
+                        <>
+                          <Tooltip title="Visualizar">
+                            <IconButton size="small" color="primary" onClick={() => handleViewExame(foundDoc)}>
+                              <Visibility fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Baixar">
+                            <IconButton size="small" color="info" onClick={() => {
+                              const url = exameService.obterUrlImagem(foundDoc.arquivo_caminho);
+                              window.open(url, '_blank');
+                            }}>
+                              <GetApp fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Imprimir">
+                            <IconButton size="small" color="secondary" onClick={() => {
+                              const url = exameService.obterUrlImagem(foundDoc.arquivo_caminho);
+                              const printWin = window.open('', '_blank');
+                              if (printWin) {
+                                printWin.document.write(`
+                                  <html>
+                                    <head>
+                                      <title>Imprimir - ${foundDoc.titulo}</title>
+                                      <style>body { margin: 0; display: flex; justify-content: center; } img { max-width: 100%; height: auto; }</style>
+                                    </head>
+                                    <body onload="window.print();window.close();"><img src="${url}" /></body>
+                                  </html>
+                                `);
+                                printWin.document.close();
+                              }
+                            }}>
+                              <Print fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </>
+                      ) : (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          startIcon={<CloudUpload />}
+                          onClick={() => handleUploadForCategory(doc)}
+                        >
+                          Enviar
+                        </Button>
+                      )}
+                    </Box>
+                  </Card>
+                </Grid>
+              );
+            })}
+          </Grid>
+        </Box>
+      )}
+
+      {/* Tab 1: Lista Completa de Exames */}
+      {tabValue === 1 && (
         <>
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
@@ -408,11 +544,66 @@ const ExameManager = ({ patientId }) => {
                       <TableCell>{exame.titulo || 'Sem título'}</TableCell>
                       <TableCell>{renderExameContent(exame)}</TableCell>
                       <TableCell>{formatDate(exame.data_exame)}</TableCell>
-                      <TableCell>
-                        <IconButton onClick={() => handleViewExame(exame)} color="primary">
+                      <TableCell sx={{ display: 'flex', gap: 1 }}>
+                        <IconButton
+                          onClick={() => handleViewExame(exame)}
+                          color="primary"
+                          title="Visualizar"
+                        >
                           <Visibility />
                         </IconButton>
-                        <IconButton onClick={() => handleDelete(exame.id)} color="error">
+
+                        {exame.tipo_exame === 'arquivo' && (
+                          <>
+                            <IconButton
+                              onClick={() => {
+                                const url = exameService.obterUrlImagem(exame.arquivo_caminho);
+                                window.open(url, '_blank');
+                              }}
+                              color="info"
+                              title="Baixar / Abrir"
+                            >
+                              <GetApp />
+                            </IconButton>
+
+                            <IconButton
+                              onClick={() => {
+                                const url = exameService.obterUrlImagem(exame.arquivo_caminho);
+                                const printWin = window.open('', '_blank');
+                                if (printWin) {
+                                  printWin.document.write(`
+                                    <html>
+                                      <head>
+                                        <title>Imprimir Documento - ${exame.titulo}</title>
+                                        <style>
+                                          body { margin: 0; display: flex; justify-content: center; }
+                                          img { max-width: 100%; height: auto; }
+                                          @media print {
+                                            img { max-width: 100%; }
+                                          }
+                                        </style>
+                                      </head>
+                                      <body onload="window.print();window.close();">
+                                        <img src="${url}" />
+                                      </body>
+                                    </html>
+                                  `);
+                                  printWin.document.close();
+                                }
+                              }}
+                              color="secondary"
+                              title="Imprimir"
+                            >
+                              <Print />
+                            </IconButton>
+                          </>
+                        )}
+
+                        <IconButton
+                          onClick={() => handleDelete(exame.id)}
+                          color="error"
+                          title="Excluir"
+                        >
                           <Delete />
                         </IconButton>
                       </TableCell>
@@ -425,62 +616,15 @@ const ExameManager = ({ patientId }) => {
         </>
       )}
 
-      {/* Tab 1: Gráficos de Tendência */}
-      {tabValue === 1 && (
+      {/* Tab 2: Gráficos de Tendência */}
+      {tabValue === 2 && (
         <Box>
-          {getExamesByType('numerico').length === 0 ? (
-            <Alert severity="info">
-              Nenhum exame numérico encontrado para gerar gráficos de tendência.
-            </Alert>
-          ) : (
-            <Box sx={{ height: 400 }}>
-              {(() => {
-                const chartData = getNumericExamsChart();
-                return chartData ? (
-                  <Line
-                    data={chartData}
-                    options={{
-                      responsive: true,
-                      maintainAspectRatio: false,
-                      plugins: {
-                        legend: {
-                          position: 'top',
-                        },
-                        title: {
-                          display: true,
-                          text: 'Tendência dos Exames Numéricos'
-                        }
-                      },
-                      scales: {
-                        y: {
-                          beginAtZero: true,
-                          title: {
-                            display: true,
-                            text: 'Valores'
-                          }
-                        },
-                        x: {
-                          title: {
-                            display: true,
-                            text: 'Data'
-                          }
-                        }
-                      }
-                    }}
-                  />
-                ) : (
-                  <Alert severity="warning">
-                    Erro ao gerar gráfico. Verifique os dados dos exames.
-                  </Alert>
-                );
-              })()}
-            </Box>
-          )}
+          <ExamChart patientId={patientId} />
         </Box>
       )}
 
-      {/* Tab 2: Visualização por Tipo */}
-      {tabValue === 2 && (
+      {/* Tab 3: Visualização por Tipo */}
+      {tabValue === 3 && (
         <Grid container spacing={3}>
           {['texto', 'numerico', 'arquivo'].map(tipo => {
             const examsByType = getExamesByType(tipo);
@@ -660,16 +804,7 @@ const ExameManager = ({ patientId }) => {
               </Box>
             )}
 
-            {/* Dialog específico para QR Code */}
-            <Dialog open={openQRDialog} onClose={() => setOpenQRDialog(false)} maxWidth="xs">
-              <DialogTitle>Conectar Celular</DialogTitle>
-              <DialogContent>
-                <MobileConnectQR onUploadComplete={handleMobileUpload} />
-              </DialogContent>
-              <DialogActions>
-                <Button onClick={() => setOpenQRDialog(false)}>Cancelar</Button>
-              </DialogActions>
-            </Dialog>
+
 
             {tipoExame === 'numerico' && (
               <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
@@ -786,6 +921,16 @@ const ExameManager = ({ patientId }) => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenViewDialog(false)}>Fechar</Button>
+        </DialogActions>
+      </Dialog>
+      {/* Dialog específico para QR Code (Movido para nível superior) */}
+      <Dialog open={openQRDialog} onClose={() => setOpenQRDialog(false)} maxWidth="xs">
+        <DialogTitle>Conectar Celular</DialogTitle>
+        <DialogContent>
+          <MobileConnectQR onUploadComplete={handleMobileUpload} />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenQRDialog(false)}>Cancelar</Button>
         </DialogActions>
       </Dialog>
     </Paper>

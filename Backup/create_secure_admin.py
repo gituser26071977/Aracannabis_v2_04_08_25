@@ -34,8 +34,8 @@ def create_secure_admin():
             db.session.add(novo_admin)
             db.session.commit()
             
-            print(f"Novo usuário admin3 criado com sucesso!")
-            print(f"Usuário: admin3")
+            print("Novo usuário admin3 criado com sucesso!")
+            print("Usuário: admin3")
             print(f"Senha: {senha}")
         except Exception as e:
             db.session.rollback()

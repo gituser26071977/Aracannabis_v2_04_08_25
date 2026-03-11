@@ -8,6 +8,8 @@ const api = axios.create({
   baseURL: API_BASE_URL,
 });
 
+console.log('API Service configurado com URL:', API_BASE_URL);
+
 // Interceptor para adicionar o token de autenticação e CSRF em todas as requisições
 api.interceptors.request.use(
   (config) => {
@@ -15,6 +17,12 @@ api.interceptors.request.use(
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    // Adicionar ID da associação ativa para isolamento multi-tenant
+    const selectedAssocId = localStorage.getItem('selectedAssociationId');
+    if (selectedAssocId) {
+      config.headers['X-Association-ID'] = selectedAssocId;
     }
 
     // Adicionar token CSRF para métodos não seguros
@@ -150,9 +158,14 @@ export const authService = {
 
 // Serviço de pacientes
 export const pacientesService = {
-  listar: async () => {
+  listar: async (filtros = {}) => {
     try {
-      const response = await api.get('/pacientes/');
+      const params = new URLSearchParams();
+      if (filtros.nome) params.append('nome', filtros.nome);
+      if (filtros.associacao) params.append('associacao', filtros.associacao);
+      if (filtros.periodo_cadastro) params.append('periodo_cadastro', filtros.periodo_cadastro);
+
+      const response = await api.get(`/pacientes/?${params.toString()}`);
       return response.data;
     } catch (error) {
       throw error.response ? error.response.data : { error: 'Erro de conexão' };
@@ -1023,6 +1036,22 @@ export const chatSimplesService = {
     } catch (error) {
       throw error.response ? error.response.data : { error: 'Erro de conexão' };
     }
+  },
+  stt: async (audioBase64) => {
+    try {
+      const response = await api.post('/chat-simples/stt', { audio: audioBase64 });
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de transcrição' };
+    }
+  },
+  tts: async (text) => {
+    try {
+      const response = await api.post('/chat-simples/tts', { text }, { timeout: 60000 });
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de síntese de voz' };
+    }
   }
 };
 
@@ -1296,17 +1325,103 @@ export const aiConfigService = {
       throw error.response ? error.response.data : { error: 'Erro de conexão' };
     }
   },
-  atualizarConfiguracao: async ({ provider, model }) => {
+  atualizarConfiguracao: async ({ provider, model, api_key, base_url }) => {
     try {
-      const response = await api.post(`/ai-config/providers/${provider}`, { model });
+      const response = await api.post(`/ai-config/providers/${provider}`, {
+        model,
+        api_key,
+        base_url
+      });
       return response.data;
     } catch (error) {
       throw error.response ? error.response.data : { error: 'Erro de conexão' };
     }
   },
-  testarConfiguracao: async ({ provider, model }) => {
+  testarConfiguracao: async ({ provider, model, api_key, base_url }) => {
     try {
-      const response = await api.post('/ai-config/test', { provider, model });
+      const response = await api.post('/ai-config/test', {
+        provider,
+        model,
+        api_key,
+        base_url
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  atualizarConfiguracaoVision: async ({ provider, model, api_key, base_url }) => {
+    try {
+      const response = await api.post(`/ai-config/providers/vision/${provider}`, {
+        model,
+        api_key,
+        base_url
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  atualizarConfiguracaoMultimodal: async ({ provider, model, api_key, base_url }) => {
+    try {
+      const response = await api.post(`/ai-config/providers/multimodal/${provider}`, {
+        model,
+        api_key,
+        base_url
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+
+  // Novos métodos para configuração por função
+  atualizarConfiguracaoChat: async ({ provider, model, api_key, base_url }) => {
+    try {
+      const response = await api.post(`/ai-config/providers/chat/${provider}`, {
+        model,
+        api_key,
+        base_url
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+
+  atualizarConfiguracaoAudio: async ({ provider, model, api_key, base_url }) => {
+    try {
+      const response = await api.post(`/ai-config/providers/audio/${provider}`, {
+        model,
+        api_key,
+        base_url
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+
+  atualizarConfiguracaoSpreadsheet: async ({ provider, model, api_key, base_url }) => {
+    try {
+      const response = await api.post(`/ai-config/providers/spreadsheet/${provider}`, {
+        model,
+        api_key,
+        base_url
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+
+  atualizarConfiguracaoPDF: async ({ provider, model, api_key, base_url }) => {
+    try {
+      const response = await api.post(`/ai-config/providers/pdf/${provider}`, {
+        model,
+        api_key,
+        base_url
+      });
       return response.data;
     } catch (error) {
       throw error.response ? error.response.data : { error: 'Erro de conexão' };
@@ -1324,4 +1439,26 @@ export const dashboardService = {
     }
   }
 };
+
+export const prescricaoConfigService = {
+  obter: async () => {
+    try {
+      const response = await api.get('/prescricao-config/');
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  salvar: async (payload) => {
+    try {
+      const isFormData = payload instanceof FormData;
+      const config = isFormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : {};
+      const response = await api.post('/prescricao-config/', payload, config);
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  }
+};
+
 export default api;

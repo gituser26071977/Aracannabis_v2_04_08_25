@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, Text, Float, DateTime, JSON
 from datetime import datetime
-from services.llm_gateway.app.database import Base
+from app.database import Base
 
 class AIClinicalRequest(Base):
     __tablename__ = 'ai_clinical_requests'
@@ -53,7 +53,7 @@ class AIClinicalOutput(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 from pydantic import BaseModel
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 
 class LLMGenerateRequest(BaseModel):
     consultation_id: int

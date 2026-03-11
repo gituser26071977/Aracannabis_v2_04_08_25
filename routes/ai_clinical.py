@@ -3,7 +3,6 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 import requests
 import os
 import logging
-from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -55,12 +54,23 @@ def generate_soap():
 
         # 2. Gerar com LLM Gateway
         try:
+            # Carregar provedor preferencial das configurações
+            config_path = os.path.join(current_app.root_path, 'config', 'ai_settings.json')
+            provider = "zhipu" # Fallback
+            if os.path.exists(config_path):
+                import json
+                try:
+                    with open(config_path, 'r') as f:
+                        settings = json.load(f)
+                        provider = settings.get('chat_provider', 'zhipu')
+                except: pass
+
             llm_resp = requests.post(f"{LLM_GATEWAY_URL}/generate", json={
                 "consultation_id": consultation_id or 0,
                 "tenant_id": tenant_id,
                 "anonymized_text": anonymized_text,
                 "task": task,
-                "provider": "deepseek" # Configuração futura: permitir escolha no frontend
+                "provider": provider
             }, timeout=45) # Timeout maior para LLM
             
             if llm_resp.status_code != 200:

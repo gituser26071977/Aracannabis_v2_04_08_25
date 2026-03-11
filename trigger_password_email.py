@@ -1,6 +1,5 @@
 
 import requests
-import json
 
 # URL of the backend API
 BASE_URL = "http://localhost:5010"

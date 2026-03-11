@@ -2,7 +2,6 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, PHQ9Teste, Paciente, LogAtividade, Evolucao
 from security_config import sanitize_input
-from datetime import datetime
 
 phq9_bp = Blueprint('phq9', __name__)
 

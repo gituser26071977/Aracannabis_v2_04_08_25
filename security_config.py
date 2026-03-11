@@ -8,7 +8,6 @@ from functools import wraps
 from flask import request, jsonify, current_app
 import secrets
 import string
-from datetime import datetime, timedelta
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
@@ -49,7 +48,12 @@ ALLOWED_ORIGINS = [
     'http://localhost:5010',
     'http://backend:5002',
     'https://aracannabis.com.br',
-    'https://app.aracannabis.com.br'
+    'https://app.aracannabis.com.br',
+    'http://192.168.0.104:3000',
+    'http://192.168.0.104:3000',
+    'http://192.168.0.104:5002',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:5002'
 ]
 
 # Cabeçalhos de segurança HTTP

@@ -5,7 +5,6 @@ mantendo apenas o admin.
 """
 
 import os
-import sys
 from datetime import datetime
 from flask import Flask
 from models import db, Profissional
@@ -74,7 +73,7 @@ def delete_last_three_users(users):
         print("✅ Nenhum usuário para deletar (apenas admin existe).")
         return True
     
-    print(f"\n🗑️  Usuários que serão REMOVIDOS:")
+    print("\n🗑️  Usuários que serão REMOVIDOS:")
     for user in users_to_delete:
         print(f"   - {user.nome} (ID: {user.id}, Usuário: {user.usuario})")
     

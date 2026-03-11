@@ -3,9 +3,7 @@
 Script para corrigir o sistema de email com fallback para desenvolvimento
 """
 
-import os
 import shutil
-from datetime import datetime
 
 def backup_email_service():
     """Fazer backup do serviço de email atual"""
@@ -408,16 +406,16 @@ def main():
     env_success = update_env_file()
     
     if service_success and env_success:
-        print(f"\n✅ Sistema de email corrigido com sucesso!")
-        print(f"   - Modo desenvolvimento ativado")
-        print(f"   - Emails serão simulados e salvos em 'emails_simulados/'")
-        print(f"   - Sistema funcionará mesmo sem SMTP configurado")
-        print(f"   - Para produção, configure EMAIL_DEVELOPMENT_MODE=False no .env")
+        print("\n✅ Sistema de email corrigido com sucesso!")
+        print("   - Modo desenvolvimento ativado")
+        print("   - Emails serão simulados e salvos em 'emails_simulados/'")
+        print("   - Sistema funcionará mesmo sem SMTP configurado")
+        print("   - Para produção, configure EMAIL_DEVELOPMENT_MODE=False no .env")
         
         if backup_success:
-            print(f"   - Backup salvo em: services/email_service_backup.py")
+            print("   - Backup salvo em: services/email_service_backup.py")
     else:
-        print(f"\n❌ Erro ao corrigir sistema de email")
+        print("\n❌ Erro ao corrigir sistema de email")
 
 if __name__ == "__main__":
     main()

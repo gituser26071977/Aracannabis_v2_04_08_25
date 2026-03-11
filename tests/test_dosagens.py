@@ -4,11 +4,10 @@ Script para testar o sistema de dosagens após as correções
 """
 
 import requests
-import json
 from datetime import datetime
 
 # Configurações
-BASE_URL = "http://localhost:5000/api"
+BASE_URL = "http://localhost:5002/api"
 TEST_USER = {
     "usuario": "admin",
     "senha": "Aracannabis@2025"
@@ -174,7 +173,7 @@ def test_dosagens_system():
             print("✅ Dados do gráfico obtidos com sucesso!")
             
             if 'dados_grafico' in dados_grafico:
-                dados = dados_grafico['dados_grafico']['data']
+                dados = dados_grafico['dados_grafico']
                 print(f"   Pontos no gráfico: {len(dados)}")
                 
             if 'dados_canabinoides' in dados_grafico:

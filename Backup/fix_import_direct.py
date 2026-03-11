@@ -3,7 +3,6 @@
 Correção direta para network error na importação
 """
 
-import os
 import shutil
 from datetime import datetime
 

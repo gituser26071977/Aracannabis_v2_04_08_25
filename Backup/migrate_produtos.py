@@ -5,7 +5,6 @@ Script para criar a tabela de produtos canábicos
 
 import sqlite3
 import os
-from datetime import datetime
 
 def create_produtos_table():
     """Criar tabela de produtos"""

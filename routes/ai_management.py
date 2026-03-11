@@ -2,10 +2,9 @@
 Rotas para gerenciamento de agentes CrewAI, LLMs e prompts
 """
 
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy import desc, or_
-import json
 import datetime
 
 from models import db, Profissional, LogAtividade

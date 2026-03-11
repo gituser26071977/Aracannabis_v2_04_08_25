@@ -4,7 +4,6 @@ Script para testar o sistema de exames após as correções
 """
 
 import requests
-import json
 from datetime import datetime
 
 # Configurações

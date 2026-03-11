@@ -5,12 +5,11 @@ Rotas para o sistema multi-agente CrewAI do Aracannabis
 import os
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-import json
 import logging
 from datetime import datetime
 
 from models import db, Profissional, LogAtividade, Paciente
-from services.crew_agents import sistema_agentes, gerar_relatorio_paciente, analisar_exame_com_ia, sugerir_ajuste_dosagem
+from services.crew_agents import sistema_agentes
 from services.email_service import EmailService
 from security_config import sanitize_input
 
@@ -378,13 +377,43 @@ def chat():
 def whatsapp_webhook():
     """
     Webhook para receber mensagens do WhatsApp via Evolution API
-    Esta rota não requer autenticação JWT pois é chamada pela Evolution API
+    
+    SEGURANÇA:
+    - Requer X-Webhook-Secret header para autenticação
+    - Rate limiting: máximo 10 mensagens por minuto por telefone
+    - IP whitelist opcional via WEBHOOK_IP_WHITELIST
     """
+    from middleware.webhook_auth import webhook_rate_limiter
+    
+    # 1. Validar autenticação (X-Webhook-Secret)
+    webhook_secret = os.environ.get('WEBHOOK_SECRET_KEY')
+    
+    if webhook_secret:  # Se configurado, validar
+        provided_secret = request.headers.get('X-Webhook-Secret')
+        
+        if not provided_secret:
+            logger.warning(f"Tentativa de acesso ao webhook WhatsApp sem autenticação do IP: {request.remote_addr}")
+            return jsonify({
+                'error': 'Autenticação necessária',
+                'message': 'Header X-Webhook-Secret não fornecido'
+            }), 401
+        
+        if provided_secret != webhook_secret:
+            logger.error(f"Tentativa de acesso ao webhook WhatsApp com secret inválido do IP: {request.remote_addr}")
+            return jsonify({
+                'error': 'Autenticação falhou',
+                'message': 'X-Webhook-Secret inválido'
+            }), 403
+    else:
+        # Apenas log warning em desenvolvimento
+        if os.environ.get('FLASK_ENV') != 'development':
+            logger.error("WEBHOOK_SECRET_KEY não configurado em produção!")
+    
     try:
         data = request.get_json()
         
-        # Log do webhook recebido
-        logger.info(f"Webhook WhatsApp recebido: {json.dumps(data, indent=2)}")
+        # Log do webhook recebido (sem dados sensíveis)
+        logger.info(f"Webhook WhatsApp autenticado recebido do IP: {request.remote_addr}")
         
         # Validar estrutura básica do webhook
         if not data or 'messages' not in data:
@@ -400,8 +429,19 @@ def whatsapp_webhook():
 
             if not text or not phone:
                 continue
+            
+            # 2. Rate limiting por telefone
+            is_allowed, rate_message = webhook_rate_limiter(phone)
+            if not is_allowed:
+                logger.warning(f"Rate limit excedido para WhatsApp {phone}")
+                respostas.append({
+                    'phone': phone,
+                    'message_id': message_id,
+                    'resposta': '⚠️ Muitas mensagens em um curto período. Aguarde um momento e tente novamente.'
+                })
+                continue
 
-            logger.info(f"Mensagem WhatsApp de {phone}: {text}")
+            logger.info(f"Mensagem WhatsApp de {phone}: {text[:100]}...")
 
             resultado = sistema_agentes.processar_solicitacao(
                 solicitacao=text,

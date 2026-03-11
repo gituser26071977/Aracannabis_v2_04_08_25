@@ -3,8 +3,6 @@ Script de teste para verificar o processamento de IA
 """
 
 import requests
-import json
-import sys
 
 # URL base da API
 BASE_URL = "http://localhost:5003"
@@ -46,7 +44,7 @@ def test_evolution_processing():
         print("📝 Processando evolução com IA...")
         result = process_evolution_input_optimized(evolution_text)
         
-        print(f"✅ Processamento concluído!")
+        print("✅ Processamento concluído!")
         print(f"🤖 Provedor usado: {result.get('ai_provider', 'N/A')}")
         print(f"🔄 Modelo usado: {result.get('ai_model', 'N/A')}")
         print(f"📊 Sintomas detectados: {result.get('symptoms_detected', [])}")
@@ -79,7 +77,7 @@ def test_import_processing():
         print("📝 Processando dados de importação...")
         result = process_import_data(import_data, patient_id=1)
         
-        print(f"✅ Importação processada!")
+        print("✅ Importação processada!")
         print(f"🤖 Provedor usado: {result.get('ai_provider', 'N/A')}")
         print(f"🔄 Modelo usado: {result.get('ai_model', 'N/A')}")
         print(f"📊 Tipo de dados: {result.get('tipo', 'N/A')}")
@@ -125,7 +123,7 @@ def test_chat_with_data():
         print("💭 Enviando pergunta para IA...")
         result = chat_with_data(question, context)
         
-        print(f"✅ Resposta recebida!")
+        print("✅ Resposta recebida!")
         print(f"🤖 Provedor usado: {result.get('ai_provider', 'N/A')}")
         print(f"🔄 Modelo usado: {result.get('ai_model', 'N/A')}")
         print(f"💬 Resposta: {result.get('resposta', 'N/A')[:200]}...")

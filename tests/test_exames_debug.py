@@ -4,7 +4,6 @@ Script para debugar problemas com exames
 """
 
 import requests
-import json
 from datetime import datetime
 
 # Configurações
@@ -71,7 +70,7 @@ def test_create_numeric_exam(token, user_id, patient_id=1):
 
 def test_list_exams(token, patient_id=1):
     """Testa listagem de exames"""
-    print(f"\n📋 Testando listagem de exames...")
+    print("\n📋 Testando listagem de exames...")
     
     headers = {
         "Authorization": f"Bearer {token}"

@@ -5,7 +5,6 @@ Script para testar a API de produtos
 
 import requests
 import json
-from datetime import datetime
 
 # Configurações
 BASE_URL = 'http://localhost:5004/api'

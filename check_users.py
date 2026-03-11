@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-import os
 from dotenv import load_dotenv
 load_dotenv()
 
 from app_cors_livre import create_app
-from models import db, Profissional
+from models import Profissional
 
 def check_users():
     app = create_app()

@@ -3,7 +3,6 @@
 Criar tabela para sintomas personalizados
 """
 
-import os
 from dotenv import load_dotenv
 load_dotenv()
 

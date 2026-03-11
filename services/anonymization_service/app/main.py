@@ -1,9 +1,9 @@
 from fastapi import FastAPI, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from services.anonymization_service.app.database import get_db, engine, Base
-from services.anonymization_service.app.models import AnonymizeRequest, AnonymizeResponse
-from services.anonymization_service.app.anonymizer import Anonymizer
-from services.anonymization_service.app.consent import ConsentManager
+from app.database import get_db
+from app.models import AnonymizeRequest, AnonymizeResponse
+from app.anonymizer import Anonymizer
+from app.consent import ConsentManager
 import logging
 import time
 
@@ -74,7 +74,7 @@ def anonymize_data(request: AnonymizeRequest, db: Session = Depends(get_db)):
 def health_check():
     return {"status": "ok", "service": "anonymization_service"}
 
-from services.anonymization_service.app.models_rehydrate import RehydrateRequest, RehydrateResponse
+from app.models_rehydrate import RehydrateRequest, RehydrateResponse
 
 @app.post("/rehydrate", response_model=RehydrateResponse)
 def rehydrate_data(request: RehydrateRequest, db: Session = Depends(get_db)):

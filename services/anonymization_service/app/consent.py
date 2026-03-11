@@ -1,6 +1,5 @@
-from services.anonymization_service.app.database import SessionLocal
-from services.anonymization_service.app.models import PatientConsent
-from typing import Optional
+from app.database import SessionLocal
+from app.models import PatientConsent
 
 class ConsentManager:
     """Verifica e gerencia o consentimento do paciente."""

@@ -13,10 +13,7 @@ load_dotenv()
 # Adicionar o diretório atual ao path para importar os módulos
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from app import create_app
-from models import db, Consulta
 import psycopg2
-from psycopg2 import sql
 
 def criar_tabela_consultas():
     """Criar tabela de consultas no banco de dados"""

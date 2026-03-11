@@ -172,24 +172,22 @@ const LandingPage = () => {
                         <Grid item xs={12} md={6} sx={{ display: { xs: 'none', md: 'block' } }}>
                             {/* Mockup / Image Placeholder */}
                             <Box
+                                component="img"
+                                src="/assets/dashboard-mockup.png"
+                                alt="Dashboard do Sistema Aracannabis"
                                 sx={{
-                                    position: 'relative',
                                     width: '100%',
-                                    height: 400,
-                                    bgcolor: 'rgba(255,255,255,0.1)',
-                                    backdropFilter: 'blur(10px)',
+                                    height: 'auto',
+                                    display: 'block',
                                     borderRadius: 4,
-                                    border: '1px solid rgba(255,255,255,0.2)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    boxShadow: '0 20px 40px rgba(0,0,0,0.2)'
+                                    boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
+                                    transform: 'perspective(1000px) rotateY(-5deg) rotateX(2deg)',
+                                    transition: 'transform 0.5s ease',
+                                    '&:hover': {
+                                        transform: 'perspective(1000px) rotateY(0deg) rotateX(0deg) scale(1.02)'
+                                    }
                                 }}
-                            >
-                                <Typography variant="h5" color="rgba(255,255,255,0.8)">
-                                    [Imagem do Dashboard ou Mockup]
-                                </Typography>
-                            </Box>
+                            />
                         </Grid>
                     </Grid>
                 </Container>

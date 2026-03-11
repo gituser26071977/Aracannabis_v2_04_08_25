@@ -1,0 +1,30 @@
+{
+  "default_provider": "maritaca",
+  "default_model": "sabiazinho-4",
+  "chat_provider": "maritaca",
+  "chat_model": "sabiazinho-4",
+  "vision_provider": "google",
+  "vision_model": "gemini-2.5-flash-lite",
+  "ocr_provider": "google",
+  "ocr_model": "gemini-2.5-flash-lite",
+  "audio_provider": "openai",
+  "audio_model": "whisper-1",
+  "spreadsheet_provider": "anthropic",
+  "spreadsheet_model": "claude-3-5-sonnet-20241022",
+  "pdf_provider": "google",
+  "pdf_model": "gemini-2.5-flash-lite",
+  "default_vision_provider": "google",
+  "default_vision_model": "gemini-2.5-flash-lite",
+  "default_multimodal_provider": "google",
+  "default_multimodal_model": "gemini-2.5-flash-lite",
+  "api_keys": {
+    "deepseek": "sk-8316ce4964a5498dab9cb0d30eae918f",
+    "zhipu": "5402f30e23cc421b9472676e3f642cf7.qcqttIgRBB3eX818",
+    "google": "AIzaSyAYH-b1xSX4v6WjAffAdZjQpnED6eN8gkQ",
+    "maritaca": "114163886683819866770_a58daf39a89e3365"
+  },
+  "base_urls": {
+    "deepseek": "https://api.deepseek.com",
+    "zhipu": "https://open.bigmodel.cn/api/paas/v4/"
+  }
+}

@@ -85,7 +85,9 @@ def registrar_dosagem(paciente_id):
             concentracao_thc=data.get('concentracao_thc', 0.0),
             concentracao_cbg=data.get('concentracao_cbg', 0.0),
             concentracao_cbn=data.get('concentracao_cbn', 0.0),
-            gotas_por_ml=data.get('gotas_por_ml', 30)  # Padrão 30 gotas/ml
+            gotas_por_ml=data.get('gotas_por_ml', 30),  # Padrão 30 gotas/ml
+            tipo_dose=data.get('tipo_dose', 'fixa'), # Novo
+            esquema_doses=data.get('esquema_doses', {}) # Novo
         )
         
         db.session.add(nova_dosagem)

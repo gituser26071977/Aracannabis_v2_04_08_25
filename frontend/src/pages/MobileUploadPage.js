@@ -7,23 +7,23 @@ import {
     Container,
     Alert,
     CircularProgress,
-    Paper,
-    Stack
+    Paper
 } from '@mui/material';
 import { CloudUpload, CheckCircle, ErrorOutline } from '@mui/icons-material';
 import MediaCapture from '../components/MediaCapture';
-import axios from 'axios';
-import { api } from '../services/api';
-// Assumindo que api.js exporta a instância axios configurada, 
-// mas para mobile upload pode ser safer usar axios direto para evitar interceptors de auth complexos se não estiver logado
+import api from '../services/api';
 
 const MobileUploadPage = () => {
     const { token } = useParams();
     const [status, setStatus] = useState('loading'); // loading, active, expired, not_found, completed
+    const [context, setContext] = useState('exam'); // 'exam' or 'product'
     const [file, setFile] = useState(null);
     const [preview, setPreview] = useState(null);
     const [uploading, setUploading] = useState(false);
     const [uploadSuccess, setUploadSuccess] = useState(false);
+    const [aiProcessing, setAiProcessing] = useState(false);
+    const [productData, setProductData] = useState(null);
+    const [savingProduct, setSavingProduct] = useState(false);
 
     useEffect(() => {
         // Validar token ao carregar
@@ -32,11 +32,10 @@ const MobileUploadPage = () => {
 
     const checkTokenStatus = async () => {
         try {
-            // Usando rota pública
-            // A URL base deve vir do env ou ser relativa (o proxy webpack ou nginx tratam)
-            const API_URL = process.env.REACT_APP_API_URL || '/api';
+            const response = await api.get(`/mobile/status/${token}`);
+            const sessionContext = response.data.context || 'exam';
+            setContext(sessionContext);
 
-            const response = await axios.get(`${API_URL}/mobile/status/${token}`);
             if (response.data.status === 'pending') {
                 setStatus('active');
             } else if (response.data.status === 'completed') {
@@ -45,10 +44,8 @@ const MobileUploadPage = () => {
                 setStatus('expired');
             }
         } catch (err) {
-            if (err.response && err.response.status === 404) {
-                setStatus('not_found');
-            } else if (err.response && err.response.status === 410) {
-                setStatus('expired');
+            if (err.response && (err.response.status === 404 || err.response.status === 410)) {
+                setStatus('not_found'); // 404 ou 410 (se backend tratar expired como 410)
             } else {
                 setStatus('error');
             }
@@ -68,15 +65,19 @@ const MobileUploadPage = () => {
             const formData = new FormData();
             formData.append('file', file);
 
-            const API_URL = process.env.REACT_APP_API_URL || '/api';
-            await axios.post(`${API_URL}/mobile/upload/${token}`, formData, {
+            await api.post(`/mobile/upload/${token}`, formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data'
                 }
             });
 
-            setUploadSuccess(true);
-            setStatus('completed');
+            // Se for produto, processar com IA
+            if (context === 'product') {
+                await processProduct();
+            } else {
+                setUploadSuccess(true);
+                setStatus('completed');
+            }
         } catch (err) {
             console.error(err);
             alert('Erro ao enviar arquivo. Tente novamente.');
@@ -85,11 +86,55 @@ const MobileUploadPage = () => {
         }
     };
 
+    const processProduct = async () => {
+        setAiProcessing(true);
+        try {
+            const response = await api.post(`/mobile/process-product/${token}`);
+            setProductData(response.data.produto_sugerido);
+            setStatus('product_confirmation');
+        } catch (err) {
+            console.error(err);
+            alert('Erro ao processar produto. Tente novamente.');
+        } finally {
+            setAiProcessing(false);
+        }
+    };
+
+    const handleConfirmProduct = async () => {
+        if (!productData) return;
+
+        setSavingProduct(true);
+        try {
+            await api.post('/produtos', productData);
+            setUploadSuccess(true);
+            setStatus('completed');
+        } catch (err) {
+            console.error(err);
+            alert('Erro ao salvar produto. Tente novamente.');
+        } finally {
+            setSavingProduct(false);
+        }
+    };
+
     if (status === 'loading') {
         return (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
                 <CircularProgress />
             </Box>
+        );
+    }
+
+    if (status === 'error') {
+        return (
+            <Container maxWidth="sm" sx={{ mt: 4 }}>
+                <Alert severity="error">
+                    <Typography variant="h6">Erro de Conexão</Typography>
+                    <Typography variant="body1">
+                        Não foi possível verificar o status da sessão. Verifique sua conexão.
+                    </Typography>
+                    <Button onClick={checkTokenStatus} sx={{ mt: 1 }}>Tentar Novamente</Button>
+                </Alert>
+            </Container>
         );
     }
 
@@ -124,10 +169,12 @@ const MobileUploadPage = () => {
         <Container maxWidth="sm" sx={{ py: 3, height: '100vh', display: 'flex', flexDirection: 'column' }}>
             <Box sx={{ mb: 3, textAlign: 'center' }}>
                 <Typography variant="h5" component="h1" gutterBottom fontWeight="bold">
-                    Captura Mobile
+                    {context === 'product' ? 'Cadastro de Produto' : 'Captura Mobile'}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                    Tire uma foto ou grave um áudio para anexar ao prontuário no PC.
+                    {context === 'product'
+                        ? 'Tire uma foto do rótulo do produto ou grave uma descrição em áudio.'
+                        : 'Tire uma foto ou grave um áudio para anexar ao prontuário no PC.'}
                 </Typography>
             </Box>
 
@@ -184,12 +231,43 @@ const MobileUploadPage = () => {
                     size="large"
                     fullWidth
                     onClick={handleUpload}
-                    disabled={uploading}
-                    startIcon={uploading ? <CircularProgress size={20} color="inherit" /> : <CloudUpload />}
+                    disabled={uploading || aiProcessing}
+                    startIcon={(uploading || aiProcessing) ? <CircularProgress size={20} color="inherit" /> : <CloudUpload />}
                     sx={{ py: 1.5, fontSize: '1.1rem', borderRadius: 2 }}
                 >
-                    {uploading ? 'Enviando...' : 'Enviar para o PC'}
+                    {uploading ? 'Enviando...' : aiProcessing ? 'Processando IA...' : context === 'product' ? 'Processar Produto' : 'Enviar para o PC'}
                 </Button>
+            )}
+
+            {/* Product Confirmation UI */}
+            {status === 'product_confirmation' && productData && (
+                <Paper sx={{ p: 3, mt: 2 }}>
+                    <Typography variant="h6" gutterBottom>Produto Identificado</Typography>
+                    <Box sx={{ mb: 2 }}>
+                        <Typography variant="body2" color="text.secondary">Nome:</Typography>
+                        <Typography variant="body1" fontWeight="bold">{productData.nome || 'N/A'}</Typography>
+                    </Box>
+                    <Box sx={{ mb: 2 }}>
+                        <Typography variant="body2" color="text.secondary">Concentrações:</Typography>
+                        <Typography variant="body2">CBD: {productData.concentracao_cbd || 0} mg/ml</Typography>
+                        <Typography variant="body2">THC: {productData.concentracao_thc || 0} mg/ml</Typography>
+                    </Box>
+                    <Box sx={{ mb: 2 }}>
+                        <Typography variant="body2" color="text.secondary">Volume:</Typography>
+                        <Typography variant="body2">{productData.volume_ml || 30} ml</Typography>
+                    </Box>
+                    <Button
+                        variant="contained"
+                        color="success"
+                        fullWidth
+                        size="large"
+                        onClick={handleConfirmProduct}
+                        disabled={savingProduct}
+                        sx={{ mt: 2 }}
+                    >
+                        {savingProduct ? 'Salvando...' : 'Confirmar e Salvar'}
+                    </Button>
+                </Paper>
             )}
         </Container>
     );

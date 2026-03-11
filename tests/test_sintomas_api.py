@@ -4,7 +4,6 @@ Teste das APIs de sintomas
 """
 
 import requests
-import json
 
 # Configuração
 BASE_URL = "http://localhost:5004/api"

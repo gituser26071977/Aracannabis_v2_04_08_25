@@ -41,6 +41,7 @@ const PagamentoPage = () => {
 
   const planoParam = searchParams.get('plano') || 'sem_ia';
   const periodo = searchParams.get('periodo') || 'mensal';
+  const categoria = searchParams.get('categoria') || 'medico';
 
   const planos = {
     sem_ia: {
@@ -75,8 +76,8 @@ const PagamentoPage = () => {
   const planoSelecionado = planos[planoParam] ? planoParam : 'sem_ia';
   const planoInfo = planos[planoSelecionado];
 
-  // Configurações de preços
-  const precoBase = planoInfo.precoBase;
+  // Configurações de preços e aplicação do desconto da categoria (60% para não médicos)
+  const precoBase = categoria === 'outros' ? (planoInfo.precoBase || 99.00) * 0.6 : (planoInfo.precoBase || 99.00);
 
   // Descontos baseados no plano e período
   const getDesconto = (plano, periodo) => {
@@ -132,6 +133,7 @@ const PagamentoPage = () => {
       const dadosPagamento = {
         plano: planoSelecionado,
         periodo: periodo,
+        categoria: categoria,
         nome: nome.trim(),
         email: email.trim(),
         telefone: telefone.trim(),
@@ -190,7 +192,7 @@ const PagamentoPage = () => {
 
                 <Box sx={{ mb: 3 }}>
                   <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-                    {planoInfo.nome}
+                    {planoInfo.nome} {categoria === 'outros' && <Chip label="-40% Parceiro" color="success" size="small" sx={{ ml: 1 }} />}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     {planoInfo.descricao}

@@ -4,15 +4,13 @@ Script para testar o sistema completo de exames com todas as funcionalidades
 """
 
 import requests
-import json
 from datetime import datetime
-import os
 
 # Configurações
-BASE_URL = "http://localhost:5004/api"
+BASE_URL = "http://localhost:5002/api"
 TEST_USER = {
     "usuario": "admin",
-    "senha": "123456"
+    "senha": "Aracannabis@2025"
 }
 
 def test_login():
@@ -36,8 +34,7 @@ def test_create_exams(token, user_id, patient_id=1):
     print("\n📋 Testando criação de exames...")
     
     headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json"
+        "Authorization": f"Bearer {token}"
     }
     
     created_exams = []
@@ -53,7 +50,7 @@ def test_create_exams(token, user_id, patient_id=1):
         "data_exame": datetime.now().strftime("%Y-%m-%d")
     }
     
-    response = requests.post(f"{BASE_URL}/exames", json=exam_data)
+    response = requests.post(f"{BASE_URL}/exames", data=exam_data, headers=headers)
     
     if response.status_code == 201:
         exam = response.json()
@@ -85,7 +82,7 @@ def test_create_exams(token, user_id, patient_id=1):
             "data_exame": datetime.now().strftime("%Y-%m-%d")
         }
         
-        response = requests.post(f"{BASE_URL}/exames", json=exam_data)
+        response = requests.post(f"{BASE_URL}/exames", data=exam_data, headers=headers)
         
         if response.status_code == 201:
             exam = response.json()
@@ -142,7 +139,7 @@ def test_exam_details(token, exam_id):
     
     if response.status_code == 200:
         exam = response.json()
-        print(f"✅ Detalhes obtidos com sucesso!")
+        print("✅ Detalhes obtidos com sucesso!")
         print(f"   Título: {exam.get('titulo')}")
         print(f"   Tipo: {exam.get('tipo_exame')}")
         print(f"   Data: {exam.get('data_exame')}")
@@ -187,7 +184,7 @@ def test_ocr_processing(token, exam_id):
     
     if response.status_code == 200:
         ocr_results = response.json()
-        print(f"✅ OCR processado com sucesso!")
+        print("✅ OCR processado com sucesso!")
         print(f"   Exame ID: {ocr_results.get('exame_id')}")
         for resultado in ocr_results.get('resultados_ocr', []):
             print(f"   📄 {resultado.get('arquivo_nome')}: {resultado.get('status')}")
@@ -272,7 +269,34 @@ def main():
         return
     
     user_id = user.get('id')
-    patient_id = 1  # Assumindo que existe um paciente com ID 1
+    user_id = user.get('id')
+    
+    # Buscar ou criar paciente
+    print("🔍 Buscando pacientes...")
+    headers = {"Authorization": f"Bearer {token}"}
+    p_resp = requests.get(f"{BASE_URL}/pacientes/", headers=headers)
+    
+    if p_resp.status_code == 200 and p_resp.json().get('pacientes'):
+        patient_id = p_resp.json().get('pacientes')[0].get('id')
+        print(f"✅ Paciente encontrado: ID {patient_id}")
+    else:
+        print("⚠️ Nenhum paciente encontrado. Criando paciente de teste...")
+        new_patient = {
+            "nome": "Paciente Teste Exames",
+            "data_nascimento": "1990-01-01",
+            "cpf": "00000000000",
+            "genero": "Outro",
+            "telefone": "000000000",
+            "email": "teste.exames@example.com",
+            "profissional_responsavel_id": user_id
+        }
+        create_resp = requests.post(f"{BASE_URL}/pacientes/", json=new_patient, headers=headers)
+        if create_resp.status_code == 201:
+            patient_id = create_resp.json().get('paciente', {}).get('id')
+            print(f"✅ Paciente criado: ID {patient_id}")
+        else:
+            print(f"❌ Erro ao criar paciente: {create_resp.text}")
+            return
     
     # Testar criação de exames
     created_exams = test_create_exams(token, user_id, patient_id)

@@ -5,7 +5,6 @@ Script simples para remover usuário específico do banco de dados
 
 import os
 import sqlite3
-from datetime import datetime
 
 def remove_user_by_id(user_id):
     """Remove usuário específico diretamente do banco SQLite"""
@@ -125,13 +124,13 @@ def main():
         print("✅ Apenas usuários admin encontrados. Nada para remover.")
         return
     
-    print(f"\n🗑️  Usuários não-admin que podem ser removidos:")
+    print("\n🗑️  Usuários não-admin que podem ser removidos:")
     for user in non_admin_users:
         print(f"   - ID: {user[0]}, Nome: {user[1]}, Usuário: {user[3]}")
     
     # Remove o usuário Dr. João Silva (ID: 2)
     if any(user[0] == 2 for user in non_admin_users):
-        print(f"\n🎯 Removendo usuário Dr. João Silva (ID: 2)...")
+        print("\n🎯 Removendo usuário Dr. João Silva (ID: 2)...")
         remove_user_by_id(2)
     else:
         print("❌ Usuário Dr. João Silva (ID: 2) não encontrado.")

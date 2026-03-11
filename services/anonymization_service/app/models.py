@@ -1,7 +1,6 @@
-from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime
 from datetime import datetime
-from services.anonymization_service.app.database import Base
+from app.database import Base
 
 # Modelos replicados para interagir com o banco principal
 # IMPORTANTE: Devem coincidir com a definição no models_ai_compliance.py
@@ -40,7 +39,7 @@ class PatientConsent(Base):
 # Pydantic Schemas
 
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import List
 
 class AnonymizeRequest(BaseModel):
     consultation_id: int

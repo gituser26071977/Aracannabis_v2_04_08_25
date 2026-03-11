@@ -5,7 +5,6 @@ Testa todas as funcionalidades do sistema de anúncios implementado.
 """
 
 import requests
-import json
 import time
 from datetime import datetime
 
@@ -92,14 +91,14 @@ def test_anuncios_api():
         if response.status_code == 200:
             stats = response.json()
             print("✅ Estatísticas obtidas com sucesso!")
-            print(f"\n📊 Estatísticas Gerais:")
+            print("\n📊 Estatísticas Gerais:")
             print(f"   Total de anúncios: {stats['geral']['total_anuncios']}")
             print(f"   Total de visualizações: {stats['geral']['total_visualizacoes']}")
             print(f"   Total de cliques: {stats['geral']['total_cliques']}")
             print(f"   CTR médio: {stats['geral']['ctr_medio']:.2%}")
             
             if stats['top_anuncios']:
-                print(f"\n🏆 Top Anúncios:")
+                print("\n🏆 Top Anúncios:")
                 for i, ad in enumerate(stats['top_anuncios'][:3], 1):
                     print(f"   {i}. {ad['titulo']} - {ad['cliques']} cliques")
         else:

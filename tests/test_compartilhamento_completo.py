@@ -4,7 +4,6 @@ Teste completo da funcionalidade de compartilhamento
 """
 
 import requests
-import json
 
 # Configurações
 BASE_URL = "http://localhost:5010/api"

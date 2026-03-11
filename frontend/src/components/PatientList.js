@@ -23,7 +23,11 @@ import {
   TextField,
   InputAdornment,
   Chip,
-  Grid
+  Grid,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -40,9 +44,11 @@ import {
 import { Avatar } from '@mui/material';
 import { pacientesService } from '../services/api';
 import CompartilhamentoPaciente from './CompartilhamentoPaciente';
+import { useAuth } from '../contexts/AuthContext';
 
 const PatientList = ({ onEdit, onAdd, refreshTrigger }) => {
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
   const [patients, setPatients] = useState([]);
   const [filteredPatients, setFilteredPatients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -51,11 +57,11 @@ const PatientList = ({ onEdit, onAdd, refreshTrigger }) => {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [patientToDelete, setPatientToDelete] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
   const [compartilhamentoDialogOpen, setCompartilhamentoDialogOpen] = useState(false);
   const [pacienteParaCompartilhar, setPacienteParaCompartilhar] = useState(null);
   const [deletionStep, setDeletionStep] = useState(0);
   const [confirmText, setConfirmText] = useState('');
+  const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
 
   // Calcular idade a partir da data de nascimento
   const calcularIdade = (dataNascimento) => {
@@ -100,19 +106,44 @@ const PatientList = ({ onEdit, onAdd, refreshTrigger }) => {
     fetchPatients();
   }, [refreshTrigger]);
 
-  // Filtrar pacientes baseado no termo de busca
+  // Filtros
+  const [filterPeriodo, setFilterPeriodo] = useState('');
+  const [filterAssociacao, setFilterAssociacao] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+
+  // Carregar pacientes com filtros
   useEffect(() => {
-    if (!searchTerm.trim()) {
-      setFilteredPatients(patients);
-    } else {
-      const filtered = patients.filter(patient =>
-        patient.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (patient.diagnostico && patient.diagnostico.toLowerCase().includes(searchTerm.toLowerCase()))
-      );
-      setFilteredPatients(filtered);
-    }
-    setPage(0); // Reset para primeira página ao buscar
-  }, [searchTerm, patients]);
+    const fetchPatients = async () => {
+      setLoading(true);
+      try {
+        const filtros = {};
+        if (searchTerm) filtros.nome = searchTerm;
+        if (filterAssociacao) filtros.associacao = filterAssociacao;
+        if (filterPeriodo) filtros.periodo_cadastro = filterPeriodo;
+
+        const data = await pacientesService.listar(filtros);
+        setPatients(data.pacientes || []);
+        setFilteredPatients(data.pacientes || []); // Agora o backend filtra
+        setError('');
+      } catch (err) {
+        console.error('Erro ao carregar pacientes:', err);
+        setError('Não foi possível carregar a lista de pacientes');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // Debounce na busca por nome para evitar muitas chamadas
+    const timeoutId = setTimeout(() => {
+      fetchPatients();
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [refreshTrigger, filterPeriodo, filterAssociacao, searchTerm]);
+
+  // Remover client-side effect de busca já que agora é server-side
+  // useEffect(() => { ... }, [searchTerm, patients]); excluido.
+
 
   // Manipular busca
   const handleSearchChange = (event) => {
@@ -196,7 +227,14 @@ const PatientList = ({ onEdit, onAdd, refreshTrigger }) => {
           variant="contained"
           color="primary"
           startIcon={<AddIcon />}
-          onClick={onAdd}
+          onClick={() => {
+            const exp = currentUser?.data_expiracao ? new Date(currentUser.data_expiracao) : null;
+            if (currentUser?.role !== 'admin' && exp && exp < new Date()) {
+              setUpgradeDialogOpen(true);
+            } else {
+              onAdd();
+            }
+          }}
           sx={{ fontSize: '1.1rem', padding: '8px 16px' }}
         >
           Novo Paciente
@@ -234,12 +272,42 @@ const PatientList = ({ onEdit, onAdd, refreshTrigger }) => {
             </Grid>
           </Grid>
 
+          {/* Filtros Avançados */}
+          <Grid container spacing={2} sx={{ mb: 2 }}>
+            <Grid item xs={12} sm={4}>
+              <FormControl fullWidth>
+                <InputLabel>Período de Cadastro</InputLabel>
+                <Select
+                  value={filterPeriodo}
+                  label="Período de Cadastro"
+                  onChange={(e) => setFilterPeriodo(e.target.value)}
+                >
+                  <MenuItem value="">Todos os períodos</MenuItem>
+                  <MenuItem value="hoje">Hoje</MenuItem>
+                  <MenuItem value="ontem">Ontem</MenuItem>
+                  <MenuItem value="7dias">Últimos 7 dias</MenuItem>
+                  <MenuItem value="30dias">Últimos 30 dias</MenuItem>
+                  <MenuItem value="mes_atual">Mês Atual</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                label="Filtrar por Associação"
+                value={filterAssociacao}
+                onChange={(e) => setFilterAssociacao(e.target.value)}
+                placeholder="Ex: ABRACE, Santa Cannabis..."
+              />
+            </Grid>
+          </Grid>
+
           {/* Campo de busca */}
           <Box sx={{ mb: 2 }}>
             <TextField
               fullWidth
               variant="outlined"
-              placeholder="Buscar por nome ou diagnóstico..."
+              placeholder="Buscar por nome..."
               value={searchTerm}
               onChange={handleSearchChange}
               InputProps={{
@@ -283,6 +351,7 @@ const PatientList = ({ onEdit, onAdd, refreshTrigger }) => {
                   <TableCell sx={{ fontSize: '1.1rem' }}>Nome</TableCell>
                   <TableCell sx={{ fontSize: '1.1rem' }}>Idade</TableCell>
                   <TableCell sx={{ fontSize: '1.1rem' }}>Diagnóstico</TableCell>
+                  <TableCell sx={{ fontSize: '1.1rem' }}>Associação</TableCell>
                   <TableCell align="center" sx={{ fontSize: '1.1rem' }}>Status</TableCell>
                   <TableCell align="center" sx={{ fontSize: '1.1rem' }}>Acesso</TableCell>
                   <TableCell align="center" sx={{ fontSize: '1.1rem' }}>Ações</TableCell>
@@ -308,6 +377,7 @@ const PatientList = ({ onEdit, onAdd, refreshTrigger }) => {
                       </TableCell>
                       <TableCell sx={{ fontSize: '1.1rem' }}>{calcularIdade(patient.data_nascimento)}</TableCell>
                       <TableCell sx={{ fontSize: '1.1rem' }}>{patient.diagnostico}</TableCell>
+                      <TableCell sx={{ fontSize: '1.1rem' }}>{patient.associacao || '-'}</TableCell>
                       <TableCell align="center" sx={{ fontSize: '1.1rem' }}>
                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'center' }}>
                           {patient.em_tratamento ? (
@@ -493,6 +563,40 @@ const PatientList = ({ onEdit, onAdd, refreshTrigger }) => {
           onCompartilhamentoAtualizado={handleCompartilhamentoAtualizado}
         />
       )}
+
+      {/* Modal de Paywall / Upgrade */}
+      <Dialog
+        open={upgradeDialogOpen}
+        onClose={() => setUpgradeDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+          Plano Expirado ou Perfil Avulso
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ fontSize: '1.1rem', mt: 1 }}>
+            Sua assinatura atual não permite o cadastro de <strong>novos pacientes como titular</strong>.
+            Isso ocorre porque seu período de avaliação expirou ou você é um profissional de equipe colaborativa.
+          </DialogContentText>
+          <DialogContentText sx={{ fontSize: '1.1rem', mt: 2 }}>
+            Para ser o responsável clínico (cadastrar, gerenciar faturamento e manter os prontuários seguros), é necessário ativar um plano.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ p: 3, pt: 1 }}>
+          <Button onClick={() => setUpgradeDialogOpen(false)} color="inherit">
+            Entendi
+          </Button>
+          <Button
+            onClick={() => navigate('/planos')}
+            color="primary"
+            variant="contained"
+            size="large"
+          >
+            Ver Planos de Assinatura
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Paper>
   );
 };

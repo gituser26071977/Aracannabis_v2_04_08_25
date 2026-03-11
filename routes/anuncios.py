@@ -2,7 +2,6 @@ from flask import Blueprint, request, jsonify, current_app
 from flask_cors import cross_origin
 from models import db
 from datetime import datetime, timedelta
-import os
 
 anuncios_bp = Blueprint('anuncios', __name__)
 

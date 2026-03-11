@@ -8,8 +8,9 @@ from sqlalchemy import desc
 import datetime
 import os
 
-from models import db, Profissional, LogAtividade, Paciente, Exame, Consulta, Evolucao
-from security_config import sanitize_input, mask_sensitive_data
+from models import db, Profissional, LogAtividade, Paciente, Exame, Consulta, Evolucao, Assinatura, SolicitacoesCadastro
+from models_extra import UsuarioAssociacao
+from security_config import mask_sensitive_data
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -21,37 +22,38 @@ def admin_required(f):
     @wraps(f)
     @jwt_required()
     def decorated_function(*args, **kwargs):
-        """Verifica permissão de admin usando claims do token e fallback no banco.
-
-        Isso evita falsos negativos quando o usuário existe e tem role 'admin',
-        mas há algum descompasso entre ambiente/token/banco.
+        """Verifica permissão de admin usando context multi-tenant e fallback.
+        Prioridades:
+        1. g.user_role (definido pelo TenantMiddleware baseado na associação atual)
+        2. claims do token (fallback)
+        3. Role global no banco
         """
-        try:
-            claims = get_jwt()
-        except Exception:
-            claims = {}
+        from flask import g
+        
+        # 1. Verificar role na associação atual (Setado pelo middleware)
+        effective_role = getattr(g, 'user_role', None)
 
-        role_token = claims.get('role')
-        current_user_id = get_jwt_identity()
+        if not effective_role:
+            # 2. Fallback para token claims
+            try:
+                claims = get_jwt()
+                effective_role = claims.get('role')
+            except Exception:
+                pass
 
-        profissional = None
-        role_db = None
-        try:
-            if current_user_id is not None:
-                profissional = Profissional.query.get(int(current_user_id))
-                if profissional:
-                    role_db = profissional.role
-        except Exception:
-            # Em caso de erro de banco, mantemos role_db = None
-            profissional = None
+        if not effective_role:
+            # 3. Fallback para banco (Global)
+            current_user_id = get_jwt_identity()
+            try:
+                if current_user_id is not None:
+                    profissional = Profissional.query.get(int(current_user_id))
+                    if profissional:
+                        effective_role = profissional.role
+            except Exception:
+                pass
 
-        # Regra de decisão:
-        # 1) Se o token declara role=admin, confia nisso.
-        # 2) Caso contrário, usa o papel salvo no banco.
-        effective_role = role_token or role_db
-
-        if effective_role != 'admin':
-            return jsonify({'error': 'Acesso negado. Permissão de administrador necessária.'}), 403
+        if effective_role not in ['admin', 'superadmin']:
+            return jsonify({'error': 'Acesso negado. Permissão de administrador ou superadministrador necessária.'}), 403
 
         return f(*args, **kwargs)
 
@@ -62,38 +64,67 @@ def admin_required(f):
 def dashboard_stats():
     """Retorna estatísticas do sistema para o dashboard administrativo"""
     try:
-        # Contagem de usuários
-        total_profissionais = Profissional.query.count()
-        admin_count = Profissional.query.filter_by(role='admin').count()
-        profissional_count = Profissional.query.filter_by(role='profissional').count()
+        from flask import g
         
-        # Contagem de pacientes
-        total_pacientes = Paciente.query.count()
-        pacientes_em_tratamento = Paciente.query.filter_by(em_tratamento=True).count()
-        
-        # Contagem de dados clínicos
-        total_exames = Exame.query.count()
-        total_consultas = Consulta.query.count()
-        total_evolucoes = Evolucao.query.count()
-        
-        # Últimos 7 dias
-        sete_dias_atras = datetime.datetime.utcnow() - datetime.timedelta(days=7)
-        
-        # Atividade recente
-        novos_pacientes_7dias = Paciente.query.filter(
-            Paciente.created_at >= sete_dias_atras
-        ).count()
-        
-        novas_consultas_7dias = Consulta.query.filter(
-            Consulta.created_at >= sete_dias_atras
-        ).count()
+        # Filtro base: se estiver em associação, restringir dados
+        assoc_id = g.current_association.id if hasattr(g, 'current_association') and g.current_association else None
+
+        if assoc_id:
+            # CASO 1: Estatísticas da Associação (Multi-tenant)
+            total_pacientes = Paciente.query.filter_by(associacao_id=assoc_id).count()
+            pacientes_em_tratamento = Paciente.query.filter_by(associacao_id=assoc_id, em_tratamento=True).count()
+            
+            # Profissionais vinculados
+            vinc_links = UsuarioAssociacao.query.filter_by(associacao_id=assoc_id).all()
+            total_profissionais = len(vinc_links)
+            admin_count = len([l for l in vinc_links if l.role == 'admin'])
+            profissional_count = len([l for l in vinc_links if l.role == 'profissional'])
+            
+            # Dados clínicos filtrados pela associação
+            total_exames = Exame.query.filter_by(associacao_id=assoc_id).count()
+            total_consultas = Consulta.query.filter_by(associacao_id=assoc_id).count()
+            total_evolucoes = Evolucao.query.filter_by(associacao_id=assoc_id).count()
+            
+            s_d_a = datetime.datetime.utcnow() - datetime.timedelta(days=7)
+            novos_pacientes_7dias = Paciente.query.filter(Paciente.associacao_id == assoc_id, Paciente.created_at >= s_d_a).count()
+            novas_consultas_7dias = Consulta.query.filter(Consulta.associacao_id == assoc_id, Consulta.created_at >= s_d_a).count()
+            
+            # Usuários ativos nos últimos 15 min (desta associação)
+            s_15m = datetime.datetime.utcnow() - datetime.timedelta(minutes=15)
+            logged_in_users = db.session.query(db.func.count(db.func.distinct(LogAtividade.profissional_id))).filter(
+                LogAtividade.associacao_id == assoc_id,
+                LogAtividade.data_hora >= s_15m
+            ).scalar() or 0
+        else:
+            # CASO 2: Estatísticas Globais (Superadmin)
+            total_profissionais = Profissional.query.count()
+            admin_count = Profissional.query.filter_by(role='admin').count()
+            profissional_count = Profissional.query.filter_by(role='profissional').count()
+            
+            total_pacientes = Paciente.query.count()
+            pacientes_em_tratamento = Paciente.query.filter_by(em_tratamento=True).count()
+            
+            total_exames = Exame.query.count()
+            total_consultas = Consulta.query.count()
+            total_evolucoes = Evolucao.query.count()
+            
+            s_d_a = datetime.datetime.utcnow() - datetime.timedelta(days=7)
+            novos_pacientes_7dias = Paciente.query.filter(Paciente.created_at >= s_d_a).count()
+            novas_consultas_7dias = Consulta.query.filter(Consulta.created_at >= s_d_a).count()
+            
+            # Usuários ativos nos últimos 15 min (global)
+            s_15m = datetime.datetime.utcnow() - datetime.timedelta(minutes=15)
+            logged_in_users = db.session.query(db.func.count(db.func.distinct(LogAtividade.profissional_id))).filter(
+                LogAtividade.data_hora >= s_15m
+            ).scalar() or 0
         
         return jsonify({
             'stats': {
                 'usuarios': {
                     'total': total_profissionais,
                     'admins': admin_count,
-                    'profissionais': profissional_count
+                    'profissionais': profissional_count,
+                    'logados': logged_in_users
                 },
                 'pacientes': {
                     'total': total_pacientes,
@@ -109,6 +140,8 @@ def dashboard_stats():
                     'novas_consultas_7dias': novas_consultas_7dias
                 }
             },
+            'logged_in_users': logged_in_users, # Fallback top-level para legado
+            'context': 'association' if assoc_id else 'global',
             'updated_at': datetime.datetime.utcnow().isoformat()
         }), 200
         
@@ -118,28 +151,50 @@ def dashboard_stats():
 @admin_bp.route('/usuarios', methods=['GET'])
 @admin_required
 def listar_usuarios():
-    """Lista todos os usuários do sistema"""
+    """
+    Lista os usuários do sistema.
+    Se g.current_association estiver presente, lista apenas usuários vinculados à associação.
+    Caso contrário (Global Admin), lista todos os profissionais.
+    """
     try:
-        usuarios = Profissional.query.order_by(Profissional.created_at.desc()).all()
+        from flask import g
+        
+        # CASO 1: Contexto de Associação
+        if hasattr(g, 'current_association') and g.current_association:
+            assoc_id = g.current_association.id
+            links = UsuarioAssociacao.query.filter_by(associacao_id=assoc_id).all()
+            usuarios_ids = [l.profissional_id for l in links]
+            usuarios = Profissional.query.filter(Profissional.id.in_(usuarios_ids)).order_by(Profissional.created_at.desc()).all()
+        else:
+            # CASO 2: Global Admin
+            usuarios = Profissional.query.order_by(Profissional.created_at.desc()).all()
         
         usuarios_list = []
         for user in usuarios:
             user_data = user.to_dict()
+            # Se estamos em uma associação, adicionar o papel específico
+            if hasattr(g, 'current_association') and g.current_association:
+                link = next((l for l in links if l.profissional_id == user.id), None)
+                if link:
+                    user_data['role_naver_associacao'] = link.role
+                    user_data['status_na_associacao'] = link.status
+
             # Mascarar informações sensíveis
             user_data['usuario_mascarado'] = mask_sensitive_data(user.usuario, 'email')
             user_data['crm_mascarado'] = mask_sensitive_data(user.crm, 'cpf')
             
-            # Contagem de atividades do usuário
-            user_data['total_pacientes'] = len([p for p in user.pacientes_responsavel])
-            user_data['total_consultas'] = len(user.consultas)
-            user_data['total_exames'] = len(user.exames)
+            # Contagem de atividades do usuário (Filtrar por associação se possível)
+            if hasattr(g, 'current_association') and g.current_association:
+                assoc_id = g.current_association.id
+                user_data['total_pacientes'] = Paciente.query.filter_by(profissional_responsavel_id=user.id, associacao_id=assoc_id).count()
+                user_data['total_consultas'] = Consulta.query.filter_by(profissional_id=user.id).count() # Fallback se ainda não migrado
+            else:
+                user_data['total_pacientes'] = Paciente.query.filter_by(profissional_responsavel_id=user.id).count()
+                user_data['total_consultas'] = Consulta.query.filter_by(profissional_id=user.id).count()
             
-            # --- NOVAS INFORMAÇÕES PARA DASHBOARD ---
+            user_data['total_exames'] = Exame.query.filter_by(profissional_id=user.id).count()
             
-            # Buscar assinatura
-            # Importar aqui para evitar circular imports se necessário, ou garantir que estão no topo
-            from models import Assinatura
-            
+            # Buscar assinatura (Sempre via Profissional, pois é quem paga)
             assinatura = Assinatura.query.filter_by(profissional_id=user.id).order_by(Assinatura.created_at.desc()).first()
             if assinatura and assinatura.plano:
                 user_data['plano'] = assinatura.plano.nome
@@ -148,11 +203,10 @@ def listar_usuarios():
                 user_data['plano'] = 'Trial/Gratuito'
                 user_data['status_assinatura'] = 'trial'
 
-            # Buscar último acesso (Log mais recente)
+            # Buscar último acesso
             ultimo_log = LogAtividade.query.filter_by(profissional_id=user.id).order_by(LogAtividade.data_hora.desc()).first()
             user_data['ultimo_acesso'] = ultimo_log.data_hora.isoformat() if ultimo_log else None
             
-            # Dias de cadastro
             if user.created_at:
                 dias = (datetime.datetime.utcnow() - user.created_at).days
                 user_data['dias_cadastro'] = dias
@@ -163,11 +217,85 @@ def listar_usuarios():
         
         return jsonify({
             'usuarios': usuarios_list,
-            'total': len(usuarios_list)
+            'total': len(usuarios_list),
+            'context_association': g.current_association.nome if hasattr(g, 'current_association') and g.current_association else "Global"
         }), 200
         
     except Exception as e:
         return jsonify({'error': f'Erro ao listar usuários: {str(e)}'}), 500
+
+@admin_bp.route('/usuarios', methods=['POST'])
+@admin_required
+def criar_usuario():
+    """Cria um novo usuário no sistema"""
+    try:
+        data = request.get_json()
+        
+        # Validar campos obrigatórios
+        required_fields = ['nome', 'email', 'crm', 'uf_crm', 'senha']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'error': f'Campo {field} é obrigatório'}), 400
+        
+        # Verificar se usuário/email já existe
+        if Profissional.query.filter_by(email=data['email']).first():
+            return jsonify({'error': 'Email já cadastrado'}), 400
+            
+        # Verificar se CRM já existe
+        if Profissional.query.filter_by(crm=data['crm'], uf_crm=data['uf_crm']).first():
+            return jsonify({'error': 'CRM já cadastrado para este UF'}), 400
+            
+        from werkzeug.security import generate_password_hash
+        
+        novo_usuario = Profissional(
+            nome=data['nome'],
+            email=data['email'],
+            usuario=data['email'], # Usa email como usuário
+            senha=generate_password_hash(data['senha']),
+            crm=data['crm'],
+            uf_crm=data['uf_crm'],
+            role=data.get('role', 'profissional'),
+            status_cadastro='aprovado', # Admin cria já aprovado
+            aprovado_por=str(get_jwt_identity()),
+            data_aprovacao=datetime.datetime.utcnow()
+        )
+        
+        db.session.add(novo_usuario)
+        db.session.flush() # Para obter ID do novo usuário
+
+        from flask import g
+        current_user_id = int(get_jwt_identity())
+        
+        # Se estiver em contexto de associação, criar o vínculo automaticamente
+        if hasattr(g, 'current_association') and g.current_association:
+            assoc_id = g.current_association.id
+            link = UsuarioAssociacao(
+                profissional_id=novo_usuario.id,
+                associacao_id=assoc_id,
+                role=data.get('role', 'profissional'),
+                status='active'
+            )
+            db.session.add(link)
+            
+        # Log de atividade
+        log = LogAtividade(
+            profissional_id=current_user_id,
+            associacao_id=g.current_association.id if hasattr(g, 'current_association') and g.current_association else None,
+            acao='CRIAR_USUARIO',
+            detalhes=f'Usuário {novo_usuario.email} criado por admin'
+        )
+        db.session.add(log)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Usuário criado com sucesso',
+            'usuario': novo_usuario.to_dict()
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Erro ao criar usuário: {str(e)}'}), 500
 
 @admin_bp.route('/usuarios/<int:usuario_id>', methods=['GET'])
 @admin_required
@@ -180,16 +308,29 @@ def obter_usuario(usuario_id):
         
         user_data = usuario.to_dict()
         
-        # Adicionar informações adicionais
-        user_data['pacientes_responsavel'] = [
-            {'id': p.id, 'nome': p.nome} 
-            for p in usuario.pacientes_responsavel[:10]  # Limitar a 10
-        ]
-        
-        # Logs de atividade recentes
-        logs_recentes = LogAtividade.query.filter_by(
-            profissional_id=usuario_id
-        ).order_by(desc(LogAtividade.data_hora)).limit(10).all()
+        from flask import g
+        assoc_id = g.current_association.id if hasattr(g, 'current_association') and g.current_association else None
+
+        # Adicionar informações adicionais filtradas por associação se necessário
+        if assoc_id:
+            user_data['pacientes_responsavel'] = [
+                {'id': p.id, 'nome': p.nome} 
+                for p in usuario.pacientes_responsavel if p.associacao_id == assoc_id
+            ][:10]
+            
+            logs_recentes = LogAtividade.query.filter_by(
+                profissional_id=usuario_id,
+                associacao_id=assoc_id
+            ).order_by(desc(LogAtividade.data_hora)).limit(10).all()
+        else:
+            user_data['pacientes_responsavel'] = [
+                {'id': p.id, 'nome': p.nome} 
+                for p in usuario.pacientes_responsavel[:10]
+            ]
+            
+            logs_recentes = LogAtividade.query.filter_by(
+                profissional_id=usuario_id
+            ).order_by(desc(LogAtividade.data_hora)).limit(10).all()
         
         user_data['logs_recentes'] = [
             {'acao': log.acao, 'data_hora': log.data_hora.isoformat(), 'detalhes': log.detalhes}
@@ -247,42 +388,91 @@ def atualizar_role_usuario(usuario_id):
 @admin_bp.route('/usuarios/<int:usuario_id>', methods=['DELETE'])
 @admin_required
 def deletar_usuario(usuario_id):
-    """Remove um usuário do sistema"""
+    """
+    Remove um usuário. 
+    Se houver g.current_association, remove apenas o vínculo com esta associação.
+    Se não houver (superadmin global), remove o usuário permanentemente do sistema.
+    """
     try:
-        # Não permitir deletar a si mesmo
+        from flask import g
         current_user_id = int(get_jwt_identity())
+        
+        # Não permitir deletar a si mesmo
         if usuario_id == current_user_id:
-            return jsonify({'error': 'Não é permitido remover o próprio usuário'}), 400
+            return jsonify({'error': 'Não é permitido remover o próprio acesso'}), 400
         
         usuario = Profissional.query.get(usuario_id)
         if not usuario:
             return jsonify({'error': 'Usuário não encontrado'}), 404
-        
-        # Verificar se o usuário tem pacientes associados
+
+        # CASO 1: Contexto de Associação (Multi-tenant)
+        if hasattr(g, 'current_association') and g.current_association:
+            assoc_id = g.current_association.id
+            
+            # Buscar vínculo
+            vinc_extra = UsuarioAssociacao.query.filter_by(
+                profissional_id=usuario_id, 
+                associacao_id=assoc_id
+            ).first()
+            
+            if not vinc_extra:
+                return jsonify({'error': 'Usuário não pertence a esta associação'}), 404
+            
+            # Verificar se o usuário tem pacientes nesta associação
+            pacientes_na_assoc = Paciente.query.filter_by(
+                profissional_responsavel_id=usuario_id,
+                associacao_id=assoc_id
+            ).first()
+            
+            if pacientes_na_assoc:
+                return jsonify({
+                    'error': 'Não é possível remover vínculo: usuário tem pacientes sob sua responsabilidade nesta associação',
+                }), 400
+
+            # Registrar log
+            log = LogAtividade(
+                profissional_id=current_user_id,
+                associacao_id=assoc_id,
+                acao='REMOVER_USUARIO_ASSOC',
+                detalhes=f'Vínculo do usuário {usuario.usuario} removido da associação {g.current_association.nome}'
+            )
+            db.session.add(log)
+            db.session.delete(vinc_extra)
+            db.session.commit()
+            
+            return jsonify({'message': 'Usuário desvinculado da associação com sucesso'}), 200
+
+        # CASO 2: Superadmin Global (Sem contexto de associação)
+        # Verificar se o usuário tem pacientes associados em QUALQUER associação
         if usuario.pacientes_responsavel:
             return jsonify({
-                'error': 'Não é possível remover usuário com pacientes associados',
+                'error': 'Não é possível remover usuário permanentemente: existem pacientes vinculados em alguma associação',
                 'total_pacientes': len(usuario.pacientes_responsavel)
             }), 400
         
-        # Registrar log antes de deletar
+        # Registrar log antes de deletar globalmente
         log = LogAtividade(
             profissional_id=current_user_id,
-            acao='REMOVER_USUARIO',
-            detalhes=f'Usuário {usuario.usuario} (ID: {usuario_id}) removido do sistema'
+            acao='REMOVER_USUARIO_GLOBAL',
+            detalhes=f'Usuário {usuario.usuario} (ID: {usuario_id}) removido permanentemente do sistema'
         )
         db.session.add(log)
+        
+        # Também remover da tabela de solicitações para permitir novo cadastro se necessário
+        SolicitacoesCadastro.query.filter_by(email=usuario.email).delete()
+        SolicitacoesCadastro.query.filter_by(crm=usuario.crm, uf_crm=usuario.uf_crm).delete()
         
         db.session.delete(usuario)
         db.session.commit()
         
         return jsonify({
-            'message': 'Usuário removido com sucesso',
+            'message': 'Usuário removido globalmente com sucesso',
             'usuario_id': usuario_id
         }), 200
         
     except Exception as e:
         db.session.rollback()
+        current_app.logger.error(f"Erro ao remover usuário: {str(e)}")
         return jsonify({'error': f'Erro ao remover usuário: {str(e)}'}), 500
 
 @admin_bp.route('/logs-atividade', methods=['GET'])

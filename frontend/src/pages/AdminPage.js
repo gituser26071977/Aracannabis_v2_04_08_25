@@ -46,10 +46,328 @@ import {
   Dashboard as DashboardIcon,
   AttachMoney as MonetizationIcon,
   ListAlt as LogsIcon,
-  Add as AddIcon
+  Add as AddIcon,
+  PersonAdd as PersonAddIcon
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
+import { useNavigate } from 'react-router-dom';
+
+// --- HELPER FUNCTIONS ---
+
+function calculateDaysRemaining(endDate) {
+  if (!endDate) return 0;
+  const end = new Date(endDate);
+  const now = new Date();
+  const diffTime = end - now;
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return Math.max(0, diffDays);
+}
+
+// --- TRIAL STATUS WIDGET ---
+
+function TrialStatusWidget({ subscription, onUpgrade }) {
+  if (!subscription || subscription.status !== 'trial') return null;
+
+  const daysRemaining = calculateDaysRemaining(subscription.trial_ends_at);
+  const isExpiringSoon = daysRemaining <= 7;
+  const isExpired = daysRemaining === 0;
+
+  return (
+    <Card sx={{ mb: 3, bgcolor: isExpired ? '#ffebee' : isExpiringSoon ? '#fff3e0' : '#e3f2fd' }}>
+      <CardContent>
+        <Box display="flex" justifyContent="space-between" alignItems="center">
+          <Box>
+            <Typography variant="h6" gutterBottom>
+              Período de Teste
+            </Typography>
+            <Typography
+              variant="h3"
+              color={isExpired ? 'error' : isExpiringSoon ? 'warning.main' : 'primary'}
+              fontWeight="bold"
+            >
+              {daysRemaining} {daysRemaining === 1 ? 'dia' : 'dias'}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {isExpired ? 'Período de teste expirado' : `Restantes até ${new Date(subscription.trial_ends_at).toLocaleDateString('pt-BR')}`}
+            </Typography>
+          </Box>
+          <Button
+            variant="contained"
+            color={isExpired ? 'error' : 'primary'}
+            size="large"
+            onClick={onUpgrade}
+          >
+            {isExpired ? 'Ativar Agora' : 'Fazer Upgrade'}
+          </Button>
+        </Box>
+        {isExpiringSoon && (
+          <Alert severity={isExpired ? 'error' : 'warning'} sx={{ mt: 2 }}>
+            {isExpired
+              ? 'Seu período de teste expirou! Faça upgrade para continuar usando o sistema.'
+              : 'Seu período de teste está acabando! Faça upgrade para não perder acesso.'}
+          </Alert>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// --- UPGRADE DIALOG ---
+
+function UpgradeDialog({ open, onClose }) {
+  const [plans, setPlans] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (open) {
+      setLoading(true);
+      api.get('/planos')
+        .then(res => setPlans(res.data.filter(p => p.ativo)))
+        .catch(err => console.error('Erro ao buscar planos:', err))
+        .finally(() => setLoading(false));
+    }
+  }, [open]);
+
+  const handleSelectPlan = (planId) => {
+    navigate(`/pagamento?plano=${planId}`);
+    onClose();
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+      <DialogTitle>
+        <Typography variant="h5" fontWeight="bold">Escolha seu Plano</Typography>
+        <Typography variant="body2" color="text.secondary">Selecione o plano ideal para sua prática médica</Typography>
+      </DialogTitle>
+      <DialogContent>
+        {loading ? (
+          <Box display="flex" justifyContent="center" p={4}>
+            <CircularProgress />
+          </Box>
+        ) : (
+          <Grid container spacing={3} sx={{ mt: 1 }}>
+            {plans.map(plan => (
+              <Grid item xs={12} md={4} key={plan.id}>
+                <Card
+                  variant={plan.is_popular ? 'elevation' : 'outlined'}
+                  sx={{
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    position: 'relative',
+                    border: plan.is_popular ? '2px solid' : undefined,
+                    borderColor: plan.is_popular ? 'primary.main' : undefined
+                  }}
+                >
+                  {plan.is_popular && (
+                    <Chip
+                      label="Mais Popular"
+                      color="primary"
+                      size="small"
+                      sx={{ position: 'absolute', top: 8, right: 8 }}
+                    />
+                  )}
+                  <CardContent sx={{ flexGrow: 1 }}>
+                    <Typography variant="h6" gutterBottom fontWeight="bold">
+                      {plan.nome}
+                    </Typography>
+                    <Typography variant="h4" color="primary" gutterBottom>
+                      R$ {plan.preco_mensal.toFixed(2)}
+                      <Typography variant="caption" color="text.secondary">/mês</Typography>
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" paragraph>
+                      {plan.descricao}
+                    </Typography>
+                    <Box sx={{ mt: 2 }}>
+                      <Typography variant="caption" color="text.secondary" fontWeight="bold">Incluído no plano:</Typography>
+                      <Typography variant="body2">
+                        • {plan.limite_pacientes === -1 ? 'Pacientes ilimitados' : `Até ${plan.limite_pacientes} pacientes`}
+                      </Typography>
+                      <Typography variant="body2">
+                        • {plan.limite_agentes_ia === 0 ? 'Sem agentes de IA' : `${plan.limite_agentes_ia} agentes IA`}
+                      </Typography>
+                      <Typography variant="body2">• Armazenamento de 5GB</Typography>
+                      <Typography variant="body2">• Backup automático</Typography>
+                    </Box>
+                  </CardContent>
+                  <Box sx={{ p: 2 }}>
+                    <Button
+                      variant={plan.is_popular ? 'contained' : 'outlined'}
+                      fullWidth
+                      size="large"
+                      onClick={() => handleSelectPlan(plan.id)}
+                    >
+                      Selecionar Plano
+                    </Button>
+                  </Box>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        )}
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>Fechar</Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+// --- SOLICITACOES MANAGER ---
+
+function SolicitacoesManager() {
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [rejectDialog, setRejectDialog] = useState({ open: false, request: null });
+  const [rejectReason, setRejectReason] = useState('');
+
+  const fetchRequests = async () => {
+    try {
+      const res = await api.get('/cadastro-profissionais/listar-solicitacoes');
+      setRequests(res.data.solicitacoes.filter(s => s.status === 'pendente'));
+    } catch (err) {
+      console.error('Erro ao buscar solicitações:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRequests();
+  }, []);
+
+  const handleApprove = async (request) => {
+    if (window.confirm(`Aprovar cadastro de ${request.nome}?\n\nRegistro: ${request.crm}/${request.uf_crm}\nEmail: ${request.email}`)) {
+      try {
+        await api.post(`/cadastro-profissionais/aprovar-solicitacao/${request.id}`);
+        fetchRequests();
+      } catch (err) {
+        alert(err.response?.data?.error || 'Erro ao aprovar solicitação');
+      }
+    }
+  };
+
+  const handleReject = async () => {
+    try {
+      await api.post(`/cadastro-profissionais/rejeitar-solicitacao/${rejectDialog.request.id}`, {
+        observacoes: rejectReason
+      });
+      setRejectDialog({ open: false, request: null });
+      setRejectReason('');
+      fetchRequests();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Erro ao rejeitar solicitação');
+    }
+  };
+
+  return (
+    <Box>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+        <Typography variant="h6">Solicitações Pendentes</Typography>
+        <Button startIcon={<RefreshIcon />} onClick={fetchRequests}>Atualizar</Button>
+      </Box>
+
+      {loading ? (
+        <Box display="flex" justifyContent="center" p={4}>
+          <CircularProgress />
+        </Box>
+      ) : requests.length === 0 ? (
+        <Alert severity="info">Nenhuma solicitação pendente</Alert>
+      ) : (
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Nome</TableCell>
+                <TableCell>Email</TableCell>
+                <TableCell>Registro</TableCell>
+                <TableCell>Especialidade</TableCell>
+                <TableCell>Data</TableCell>
+                <TableCell>Verificação</TableCell>
+                <TableCell>Ações</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {requests.map(req => (
+                <TableRow key={req.id}>
+                  <TableCell>{req.nome}</TableCell>
+                  <TableCell>{req.email}</TableCell>
+                  <TableCell>{req.crm}/{req.uf_crm}</TableCell>
+                  <TableCell>{req.especialidade || '-'}</TableCell>
+                  <TableCell>{new Date(req.data_solicitacao).toLocaleDateString('pt-BR')}</TableCell>
+                  <TableCell>
+                    <Button
+                      variant="contained"
+                      color="success"
+                      size="small"
+                      onClick={() => handleApprove(req)}
+                      sx={{ mr: 1 }}
+                    >
+                      Aprovar
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      color="error"
+                      size="small"
+                      onClick={() => setRejectDialog({ open: true, request: req })}
+                    >
+                      Rejeitar
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
+
+      {/* Reject Dialog */}
+      <Dialog
+        open={rejectDialog.open}
+        onClose={() => setRejectDialog({ open: false, request: null })}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Rejeitar Solicitação</DialogTitle>
+        <DialogContent>
+          {rejectDialog.request && (
+            <Box mb={2}>
+              <Typography variant="body2" color="text.secondary">
+                <strong>Nome:</strong> {rejectDialog.request.nome}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                <strong>Email:</strong> {rejectDialog.request.email}
+              </Typography>
+            </Box>
+          )}
+          <TextField
+            label="Motivo da Rejeição"
+            multiline
+            rows={4}
+            fullWidth
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            placeholder="Explique o motivo da rejeição..."
+            required
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRejectDialog({ open: false, request: null })}>Cancelar</Button>
+          <Button
+            onClick={handleReject}
+            color="error"
+            variant="contained"
+            disabled={!rejectReason.trim()}
+          >
+            Rejeitar
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
+  );
+}
 
 // --- SUBCOMPONENTES ---
 
@@ -283,11 +601,127 @@ function PlanosManager() {
   );
 }
 
+// --- USER CREATE DIALOG ---
+
+function UserCreateDialog({ open, onClose, onSuccess }) {
+  const [formData, setFormData] = useState({
+    nome: '',
+    email: '',
+    senha: '',
+    crm: '',
+    uf_crm: 'SP',
+    role: 'profissional'
+  });
+  const [loading, setLoading] = useState(false);
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await api.post('/admin/usuarios', formData);
+      onSuccess();
+      onClose();
+      setFormData({ nome: '', email: '', senha: '', crm: '', uf_crm: 'SP', role: 'profissional' });
+    } catch (err) {
+      alert(err.response?.data?.error || 'Erro ao criar usuário');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle>Novo Usuário</DialogTitle>
+      <form onSubmit={handleSubmit}>
+        <DialogContent>
+          <Box display="flex" flexDirection="column" gap={2}>
+            <TextField
+              label="Nome Completo"
+              name="nome"
+              value={formData.nome}
+              onChange={handleChange}
+              required
+              fullWidth
+            />
+            <TextField
+              label="Email"
+              name="email"
+              type="email"
+              value={formData.email}
+              onChange={handleChange}
+              required
+              fullWidth
+            />
+            <TextField
+              label="Senha"
+              name="senha"
+              type="password"
+              value={formData.senha}
+              onChange={handleChange}
+              required
+              fullWidth
+            />
+            <Box display="flex" gap={2}>
+              <TextField
+                label="Registro (CRM, etc)"
+                name="crm"
+                value={formData.crm}
+                onChange={handleChange}
+                required
+                fullWidth
+              />
+              <TextField
+                label="UF"
+                name="uf_crm"
+                value={formData.uf_crm}
+                onChange={handleChange}
+                required
+                select
+                sx={{ width: 100 }}
+              >
+                {['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'].map(uf => (
+                  <MenuItem key={uf} value={uf}>{uf}</MenuItem>
+                ))}
+              </TextField>
+            </Box>
+            <TextField
+              label="Permissão (Role)"
+              name="role"
+              value={formData.role}
+              onChange={handleChange}
+              select
+              required
+              fullWidth
+            >
+              <MenuItem value="profissional">Profissional (Médico)</MenuItem>
+              <MenuItem value="admin">Administrador</MenuItem>
+              <MenuItem value="auxiliar">Auxiliar</MenuItem>
+            </TextField>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={onClose}>Cancelar</Button>
+          <Button type="submit" variant="contained" disabled={loading}>
+            {loading ? 'Criando...' : 'Criar Usuário'}
+          </Button>
+        </DialogActions>
+      </form>
+    </Dialog>
+  );
+}
+
+
+
 // --- MAIN COMPONENT ---
 
 function AdminPage() {
   const { currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState(0);
+  const [openCreateUserDialog, setOpenCreateUserDialog] = useState(false);
 
   // States do Dashboard (legado, mantido para preservar funcionalidade dashboard-stats)
   // Mas idealmente quebraria em subcomponentes. 
@@ -305,6 +739,8 @@ function AdminPage() {
   const [selectedUser, setSelectedUser] = useState(null);
   const [openUserDialog, setOpenUserDialog] = useState(false);
   const [newRole, setNewRole] = useState('');
+  const [subscription, setSubscription] = useState(null);
+  const [openUpgradeDialog, setOpenUpgradeDialog] = useState(false);
 
   // Fetch Functions (Simplificadas)
   const fetchAll = async () => {
@@ -317,6 +753,16 @@ function AdminPage() {
       setStats(resStats.data.stats);
       setUsers(resUsers.data.usuarios);
       setLogs(resLogs.data.logs);
+
+      // Fetch current user's subscription
+      if (currentUser?.id) {
+        try {
+          const resSub = await api.get(`/profissionais/${currentUser.id}/assinatura`);
+          setSubscription(resSub.data);
+        } catch (err) {
+          console.log('No subscription found');
+        }
+      }
     } catch (e) { console.error(e); }
   };
 
@@ -328,6 +774,17 @@ function AdminPage() {
   const confirmRole = async () => {
     await api.put(`/admin/usuarios/${selectedUser.id}/role`, { role: newRole });
     setOpenUserDialog(false); fetchAll();
+  };
+
+  const handleDeleteUser = async (user) => {
+    if (window.confirm(`Tem certeza que deseja remover o usuário "${user.nome}" (${user.usuario})?\n\nEsta ação não pode ser desfeita.`)) {
+      try {
+        await api.delete(`/admin/usuarios/${user.id}`);
+        fetchAll();
+      } catch (err) {
+        alert(err.response?.data?.error || 'Erro ao remover usuário');
+      }
+    }
   };
 
   if (currentUser?.role !== 'admin') return <Alert severity="error">Acesso Negado</Alert>;
@@ -342,41 +799,86 @@ function AdminPage() {
           <Tab icon={<PeopleIcon />} label="Usuários" />
           <Tab icon={<MonetizationIcon />} label="Planos & Preços" />
           <Tab icon={<LogsIcon />} label="Auditoria" />
+          <Tab icon={<PersonAddIcon />} label="Solicitações" />
         </Tabs>
       </Paper>
 
-      {activeTab === 0 && stats && (
-        <Grid container spacing={3}>
-          {/* Replicando Cards do Dashboard Original */}
-          <Grid item xs={12} sm={6} md={3}>
-            <Card><CardContent>
-              <Typography variant="h6">Usuários</Typography>
-              <Typography variant="h4">{stats.usuarios.total}</Typography>
-            </CardContent></Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card><CardContent>
-              <Typography variant="h6">Faturamento Est</Typography>
-              <Typography variant="h4">R$ {users.filter(u => u.status_assinatura === 'ativa').length * 99}</Typography>
-              <Typography variant="caption">Estimativa (MVP)</Typography>
-            </CardContent></Card>
-          </Grid>
-          {/* Mais cards... */}
-        </Grid>
+      {activeTab === 0 && (
+        <Box>
+          <TrialStatusWidget
+            subscription={subscription}
+            onUpgrade={() => setOpenUpgradeDialog(true)}
+          />
+
+          {stats && (
+            <Grid container spacing={3}>
+              {/* Replicando Cards do Dashboard Original */}
+              <Grid item xs={12} sm={6} md={3}>
+                <Card><CardContent>
+                  <Typography variant="h6">Usuários</Typography>
+                  <Typography variant="h4">{stats.usuarios.total}</Typography>
+                </CardContent></Card>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Card><CardContent>
+                  <Typography variant="h6">Faturamento Est</Typography>
+                  <Typography variant="h4">R$ {users.filter(u => u.status_assinatura === 'ativa').length * 99}</Typography>
+                  <Typography variant="caption">Estimativa (MVP)</Typography>
+                </CardContent></Card>
+              </Grid>
+              {/* Mais cards... */}
+            </Grid>
+          )}
+        </Box>
       )}
+
+
 
       {activeTab === 1 && (
         <Paper>
+          <Box sx={{ p: 2, display: 'flex', justifyContent: 'flex-end' }}>
+            <Button variant="contained" startIcon={<PersonAddIcon />} onClick={() => setOpenCreateUserDialog(true)}>
+              Novo Usuário
+            </Button>
+          </Box>
           <TableContainer>
             <Table>
               <TableHead><TableRow><TableCell>Usuário</TableCell><TableCell>Plano</TableCell><TableCell>Status</TableCell><TableCell>Ações</TableCell></TableRow></TableHead>
               <TableBody>
                 {users.map(u => (
                   <TableRow key={u.id}>
-                    <TableCell>{u.nome} ({u.usuario})</TableCell>
+                    <TableCell>
+                      <Box>
+                        <Typography variant="body2" fontWeight="bold">{u.nome}</Typography>
+                        <Typography variant="caption" color="text.secondary">{u.email}</Typography>
+                      </Box>
+                    </TableCell>
                     <TableCell>{u.plano || '-'}</TableCell>
-                    <TableCell><Chip label={u.status_assinatura || 'trial'} color={u.status_assinatura === 'ativa' ? 'success' : 'default'} size="small" /></TableCell>
-                    <TableCell><IconButton onClick={() => handleUpdateRole(u)}><EditIcon /></IconButton></TableCell>
+                    <TableCell>
+                      {u.status_assinatura === 'trial' && u.data_expiracao ? (
+                        <Box>
+                          <Chip
+                            label={`Trial (${Math.max(0, Math.ceil((new Date(u.data_expiracao) - new Date()) / (1000 * 60 * 60 * 24)))} dias)`}
+                            color="warning"
+                            size="small"
+                          />
+                        </Box>
+                      ) : (
+                        <Chip
+                          label={u.status_assinatura || 'trial'}
+                          color={u.status_assinatura === 'ativa' ? 'success' : 'default'}
+                          size="small"
+                        />
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <IconButton onClick={() => handleUpdateRole(u)} size="small" color="primary">
+                        <EditIcon />
+                      </IconButton>
+                      <IconButton onClick={() => handleDeleteUser(u)} size="small" color="error">
+                        <DeleteIcon />
+                      </IconButton>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -386,6 +888,8 @@ function AdminPage() {
       )}
 
       {activeTab === 2 && <PlanosManager />}
+
+      {activeTab === 4 && <SolicitacoesManager />}
 
       {activeTab === 3 && (
         <Paper>
@@ -417,6 +921,15 @@ function AdminPage() {
         </DialogContent>
         <DialogActions><Button onClick={confirmRole}>Salvar</Button></DialogActions>
       </Dialog>
+
+      <UserCreateDialog
+        open={openCreateUserDialog}
+        onClose={() => setOpenCreateUserDialog(false)}
+        onSuccess={fetchAll}
+      />
+
+      {/* Upgrade Dialog */}
+      <UpgradeDialog open={openUpgradeDialog} onClose={() => setOpenUpgradeDialog(false)} />
     </Container>
   );
 }

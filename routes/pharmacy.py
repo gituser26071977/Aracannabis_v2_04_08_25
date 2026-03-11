@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from models import db, Profissional, Produto
+from models import db, Profissional
 from models_extra import InventoryItem, PharmacyDispense, create_audit_entry
 from datetime import datetime
 

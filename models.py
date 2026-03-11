@@ -17,6 +17,13 @@ class Profissional(db.Model):
     data_expiracao = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
+    # Campos de validação automática
+    status_cadastro = db.Column(db.String, default='aprovado', nullable=False)  # 'pendente', 'aprovado', 'rejeitado'
+    motivo_rejeicao = db.Column(db.Text)  # Motivo da rejeição se status='rejeitado'
+    data_aprovacao = db.Column(db.DateTime)  # Quando foi aprovado
+    aprovado_por = db.Column(db.String)  # 'system' ou ID do admin que aprovou
+    validation_data = db.Column(db.JSON)  # Dados da validação CRM (resposta API, etc)
+    
     evolucoes = db.relationship('Evolucao', backref='profissional', lazy=True)
     logs = db.relationship('LogAtividade', backref='profissional', lazy=True)
     consultas = db.relationship('Consulta', backref='profissional', lazy=True)
@@ -33,8 +40,39 @@ class Profissional(db.Model):
             'usuario': self.usuario,
             'email': self.email,
             'role': self.role,
+            'status_cadastro': self.status_cadastro,
+            'data_aprovacao': self.data_aprovacao.isoformat() if self.data_aprovacao else None,
             'data_expiracao': self.data_expiracao.isoformat() if self.data_expiracao else None,
             'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+
+
+class ConfiguracaoPrescricao(db.Model):
+    __tablename__ = 'configuracao_prescricao'
+
+    id = db.Column(db.Integer, primary_key=True)
+    profissional_id = db.Column(db.Integer, db.ForeignKey('profissionais.id', ondelete='CASCADE'), nullable=False, unique=True)
+    logo_clinica = db.Column(db.String)
+    logo_profissional = db.Column(db.String)
+    usar_assinatura_digital = db.Column(db.Boolean, default=False)
+    modo_consultor_ia = db.Column(db.Boolean, default=False)
+    cabecalho_personalizado = db.Column(db.Text)
+    rodape_personalizado = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    profissional = db.relationship('Profissional', backref=db.backref('config_prescricao', uselist=False))
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'profissional_id': self.profissional_id,
+            'logo_clinica': self.logo_clinica,
+            'logo_profissional': self.logo_profissional,
+            'usar_assinatura_digital': self.usar_assinatura_digital,
+            'modo_consultor_ia': self.modo_consultor_ia,
+            'cabecalho_personalizado': self.cabecalho_personalizado,
+            'rodape_personalizado': self.rodape_personalizado
         }
 
 
@@ -61,6 +99,7 @@ class Paciente(db.Model):
     __tablename__ = 'pacientes'
 
     id = db.Column(db.Integer, primary_key=True)
+    associacao_id = db.Column(db.Integer, db.ForeignKey('associacoes.id'), nullable=True) # Nullable for migration
     profissional_responsavel_id = db.Column(db.Integer, db.ForeignKey('profissionais.id', ondelete='SET NULL'), nullable=False)
     nome = db.Column(db.String, nullable=False)
     data_nascimento = db.Column(db.Date, nullable=False)
@@ -86,6 +125,13 @@ class Paciente(db.Model):
     tdah_positivo = db.Column(db.Boolean, default=False, nullable=True)
     # Novo campo para depressão
     depressao_positiva = db.Column(db.Boolean, default=False, nullable=True)
+    
+    # Campos de Autenticação
+    senha_hash = db.Column(db.String(255))
+    is_active = db.Column(db.Boolean, default=True)
+    email_verified = db.Column(db.Boolean, default=False)
+    last_login_at = db.Column(db.DateTime)
+    
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -99,11 +145,15 @@ class Paciente(db.Model):
     # Relationships to exam images and lab results are handled through the Exame model
     # Removed direct relationships to ExameImagem and ExameLabResultado
     compartilhamentos = db.relationship('CompartilhamentoPaciente', backref='paciente', lazy=True, cascade="all, delete-orphan")
+    associacao = db.relationship('Associacao', backref='pacientes', lazy=True)
     snap_iv_testes = db.relationship('SnapIVTeste', back_populates='paciente', lazy=True, cascade="all, delete-orphan")
     
     def to_dict(self):
         return {
             'id': self.id,
+            'associacao_id': self.associacao_id,
+            'associacao': self.associacao.nome if self.associacao else None,
+            'profissional_responsavel_id': self.profissional_responsavel_id,
             'nome': self.nome,
             'data_nascimento': self.data_nascimento.isoformat() if self.data_nascimento else None,
             'cpf': self.cpf,
@@ -112,19 +162,21 @@ class Paciente(db.Model):
             'email': self.email,
             'endereco': self.endereco,
             'diagnostico': self.diagnostico,
-            'condicao_medica': self.condicao_medica or self.diagnostico,
-            'observacoes': self.observacoes,
+            'condicao_medica': self.condicao_medica,
             'em_tratamento': self.em_tratamento,
             'composicao': self.composicao,
             'dosagem': self.dosagem,
             'horarios': self.horarios,
             'foto_nome': self.foto_nome,
-            'foto_tipo': self.foto_tipo,
-            'foto_tamanho': self.foto_tamanho,
-            'consentimento_lgpd': self.consentimento_lgpd,
-            'data_consentimento': self.data_consentimento.isoformat() if self.data_consentimento else None,
+            'foto_caminho': self.foto_caminho,
             'tdah_positivo': self.tdah_positivo,
             'depressao_positiva': self.depressao_positiva,
+            'consentimento_lgpd': self.consentimento_lgpd,
+            'data_consentimento': self.data_consentimento.isoformat() if self.data_consentimento else None,
+            # New auth fields
+            'is_active': getattr(self, 'is_active', False),
+            'email_verified': getattr(self, 'email_verified', False),
+            'last_login_at': self.last_login_at.isoformat() if hasattr(self, 'last_login_at') and self.last_login_at else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
@@ -133,6 +185,7 @@ class Sintoma(db.Model):
     __tablename__ = 'sintomas'
     
     id = db.Column(db.Integer, primary_key=True)
+    associacao_id = db.Column(db.Integer, db.ForeignKey('associacoes.id', ondelete='CASCADE'), nullable=True)
     paciente_id = db.Column(db.Integer, db.ForeignKey('pacientes.id', ondelete='CASCADE'), nullable=False)
     data = db.Column(db.Date, nullable=False)
     sintoma = db.Column(db.String, nullable=False)
@@ -158,6 +211,7 @@ class Dosagem(db.Model):
     __tablename__ = 'dosagens'
     
     id = db.Column(db.Integer, primary_key=True)
+    associacao_id = db.Column(db.Integer, db.ForeignKey('associacoes.id', ondelete='CASCADE'), nullable=True)
     paciente_id = db.Column(db.Integer, db.ForeignKey('pacientes.id', ondelete='CASCADE'), nullable=False)
     data = db.Column(db.Date, nullable=False)
     dosagem = db.Column(db.String, nullable=False)
@@ -167,17 +221,34 @@ class Dosagem(db.Model):
     concentracao_thc = db.Column(db.Float, default=0.0)   # em mg/ml
     concentracao_cbg = db.Column(db.Float, default=0.0)   # em mg/ml
     concentracao_cbn = db.Column(db.Float, default=0.0)   # em mg/ml
-    gotas_por_ml = db.Column(db.Integer, default=30, nullable=False) # Novo campo, padrão 30
+    gotas_por_ml = db.Column(db.Integer, default=30, nullable=False)
+    tipo_dose = db.Column(db.String, default='fixa') # 'fixa' (qtd igual) ou 'variavel' (por horario)
+    esquema_doses = db.Column(db.JSON) # Ex: {'manha': 2, 'tarde': 0, 'noite': 5}
+    instrucoes_uso = db.Column(db.Text) # Instruções específicas para esta dosagem (ex: "tomar com gordura")
+    via_administracao = db.Column(db.String(50)) # Se diferir do produto
+    produto_id = db.Column(db.Integer, db.ForeignKey('produtos.id'), nullable=True) # Link opcional direto ao produto
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
+    # Add relationship to access instructions easily
+    produto = db.relationship('Produto', backref='dosagens')
+    
     def calcular_dose_diaria(self):
-        if not self.gotas_por_ml or self.gotas_por_ml == 0: # Evitar divisão por zero
-            ml_por_gota = 0.05 # Fallback para 20 gotas/ml se não especificado ou zero
+        if not self.gotas_por_ml or self.gotas_por_ml == 0:
+            ml_por_gota = 0.05
         else:
             ml_por_gota = 1 / self.gotas_por_ml
             
-        ml_por_dose = self.gotas * ml_por_gota
-        ml_por_dia = ml_por_dose * self.frequencia_diaria
+        total_gotas = 0
+        if self.tipo_dose == 'variavel' and self.esquema_doses:
+            # Soma as gotas de todos os horários
+            for key, val in self.esquema_doses.items():
+                if isinstance(val, (int, float)):
+                    total_gotas += val
+        else:
+            # Cálculo antigo
+            total_gotas = (self.gotas or 0) * (self.frequencia_diaria or 1)
+            
+        ml_por_dia = total_gotas * ml_por_gota
         
         return {
             'ml_por_dia': round(ml_por_dia, 2),
@@ -188,7 +259,8 @@ class Dosagem(db.Model):
             'canabinoides_totais': round(
                 ml_por_dia * (self.concentracao_cbd + self.concentracao_thc + 
                               self.concentracao_cbg + self.concentracao_cbn), 2
-            )
+            ),
+            'total_gotas_diarias': total_gotas
         }
     
     def to_dict(self):
@@ -204,15 +276,47 @@ class Dosagem(db.Model):
             'concentracao_thc': self.concentracao_thc,
             'concentracao_cbg': self.concentracao_cbg,
             'concentracao_cbn': self.concentracao_cbn,
-            'gotas_por_ml': self.gotas_por_ml, # Adicionar ao dict
+            'gotas_por_ml': self.gotas_por_ml,
+            'tipo_dose': self.tipo_dose,  # Novo
+            'esquema_doses': self.esquema_doses, # Novo
+            'produto_id': self.produto_id,
+            'instrucoes_uso': self.instrucoes_uso,
+            'via_administracao': self.via_administracao,
             'dose_diaria': dose_diaria,
             'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+
+class Prescricao(db.Model):
+    __tablename__ = 'prescricoes'
+
+    id = db.Column(db.Integer, primary_key=True)
+    associacao_id = db.Column(db.Integer, db.ForeignKey('associacoes.id', ondelete='CASCADE'), nullable=True)
+    paciente_id = db.Column(db.Integer, db.ForeignKey('pacientes.id', ondelete='CASCADE'), nullable=False)
+    profissional_id = db.Column(db.Integer, db.ForeignKey('profissionais.id', ondelete='SET NULL'))
+    data_emissao = db.Column(db.DateTime, default=datetime.utcnow)
+    arquivo_path = db.Column(db.String) # Caminho do PDF gerado
+    conteudo_json = db.Column(db.JSON) # Snapshot dos medicamentos na época
+    observacoes = db.Column(db.Text)
+    
+    paciente = db.relationship('Paciente')
+    profissional = db.relationship('Profissional')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'paciente_id': self.paciente_id,
+            'paciente_nome': self.paciente.nome if self.paciente else None,
+            'profissional_nome': self.profissional.nome if self.profissional else None,
+            'data_emissao': self.data_emissao.isoformat(),
+            'arquivo_path': self.arquivo_path,
+            'observacoes': self.observacoes
         }
 
 class Evolucao(db.Model):
     __tablename__ = 'evolucoes'
     
     id = db.Column(db.Integer, primary_key=True)
+    associacao_id = db.Column(db.Integer, db.ForeignKey('associacoes.id', ondelete='CASCADE'), nullable=True)
     paciente_id = db.Column(db.Integer, db.ForeignKey('pacientes.id', ondelete='CASCADE'), nullable=False)
     profissional_id = db.Column(db.Integer, db.ForeignKey('profissionais.id', ondelete='SET NULL'))
     data_evolucao = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
@@ -232,6 +336,7 @@ class Consulta(db.Model):
     __tablename__ = 'consultas'
     
     id = db.Column(db.Integer, primary_key=True)
+    associacao_id = db.Column(db.Integer, db.ForeignKey('associacoes.id', ondelete='CASCADE'), nullable=True)
     paciente_id = db.Column(db.Integer, db.ForeignKey('pacientes.id', ondelete='CASCADE'), nullable=False)
     profissional_id = db.Column(db.Integer, db.ForeignKey('profissionais.id', ondelete='SET NULL'))
     data_hora = db.Column(db.DateTime, nullable=False)
@@ -278,6 +383,7 @@ class Exame(db.Model):
     __tablename__ = 'exames'
     
     id = db.Column(db.Integer, primary_key=True)
+    associacao_id = db.Column(db.Integer, db.ForeignKey('associacoes.id', ondelete='CASCADE'), nullable=True)
     paciente_id = db.Column(db.Integer, db.ForeignKey('pacientes.id', ondelete='CASCADE'), nullable=False)
     profissional_id = db.Column(db.Integer, db.ForeignKey('profissionais.id', ondelete='SET NULL'))
     data_exame = db.Column(db.Date, nullable=False)
@@ -352,14 +458,46 @@ class ExameLabResultado(db.Model):
             'valor_referencia': self.valor_referencia
         }
 
+class SolicitacaoExame(db.Model):
+    __tablename__ = 'solicitacoes_exames'
+
+    id = db.Column(db.Integer, primary_key=True)
+    paciente_id = db.Column(db.Integer, db.ForeignKey('pacientes.id', ondelete='CASCADE'), nullable=False)
+    profissional_id = db.Column(db.Integer, db.ForeignKey('profissionais.id', ondelete='SET NULL'))
+    data_solicitacao = db.Column(db.DateTime, default=datetime.utcnow)
+    exames_solicitados = db.Column(db.JSON) # Array of exam names
+    observacoes = db.Column(db.Text)
+    arquivo_path = db.Column(db.String) # PDF file path
+    status = db.Column(db.String, default='pendente') # 'pendente', 'entregue', 'realizado'
+    
+    # Relationships
+    paciente = db.relationship('Paciente')
+    profissional = db.relationship('Profissional')
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'paciente_id': self.paciente_id,
+            'profissional_id': self.profissional_id,
+            'profissional_nome': self.profissional.nome if self.profissional else None,
+            'data_solicitacao': self.data_solicitacao.isoformat() if self.data_solicitacao else None,
+            'exames_solicitados': self.exames_solicitados,
+            'observacoes': self.observacoes,
+            'arquivo_path': self.arquivo_path,
+            'status': self.status
+        }
+
 class LogAtividade(db.Model):
     __tablename__ = 'logs_atividades'
     
     id = db.Column(db.Integer, primary_key=True)
     profissional_id = db.Column(db.Integer, db.ForeignKey('profissionais.id', ondelete='SET NULL'))
+    associacao_id = db.Column(db.Integer, db.ForeignKey('associacoes.id', ondelete='CASCADE'), nullable=True)
     acao = db.Column(db.String, nullable=False)
     detalhes = db.Column(db.Text)
     data_hora = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    
+    associacao = db.relationship('Associacao', foreign_keys=[associacao_id])
     
     def to_dict(self):
         return {
@@ -418,6 +556,8 @@ class Produto(db.Model):
     volume_ml = db.Column(db.Float, default=30)
     fabricante = db.Column(db.String)
     descricao = db.Column(db.Text)
+    instrucoes = db.Column(db.Text) # Instruções padrão do produto (ex: ingerir com gordura)
+    via_administracao = db.Column(db.String(50), default='Oral') # Oral, Sublingual, Tópico
     ativo = db.Column(db.Boolean, default=True, nullable=False)
     data_registro = db.Column(db.Date, default=datetime.utcnow) # Nova coluna: Data de registro manual ou automática
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -436,6 +576,8 @@ class Produto(db.Model):
             'volume_ml': self.volume_ml,
             'fabricante': self.fabricante,
             'descricao': self.descricao,
+            'instrucoes': self.instrucoes,
+            'via_administracao': self.via_administracao,
             'ativo': self.ativo,
             'data_registro': self.data_registro.isoformat() if self.data_registro else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
@@ -446,7 +588,7 @@ class ReminderSettings(db.Model):
     __tablename__ = 'reminder_settings'
     
     id = db.Column(db.Integer, primary_key=True)
-    profissional_id = db.Column(db.Integer, db.ForeignKey('profissionais.id'), nullable=False)
+    profissional_id = db.Column(db.Integer, db.ForeignKey('profissionais.id', ondelete='CASCADE'), nullable=False)
     lead_time_hours = db.Column(db.Integer, default=24, nullable=False)  # Horas antes da consulta
     email_template = db.Column(db.Text, default='Lembrete de consulta', nullable=False)
     active = db.Column(db.Boolean, default=True, nullable=False)
@@ -505,7 +647,7 @@ class Assinatura(db.Model):
     __tablename__ = 'assinaturas'
 
     id = db.Column(db.Integer, primary_key=True)
-    profissional_id = db.Column(db.Integer, db.ForeignKey('profissionais.id'), nullable=False)
+    profissional_id = db.Column(db.Integer, db.ForeignKey('profissionais.id', ondelete='CASCADE'), nullable=False)
     plano_id = db.Column(db.Integer, db.ForeignKey('planos.id'), nullable=False)
     status = db.Column(db.String, default='trial')  # trial, ativa, cancelada, inadimplente
     trial_ends_at = db.Column(db.DateTime)
@@ -598,11 +740,13 @@ class SolicitacoesCadastro(db.Model):
     telefone = db.Column(db.String)
     especialidade = db.Column(db.String)
     instituicao = db.Column(db.String)
+    tipo_vinculo = db.Column(db.String, default='pessoal')  # 'pessoal', 'existente'
+    associacao_id = db.Column(db.Integer, db.ForeignKey('associacoes.id'), nullable=True) # ID da associacao se 'existente'
     status = db.Column(db.String, default='pendente', nullable=False)
     data_solicitacao = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     data_aprovacao = db.Column(db.DateTime)
     observacoes = db.Column(db.Text)
-    aprovado_por = db.Column(db.Integer, db.ForeignKey('profissionais.id'))
+    aprovado_por = db.Column(db.Integer, db.ForeignKey('profissionais.id', ondelete='SET NULL'))
 
     aprovador = db.relationship('Profissional', backref='solicitacoes_aprovadas', foreign_keys=[aprovado_por])
 
@@ -618,6 +762,9 @@ class SolicitacoesCadastro(db.Model):
             'telefone': self.telefone,
             'especialidade': self.especialidade,
             'instituicao': self.instituicao,
+            'tipo_vinculo': self.tipo_vinculo,
+            'associacao_id': self.associacao_id,
+
             'status': self.status,
             'data_solicitacao': self.data_solicitacao.isoformat(),
             'data_aprovacao': self.data_aprovacao.isoformat() if self.data_aprovacao else None,
@@ -1012,9 +1159,11 @@ class UploadSession(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     token = db.Column(db.String, unique=True, nullable=False)
     status = db.Column(db.String, default='pending', nullable=False)  # pending, completed, failed
+    context = db.Column(db.String(50), default='exam', nullable=False)  # 'exam' or 'product'
     file_path = db.Column(db.String, nullable=True)
     file_type = db.Column(db.String, nullable=True)  # image/jpeg, audio/webm, etc
     original_filename = db.Column(db.String, nullable=True)
+    ai_result = db.Column(db.JSON, nullable=True)  # Store AI extraction result for products
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     expires_at = db.Column(db.DateTime, nullable=False)
 
@@ -1023,9 +1172,11 @@ class UploadSession(db.Model):
             'id': self.id,
             'token': self.token,
             'status': self.status,
+            'context': self.context,
             'file_path': self.file_path,
             'file_type': self.file_type,
             'original_filename': self.original_filename,
+            'ai_result': self.ai_result,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'expires_at': self.expires_at.isoformat() if self.expires_at else None
         }

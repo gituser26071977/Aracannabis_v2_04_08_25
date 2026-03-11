@@ -7,10 +7,10 @@ import {
     IconButton,
     Button
 } from '@mui/material';
-import { Refresh, Smartphone, AccessTime } from '@mui/icons-material';
-import axios from 'axios';
+import { Refresh, AccessTime } from '@mui/icons-material';
+import api from '../services/api';
 
-const MobileConnectQR = ({ onUploadComplete }) => {
+const MobileConnectQR = ({ onUploadComplete, context = 'exam' }) => {
     const [token, setToken] = useState(null);
     const [uploadUrl, setUploadUrl] = useState('');
     const [qrCodeUrl, setQrCodeUrl] = useState('');
@@ -45,22 +45,20 @@ const MobileConnectQR = ({ onUploadComplete }) => {
         setStatus('loading');
         setToken(null);
         try {
-            const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5002/api';
-            const response = await axios.post(`${API_URL}/mobile/start`);
+            // Usando a instância 'api' configurada (que adiciona baseURL automaticamente)
+            const response = await api.post('/mobile/start', { context });
 
             const { token, upload_url, expires_at } = response.data;
             setToken(token);
 
-            // Construir URL completa
-            // Se a URL do front estiver em localhost, para celular funcionar, 
-            // precisamos que o usuário esteja na mesma rede e saiba o IP do PC, 
-            // ou que a aplicação esteja hospedada.
-            // Como fallback inteligente, tentamos pegar o host atual do browser.
+            // Construir URL completa para o usuário acessar
+            // Como o celular acessa de fora, precisamos garantir que ele pegue o IP/Host correto
             const currentHost = window.location.protocol + '//' + window.location.host;
             const fullUrl = `${currentHost}/mobile-upload/${token}`;
             setUploadUrl(fullUrl);
 
             // Gerar QR Code usando API pública segura
+            // O QR Code apontará para a página mobile no frontend desta aplicação
             const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(fullUrl)}`;
             setQrCodeUrl(qrUrl);
 
@@ -77,8 +75,7 @@ const MobileConnectQR = ({ onUploadComplete }) => {
 
     const checkStatus = async (activeToken) => {
         try {
-            const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5002/api';
-            const response = await axios.get(`${API_URL}/mobile/status/${activeToken}`);
+            const response = await api.get(`/mobile/status/${activeToken}`);
 
             if (response.data.status === 'completed') {
                 stopPolling();
@@ -87,7 +84,8 @@ const MobileConnectQR = ({ onUploadComplete }) => {
                 // Buscar o arquivo real (blob) para passar para o componente pai
                 if (response.data.file_url) {
                     try {
-                        const fileRes = await axios.get(response.data.file_url, { responseType: 'blob' });
+                        // Precisamos baixar o blob. Podemos usar api.get com config específica
+                        const fileRes = await api.get(response.data.file_url, { responseType: 'blob' });
                         const file = new File([fileRes.data], response.data.original_filename, { type: response.data.file_type });
                         if (onUploadComplete) onUploadComplete(file);
                     } catch (downloadErr) {
@@ -99,7 +97,7 @@ const MobileConnectQR = ({ onUploadComplete }) => {
                 setStatus('expired');
             }
         } catch (err) {
-            // Ignorar erros de rede transientes no polling
+            // Ignorar erros de rede transientes no polling, ou se retornar 404/410 tratar como erro de sessão
             if (err.response && (err.response.status === 404 || err.response.status === 410)) {
                 stopPolling();
                 setStatus('expired');
@@ -121,7 +119,7 @@ const MobileConnectQR = ({ onUploadComplete }) => {
                 <Alert severity="error" action={
                     <IconButton size="small" onClick={startSession}><Refresh /></IconButton>
                 }>
-                    Erro ao iniciar sessão. Tente novamente.
+                    Erro ao iniciar sessão. Verifique a conexão.
                 </Alert>
             )}
 
@@ -137,7 +135,7 @@ const MobileConnectQR = ({ onUploadComplete }) => {
             {status === 'waiting' && (
                 <>
                     <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold' }}>
-                        Aponte a câmera do seu celular
+                        {context === 'product' ? 'Escaneie para cadastrar produto' : 'Aponte a câmera do seu celular'}
                     </Typography>
 
                     <Box

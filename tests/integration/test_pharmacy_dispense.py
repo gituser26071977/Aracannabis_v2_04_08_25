@@ -66,7 +66,7 @@ def test_prescription_to_dispense_flow():
     # create product
     try:
         produto_id = create_product(session, headers)
-    except requests.HTTPError as e:
+    except requests.HTTPError:
         # If produtos endpoint not available, try fetching products
         r = session.get(f"{BASE_URL}/api/produtos", headers=headers, timeout=5)
         r.raise_for_status()

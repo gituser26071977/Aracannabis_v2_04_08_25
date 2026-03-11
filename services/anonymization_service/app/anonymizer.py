@@ -1,10 +1,8 @@
 import re
 import spacy
-from typing import List, Dict, Tuple
-from services.anonymization_service.app.database import SessionLocal
-from services.anonymization_service.app.models import AnonymizationMap
-from services.anonymization_service.app.crypto import CryptoManager
-from services.anonymization_service.app.consent import ConsentManager  # Para checar consentimento
+from typing import List, Tuple
+from app.models import AnonymizationMap
+from app.crypto import CryptoManager
 import logging
 
 # Configuração de Log Seguro (apenas metadados)
@@ -13,8 +11,8 @@ logger = logging.getLogger(__name__)
 class Anonymizer:
     """Implementa a lógica de regex + NER + tokenização reversível."""
 
-    def __init__(self, key: str = "DEFAULT"):
-        self.crypto_manager = CryptoManager(key.encode())
+    def __init__(self, key: str = None):
+        self.crypto_manager = CryptoManager(key.encode() if key else None)
         self.nlp = None  # Lazy loading do spacy
 
         # Patterns de Regex
@@ -206,14 +204,57 @@ class Anonymizer:
         # Simplificação: commit e query IDs or just IDs if flush works.
         
         # Risco Score (0 a 1)
-        # Se restarem [PER] ou [CPF] no texto final? Não, o risco é se restarem dados REAIS.
-        # Avaliar heurística: se final_text ainda parece ter PII (ex: regex match após substituição).
         risk = 0.0
-        # Check regex again
-        if re.search(self.patterns['CPF'], final_text): risk += 0.5
-        if re.search(self.patterns['EMAIL'], final_text): risk += 0.3
+        if re.search(self.patterns['CPF'], final_text): risk += 0.4
+        if re.search(self.patterns['EMAIL'], final_text): risk += 0.2
         
-        return final_text, [0], risk # Mocking IDs return list for now
+        # 4. Refinamento de Risco com LLM Local (Obrigatório para VPS modesto)
+        try:
+            llm_risk = self.check_residual_risk_local(final_text)
+            risk = max(risk, llm_risk)
+        except Exception as e:
+            logger.warning(f"Falha ao checar risco com LLM local: {e}")
+            
+        return final_text, [0], round(risk, 2)
+
+    def check_residual_risk_local(self, text: str) -> float:
+        """Usa Ollama local (qwen3:1.7b) para avaliar se ainda há dados sensíveis."""
+        import requests
+        import os
+        
+        ollama_url = os.getenv("OLLAMA_HOST", "http://host.docker.internal:11434")
+        model = os.getenv("ANONYMIZATION_AUDIT_MODEL", "qwen3:1.7b")
+        
+        prompt = f"""
+        Analise o texto médico abaixo. Ele foi anonimizado (dados trocados por tokens como [PER_...]).
+        Responda APENAS com um número de 0.0 a 1.0 representando o risco de ainda haver dados identificáveis reais (nomes, endereços, contatos).
+        0.0 = Totalmente limpo.
+        1.0 = Dados reais detectados.
+        
+        TEXTO:
+        {text[:1000]}
+        
+        RISCO (0.0 a 1.0):
+        """
+        
+        try:
+            resp = requests.post(f"{ollama_url}/api/generate", json={
+                "model": model,
+                "prompt": prompt,
+                "stream": False,
+                "options": {"temperature": 0.0}
+            }, timeout=5.0)
+            
+            if resp.status_code == 200:
+                result = resp.json().get('response', '0.0').strip()
+                # Tentar extrair o número
+                import re
+                match = re.search(r"(\d\.\d)", result)
+                if match:
+                    return float(match.group(1))
+            return 0.1 # Risco baixo por padrão se processado
+        except:
+            return 0.2 # Risco moderado se falhar
     
     def rehydrate_text(self, anonymized_text: str, consultation_id: int, db_session) -> str:
         """

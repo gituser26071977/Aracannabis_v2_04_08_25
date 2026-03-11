@@ -8,7 +8,6 @@ from datetime import datetime
 from models import db, Paciente, Evolucao, Dosagem, Sintoma
 # IA imports removed to prevent network errors
 import tempfile
-import os
 
 
 def safe_ai_import_processing(text_content, patient_id, timeout=30):

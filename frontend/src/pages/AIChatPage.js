@@ -16,7 +16,7 @@ import {
   CircularProgress,
   IconButton
 } from '@mui/material';
-import { Chat, Send, SmartToy } from '@mui/icons-material';
+import { Chat, Send, SmartToy, Mic, StopCircle, VolumeUp, PhoneInTalk, PhoneDisabled } from '@mui/icons-material';
 import { chatSimplesService, pacientesService } from '../services/api';
 
 const CHAT_QUICK_ACTIONS = [
@@ -77,6 +77,19 @@ const AIChatPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [activeQuickAction, setActiveQuickAction] = useState(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [playingTTSId, setPlayingTTSId] = useState(null);
+
+  // States and Refs for Full-Duplex Live Call
+  const [isLiveCallActive, setIsLiveCallActive] = useState(false);
+  const liveAudioWsRef = useRef(null);
+  const audioCtxRef = useRef(null);
+  const processorRef = useRef(null);
+  const streamRef = useRef(null);
+  const nextPlayTimeRef = useRef(0);
+
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
   const chatListRef = useRef(null);
 
   useEffect(() => {
@@ -112,6 +125,183 @@ const AIChatPage = () => {
     setError('');
     setInputValue('');
     setActiveQuickAction(null);
+  };
+
+  const toggleLiveCall = async () => {
+    if (isLiveCallActive) {
+      // Desconectar o túnel
+      if (liveAudioWsRef.current) {
+        liveAudioWsRef.current.close();
+      }
+      if (processorRef.current) {
+        processorRef.current.disconnect();
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+      if (audioCtxRef.current) {
+        audioCtxRef.current.close();
+      }
+      setIsLiveCallActive(false);
+      return;
+    }
+
+    try {
+      // 1. Configurar o Microfone para Áudio Mono em 16kHz (padrão do Gemini)
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, sampleRate: 16000 } });
+      streamRef.current = stream;
+
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+      audioCtxRef.current = audioCtx;
+      nextPlayTimeRef.current = 0;
+
+      const source = audioCtx.createMediaStreamSource(stream);
+      // Processor minúsculo para capturar áudio continuamente (4096 frames por chunk)
+      const processor = audioCtx.createScriptProcessor(4096, 1, 1);
+      processorRef.current = processor;
+
+      // 2. Conectar no Backend Gateway (WebSocket)
+      const ws = new WebSocket('ws://localhost:8765');
+      liveAudioWsRef.current = ws;
+
+      ws.onopen = () => {
+        setIsLiveCallActive(true);
+        // Mandar o "Alô" inicial invisível pro Gemini começar a falar
+        ws.send(JSON.stringify({ client_content: "Iniciei a chamada. Diga um 'Olá, doutor, o Copiloto de voz está ativado.'" }));
+      };
+
+      // 3. Ao falar no microfone: Transformar Float32 em PCM 16-bits e enviar pro WS
+      processor.onaudioprocess = (e) => {
+        if (ws.readyState === WebSocket.OPEN) {
+          const inputData = e.inputBuffer.getChannelData(0);
+          const pcm16 = new Int16Array(inputData.length);
+          for (let i = 0; i < inputData.length; i++) {
+            let s = Math.max(-1, Math.min(1, inputData[i]));
+            pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+          }
+          ws.send(pcm16.buffer); // Envia binário cru
+        }
+      };
+
+      // 4. Ao ouvir reposta do Gemini via WS: Transformar PCM 16-bits em Som e colocar no Speaker
+      ws.onmessage = async (event) => {
+        if (event.data instanceof Blob) {
+          const arrayBuffer = await event.data.arrayBuffer();
+          const pcm16 = new Int16Array(arrayBuffer);
+          const float32 = new Float32Array(pcm16.length);
+          for (let i = 0; i < pcm16.length; i++) {
+            float32[i] = pcm16[i] / 32768.0;
+          }
+
+          const audioBuffer = audioCtx.createBuffer(1, float32.length, 16000);
+          audioBuffer.copyToChannel(float32, 0);
+
+          const sourceNode = audioCtx.createBufferSource();
+          sourceNode.buffer = audioBuffer;
+          sourceNode.connect(audioCtx.destination);
+
+          // Tocar o som engatado no próximo segundo livre para não cortar as palavras (Buffer Scheduling)
+          if (nextPlayTimeRef.current < audioCtx.currentTime) {
+            nextPlayTimeRef.current = audioCtx.currentTime;
+          }
+          sourceNode.start(nextPlayTimeRef.current);
+          nextPlayTimeRef.current += audioBuffer.duration;
+
+        } else if (typeof event.data === 'string') {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === 'text' && data.text) {
+              appendMessage(createAssistantMessage('📞 (Live): ' + data.text));
+              // Scroll to bottom
+              setTimeout(() => {
+                if (chatListRef.current) chatListRef.current.scrollTop = chatListRef.current.scrollHeight;
+              }, 100);
+            }
+          } catch (e) { }
+        }
+      };
+
+      ws.onclose = () => {
+        setIsLiveCallActive(false);
+        if (processorRef.current) processorRef.current.disconnect();
+        if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
+      };
+
+      // Iniciar a esteira
+      source.connect(processor);
+      processor.connect(audioCtx.destination);
+
+    } catch (err) {
+      setError('Erro ao iniciar Assistente de Voz: ' + err.message);
+    }
+  };
+
+  const startRecording = async () => {
+    setError('');
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorderRef.current = new MediaRecorder(stream);
+      audioChunksRef.current = [];
+
+      mediaRecorderRef.current.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorderRef.current.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const reader = new FileReader();
+        reader.readAsDataURL(audioBlob);
+        reader.onloadend = async () => {
+          setLoading(true);
+          try {
+            const base64Audio = reader.result;
+            const resp = await chatSimplesService.stt(base64Audio);
+            if (resp && resp.text) {
+              setInputValue((prev) => prev ? prev + ' ' + resp.text : resp.text);
+            }
+          } catch (err) {
+            setError(err?.error || 'Erro ao transcrever áudio.');
+          } finally {
+            setLoading(false);
+          }
+        };
+      };
+
+      mediaRecorderRef.current.start();
+      setIsRecording(true);
+    } catch (err) {
+      setError('Acesso ao microfone negado ou não suportado no seu navegador.');
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+    }
+  };
+
+  const handleTTS = async (message) => {
+    if (playingTTSId === message.id) return;
+    setPlayingTTSId(message.id);
+    try {
+      const resp = await chatSimplesService.tts(message.content);
+      if (resp && resp.audio_base64) {
+        const audio = new Audio(resp.audio_base64);
+        audio.play();
+        audio.onended = () => setPlayingTTSId(null);
+        audio.onerror = () => {
+          setError('Erro ao reproduzir o áudio fornecido.');
+          setPlayingTTSId(null);
+        }
+      }
+    } catch (err) {
+      setError(err?.error || 'Erro na síntese de voz (TTS).');
+      setPlayingTTSId(null);
+    }
   };
 
   const handleSend = async (forcedMessage = null, contextExtras = {}) => {
@@ -322,9 +512,29 @@ const AIChatPage = () => {
               Online • Multiespecializado em prontuários
             </Typography>
           </Stack>
-          <Button variant="text" size="small" onClick={clearHistory}>
-            Limpar chat
-          </Button>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Button
+              variant={isLiveCallActive ? "contained" : "outlined"}
+              color={isLiveCallActive ? "error" : "primary"}
+              size="small"
+              startIcon={isLiveCallActive ? <PhoneDisabled /> : <PhoneInTalk />}
+              onClick={toggleLiveCall}
+              sx={{
+                borderRadius: 20,
+                animation: isLiveCallActive ? 'pulseLive 2s infinite' : 'none',
+                '@keyframes pulseLive': {
+                  '0%': { boxShadow: '0 0 0 0 rgba(211, 47, 47, 0.4)' },
+                  '70%': { boxShadow: '0 0 0 8px rgba(211, 47, 47, 0)' },
+                  '100%': { boxShadow: '0 0 0 0 rgba(211, 47, 47, 0)' }
+                }
+              }}
+            >
+              {isLiveCallActive ? 'Desligar Copiloto' : 'Ligar Copiloto de Voz'}
+            </Button>
+            <Button variant="text" size="small" onClick={clearHistory}>
+              Limpar chat
+            </Button>
+          </Stack>
         </Box>
 
         <Box
@@ -411,6 +621,16 @@ const AIChatPage = () => {
                       {message.status === 'pending' && (
                         <CircularProgress size={12} sx={{ color: message.status === 'error' ? '#ffebee' : 'inherit' }} />
                       )}
+                      {!isUser && message.status === 'done' && (
+                        <IconButton
+                          size="small"
+                          onClick={() => handleTTS(message)}
+                          disabled={playingTTSId === message.id}
+                          sx={{ padding: 0, ml: 1, color: playingTTSId === message.id ? 'success.main' : 'rgba(0,0,0,0.45)' }}
+                        >
+                          {playingTTSId === message.id ? <CircularProgress size={16} color="inherit" /> : <VolumeUp fontSize="small" />}
+                        </IconButton>
+                      )}
                     </Box>
                   </Box>
                 </Box>
@@ -467,6 +687,48 @@ const AIChatPage = () => {
                 }
               }}
             />
+            {isRecording ? (
+              <IconButton
+                color="error"
+                onClick={stopRecording}
+                sx={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: '50%',
+                  bgcolor: '#f44336',
+                  color: '#fff',
+                  boxShadow: '0 8px 16px rgba(244,67,54,0.35)',
+                  animation: 'pulse 1.5s infinite',
+                  '@keyframes pulse': {
+                    '0%': { boxShadow: '0 0 0 0 rgba(244,67,54,0.7)' },
+                    '70%': { boxShadow: '0 0 0 10px rgba(244,67,54,0)' },
+                    '100%': { boxShadow: '0 0 0 0 rgba(244,67,54,0)' }
+                  }
+                }}
+              >
+                <StopCircle />
+              </IconButton>
+            ) : (
+              <IconButton
+                color="secondary"
+                disabled={loading}
+                onClick={startRecording}
+                sx={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: '50%',
+                  bgcolor: loading ? '#e0e0e0' : '#2196f3',
+                  color: '#fff',
+                  boxShadow: '0 8px 16px rgba(33,150,243,0.35)',
+                  '&:hover': {
+                    bgcolor: loading ? '#e0e0e0' : '#1976d2'
+                  }
+                }}
+              >
+                <Mic />
+              </IconButton>
+            )}
+
             <IconButton
               color="success"
               disabled={loading || !inputValue.trim()}

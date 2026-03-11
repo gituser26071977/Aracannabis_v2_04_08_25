@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timedelta
-from typing import Dict, Optional
+from typing import Dict
 
 
 class PaymentService:

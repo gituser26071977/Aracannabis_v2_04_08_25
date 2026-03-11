@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Script de teste rápido para agentes de IA"""
 
-import os
 from dotenv import load_dotenv
 load_dotenv()
 

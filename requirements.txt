@@ -34,3 +34,8 @@ crewai>=0.28.0
 crewai_tools>=0.1.0
 langchain>=0.1.0
 ollama>=0.3.0
+reportlab
+pdf2image
+markdown
+matplotlib>=3.6.0
+dnspython

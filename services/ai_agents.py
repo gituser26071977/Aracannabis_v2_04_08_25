@@ -4,14 +4,27 @@ Versão otimizada com fallbacks e tratamento de erros
 """
 
 import os
-import time
 from functools import wraps
-from typing import Dict, List, Any, Optional
+from typing import Dict, List
 import json
 import logging
 
 # Configurar logging
 logger = logging.getLogger(__name__)
+
+# Importar serviço de persistência
+try:
+    from services.ai_config_storage import load_config, get_api_key, get_base_url
+    CONFIG_STORAGE_AVAILABLE = True
+except ImportError:
+    logger.warning("Serviço de persistência de configuração não disponível")
+    CONFIG_STORAGE_AVAILABLE = False
+    def load_config():
+        return {}
+    def get_api_key(provider):
+        return None
+    def get_base_url(provider):
+        return None
 
 # Importações condicionais para evitar erros de dependência
 try:
@@ -82,7 +95,7 @@ class AIProviderManager:
             'google': {
                 'available': GOOGLE_AVAILABLE,
                 'client': None,
-                'models': ['gemini-2.0-flash-exp', 'gemini-1.5-pro', 'gemini-1.5-flash'],
+                'models': ['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.0-flash-exp', 'gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-2.5-flash-native-audio-preview-12-2025', 'gemini-2.5-flash-preview-tts'],
                 'type': 'cloud'
             },
             'ollama_local': {
@@ -106,7 +119,7 @@ class AIProviderManager:
             'maritaca': {
                 'available': MARITACA_AVAILABLE,
                 'client': None,
-                'models': ['maritaca-ocr', 'maritaca-base'],  # exemplos; ajustáveis via env
+                'models': ['sabiazinho-4', 'maritaca-ocr', 'maritaca-base'],
                 'type': 'cloud'
             },
             'xai': {
@@ -114,15 +127,41 @@ class AIProviderManager:
                 'client': None,
                 'models': ['grok-beta', 'grok-vision'],
                 'type': 'cloud'
+            },
+            'zhipu': {
+                'available': OPENAI_AVAILABLE, # Uses OpenAI compatible API
+                'client': None,
+                'models': ['glm-4', 'glm-4-plus', 'glm-4-air', 'glm-4-flash', 'glm-4v', 'glm-4v-flash', 'glm-4-alltools'],
+                'type': 'cloud'
             }
         }
         
-        self.default_provider = os.getenv('DEFAULT_LLM_PROVIDER', 'groq')
-        self.default_model = os.getenv('DEFAULT_LLM_MODEL', 'llama-3.3-70b-versatile')
-        self.default_vision_provider = os.getenv('DEFAULT_LLM_VISION_PROVIDER', self.default_provider)
-        self.default_vision_model = os.getenv('DEFAULT_LLM_VISION_MODEL', self.default_model)
-        self.default_multimodal_provider = os.getenv('DEFAULT_LLM_MULTIMODAL_PROVIDER', self.default_vision_provider)
-        self.default_multimodal_model = os.getenv('DEFAULT_LLM_MULTIMODAL_MODEL', self.default_vision_model)
+        # Carregar configurações persistidas
+        if CONFIG_STORAGE_AVAILABLE:
+            try:
+                config = load_config()
+                self.default_provider = config.get('default_provider', os.getenv('DEFAULT_LLM_PROVIDER', 'groq'))
+                self.default_model = config.get('default_model', os.getenv('DEFAULT_LLM_MODEL', 'llama-3.3-70b-versatile'))
+                self.default_vision_provider = config.get('default_vision_provider', os.getenv('DEFAULT_LLM_VISION_PROVIDER', self.default_provider))
+                self.default_vision_model = config.get('default_vision_model', os.getenv('DEFAULT_LLM_VISION_MODEL', self.default_model))
+                self.default_multimodal_provider = config.get('default_multimodal_provider', os.getenv('DEFAULT_LLM_MULTIMODAL_PROVIDER', self.default_vision_provider))
+                self.default_multimodal_model = config.get('default_multimodal_model', os.getenv('DEFAULT_LLM_MULTIMODAL_MODEL', self.default_vision_model))
+                logger.info("Configurações carregadas do arquivo de persistência")
+            except Exception as e:
+                logger.warning(f"Erro ao carregar configurações persistidas: {e}. Usando variáveis de ambiente.")
+                self.default_provider = os.getenv('DEFAULT_LLM_PROVIDER', 'groq')
+                self.default_model = os.getenv('DEFAULT_LLM_MODEL', 'llama-3.3-70b-versatile')
+                self.default_vision_provider = os.getenv('DEFAULT_LLM_VISION_PROVIDER', self.default_provider)
+                self.default_vision_model = os.getenv('DEFAULT_LLM_VISION_MODEL', self.default_model)
+                self.default_multimodal_provider = os.getenv('DEFAULT_LLM_MULTIMODAL_PROVIDER', self.default_vision_provider)
+                self.default_multimodal_model = os.getenv('DEFAULT_LLM_MULTIMODAL_MODEL', self.default_vision_model)
+        else:
+            self.default_provider = os.getenv('DEFAULT_LLM_PROVIDER', 'groq')
+            self.default_model = os.getenv('DEFAULT_LLM_MODEL', 'llama-3.3-70b-versatile')
+            self.default_vision_provider = os.getenv('DEFAULT_LLM_VISION_PROVIDER', self.default_provider)
+            self.default_vision_model = os.getenv('DEFAULT_LLM_VISION_MODEL', self.default_model)
+            self.default_multimodal_provider = os.getenv('DEFAULT_LLM_MULTIMODAL_PROVIDER', self.default_vision_provider)
+            self.default_multimodal_model = os.getenv('DEFAULT_LLM_MULTIMODAL_MODEL', self.default_vision_model)
         
         self._initialize_clients()
     
@@ -130,22 +169,22 @@ class AIProviderManager:
         """Inicializa os clientes dos provedores"""
         try:
             if self.providers['groq']['available']:
-                api_key = os.getenv('GROQ_API_KEY')
+                api_key = get_api_key('groq') or os.getenv('GROQ_API_KEY')
                 if api_key:
                     self.providers['groq']['client'] = groq.Groq(api_key=api_key)
             
             if self.providers['openai']['available']:
-                api_key = os.getenv('OPENAI_API_KEY')
+                api_key = get_api_key('openai') or os.getenv('OPENAI_API_KEY')
                 if api_key:
                     self.providers['openai']['client'] = OpenAI(api_key=api_key)
             
             if self.providers['anthropic']['available']:
-                api_key = os.getenv('ANTHROPIC_API_KEY')
+                api_key = get_api_key('anthropic') or os.getenv('ANTHROPIC_API_KEY')
                 if api_key:
                     self.providers['anthropic']['client'] = anthropic.Anthropic(api_key=api_key)
             
             if self.providers['google']['available']:
-                api_key = os.getenv('GOOGLE_API_KEY')
+                api_key = get_api_key('google') or os.getenv('GOOGLE_API_KEY')
                 if api_key:
                     genai.configure(api_key=api_key)
                     self.providers['google']['client'] = genai
@@ -179,9 +218,9 @@ class AIProviderManager:
             # Inicializar DeepSeek (compatível com OpenAI)
             if self.providers['deepseek']['available']:
                 try:
-                    api_key = os.getenv('DEEPSEEK_API_KEY')
+                    api_key = get_api_key('deepseek') or os.getenv('DEEPSEEK_API_KEY')
                     if api_key:
-                        base_url = os.getenv('DEEPSEEK_BASE_URL', 'https://api.deepseek.com')
+                        base_url = get_base_url('deepseek') or os.getenv('DEEPSEEK_BASE_URL', 'https://api.deepseek.com')
                         self.providers['deepseek']['client'] = OpenAI(
                             api_key=api_key,
                             base_url=base_url
@@ -193,19 +232,35 @@ class AIProviderManager:
             # Inicializar Maritaca (compatível com OpenAI)
             if self.providers['maritaca']['available']:
                 try:
-                    api_key = os.getenv('MARITACA_API_KEY')
-                    base_url = os.getenv('MARITACA_BASE_URL', 'https://api.maritaca.ai/v1')
-                    model_override = os.getenv('MARITACA_DEFAULT_MODEL')
+                    api_key = get_api_key('maritaca') or os.getenv('MARITACA_API_KEY')
                     if api_key:
+                        base_url = get_base_url('maritaca') or os.getenv('MARITACA_BASE_URL', 'https://chat.maritaca.ai/api')
                         self.providers['maritaca']['client'] = OpenAI(
                             api_key=api_key,
-                            base_url=base_url
+                            base_url=base_url,
+                            timeout=60.0
                         )
-                        if model_override:
-                            self.providers['maritaca']['models'] = [model_override]
+                    else:
+                        self.providers['maritaca']['available'] = False
                 except Exception as e:
                     logger.warning(f"Maritaca não disponível: {str(e)}")
                     self.providers['maritaca']['available'] = False
+
+            # Inicializar Zhipu AI (GLM-4)
+            if self.providers['zhipu']['available']:
+                try:
+                    api_key = get_api_key('zhipu') or os.getenv('ZHIPU_API_KEY')
+                    if api_key:
+                        base_url = get_base_url('zhipu') or os.getenv('ZHIPU_BASE_URL', "https://open.bigmodel.cn/api/paas/v4/")
+                        self.providers['zhipu']['client'] = OpenAI(
+                            api_key=api_key,
+                            base_url=base_url
+                        )
+                    else:
+                        self.providers['zhipu']['available'] = False
+                except Exception as e:
+                    logger.warning(f"Zhipu AI não disponível: {str(e)}")
+                    self.providers['zhipu']['available'] = False
         
         except Exception as e:
             logger.error(f"Erro ao inicializar clientes de IA: {str(e)}")
@@ -215,6 +270,187 @@ class AIProviderManager:
         return [provider for provider, info in self.providers.items() 
                 if info['available'] and info['client'] is not None]
     
+    def vision_completion(self, prompt: str, image_data: str, provider: str = None, model: str = None, 
+                        temperature: float = 0.1, max_tokens: int = 1500) -> Dict:
+        """Executa análise de imagem (Visão) com fallback"""
+        
+        provider = provider or self.default_vision_provider
+        model = model or self.default_vision_model
+        
+        # Tentar provedor solicitado
+        if self._is_provider_available(provider):
+            try:
+                return self._call_vision_provider(provider, model, prompt, image_data, temperature, max_tokens)
+            except Exception as e:
+                logger.warning(f"Erro de visão no provedor {provider}: {str(e)}")
+        
+        # Fallback para outros provedores de visão disponíveis
+        # Lista de provedores conhecidos por suportar visão
+        vision_capable = ['openai', 'google', 'ollama_local', 'ollama_cloud', 'zhipu']
+        available_providers = self.get_available_providers()
+        
+        for fallback_provider in available_providers:
+            if fallback_provider in vision_capable and fallback_provider != provider:
+                try:
+                    # Modelos padrão de visão para fallback
+                    fallback_model = self.providers[fallback_provider]['models'][0]
+                    if fallback_provider == 'zhipu': fallback_model = 'glm-4v'
+                    elif fallback_provider == 'google': fallback_model = 'gemini-1.5-flash'
+                    elif fallback_provider == 'openai': fallback_model = 'gpt-4o-mini'
+                    
+                    return self._call_vision_provider(fallback_provider, fallback_model, prompt, image_data, temperature, max_tokens)
+                except Exception as e:
+                    logger.warning(f"Erro no fallback de visão {fallback_provider}: {str(e)}")
+        
+        return {
+            'content': 'Recurso de visão temporariamente indisponível.',
+            'provider': 'fallback',
+            'model': 'none',
+            'error': 'Todos os provedores de visão falharam'
+        }
+
+    def _call_vision_provider(self, provider: str, model: str, prompt: str, image_data: str, 
+                             temperature: float, max_tokens: int) -> Dict:
+        """Chama o provedor específico para tarefa de visão"""
+        
+        if provider == 'openai':
+            return self._call_openai_vision(model, prompt, image_data, temperature, max_tokens)
+        elif provider == 'google':
+            return self._call_google_vision(model, prompt, image_data, temperature, max_tokens)
+        elif provider in ['ollama_local', 'ollama_cloud']:
+            return self._call_ollama_vision(provider, model, prompt, image_data, temperature, max_tokens)
+        elif provider == 'zhipu':
+            return self._call_zhipu_vision(model, prompt, image_data, temperature, max_tokens)
+        else:
+            # Fallback para chat normal se o provedor não tiver visão específica (improvável aqui)
+            messages = [{"role": "user", "content": prompt}]
+            return self._call_provider(provider, model, messages, temperature, max_tokens)
+
+    def _call_openai_vision(self, model: str, prompt: str, image_data: str, temperature: float, max_tokens: int) -> Dict:
+        """Chama visão da OpenAI"""
+        # Garantir que image_data seja base64 com prefixo se necessário
+        if not image_data.startswith('data:image'):
+            # Assumindo JPEG por padrão se não houver prefixo
+            image_url = f"data:image/jpeg;base64,{image_data}"
+        else:
+            image_url = image_data
+
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": image_url}
+                    }
+                ]
+            }
+        ]
+        
+        response = self.providers['openai']['client'].chat.completions.create(
+            model=model,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens
+        )
+        
+        return {
+            'content': response.choices[0].message.content,
+            'provider': 'openai',
+            'model': model
+        }
+
+    def _call_google_vision(self, model: str, prompt: str, image_data: str, temperature: float, max_tokens: int) -> Dict:
+        """Chama visão do Google Gemini"""
+        # Remover prefixo data:image/...;base64, se existir
+        if ';base64,' in image_data:
+            pure_base64 = image_data.split(';base64,')[1]
+        else:
+            pure_base64 = image_data
+            
+        # Google requer bytes ou objeto de imagem
+        image_part = {
+            "mime_type": "image/jpeg",
+            "data": pure_base64
+        }
+        
+        model_obj = self.providers['google']['client'].GenerativeModel(model)
+        response = model_obj.generate_content(
+            [prompt, image_part],
+            generation_config=genai.types.GenerationConfig(
+                temperature=temperature,
+                max_output_tokens=max_tokens
+            )
+        )
+        
+        return {
+            'content': response.text,
+            'provider': 'google',
+            'model': model
+        }
+
+    def _call_ollama_vision(self, provider: str, model: str, prompt: str, image_data: str, temperature: float, max_tokens: int) -> Dict:
+        """Chama visão do Ollama"""
+        # Remover prefixo se existir
+        if ';base64,' in image_data:
+            pure_base64 = image_data.split(';base64,')[1]
+        else:
+            pure_base64 = image_data
+
+        response = self.providers[provider]['client'].chat(
+            model=model,
+            messages=[{
+                "role": "user",
+                "content": prompt,
+                "images": [pure_base64]
+            }],
+            options={
+                "temperature": temperature,
+                "num_predict": max_tokens
+            }
+        )
+        
+        return {
+            'content': response['message']['content'],
+            'provider': provider,
+            'model': model
+        }
+
+    def _call_zhipu_vision(self, model: str, prompt: str, image_data: str, temperature: float, max_tokens: int) -> Dict:
+        """Chama visão da Zhipu AI (GLM-4V)"""
+        # Zhipu aceita formato similar à OpenAI para visão
+        if not image_data.startswith('data:image'):
+            image_url = f"data:image/jpeg;base64,{image_data}"
+        else:
+            image_url = image_data
+
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": image_url}
+                    }
+                ]
+            }
+        ]
+        
+        response = self.providers['zhipu']['client'].chat.completions.create(
+            model=model,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens
+        )
+        
+        return {
+            'content': response.choices[0].message.content,
+            'provider': 'zhipu',
+            'model': model
+        }
+
     def chat_completion(self, messages: List[Dict], provider: str = None, model: str = None, 
                        temperature: float = 0.7, max_tokens: int = 1000) -> Dict:
         """Executa chat completion com fallback entre provedores"""
@@ -272,6 +508,8 @@ class AIProviderManager:
             return self._call_deepseek(model, messages, temperature, max_tokens)
         elif provider == 'maritaca':
             return self._call_maritaca(model, messages, temperature, max_tokens)
+        elif provider == 'zhipu':
+            return self._call_zhipu(model, messages, temperature, max_tokens)
         else:
             raise ValueError(f"Provedor não suportado: {provider}")
     
@@ -386,6 +624,22 @@ class AIProviderManager:
         return {
             'content': response.choices[0].message.content,
             'provider': 'maritaca',
+            'model': model
+        }
+
+    def _call_zhipu(self, model: str, messages: List[Dict], temperature: float, max_tokens: int) -> Dict:
+        """Chama API Zhipu AI (GLM-4)"""
+        response = self.providers['zhipu']['client'].chat.completions.create(
+            model=model,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            top_p=0.7 # Recomendado para GLM-4
+        )
+        
+        return {
+            'content': response.choices[0].message.content,
+            'provider': 'zhipu',
             'model': model
         }
 
