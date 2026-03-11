@@ -89,6 +89,7 @@ const SymptomsManager = ({ patientId }) => {
   const [chartData, setChartData] = useState(null);
   const [showChart, setShowChart] = useState(true);
   const [chartLoading, setChartLoading] = useState(false);
+  const [chartDataType, setChartDataType] = useState('all'); // 'all', 'manual', 'test'
 
   // Estado para diálogo de confirmação de exclusão
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -637,38 +638,49 @@ const SymptomsManager = ({ patientId }) => {
     if (!chartData || chartData.length === 0) return null;
 
     const colors = [
-      'rgba(75, 192, 192, 1)',
-      'rgba(255, 99, 132, 1)',
-      'rgba(54, 162, 235, 1)',
-      'rgba(255, 206, 86, 1)',
-      'rgba(153, 102, 255, 1)',
-      'rgba(255, 159, 64, 1)',
-      'rgba(255, 193, 7, 1)',
-      'rgba(76, 175, 80, 1)',
-      'rgba(156, 39, 176, 1)',
-      'rgba(233, 30, 99, 1)'
+      '#4bc0c0', // Teal
+      '#ff6384', // Pink
+      '#36a2eb', // Blue
+      '#ffce56', // Yellow
+      '#9966ff', // Purple
+      '#ff9f40', // Orange
+      '#28a745', // Green
+      '#dc3545', // Red
     ];
 
+    const filteredDatasets = chartData.filter(dataset => {
+      const isTest = dataset.data.some(p => p.original_value !== undefined);
+      if (chartDataType === 'manual') return !isTest;
+      if (chartDataType === 'test') return isTest;
+      return true;
+    });
+
+    if (filteredDatasets.length === 0) return null;
+
     return {
-      datasets: chartData.map((dataset, index) => {
+      datasets: filteredDatasets.map((dataset, index) => {
+        const isTest = dataset.data.some(p => p.original_value !== undefined);
         // Converter strings de data para objetos Date e ordenar cronologicamente
         const processedData = dataset.data.map(point => ({
           ...point,
           x: new Date(point.x)
         })).sort((a, b) => new Date(a.x) - new Date(b.x));
 
+        const baseColor = colors[index % colors.length];
+
         return {
-          label: dataset.label,
+          label: isTest ? `📋 ${dataset.label} (IA)` : `✍️ ${dataset.label}`,
           data: processedData,
-          borderColor: colors[index % colors.length],
-          backgroundColor: colors[index % colors.length].replace('1)', '0.3)'),
-          pointBackgroundColor: colors[index % colors.length],
+          borderColor: baseColor,
+          backgroundColor: baseColor + '4D', // 0.3 opacity
+          pointBackgroundColor: baseColor,
           pointBorderColor: '#fff',
           pointBorderWidth: 2,
           pointRadius: 6,
           pointHoverRadius: 8,
-          tension: 0.3,
+          tension: isTest ? 0 : 0.4, // Linhas retas para testes, curvas para sintomas
           borderWidth: 3,
+          borderDash: isTest ? [5, 5] : [], // Tracejado para testes
           fill: false
         };
       })
@@ -805,6 +817,20 @@ const SymptomsManager = ({ patientId }) => {
               </Typography>
 
               <Box sx={{ display: 'flex', gap: 2 }}>
+                <FormControl size="small" sx={{ minWidth: 160 }}>
+                  <InputLabel>Ver dados</InputLabel>
+                  <Select
+                    value={chartDataType}
+                    label="Ver dados"
+                    onChange={(e) => setChartDataType(e.target.value)}
+                    sx={{ backgroundColor: 'white' }}
+                  >
+                    <MenuItem value="all">Todos os Dados</MenuItem>
+                    <MenuItem value="manual">Sintomas Manuais</MenuItem>
+                    <MenuItem value="test">Testes Clínicos (IA)</MenuItem>
+                  </Select>
+                </FormControl>
+
                 <Button
                   variant="outlined"
                   size="small"
@@ -819,7 +845,7 @@ const SymptomsManager = ({ patientId }) => {
                 <FormControl size="small" sx={{ minWidth: 150 }}>
                   <InputLabel>Período</InputLabel>
                   <Select
-                    value={'1y'} // Use state if period was in state, but assuming 1y is default
+                    value={'1y'} // Use state if period was in state
                     label="Período"
                     onChange={(e) => loadChartData(e.target.value)}
                     defaultValue="1y"

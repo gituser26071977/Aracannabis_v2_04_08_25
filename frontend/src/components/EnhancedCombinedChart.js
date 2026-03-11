@@ -108,11 +108,11 @@ const EnhancedCombinedChart = ({ patientId }) => {
       if (Array.isArray(sintomasData)) {
         // Se for um array direto, processar cada sintoma
         processedSintomas = sintomasData
-          .filter(sintoma => sintoma.nome_sintoma === selectedSintoma)
+          .filter(sintoma => sintoma.label === selectedSintoma)
           .map(sintoma => ({
-            date: moment(sintoma.data_registro).format('YYYY-MM-DD'),
-            sintoma: sintoma.intensidade,
-            sintoma_texto: `${selectedSintoma}: ${sintoma.intensidade}`
+            date: moment(sintoma.x).format('YYYY-MM-DD'),
+            sintoma: sintoma.y,
+            sintoma_texto: `${selectedSintoma}: ${sintoma.y}`
           }));
       } else if (sintomasData.dados_grafico && Array.isArray(sintomasData.dados_grafico)) {
         // Se for a estrutura com dados_grafico

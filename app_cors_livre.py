@@ -48,8 +48,8 @@ def create_app():
     CORS(app,
          origins=ALLOWED_ORIGINS,
          methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-         allow_headers=["Content-Type", "Authorization", "X-CSRF-Token", "X-Requested-With"],
-         expose_headers=["Content-Type", "Authorization", "X-CSRF-Token"],
+         allow_headers=["Content-Type", "Authorization", "X-CSRF-Token", "X-Requested-With", "X-Association-ID"],
+         expose_headers=["Content-Type", "Authorization", "X-CSRF-Token", "X-Association-ID"],
          supports_credentials=True,
          max_age=86400)
     

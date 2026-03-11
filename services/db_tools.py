@@ -36,6 +36,8 @@ def save_evolution_to_db(paciente_id: int, profissional_id: int, narrative_evolu
         if not paciente:
             return {"success": False, "error": "Paciente não encontrado"}
 
+        data_evolucao_obj = datetime.strptime(data_evolucao_str, '%Y-%m-%d')
+
         nova_evolucao = Evolucao(
             paciente_id=paciente_id,
             associacao_id=paciente.associacao_id,
