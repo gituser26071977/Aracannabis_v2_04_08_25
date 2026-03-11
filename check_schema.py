@@ -3,17 +3,15 @@ from models import db
 from sqlalchemy import text
 
 app = create_app()
+
 with app.app_context():
     try:
-        # Check columns using raw SQL for postgres
-        result = db.session.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name = 'exame_lab_resultados';"))
-        columns = [row[0] for row in result]
-        print(f"Columns in exame_lab_resultados: {columns}")
+        # Tenta selecionar novas colunas
+        db.session.execute(text("SELECT tipo_dose, esquema_doses FROM dosagens LIMIT 1"))
+        print("Tabela dosagens OK: tipo_dose e esquema_doses encontrados.")
         
-        if 'created_at' not in columns:
-            print("Column 'created_at' is MISSING.")
-        else:
-            print("Column 'created_at' EXISTS.")
-            
+        db.session.execute(text("SELECT id FROM prescricoes LIMIT 1"))
+        print("Tabela prescricoes OK.")
+        
     except Exception as e:
-        print(f"Error checking columns: {e}")
+        print(f"ERRO SCHEMA: {e}")

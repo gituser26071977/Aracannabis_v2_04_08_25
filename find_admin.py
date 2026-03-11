@@ -1,6 +1,5 @@
-import models
 from app_cors_livre import create_app
-from models import db, Profissional
+from models import Profissional
 
 app = create_app()
 with app.app_context():

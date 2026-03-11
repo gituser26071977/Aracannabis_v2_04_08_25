@@ -1,5 +1,5 @@
 from app_cors_livre import create_app
-from models import db, Paciente, Profissional
+from models import Paciente, Profissional
 
 app = create_app()
 with app.app_context():

@@ -4,13 +4,14 @@ from models import (
     Evolucao,
     Paciente,
     Dosagem,
-    LogAtividade,
     Sintoma,
     Exame,
-    CompartilhamentoPaciente
+    CompartilhamentoPaciente,
+    Profissional
 )
+from models_extra import UsuarioAssociacao
 from datetime import datetime
-import json
+from flask import g
 from typing import Dict, List, Any, Optional, Tuple
 # from langchain_core.tools import tool # Remover importação do decorador @tool
 
@@ -30,10 +31,14 @@ def save_evolution_to_db(paciente_id: int, profissional_id: int, narrative_evolu
     Retorna um dicionário com a evolução salva ou um erro.
     """
     try:
-        data_evolucao_obj = datetime.strptime(data_evolucao_str, '%Y-%m-%d').date()
-        
+        # Obter paciente para herdar associacao_id (multi-tenant)
+        paciente = Paciente.query.get(paciente_id)
+        if not paciente:
+            return {"success": False, "error": "Paciente não encontrado"}
+
         nova_evolucao = Evolucao(
             paciente_id=paciente_id,
+            associacao_id=paciente.associacao_id,
             profissional_id=profissional_id,
             nota_evolucao=narrative_evolution,
             data_evolucao=data_evolucao_obj
@@ -70,8 +75,14 @@ def save_dosage_to_db(paciente_id: int, data_dosagem_str: str, dosage_text: str,
         if not dosage_text: # Descrição textual é crucial
             return {"success": False, "error": "Descrição textual da dosagem (dosage_text) é obrigatória."}
 
+        # Obter paciente para herdar associacao_id (multi-tenant)
+        paciente = Paciente.query.get(paciente_id)
+        if not paciente:
+            return {"success": False, "error": "Paciente não encontrado"}
+
         nova_dosagem = Dosagem(
             paciente_id=paciente_id,
+            associacao_id=paciente.associacao_id,
             data=data_dosagem_obj,
             dosagem=dosage_text, # Descrição textual principal
             gotas=drops,
@@ -112,13 +123,35 @@ def save_dosage_to_db(paciente_id: int, data_dosagem_str: str, dosage_text: str,
 class DatabaseTools:
     """Classe para ferramentas de banco de dados usadas pelo sistema multi-agente"""
     
-    def __init__(self, profissional_id: Optional[int] = None):
+    def __init__(self, profissional_id: Optional[int] = None, associacao_id: Optional[int] = None):
         self.profissional_id = profissional_id or None
+        self.associacao_id = associacao_id or (g.current_association.id if hasattr(g, 'current_association') and g.current_association else None)
 
     def _paciente_acessivel(self, paciente: Paciente) -> bool:
         if not paciente:
             return False
 
+        # 1. Validar isolamento de associação (CRÍTICO - multi-tenant)
+        if self.associacao_id:
+            # Verificar se paciente pertence à associação do profissional
+            if not paciente.profissional_responsavel_id:
+                return False
+            
+            profissional_paciente = Profissional.query.get(paciente.profissional_responsavel_id)
+            if not profissional_paciente:
+                return False
+            
+            # Verificar se o profissional do paciente pertence à mesma associação
+            link_paciente = UsuarioAssociacao.query.filter_by(
+                profissional_id=profissional_paciente.id,
+                associacao_id=self.associacao_id,
+                status='active'
+            ).first()
+            
+            if not link_paciente:
+                return False  # Paciente de outra associação - BLOQUEADO
+
+        # 2. Validar permissão do profissional
         if not self.profissional_id:
             return True
 

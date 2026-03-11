@@ -16,11 +16,18 @@ import {
   Checkbox,
   Divider,
   Avatar,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Link,
   IconButton
 } from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
 import { PhotoCamera, Delete } from '@mui/icons-material';
 import { pacientesService, lgpdService } from '../services/api';
 import LGPDBanner from './LGPDBanner';
+import PrivacyPolicy from './PrivacyPolicy';
 
 const PatientForm = ({ onSave, initialData = null }) => {
   const [formData, setFormData] = useState({
@@ -33,6 +40,7 @@ const PatientForm = ({ onSave, initialData = null }) => {
     genero: initialData?.genero || '',
     diagnostico: initialData?.diagnostico || '',
     observacoes: initialData?.observacoes || '',
+    associacao: initialData?.associacao || '',
     consentimento_lgpd: initialData?.consentimento_lgpd || false
   });
 
@@ -42,7 +50,8 @@ const PatientForm = ({ onSave, initialData = null }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
-  
+  const [openPrivacyModal, setOpenPrivacyModal] = useState(false);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -77,7 +86,7 @@ const PatientForm = ({ onSave, initialData = null }) => {
     setFotoFile(null);
     setFotoPreview(null);
   };
-  
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -116,7 +125,7 @@ const PatientForm = ({ onSave, initialData = null }) => {
 
       // Registrar consentimento LGPD se for um novo paciente ou se o consentimento foi alterado
       if (formData.consentimento_lgpd &&
-          (!initialData || initialData.consentimento_lgpd !== formData.consentimento_lgpd)) {
+        (!initialData || initialData.consentimento_lgpd !== formData.consentimento_lgpd)) {
         try {
           await lgpdService.registrarConsentimento(
             result.paciente.id,
@@ -142,7 +151,8 @@ const PatientForm = ({ onSave, initialData = null }) => {
           endereco: '',
           genero: '',
           diagnostico: '',
-          observacoes: ''
+          observacoes: '',
+          associacao: ''
         });
         setFotoFile(null);
         setFotoPreview(null);
@@ -163,25 +173,25 @@ const PatientForm = ({ onSave, initialData = null }) => {
       setLoading(false);
     }
   };
-  
+
   const handleCloseSnackbar = () => {
     setSuccess(false);
   };
-  
+
   return (
     <Paper elevation={3} sx={{ p: 3 }}>
       <Typography variant="h6" gutterBottom>
         {initialData ? 'Editar Paciente' : 'Novo Paciente'}
       </Typography>
-      
+
       <LGPDBanner variant="form" />
-      
+
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
         </Alert>
       )}
-      
+
       <Box component="form" onSubmit={handleSubmit}>
         <Grid container spacing={2}>
           <Grid item xs={12} sm={6}>
@@ -259,7 +269,7 @@ const PatientForm = ({ onSave, initialData = null }) => {
             </Typography>
             <Divider sx={{ my: 2 }} />
           </Grid>
-          
+
           <Grid item xs={12} sm={6}>
             <TextField
               name="cpf"
@@ -271,7 +281,7 @@ const PatientForm = ({ onSave, initialData = null }) => {
               margin="normal"
             />
           </Grid>
-          
+
           <Grid item xs={12} sm={6}>
             <FormControl fullWidth margin="normal">
               <InputLabel>Gênero</InputLabel>
@@ -288,7 +298,7 @@ const PatientForm = ({ onSave, initialData = null }) => {
               </Select>
             </FormControl>
           </Grid>
-          
+
           <Grid item xs={12} sm={6}>
             <TextField
               name="telefone"
@@ -299,7 +309,7 @@ const PatientForm = ({ onSave, initialData = null }) => {
               margin="normal"
             />
           </Grid>
-          
+
           <Grid item xs={12} sm={6}>
             <TextField
               name="email"
@@ -311,7 +321,7 @@ const PatientForm = ({ onSave, initialData = null }) => {
               margin="normal"
             />
           </Grid>
-          
+
           <Grid item xs={12}>
             <TextField
               name="endereco"
@@ -322,7 +332,19 @@ const PatientForm = ({ onSave, initialData = null }) => {
               margin="normal"
             />
           </Grid>
-          
+
+          <Grid item xs={12}>
+            <TextField
+              name="associacao"
+              label="Associação de Pacientes"
+              value={formData.associacao}
+              onChange={handleChange}
+              fullWidth
+              margin="normal"
+              placeholder="Ex: ABRACE, Santa Cannabis (opcional)"
+            />
+          </Grid>
+
           <Grid item xs={12}>
             <TextField
               name="diagnostico"
@@ -335,7 +357,7 @@ const PatientForm = ({ onSave, initialData = null }) => {
               rows={2}
             />
           </Grid>
-          
+
           <Grid item xs={12}>
             <TextField
               name="observacoes"
@@ -348,7 +370,7 @@ const PatientForm = ({ onSave, initialData = null }) => {
               rows={3}
             />
           </Grid>
-          
+
           <Grid item xs={12}>
             <Divider sx={{ my: 2 }} />
             <Typography variant="subtitle1" color="primary" gutterBottom>
@@ -358,15 +380,22 @@ const PatientForm = ({ onSave, initialData = null }) => {
               control={
                 <Checkbox
                   checked={formData.consentimento_lgpd}
-                  onChange={(e) => setFormData({...formData, consentimento_lgpd: e.target.checked})}
+                  onChange={(e) => setFormData({ ...formData, consentimento_lgpd: e.target.checked })}
                   name="consentimento_lgpd"
                   color="primary"
                 />
               }
-              label="Concordo com a coleta e processamento dos meus dados pessoais conforme a Política de Privacidade"
+              label={
+                <Typography variant="body2">
+                  Concordo com a coleta e processamento dos meus dados pessoais conforme a{' '}
+                  <Link component="button" variant="body2" onClick={(e) => { e.preventDefault(); setOpenPrivacyModal(true); }}>
+                    Política de Privacidade
+                  </Link>
+                </Typography>
+              }
             />
           </Grid>
-          
+
           <Grid item xs={12}>
             <Button
               type="submit"
@@ -381,10 +410,10 @@ const PatientForm = ({ onSave, initialData = null }) => {
           </Grid>
         </Grid>
       </Box>
-      
-      <Snackbar 
-        open={success} 
-        autoHideDuration={6000} 
+
+      <Snackbar
+        open={success}
+        autoHideDuration={6000}
         onClose={handleCloseSnackbar}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
@@ -392,6 +421,43 @@ const PatientForm = ({ onSave, initialData = null }) => {
           Paciente {initialData ? 'atualizado' : 'cadastrado'} com sucesso!
         </Alert>
       </Snackbar>
+
+      <Dialog
+        open={openPrivacyModal}
+        onClose={() => setOpenPrivacyModal(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          Política de Privacidade
+          <IconButton
+            aria-label="close"
+            onClick={() => setOpenPrivacyModal(false)}
+            sx={{
+              position: 'absolute',
+              right: 8,
+              top: 8,
+              color: (theme) => theme.palette.grey[500],
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          <PrivacyPolicy />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenPrivacyModal(false)}>
+            Fechar
+          </Button>
+          <Button onClick={() => {
+            setFormData({ ...formData, consentimento_lgpd: true });
+            setOpenPrivacyModal(false);
+          }} variant="contained" color="primary">
+            Concordar
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Paper>
   );
 };

@@ -1,7 +1,38 @@
 from datetime import datetime
-from models import db, Profissional, Produto, Prescricoes, Paciente
+from models import db
 
 # Novas models para suportar inventory, pharmacy dispenses e audit
+
+class UsuarioAssociacao(db.Model):
+    __tablename__ = 'usuarios_associacoes'
+
+    id = db.Column(db.Integer, primary_key=True)
+    profissional_id = db.Column(db.Integer, db.ForeignKey('profissionais.id', ondelete='CASCADE'), nullable=False)
+    associacao_id = db.Column(db.Integer, db.ForeignKey('associacoes.id', ondelete='CASCADE'), nullable=False)
+    role = db.Column(db.String, default='member') # 'admin', 'member', 'viewer'
+    status = db.Column(db.String, default='active') # 'active', 'suspended', 'pending'
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    profissional = db.relationship('Profissional', backref='associacoes_vinculadas')
+    associacao = db.relationship('Associacao', back_populates='usuarios_vinculados') # Backref in Associacao needs update or use back_populates if defined there, or just simple backref here.
+    # Associacao model already has 'membros' and 'estoque', let's stick to simple relationship here or modify Associacao.
+    # Associacao definition: `membros = db.relationship('Membro', backref='associacao', lazy=True)`
+    # I will rely on this relationship here to access Assoc from UserAssoc.
+    
+    __table_args__ = (
+        db.UniqueConstraint('profissional_id', 'associacao_id', name='uq_profissional_associacao'),
+    )
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'profissional_id': self.profissional_id,
+            'associacao_id': self.associacao_id,
+            'associacao_nome': self.associacao.nome if self.associacao else None,
+            'role': self.role,
+            'status': self.status,
+            'created_at': self.created_at.isoformat()
+        }
 
 class InventoryItem(db.Model):
     __tablename__ = 'inventory_items'
@@ -38,13 +69,13 @@ class PharmacyDispense(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     prescricao_id = db.Column(db.Integer, db.ForeignKey('prescricoes.id', ondelete='SET NULL'))
     tenant_id = db.Column(db.Integer, nullable=False)
-    dispensado_por = db.Column(db.Integer, db.ForeignKey('profissionais.id'))
+    dispensado_por = db.Column(db.Integer, db.ForeignKey('profissionais.id', ondelete='SET NULL'))
     itens = db.Column(db.JSON, nullable=False)  # lista de {produto_id, quantidade, lote}
     observacoes = db.Column(db.Text)
     data_dispensacao = db.Column(db.DateTime, default=datetime.utcnow)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    prescricao = db.relationship('Prescricoes', foreign_keys=[prescricao_id], backref='dispensas')
+    prescricao = db.relationship('Prescricao', foreign_keys=[prescricao_id], backref='dispensas')
     profissional = db.relationship('Profissional', foreign_keys=[dispensado_por])
 
     def to_dict(self):
@@ -65,7 +96,7 @@ class AuditLog(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     tenant_id = db.Column(db.Integer, nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('profissionais.id'))
+    user_id = db.Column(db.Integer, db.ForeignKey('profissionais.id', ondelete='SET NULL'))
     action = db.Column(db.String(150), nullable=False)
     resource_type = db.Column(db.String(100))
     resource_id = db.Column(db.String(100))

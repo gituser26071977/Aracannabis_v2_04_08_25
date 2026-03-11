@@ -1,5 +1,4 @@
-from services.llm_gateway.app.models import AIClinicalRequest
-from datetime import datetime
+from app.models import AIClinicalRequest
 import logging
 
 logger = logging.getLogger(__name__)

@@ -7,7 +7,7 @@ O backend está **100% funcional**. O login via API funciona perfeitamente:
 ```bash
 curl -X POST "http://localhost:5002/api/auth/login" \
   -H "Content-Type: application/json" \
-  -d '{"usuario":"admin","senha":"admin123"}'
+  -d '{"usuario":"admin","senha":"Aracannabis@2025"}'
 
 # Retorna: 200 OK com token JWT
 ```
@@ -27,7 +27,7 @@ O **navegador está usando cache antigo** do JavaScript compilado. Por isso apar
    - **Edge:** Ctrl+Shift+N
 
 3. Acesse: `http://localhost:3000`
-4. Login: `admin` / `admin123`
+4. Login: `admin` / `Aracannabis@2025`
 5. Se der erro, prossiga para Opção 2
 
 ### Opção 2: Limpar Cache Completamente
@@ -138,7 +138,7 @@ docker logs -f aracannabis_frontend
 - [ ] Backend rodando: `docker ps | grep backend`
 - [ ] Frontend rodando: `docker ps | grep frontend`
 - [ ] Ollama rodando: `curl http://localhost:11434/api/tags`
-- [ ] Login via curl funciona: `curl -X POST http://localhost:5002/api/auth/login -H "Content-Type: application/json" -d '{"usuario":"admin","senha":"admin123"}'`
+- [ ] Login via curl funciona: `curl -X POST http://localhost:5002/api/auth/login -H "Content-Type: application/json" -d '{"usuario":"admin","senha":"Aracannabis@2025"}'`
 - [ ] Testado em modo anônimo
 - [ ] Cache limpo
 - [ ] Frontend reconstruído (se necessário)
@@ -156,7 +156,7 @@ Entre em contato com os detalhes:
 
 ```
 Usuário: admin
-Senha: admin123
+Senha: Aracannabis@2025
 ```
 
 ✅ **Confirmado funcionando via API**

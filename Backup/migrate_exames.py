@@ -114,7 +114,7 @@ def verify_migration():
             paciente_count = Paciente.query.count()
             profissional_count = Profissional.query.count()
             
-            print(f"\n📊 Estatísticas do banco:")
+            print("\n📊 Estatísticas do banco:")
             print(f"   👥 Pacientes: {paciente_count}")
             print(f"   👨‍⚕️ Profissionais: {profissional_count}")
             
@@ -122,7 +122,7 @@ def verify_migration():
             inspector = db.inspect(db.engine)
             columns = inspector.get_columns('exames')
             
-            print(f"\n🏗️  Estrutura da tabela 'exames':")
+            print("\n🏗️  Estrutura da tabela 'exames':")
             for col in columns:
                 print(f"   📋 {col['name']}: {col['type']}")
             

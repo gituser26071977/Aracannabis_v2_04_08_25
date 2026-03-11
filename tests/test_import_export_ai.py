@@ -4,7 +4,6 @@ Teste das funcionalidades de importação/exportação e chat com IA
 """
 
 import requests
-import json
 import os
 from datetime import datetime
 
@@ -126,7 +125,7 @@ def test_import_text(token):
         print(f"   📊 Evoluções criadas: {result.get('evolucoes_criadas', 0)}")
         print(f"   💊 Dosagens criadas: {result.get('dosagens_criadas', 0)}")
         if result.get('ai_analysis'):
-            print(f"   🤖 Análise da IA disponível")
+            print("   🤖 Análise da IA disponível")
         return True
     else:
         print(f"❌ Erro na importação: {response.text}")
@@ -162,7 +161,7 @@ def test_chat_ai(token):
         
         if response.status_code == 200:
             result = response.json()
-            print(f"   ✅ Resposta recebida!")
+            print("   ✅ Resposta recebida!")
             
             if isinstance(result.get('response'), dict):
                 if result['response'].get('resposta'):

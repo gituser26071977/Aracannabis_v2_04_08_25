@@ -1,10 +1,10 @@
 from fastapi import FastAPI, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
-from services.llm_gateway.app.database import get_db, engine, Base
-from services.llm_gateway.app.models import LLMGenerateRequest, LLMGenerateResponse
-from services.llm_gateway.app.providers.deepseek import DeepSeekProvider
-from services.llm_gateway.app.rate_limit import check_rate_limit
-from services.llm_gateway.app.cost_control import record_audit_log
+from app.database import get_db
+from app.models import LLMGenerateRequest, LLMGenerateResponse
+from app.providers.deepseek import DeepSeekProvider
+from app.rate_limit import check_rate_limit
+from app.cost_control import record_audit_log
 import logging
 import os
 import time
@@ -23,7 +23,19 @@ def get_provider(name: str):
         if not api_key:
             raise HTTPException(500, "DeepSeek API Key not configured")
         return DeepSeekProvider(api_key=api_key)
-    # Futuramente: GLM, Maritaca
+    
+    if name == "zhipu":
+        api_key = os.getenv("ZHIPU_API_KEY")
+        if not api_key:
+            raise HTTPException(500, "Zhipu API Key not configured")
+        return ZhipuProvider(api_key=api_key)
+
+    if name == "google":
+        api_key = os.getenv("GOOGLE_API_KEY")
+        if not api_key:
+            raise HTTPException(500, "Google API Key not configured")
+        return GoogleProvider(api_key=api_key)
+
     raise HTTPException(400, f"Provider {name} not supported")
 
 @app.post("/generate", response_model=LLMGenerateResponse)

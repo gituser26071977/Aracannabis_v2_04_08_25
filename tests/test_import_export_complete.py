@@ -4,9 +4,6 @@ Script de teste completo para funcionalidades de importação/exportação e cha
 """
 
 import requests
-import json
-import os
-from datetime import datetime
 
 # Configurações
 BASE_URL = "http://localhost:5000"

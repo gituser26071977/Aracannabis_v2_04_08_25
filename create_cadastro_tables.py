@@ -125,17 +125,17 @@ def main():
     # Testar email
     email_working = test_email_system()
     
-    print(f"\n📊 RESUMO:")
+    print("\n📊 RESUMO:")
     print(f"   ✅ Tabelas: {'OK' if tables_created else 'ERRO'}")
     print(f"   {'✅' if email_working else '❌'} Email: {'OK' if email_working else 'ERRO'}")
     
     if tables_created and email_working:
-        print(f"\n🎉 Sistema de cadastro configurado com sucesso!")
-        print(f"   - Usuários podem solicitar cadastro")
-        print(f"   - Admins podem aprovar/rejeitar solicitações")
-        print(f"   - Emails de confirmação serão enviados automaticamente")
+        print("\n🎉 Sistema de cadastro configurado com sucesso!")
+        print("   - Usuários podem solicitar cadastro")
+        print("   - Admins podem aprovar/rejeitar solicitações")
+        print("   - Emails de confirmação serão enviados automaticamente")
     else:
-        print(f"\n⚠️  Sistema parcialmente configurado. Verifique os erros acima.")
+        print("\n⚠️  Sistema parcialmente configurado. Verifique os erros acima.")
 
 if __name__ == "__main__":
     main()

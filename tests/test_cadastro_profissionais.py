@@ -4,7 +4,6 @@ Teste para o sistema de cadastro de profissionais
 """
 
 import requests
-import json
 
 BASE_URL = "http://localhost:5003"
 

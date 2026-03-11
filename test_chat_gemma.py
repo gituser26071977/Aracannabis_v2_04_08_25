@@ -5,9 +5,7 @@ Testa o chat com dados de paciente
 """
 
 import requests
-import json
 import time
-from pprint import pprint
 
 BASE_URL = "http://localhost:5002/api"
 
@@ -32,7 +30,7 @@ def login():
         if response.status_code == 200:
             result = response.json()
             token = result.get('access_token')
-            print(f"✓ Login bem-sucedido!")
+            print("✓ Login bem-sucedido!")
             print(f"  Token: {token[:50]}...")
             return token
         else:

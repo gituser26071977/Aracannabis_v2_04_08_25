@@ -83,7 +83,8 @@ from .ai_agents import ai_manager
 from .email_service import EmailService
 from .db_tools import DatabaseTools
 from .payment_service import payment_service
-from models import db, Paciente, Evolucao, Dosagem, Sintoma
+from .association_report_service import AssociationReportService
+from models import db, Paciente, Evolucao, Dosagem, Sintoma, Prescricao, Profissional
 
 CURRENT_PROFISSIONAL_ID = contextvars.ContextVar("current_profissional_id", default=None)
 
@@ -98,7 +99,9 @@ def _get_current_profissional_id() -> Optional[int]:
     return CURRENT_PROFISSIONAL_ID.get()
 
 def _create_db_tools():
-    return DatabaseTools(profissional_id=_get_current_profissional_id())
+    from flask import g
+    associacao_id = g.current_association.id if hasattr(g, 'current_association') and g.current_association else None
+    return DatabaseTools(profissional_id=_get_current_profissional_id(), associacao_id=associacao_id)
 
 # ========== FERRAMENTAS ==========
 
@@ -204,60 +207,104 @@ def enviar_email(destinatario: str, assunto: str, corpo_html: str, corpo_texto: 
 
 @tool
 def gerar_relatorio_paciente(paciente_id: int, tipo_relatorio: str = "clinico") -> Dict:
-    """Gera relatório completo do paciente"""
+    """Gera relatório completo do paciente com formatação profissional"""
+    from services.report_template import gerar_html_relatorio
+    from flask import g
+    import os
+    import markdown
+    
+    # 1. Validar acesso ao paciente (multi-tenant)
+    db_tools = _create_db_tools()
+    paciente_obj, error = db_tools.obter_paciente_com_acesso(paciente_id)
+    if error:
+        return {"error": error}
+        
+    # 2. Obter profissional logado
+    profissional_id = _get_current_profissional_id() or paciente_obj.profissional_responsavel_id
+    profissional = Profissional.query.get(profissional_id)
+    
     try:
         # Buscar todas as informações do paciente
-        paciente = buscar_paciente_por_id(paciente_id)
-        exames = buscar_exames_paciente(paciente_id)
-        evolucoes = buscar_evolucoes_paciente(paciente_id)
-        dosagens = buscar_dosagens_paciente(paciente_id)
-        sintomas = buscar_sintomas_paciente(paciente_id)
+        # Usando métodos internos do db_tools para garantir consistência
+        exames = db_tools.buscar_exames_paciente(paciente_id)
+        evolucoes = db_tools.buscar_evolucoes_paciente(paciente_id)
+        dosagens = db_tools.buscar_dosagens_paciente(paciente_id)
+        sintomas = db_tools.buscar_sintomas_paciente(paciente_id)
         
         # Preparar contexto para IA gerar relatório
         context = {
-            "paciente": paciente,
+            "paciente": paciente_obj.to_dict(),
             "exames": exames[:5],  # Últimos 5 exames
             "evolucoes": evolucoes[:10],  # Últimas 10 evoluções
-            "dosagens": dosagens[:20],  # Últimas 20 dosagens
-            "sintomas": sintomas[:50],  # Últimos 50 sintomas
+            "dosagens": dosagens[:10],  # Últimas 10 dosagens
+            "sintomas": sintomas[:20],  # Últimos 20 sintomas
             "tipo_relatorio": tipo_relatorio,
             "data_geracao": datetime.now().isoformat()
         }
         
         # Usar IA para gerar relatório estruturado
-        system_prompt = f"""Você é um especialista em relatórios médicos. Gere um relatório {tipo_relatorio} completo baseado nos dados fornecidos.
+        system_prompt = f"""Você é um especialista em relatórios médicos. Gere um relatório {tipo_relatorio} detalhado baseado nos dados fornecidos.
         
-        Estruture o relatório com:
-        1. Resumo executivo
-        2. Análise de progresso
-        3. Exames relevantes
-        4. Evolução clínica
-        5. Plano de tratamento
-        6. Recomendações
+        Estruture o relatório com seções claras usando Markdown:
+        # Resumo Clínico
+        # Análise de Progresso
+        # Exames Relevantes
+        # Evolução e Sintomas
+        # Plano Terapêutico
+        # Recomendações
         
-        Use linguagem clínica apropriada e formatação para fácil leitura."""
+        Use linguagem técnica apropriada, seja objetivo mas completo."""
         
         messages = [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"Dados do paciente para relatório: {json.dumps(context, ensure_ascii=False)}"}
+            {"role": "user", "content": f"Relatório para o paciente {paciente_obj.nome}: {json.dumps(context, ensure_ascii=False, default=str)}"}
         ]
         
         response = ai_manager.chat_completion(
             messages=messages,
             temperature=0.4,
-            max_tokens=2000
+            max_tokens=2500
         )
         
-        return {
-            "relatorio": response['content'],
-            "paciente_id": paciente_id,
-            "tipo_relatorio": tipo_relatorio,
-            "dados_utilizados": {
+        conteudo_md = response['content']
+        
+        # Converter Markdown para HTML parcial
+        conteudo_html_parcial = markdown.markdown(conteudo_md)
+        
+        # Preparar dados para o template final
+        relatorio_data = {
+            "paciente": paciente_obj.to_dict(),
+            "profissional": profissional.to_dict() if profissional else {},
+            "tipo_relatorio": f"Relatório {tipo_relatorio.capitalize()}",
+            "conteudo_html": conteudo_html_parcial,
+            "data_geracao": datetime.now(),
+            "metricas": {
                 "total_exames": len(exames),
-                "total_evolucoes": len(evolucoes),
-                "total_dosagens": len(dosagens),
-                "total_sintomas": len(sintomas)
+                "total_evolucoes": len(evolucoes)
             }
+        }
+        
+        # Gerar HTML final completo
+        html_completo = gerar_html_relatorio(relatorio_data)
+        
+        # Salvar arquivo (isolado por associação)
+        associacao_id = g.current_association.id if hasattr(g, 'current_association') and g.current_association else 'default'
+        uploads_dir = os.path.join('/app/uploads', 'relatorios', str(associacao_id), str(paciente_id))
+        os.makedirs(uploads_dir, exist_ok=True)
+        
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f"relatorio_{tipo_relatorio}_{timestamp}.html"
+        filepath = os.path.join(uploads_dir, filename)
+        
+        with open(filepath, 'w', encoding='utf-8') as f:
+            f.write(html_completo)
+        
+        return {
+            "success": True,
+            "relatorio": conteudo_md, # Retorna texto para o chat
+            "arquivo_path": filepath,
+            "paciente_id": paciente_id,
+            "mensagem": f"Relatório gerado e salvo em: {filepath}"
         }
         
     except Exception as e:
@@ -383,8 +430,14 @@ def criar_paciente_chat(dados: Dict[str, Any]) -> Dict:
         return {"error": str(exc)}
 
     profissional_id = _get_current_profissional_id() or dados.get('profissional_responsavel_id') or dados.get('profissional_id') or 1
+    
+    # CRÍTICO: Obter associacao_id do contexto (multi-tenant)
+    from flask import g
+    associacao_id = g.current_association.id if hasattr(g, 'current_association') and g.current_association else None
+    
     paciente = Paciente(
         profissional_responsavel_id=profissional_id,
+        associacao_id=associacao_id,  # CRÍTICO: Isolamento multi-tenant
         nome=dados.get('nome'),
         data_nascimento=data_nascimento,
         cpf=dados.get('cpf'),
@@ -651,6 +704,123 @@ def deletar_dosagem_chat(dosagem_id: int) -> Dict:
 
 
 @tool
+def gerar_prescricao_chat(
+    paciente_id: int,
+    medicamentos: List[Dict[str, Any]],
+    observacoes: Optional[str] = None
+) -> Dict:
+    """
+    Gera prescrição médica via chat
+    
+    Args:
+        paciente_id: ID do paciente
+        medicamentos: Lista de dicts com:
+            - nome: str (nome do medicamento)
+            - composicao: str (ex: "Canabidiol 200mg/ml")
+            - posologia: str (ex: "3 gotas, 2x ao dia")
+            - quantidade: str opcional (ex: "30ml")
+        observacoes: str opcional
+    
+    Returns:
+        Dict com {success, prescricao, arquivo_path} ou {error}
+    """
+    from services.prescription_template import gerar_html_prescricao
+    from flask import g
+    import os
+    
+    # 1. Validar acesso ao paciente (multi-tenant)
+    db_tools = _create_db_tools()
+    paciente, error = db_tools.obter_paciente_com_acesso(paciente_id)
+    if error:
+        return {"error": error}
+    
+    # 2. Obter profissional logado
+    profissional_id = _get_current_profissional_id()
+    if not profissional_id:
+        return {"error": "Profissional não identificado"}
+    
+    profissional = Profissional.query.get(profissional_id)
+    if not profissional:
+        return {"error": "Profissional não encontrado"}
+    
+    # 3. Validar medicamentos
+    if not medicamentos or len(medicamentos) == 0:
+        return {"error": "Prescrição deve conter pelo menos 1 medicamento"}
+    
+    # 4. Preparar dados para template
+    data_emissao = datetime.utcnow()
+    
+    prescricao_data = {
+        "paciente": {
+            "nome": paciente.nome,
+            "data_nascimento": paciente.data_nascimento.strftime('%d/%m/%Y') if paciente.data_nascimento else '',
+            "cpf": paciente.cpf or '',
+            "telefone": paciente.telefone or '',
+            "diagnostico": paciente.diagnostico or ''
+        },
+        "profissional": {
+            "nome": profissional.nome,
+            "crm": profissional.crm,
+            "uf_crm": profissional.uf_crm,
+            "email": profissional.email or ''
+        },
+        "medicamentos": medicamentos,
+        "observacoes": observacoes or '',
+        "data_emissao": data_emissao
+    }
+    
+    # 5. Gerar HTML
+    try:
+        html_content = gerar_html_prescricao(prescricao_data)
+    except Exception as e:
+        return {"error": f"Erro ao gerar HTML: {str(e)}"}
+    
+    # 6. Criar diretório de prescrições (isolado por associação - multi-tenant)
+    associacao_id = g.current_association.id if hasattr(g, 'current_association') and g.current_association else 'default'
+    uploads_dir = os.path.join('/app/uploads', 'prescricoes', str(associacao_id), str(paciente_id))
+    os.makedirs(uploads_dir, exist_ok=True)
+    
+    # 7. Salvar HTML
+    timestamp = data_emissao.strftime('%Y%m%d_%H%M%S')
+    filename = f"prescricao_{timestamp}.html"
+    filepath = os.path.join(uploads_dir, filename)
+    
+    try:
+        with open(filepath, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+    except Exception as e:
+        return{"error": f"Erro ao salvar arquivo: {str(e)}"}
+    
+    # 8. Salvar registro no banco
+    prescricao = Prescricao(
+        paciente_id=paciente_id,
+        profissional_id=profissional_id,
+        data_emissao=data_emissao,
+        arquivo_path=filepath,
+        conteudo_json={"medicamentos": medicamentos},
+        observacoes=observacoes
+    )
+    
+    try:
+        db.session.add(prescricao)
+        db.session.commit()
+        
+        return {
+            "success": True,
+            "prescricao": prescricao.to_dict(),
+            "arquivo_path": filepath,
+            "message": "Prescrição gerada com sucesso!"
+        }
+    except Exception as e:
+        db.session.rollback()
+        try:
+            os.remove(filepath)
+        except:
+            pass
+        return {"error": f"Erro ao salvar prescrição: {str(e)}"}
+
+
+@tool
 def criar_sintoma_chat(paciente_id: int, data: str, sintoma: str, intensidade: int) -> Dict:
     """Registra um sintoma reportado"""
     db_tools = _create_db_tools()
@@ -757,7 +927,293 @@ SINTOMA_CRUD_TOOLS = [
     deletar_sintoma_chat
 ]
 
-ALL_CRUD_TOOLS = PACIENTE_CRUD_TOOLS + EVOLUCAO_CRUD_TOOLS + DOSAGEM_CRUD_TOOLS + SINTOMA_CRUD_TOOLS
+PRESCRICAO_TOOLS = [
+    gerar_prescricao_chat
+]
+
+# ========== FERRAMENTAS DE RELATÓRIOS DE ASSOCIAÇÃO ==========
+
+@tool
+def obter_overview_associacao(associacao_id: int) -> Dict:
+    """Obtém visão geral completa de uma associação com estatísticas"""
+    try:
+        return AssociationReportService.get_association_overview(associacao_id)
+    except Exception as e:
+        return {"error": f"Erro ao obter overview: {str(e)}"}
+
+@tool
+def gerar_relatorio_atividade_membros(associacao_id: int, membro_id: Optional[int] = None) -> Dict:
+    """Gera relatório de atividade de membros de uma associação"""
+    try:
+        return AssociationReportService.get_member_activity_report(associacao_id, membro_id)
+    except Exception as e:
+        return {"error": f"Erro ao gerar relatório: {str(e)}"}
+
+@tool
+def analisar_dispensacoes_associacao(associacao_id: int, dias: int = 30) -> Dict:
+    """Analisa dispensações da associação com estatísticas e gráficos"""
+    try:
+        return AssociationReportService.get_dispensation_analytics(associacao_id, dias)
+    except Exception as e:
+        return {"error": f"Erro ao analisar dispensações: {str(e)}"}
+
+@tool
+def REDACTED(associacao_id: int) -> Dict:
+    """Consulta status atual do estoque da associação com alertas"""
+    try:
+        return AssociationReportService.get_stock_status(associacao_id)
+    except Exception as e:
+        return {"error": f"Erro ao consultar estoque: {str(e)}"}
+
+@tool
+def REDACTED(associacao_id: int, periodo_dias: int = 30) -> Dict:
+    """Gera relatório completo consolidado da associação usando IA"""
+    try:
+        # Coletar todos os dados
+        overview = AssociationReportService.get_association_overview(associacao_id)
+        atividade = AssociationReportService.get_member_activity_report(associacao_id)
+        dispensacoes = AssociationReportService.get_dispensation_analytics(associacao_id, periodo_dias)
+        estoque = AssociationReportService.get_stock_status(associacao_id)
+        
+        # Preparar contexto para IA
+        context = {
+            "overview": overview,
+            "atividade_membros": atividade,
+            "analise_dispensacoes": dispensacoes,
+            "status_estoque": estoque,
+            "periodo_analise": periodo_dias
+        }
+        
+        # Usar IA para gerar relatório estruturado
+        system_prompt = """Você é um especialista em relatórios gerenciais para associações de cannabis medicinal.
+        
+        Gere um relatório executivo completo baseado nos dados fornecidos, estruturado com:
+        
+        1. **Resumo Executivo**: Principais indicadores e insights
+        2. **Análise de Membros**: Atividade, engajamento e crescimento
+        3. **Gestão de Dispensações**: Padrões, tendências e eficiência
+        4. **Status de Estoque**: Disponibilidade, alertas e recomendações
+        5. **Recomendações Estratégicas**: Ações prioritárias
+        
+        Use linguagem profissional, dados quantitativos e insights acionáveis.
+        Formate em Markdown para fácil leitura."""
+        
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"Dados da associação para relatório: {json.dumps(context, ensure_ascii=False)}"}
+        ]
+        
+        response = ai_manager.chat_completion(
+            messages=messages,
+            temperature=0.4,
+            max_tokens=3000
+        )
+        
+        return {
+            "relatorio_ia": response['content'],
+            "dados_brutos": context,
+            "data_geracao": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        return {"error": f"Erro ao gerar relatório completo: {str(e)}"}
+
+ASSOCIATION_REPORT_TOOLS = [
+    obter_overview_associacao,
+    gerar_relatorio_atividade_membros,
+    analisar_dispensacoes_associacao,
+    REDACTED,
+    REDACTED
+]
+
+# ========== FERRAMENTAS DE VALIDAÇÃO DE PROFISSIONAIS ==========
+
+@tool
+def validar_crm_profissional(crm: str, uf: str) -> Dict:
+    """Valida CRM de profissional usando API do CFM e conselhos regionais"""
+    try:
+        from services.crm_validator_service import CRMValidatorService
+        return CRMValidatorService.validate_crm(crm, uf)
+    except Exception as e:
+        return {"error": f"Erro ao validar CRM: {str(e)}"}
+
+@tool
+def aprovar_cadastro_profissional(profissional_id: int, validation_data: Dict) -> Dict:
+    """Aprova cadastro de profissional após validação bem-sucedida"""
+    try:
+        from models import Profissional
+        from datetime import datetime
+        
+        prof = Profissional.query.get(profissional_id)
+        if not prof:
+            return {"error": f"Profissional {profissional_id} não encontrado"}
+        
+        prof.status_cadastro = 'aprovado'
+        prof.data_aprovacao = datetime.utcnow()
+        prof.aprovado_por = 'system'
+        prof.validation_data = validation_data
+        
+        db.session.commit()
+        
+        return {
+            "success": True,
+            "profissional_id": profissional_id,
+            "status": "aprovado",
+            "message": f"Cadastro de {prof.nome} aprovado com sucesso"
+        }
+    except Exception as e:
+        db.session.rollback()
+        return {"error": f"Erro ao aprovar cadastro: {str(e)}"}
+
+@tool
+def rejeitar_cadastro_profissional(profissional_id: int, motivo: str, validation_data: Dict = None) -> Dict:
+    """Rejeita cadastro de profissional com motivo específico"""
+    try:
+        from models import Profissional
+        
+        prof = Profissional.query.get(profissional_id)
+        if not prof:
+            return {"error": f"Profissional {profissional_id} não encontrado"}
+        
+        prof.status_cadastro = 'rejeitado'
+        prof.motivo_rejeicao = motivo
+        prof.validation_data = validation_data or {}
+        
+        db.session.commit()
+        
+        return {
+            "success": True,
+            "profissional_id": profissional_id,
+            "status": "rejeitado",
+            "motivo": motivo,
+            "message": f"Cadastro de {prof.nome} rejeitado"
+        }
+    except Exception as e:
+        db.session.rollback()
+        return {"error": f"Erro ao rejeitar cadastro: {str(e)}"}
+
+@tool
+def gerar_senha_temporaria() -> Dict:
+    """Gera senha temporária segura para profissional aprovado"""
+    try:
+        import secrets
+        import string
+        
+        # Gera senha com 12 caracteres: letras maiúsculas, minúsculas, números e símbolos
+        alphabet = string.ascii_letters + string.digits + "!@#$%&*"
+        senha = ''.join(secrets.choice(alphabet) for _ in range(12))
+        
+        # Garante pelo menos 1 maiúscula, 1 minúscula, 1 número e 1 símbolo
+        if (any(c.islower() for c in senha) and 
+            any(c.isupper() for c in senha) and
+            any(c.isdigit() for c in senha) and
+            any(c in "!@#$%&*" for c in senha)):
+            return {
+                "success": True,
+                "senha_temporaria": senha
+            }
+        else:
+            # Recursão se não atender critérios
+            return gerar_senha_temporaria()
+    except Exception as e:
+        return {"error": f"Erro ao gerar senha: {str(e)}"}
+
+@tool
+def REDACTED(profissional_id: int, senha_temporaria: str) -> Dict:
+    """Envia email de aprovação com credenciais de acesso"""
+    try:
+        from models import Profissional
+        
+        prof = Profissional.query.get(profissional_id)
+        if not prof or not prof.email:
+            return {"error": "Profissional não encontrado ou sem email"}
+        
+        subject = "Cadastro Aprovado - Aracannabis"
+        
+        html_body = f"""
+        <h2>Olá Dr(a). {prof.nome},</h2>
+        
+        <p>Seu cadastro foi <strong>aprovado</strong> com sucesso!</p>
+        
+        <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h3>Credenciais de Acesso:</h3>
+            <p><strong>Usuário:</strong> {prof.usuario}</p>
+            <p><strong>Senha Temporária:</strong> <code style="background: #fff; padding: 5px 10px; border-radius: 4px;">{senha_temporaria}</code></p>
+        </div>
+        
+        <p><strong>⚠️ IMPORTANTE:</strong> Esta é uma senha temporária. Você será solicitado a alterá-la no primeiro acesso.</p>
+        
+        <p><a href="http://localhost:3000/login" style="background: #4CAF50; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block; margin: 20px 0;">Acessar Sistema</a></p>
+        
+        <p>Em caso de dúvidas, entre em contato conosco</p>
+        
+        <hr style="margin: 30px 0;">
+        <p style="color: #666; font-size: 12px;">Este email foi gerado automaticamente pelo sistema Aracannabis.</p>
+        """
+        
+        return enviar_email(
+            destinatario=prof.email,
+            assunto=subject,
+            corpo_html=html_body,
+            corpo_texto=f"Cadastro aprovado! Usuário: {prof.usuario}, Senha: {senha_temporaria}"
+        )
+    except Exception as e:
+        return {"error": f"Erro ao enviar email de aprovação: {str(e)}"}
+
+@tool
+def enviar_email_rejeicao_profissional(profissional_id: int) -> Dict:
+    """Envia email de rejeição com motivo"""
+    try:
+        from models import Profissional
+        
+        prof = Profissional.query.get(profissional_id)
+        if not prof or not prof.email:
+            return {"error": "Profissional não encontrado ou sem email"}
+        
+        subject = "Cadastro Não Aprovado - Aracannabis"
+        
+        html_body = f"""
+        <h2>Olá {prof.nome},</h2>
+        
+        <p>Informamos que seu cadastro não foi aprovado.</p>
+        
+        <div style="background: #fff3cd; padding: 20px; border-left: 4px solid #ffc107; margin: 20px 0;">
+            <h3>Motivo:</h3>
+            <p>{prof.motivo_rejeicao or 'Não especificado'}</p>
+        </div>
+        
+        <p><strong>O que fazer:</strong></p>
+        <ul>
+            <li>Verifique se o CRM {prof.crm}/{prof.uf_crm} está correto</li>
+            <li>Certifique-se de que o CRM está ativo e regular</li>
+            <li>Entre em contato conosco para mais informações</li>
+        </ul>
+        
+        <p>Email: contato@aracannabis.com.br</p>
+        
+        <hr style="margin: 30px 0;">
+        <p style="color: #666; font-size: 12px;">Este email foi gerado automaticamente pelo sistema Aracannabis.</p>
+        """
+        
+        return enviar_email(
+            destinatario=prof.email,
+            assunto=subject,
+            corpo_html=html_body,
+            corpo_texto=f"Cadastro não aprovado. Motivo: {prof.motivo_rejeicao}"
+        )
+    except Exception as e:
+        return {"error": f"Erro ao enviar email de rejeição: {str(e)}"}
+
+PROFESSIONAL_VALIDATION_TOOLS = [
+    validar_crm_profissional,
+    aprovar_cadastro_profissional,
+    rejeitar_cadastro_profissional,
+    gerar_senha_temporaria,
+    REDACTED,
+    enviar_email_rejeicao_profissional
+]
+
+ALL_CRUD_TOOLS = PACIENTE_CRUD_TOOLS + EVOLUCAO_CRUD_TOOLS + DOSAGEM_CRUD_TOOLS + SINTOMA_CRUD_TOOLS + PRESCRICAO_TOOLS
 
 
 # ========== AGENTES ==========
@@ -898,7 +1354,77 @@ def criar_farmaceutico_cannabis(llm_config: Optional[Dict] = None) -> Agent:
             buscar_paciente_por_id,
             buscar_evolucoes_paciente,
             *DOSAGEM_CRUD_TOOLS,
-            *SINTOMA_CRUD_TOOLS
+            *SINTOMA_CRUD_TOOLS,
+            *PRESCRICAO_TOOLS
+        ],
+        llm_config=llm_config
+    )
+    
+    return agent
+
+def criar_especialista_associacoes(llm_config: Optional[Dict] = None) -> Agent:
+    """Cria agente especialista em relatórios e gestão de associações"""
+    if not CREWAI_AVAILABLE:
+        return None
+    
+    agent = Agent(
+        role="Especialista em Gestão de Associações de Cannabis Medicinal",
+        goal="""Gerar relatórios executivos e análises estratégicas para associações de cannabis medicinal.
+        Analisar dados de membros, dispensações e estoque para fornecer insights acionáveis.
+        Identificar padrões, tendências e oportunidades de melhoria na gestão da associação.
+        Criar visualizações de dados e dashboards informativos.""",
+        backstory="""Você é um consultor especializado em gestão de associações sem fins lucrativos no setor de cannabis medicinal.
+        Possui mestrado em Administração com foco em gestão de associações de saúde.
+        Trabalhou como analista de dados e gestor em várias associações de cannabis medicinal,
+        implementando sistemas de BI, dashboards e relatórios que melhoraram significativamente a eficiência operacional.
+        É expert em análise de dados, KPIs, indicadores de performance e visualização de informações.
+        Combina conhecimento técnico em análise de dados com profundo entendimento das necessidades
+        específicas de associações de pacientes. Suas recomendações são sempre baseadas em dados
+        e focadas em melhorar o atendimento aos membros da associação.""",
+        verbose=True,
+        allow_delegation=False,
+        tools=[
+            *ASSOCIATION_REPORT_TOOLS,
+            enviar_email  # Pode enviar relatórios por email
+        ],
+        llm_config=llm_config
+    )
+    
+    return agent
+
+def criar_validador_profissionais(llm_config: Optional[Dict] = None) -> Agent:
+    """Cria agente validador de cadastro de profissionais de saúde"""
+    if not CREWAI_AVAILABLE:
+        return None
+    
+    agent = Agent(
+        role="Validador de Cadastros de Profissionais de Saúde",
+        goal="""Validar automaticamente cadastros de profissionais de saúde verificando autenticidade do CRM,
+        aprovando ou rejeitando cadastros baseado em dados oficiais, e enviando notificações apropriadas.
+        Detectar possíveis fraudes e garantir que apenas profissionais legítimos tenham acesso ao sistema.""",
+        backstory="""Você é um especialista em regulamentação médica brasileira com profundo conhecimento sobre:
+        - Conselhos Regionais de Medicina (CRMs) e Conselho Federal de Medicina (CFM)
+        - Processos de registro e validação de profissionais de saúde
+        - Detecção de fraudes em credenciais médicas
+        - Legislação sobre exercício profissional da medicina no Brasil
+        
+        Trabalhou por anos no departamento de registro do CFM, realizando validações de credenciais
+        e identificando tentativas de fraude. Possui expertise em consultar sistemas oficiais e
+        interpretar dados de validação. Sua análise é meticulosa e baseada em evidências concretas.
+        
+        Você segue um protocolo rigoroso:
+        1. Validar CRM em múltiplas fontes (CFM, Regional)
+        2. Analisar dados retornados (situação ativa, especialidades, etc)
+        3. Decidir: aprovar (CRM válido), rejeitar (CRM inválido), ou revisar manualmente (dados inconclusivos)
+        4. Gerar senha temporária segura para aprovados
+        5. Enviar emails informativos (aprovação com credenciais ou rejeição com motivo)
+        6. Documentar todo o processo de validação
+        
+        Sua prioridade é a segurança: em caso de dúvida, sempre optar por revisão manual.""",
+        verbose=True,
+        allow_delegation=False,
+        tools=[
+            *PROFESSIONAL_VALIDATION_TOOLS
         ],
         llm_config=llm_config
     )
@@ -975,6 +1501,17 @@ def criar_crew_aracannabis(llm_config: Optional[Dict] = None) -> Crew:
         agent=farmaceutico_cannabis,
         expected_output="""Recomendações de ajuste de tratamento com justificativa científica."""
     )
+
+    # Novo Agente Follow-Up
+    acompanhante_terapeutico = AgentFollowUp(llm_config).agent()
+
+    tarefa_followup = Task(
+        description="""Realizar follow-up clínico automatizado com pacientes.
+        Analisar evolução, adesão e resposta ao tratamento.
+        Gerar perguntas personalizadas e registrar evoluções estruturadas no prontuário.""",
+        agent=acompanhante_terapeutico,
+        expected_output="""Relatório de acompanhamento com evolução clínica registrada e sugestões de conduta."""
+    )
     
     tarefa_supervisao = Task(
         description="""Coordenar todas as tarefas, garantir qualidade e cumprimento de prazos.""",
@@ -989,7 +1526,8 @@ def criar_crew_aracannabis(llm_config: Optional[Dict] = None) -> Crew:
             especialista_prontuarios,
             biomedico,
             especialista_relatorios,
-            farmaceutico_cannabis
+            farmaceutico_cannabis,
+            acompanhante_terapeutico
         ],
         tasks=[
             tarefa_recepcao,
@@ -997,6 +1535,7 @@ def criar_crew_aracannabis(llm_config: Optional[Dict] = None) -> Crew:
             tarefa_analise_exames,
             tarefa_relatorio,
             tarefa_ajuste_tratamento,
+            tarefa_followup,
             tarefa_supervisao
         ],
         process=Process.hierarchical,
@@ -1095,6 +1634,7 @@ class SistemaMultiAgente:
         4. Especialista em Relatórios: Elaboração de relatórios
         5. Farmacêutico Cannabis: Tratamento com cannabis
         6. Supervisor: Coordenação da equipe
+        7. Acompanhante Terapêutico: Follow-up clínico automatizado
 
         Use somente os agentes relevantes para a demanda; se não pedirem relatório, não envolva o agente de relatórios.
         Se a solicitação for criação de paciente, crie e retorne JSON mínimo: nome, condicao_medica, tratamento (se houver)."""
@@ -1274,6 +1814,78 @@ def atualizar_status_pagamento(cobranca_id: str, status: str) -> Dict:
         return payment_service.update_status(cobranca_id, status)
     except Exception as e:
         return {"error": f"Erro ao atualizar status: {str(e)}"}
+
+class AgentFollowUp:
+    def __init__(self, llm_config):
+        self.llm = llm_config
+        self.role = "Acompanhante Terapêutico Cannabis"
+        self.goal = "Realizar follow-up clínico automatizado e gerar evoluções estruturadas para pacientes em tratamento com Cannabis Medicinal"
+        self.backstory = """Você é um Agente de Acompanhamento Terapêutico especializado em pacientes em tratamento com Cannabis Medicinal.
+        Seu papel é realizar follow-up clínico automatizado, personalizado de acordo com a indicação terapêutica do paciente, acessando dados estruturados do prontuário eletrônico do sistema SIAP (Aracanabis).
+        
+        Você deve:
+        1. Consultar o prontuário do paciente e identificar:
+           - Indicação terapêutica principal (ex: dor crônica, ansiedade, insônia)
+           - Escala basal do sintoma (baseline)
+           - Posologia atual (ex: CBD 25mg/noite)
+           - Data de início do tratamento
+           - Tempo de uso em dias
+           - Presença de comorbidades relevantes (se disponível)
+
+        2. Formular perguntas de follow-up específicas de acordo com a indicação:
+           Se dor: Perguntar intensidade média da dor nos últimos 3 dias (escala 0–10)
+           Se ansiedade: Perguntar intensidade média da ansiedade na última semana (0–10)
+           Se insônia: Perguntar qualidade do sono e número de noites com melhora desde início
+           Evite perguntas genéricas. Seja objetivo e centrado no sintoma tratado.
+
+        3. Perguntar adicionalmente:
+           - Se houve efeitos adversos
+           - Se houve dificuldade em manter a posologia prescrita
+
+        4. Após receber as respostas (em uma segunda etapa), realizar raciocínio clínico considerando:
+           - Baseline do sintoma
+           - Escala atual
+           - Tempo de uso
+           - Dose atual
+           - Presença ou ausência de efeitos adversos
+           - Adesão ao tratamento
+
+        5. Avaliar a resposta terapêutica como: Ausente, Parcial ou Adequada.
+
+        6. Sugerir uma das seguintes condutas (para validação médica):
+           - Manutenção da dose atual
+           - Considerar titulação gradual
+           - Considerar redução da dose
+           - Reavaliação médica necessária
+
+        IMPORTANTE: Você não está autorizado a prescrever, modificar ou ajustar doses diretamente.
+        
+        7. Gerar uma evolução clínica estruturada contendo:
+           - Dia de acompanhamento (ex: D14)
+           - Sintoma alvo
+           - Baseline
+           - Escala atual
+           - Percentual estimado de melhora
+           - Presença de efeitos adversos
+           - Nível de adesão
+           - Sugestão de conduta
+        """
+
+    def agent(self):
+        return Agent(
+            role=self.role,
+            goal=self.goal,
+            backstory=self.backstory,
+            verbose=True,
+            allow_delegation=False,
+            llm=self.llm,
+            tools=[
+                buscar_paciente_por_id,
+                buscar_evolucoes_paciente,
+                buscar_dosagens_paciente,
+                buscar_sintomas_paciente
+            ]
+        )
 
 # Instância global do sistema multi-agente
 sistema_agentes = SistemaMultiAgente()

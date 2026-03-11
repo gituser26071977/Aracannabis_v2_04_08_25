@@ -8,7 +8,6 @@ Adiciona:
 
 import os
 import sys
-from datetime import datetime
 from sqlalchemy import text
 
 # Adicionar o diretório atual ao path para importar os módulos
@@ -131,7 +130,7 @@ def executar_migracao():
             total_profissionais = Profissional.query.count()
             total_compartilhamentos = CompartilhamentoPaciente.query.count()
             
-            print(f"\n📊 Estatísticas do banco:")
+            print("\n📊 Estatísticas do banco:")
             print(f"   - Profissionais: {total_profissionais}")
             print(f"   - Pacientes: {total_pacientes}")
             print(f"   - Compartilhamentos: {total_compartilhamentos}")

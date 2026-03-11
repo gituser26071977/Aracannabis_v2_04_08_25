@@ -16,7 +16,9 @@ import {
   ListItemText,
   Alert,
   Divider,
-  CircularProgress
+  CircularProgress,
+  ToggleButton,
+  ToggleButtonGroup
 } from '@mui/material';
 import {
   CheckCircle as CheckIcon,
@@ -29,6 +31,7 @@ import api from '../services/api';
 
 const PlanosPage = () => {
   const [periodo, setPeriodo] = useState('mensal'); // mensal, trimestral, semestral, anual
+  const [categoria, setCategoria] = useState('medico'); // medico, outros
   const [loading, setLoading] = useState(true);
   const [planosDb, setPlanosDb] = useState([]);
   const [error, setError] = useState(null);
@@ -89,10 +92,14 @@ const PlanosPage = () => {
     }
   };
 
-  const calcularPreco = (precoMensalBase, periodoSelecionado) => {
-    const precoSemDesconto = precoMensalBase * multiplicadores[periodoSelecionado];
+  const calcularPreco = (precoMensalBase, periodoSelecionado, categoriaSelecionada) => {
+    // Aplica desconto de categoria (Outros profissionais pagam 60% do valor)
+    const precoBaseCorrigido = categoriaSelecionada === 'outros' ? precoMensalBase * 0.6 : precoMensalBase;
+
+    const precoSemDesconto = precoBaseCorrigido * multiplicadores[periodoSelecionado];
     const desconto = descontos[periodoSelecionado];
     const precoComDesconto = precoSemDesconto * (1 - desconto);
+
     return {
       original: precoSemDesconto,
       final: precoComDesconto,
@@ -109,7 +116,7 @@ const PlanosPage = () => {
   ];
 
   const handleContratarPlano = (plano) => {
-    window.location.href = `/pagamento?plano=${plano.id}&periodo=${periodo}`;
+    window.location.href = `/pagamento?plano=${plano.id}&periodo=${periodo}&categoria=${categoria}`;
   };
 
   if (loading) {
@@ -141,9 +148,32 @@ const PlanosPage = () => {
 
         {error && <Alert severity="warning" sx={{ mb: 4 }}>{error}</Alert>}
 
-        {/* Seletor de Período */}
+        {/* Seletor de Categoria e Período */}
         <Box sx={{ textAlign: 'center', mb: 4 }}>
-          <Typography variant="h6" gutterBottom>
+          <Box sx={{ mb: 4 }}>
+            <Typography variant="subtitle1" gutterBottom fontWeight="bold">
+              Qual é a sua profissão?
+            </Typography>
+            <ToggleButtonGroup
+              color="primary"
+              value={categoria}
+              exclusive
+              onChange={(e, newCat) => { if (newCat) setCategoria(newCat); }}
+              aria-label="Categoria Profissional"
+            >
+              <ToggleButton value="medico" sx={{ px: 4 }}>
+                Médico(a)
+              </ToggleButton>
+              <ToggleButton value="outros" sx={{ px: 4 }}>
+                Outros Profissionais de Saúde<br />
+                <Typography variant="caption" color="success.main" fontWeight="bold">
+                  (-40% OFF)
+                </Typography>
+              </ToggleButton>
+            </ToggleButtonGroup>
+          </Box>
+
+          <Typography variant="subtitle1" gutterBottom fontWeight="bold">
             Período de Contratação
           </Typography>
           <Grid container spacing={2} justifyContent="center" sx={{ mb: 2 }}>
@@ -177,7 +207,7 @@ const PlanosPage = () => {
         ) : (
           <Grid container spacing={4} justifyContent="center">
             {planosParaExibir.map((plano) => {
-              const preco = calcularPreco(plano.preco_mensal, periodo);
+              const preco = calcularPreco(plano.preco_mensal, periodo, categoria);
               const recursos = featuresMap[plano.nome] || [plano.descricao]; // Fallback para descrição se não mapeado
 
               return (

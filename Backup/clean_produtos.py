@@ -5,7 +5,6 @@ Script para limpar produtos e deixar apenas 3 básicos
 
 import sqlite3
 import os
-from datetime import datetime
 
 def clean_produtos_table():
     """Limpar tabela de produtos e deixar apenas 3 básicos"""

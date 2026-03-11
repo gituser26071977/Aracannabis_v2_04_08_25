@@ -5,7 +5,6 @@ Script para criar tabela de profissionais com sistema de cadastro e validação
 
 import sqlite3
 import os
-from datetime import datetime
 
 def migrate_profissionais():
     """Criar tabela de profissionais e sistema de cadastro"""
@@ -115,7 +114,7 @@ def migrate_profissionais():
         conn.commit()
         
         print("✅ Migração concluída com sucesso!")
-        print(f"📊 Estatísticas:")
+        print("📊 Estatísticas:")
         print(f"   - Solicitações de cadastro: {count_solicitacoes}")
         print(f"   - Senhas temporárias: {count_senhas}")
         print(f"   - Profissionais total: {count_profissionais}")

@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from models import db, Paciente, Dosagem, Evolucao
+from models import db, Paciente, Dosagem, Evolucao, Profissional
 from sqlalchemy import func
 from datetime import datetime, timedelta
 
@@ -11,8 +11,12 @@ dashboard_bp = Blueprint('dashboard', __name__)
 def get_dashboard_stats():
     current_user_id = get_jwt_identity()
     
-    # Filtro base: Pacientes do profissional logado
-    base_query = Paciente.query.filter_by(profissional_responsavel_id=current_user_id)
+    # Filtro base: Pacientes do profissional logado (Exceto superadmin que vê tudo)
+    user = Profissional.query.get(current_user_id)
+    if user and user.role == 'superadmin':
+        base_query = Paciente.query
+    else:
+        base_query = Paciente.query.filter_by(profissional_responsavel_id=current_user_id)
     
     # 1. Total de Pacientes
     total_pacientes = base_query.count()
@@ -66,14 +70,18 @@ def get_dashboard_stats():
 
     # 5. Principais Condições (Top 5)
     # Agrupar por 'condicao_medica'
-    top_condicoes = db.session.query(
+    top_condicoes_query = db.session.query(
         Paciente.condicao_medica, 
         func.count(Paciente.id).label('total')
     ).filter(
-        Paciente.profissional_responsavel_id == current_user_id,
         Paciente.condicao_medica != None,
         Paciente.condicao_medica != ''
-    ).group_by(Paciente.condicao_medica).order_by(func.count(Paciente.id).desc()).limit(5).all()
+    )
+    
+    if not (user and user.role == 'superadmin'):
+        top_condicoes_query = top_condicoes_query.filter(Paciente.profissional_responsavel_id == current_user_id)
+        
+    top_condicoes = top_condicoes_query.group_by(Paciente.condicao_medica).order_by(func.count(Paciente.id).desc()).limit(5).all()
     
     condicoes_data = [{'name': c[0], 'value': c[1]} for c in top_condicoes]
 

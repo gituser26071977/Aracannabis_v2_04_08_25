@@ -8,7 +8,6 @@ verificando se todos os componentes estão funcionando corretamente.
 
 import os
 import sys
-import json
 import logging
 from datetime import datetime
 
@@ -60,7 +59,7 @@ def test_ai_manager():
         from services.ai_agents import ai_manager
         
         available_providers = ai_manager.get_available_providers()
-        print(f"  ✓ Gerenciador de IA inicializado")
+        print("  ✓ Gerenciador de IA inicializado")
         print(f"  ℹ️ Provedores disponíveis: {available_providers}")
         
         if available_providers:
@@ -90,7 +89,7 @@ def test_multi_agent_system():
             contexto={"test": True}
         )
         
-        print(f"  ✓ Sistema multi-agente inicializado")
+        print("  ✓ Sistema multi-agente inicializado")
         print(f"  ℹ️ Modo de operação: {resultado.get('modo', 'desconhecido')}")
         print(f"  ℹ️ Agentes envolvidos: {resultado.get('agentes_envolvidos', 0)}")
         
@@ -211,7 +210,7 @@ def generate_test_report(results):
     passed_tests = sum(1 for result in results if result)
     failed_tests = total_tests - passed_tests
     
-    print(f"\n📊 Resultados:")
+    print("\n📊 Resultados:")
     print(f"   ✅ Testes passados: {passed_tests}/{total_tests}")
     print(f"   ❌ Testes falhados: {failed_tests}/{total_tests}")
     

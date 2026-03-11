@@ -4,7 +4,6 @@ Teste rápido e simples para verificar o login
 """
 
 import requests
-import json
 
 def test_quick():
     print("🔍 Testando conexão rápida...")
@@ -47,7 +46,7 @@ def test_quick():
             print(f"   Status: {login_response.status_code}")
             if login_response.status_code == 200:
                 login_result = login_response.json()
-                print(f"   ✅ LOGIN SUCESSO!")
+                print("   ✅ LOGIN SUCESSO!")
                 print(f"   Token: {login_result.get('access_token', 'ERRO')[:30]}...")
             else:
                 print(f"   ❌ ERRO NO LOGIN: {login_response.text}")

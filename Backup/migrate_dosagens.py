@@ -3,7 +3,6 @@
 Script para migrar a tabela de dosagens e adicionar o campo gotas_por_ml
 """
 
-import os
 from dotenv import load_dotenv
 load_dotenv()
 

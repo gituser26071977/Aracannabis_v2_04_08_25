@@ -1,7 +1,6 @@
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from models import db, SnapIVTeste, Paciente, Profissional
-from datetime import datetime
+from models import db, SnapIVTeste, Paciente
 
 snap_iv_bp = Blueprint('snap_iv', __name__)
 

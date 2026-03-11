@@ -4,7 +4,6 @@ Teste simples de login para verificar se a API está funcionando
 """
 
 import requests
-import json
 
 def test_login():
     print("🔍 Testando API de Login...")

@@ -4,8 +4,6 @@ Teste para verificar se a correção da porta resolveu o problema de conexão no
 """
 
 import requests
-import json
-import time
 
 def test_backend_connection():
     """Testa se o backend está respondendo na porta correta"""

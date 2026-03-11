@@ -10,8 +10,8 @@ def admin_required(f):
     def decorated_function(*args, **kwargs):
         current_user_id = get_jwt_identity()
         user = Profissional.query.get(current_user_id)
-        if not user or user.role != 'admin':
-            return jsonify({'error': 'Acesso negado. Requer privilégios de administrador.'}), 403
+        if not user or user.role not in ['admin', 'superadmin']:
+            return jsonify({'error': 'Acesso negado. Requer privilégios de administrador ou superadministrador.'}), 403
         return f(*args, **kwargs)
     return decorated_function
 

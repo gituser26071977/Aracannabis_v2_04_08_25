@@ -1,7 +1,5 @@
 import pytest
 from services.anonymization_service.app.anonymizer import Anonymizer
-from services.anonymization_service.app.models import AnonymizationMap
-import re
 from unittest.mock import MagicMock
 
 def test_regex_cpf():

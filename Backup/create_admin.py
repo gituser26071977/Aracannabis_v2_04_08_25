@@ -35,7 +35,7 @@ def create_admin_user():
         db.session.commit()
         
         print("Usuário admin criado com sucesso!")
-        print(f"Usuário: admin")
+        print("Usuário: admin")
         print(f"Senha: {senha_segura}")
         print("Nota: Esta senha atende aos requisitos de segurança. Recomendamos alterá-la após o primeiro login, se desejar.")
 

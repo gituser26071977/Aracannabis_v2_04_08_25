@@ -20,6 +20,8 @@ const ProductForm = ({ onSubmit, onCancel, initialData = {} }) => {
     volume_ml: 30,
     fabricante: '',
     descricao: '',
+    instrucoes: '',
+    via_administracao: 'Oral',
     data_registro: ''
   });
 
@@ -66,6 +68,8 @@ const ProductForm = ({ onSubmit, onCancel, initialData = {} }) => {
       volume_ml: initialData.volume_ml ?? 30,
       fabricante: initialData.fabricante || '',
       descricao: initialData.descricao || '',
+      instrucoes: initialData.instrucoes || '',
+      via_administracao: initialData.via_administracao || 'Oral',
       data_registro: initialData.data_registro || new Date().toISOString().split('T')[0] // Default to today if new
     });
   }, [initialData]);
@@ -183,6 +187,30 @@ const ProductForm = ({ onSubmit, onCancel, initialData = {} }) => {
             onChange={handleChange}
             fullWidth
             inputProps={{ min: 1 }}
+          />
+        </Grid>
+
+        <Grid item xs={12} sm={6}>
+          <TextField
+            name="via_administracao"
+            label="Via de Administração"
+            value={formData.via_administracao}
+            onChange={handleChange}
+            fullWidth
+            placeholder="Ex: Oral, Sublingual, Tópico"
+          />
+        </Grid>
+
+        <Grid item xs={12}>
+          <TextField
+            name="instrucoes"
+            label="Instruções de Uso (Padrão)"
+            value={formData.instrucoes}
+            onChange={handleChange}
+            fullWidth
+            multiline
+            rows={2}
+            placeholder="Ex: Ingerir junto com alimentos gordurosos."
           />
         </Grid>
 

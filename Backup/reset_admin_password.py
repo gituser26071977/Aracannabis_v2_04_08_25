@@ -28,7 +28,7 @@ def reset_admin_password():
         # Salvar as alterações
         db.session.commit()
         
-        print(f"Senha do usuário admin resetada com sucesso!")
+        print("Senha do usuário admin resetada com sucesso!")
         print(f"Nova senha: {nova_senha}")
 
 if __name__ == '__main__':

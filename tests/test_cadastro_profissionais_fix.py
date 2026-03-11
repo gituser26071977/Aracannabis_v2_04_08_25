@@ -2,7 +2,7 @@
 import unittest
 import json
 from app_cors_livre import create_app
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 import os
 
 class CadastroProfissionaisTestCase(unittest.TestCase):

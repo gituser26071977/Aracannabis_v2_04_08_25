@@ -2,7 +2,7 @@ import os
 import uuid
 import logging
 from datetime import datetime, timedelta
-from flask import Blueprint, request, jsonify, current_app, url_for
+from flask import Blueprint, request, jsonify, current_app
 from werkzeug.utils import secure_filename
 from models import db, UploadSession
 
@@ -19,12 +19,16 @@ def allowed_file(filename):
 def start_session():
     """Inicia uma nova sessão de upload mobile"""
     try:
+        data = request.get_json() or {}
+        context = data.get('context', 'exam')  # 'exam' or 'product'
+        
         token = str(uuid.uuid4())
         expires_at = datetime.utcnow() + timedelta(minutes=15) # Token válido por 15 minutos
         
         session = UploadSession(
             token=token,
             status='pending',
+            context=context,
             expires_at=expires_at
         )
         
@@ -67,6 +71,9 @@ def check_status(token):
             response['file_url'] = f"/uploads/{os.path.basename(session.file_path)}"
             response['file_type'] = session.file_type
             response['original_filename'] = session.original_filename
+            response['context'] = session.context
+            if session.ai_result:
+                response['ai_result'] = session.ai_result
             
         return jsonify(response), 200
     except Exception as e:
@@ -123,3 +130,41 @@ def upload_file(token):
     except Exception as e:
         logger.error(f"Erro no upload mobile: {str(e)}")
         return jsonify({'error': f'Erro ao salvar arquivo: {str(e)}'}), 500
+
+@mobile_upload_bp.route('/mobile/process-product/<token>', methods=['POST'])
+def process_product(token):
+    """Processa produto usando IA após upload mobile"""
+    try:
+        from services.product_intake import product_intake_service
+        
+        session = UploadSession.query.filter_by(token=token).first()
+        
+        if not session:
+            return jsonify({'error': 'Sessão não encontrada'}), 404
+            
+        if session.context != 'product':
+            return jsonify({'error': 'Sessão não é de produto'}), 400
+            
+        if not session.file_path or not os.path.exists(session.file_path):
+            return jsonify({'error': 'Arquivo não encontrado'}), 404
+            
+        # Processar com IA
+        ia_result = product_intake_service.process_input(
+            file_path=session.file_path,
+            filename=session.original_filename
+        )
+        
+        # Armazenar resultado na sessão
+        session.ai_result = ia_result
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Produto processado com sucesso',
+            'produto_sugerido': ia_result.get('produto_sugerido', {}),
+            'fonte': ia_result.get('fonte'),
+            'texto_processado': ia_result.get('texto_processado')
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Erro ao processar produto: {str(e)}")
+        return jsonify({'error': f'Erro ao processar produto: {str(e)}'}), 500

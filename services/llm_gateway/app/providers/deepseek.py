@@ -1,8 +1,6 @@
-from datetime import datetime
-import time
 import httpx
 import logging
-from services.llm_gateway.app.validation import validate_soap_response
+from app.validation import validate_soap_response
 
 class BaseLLMProvider:
     async def generate_completion(self, anonymized_text: str, task: str) -> dict:

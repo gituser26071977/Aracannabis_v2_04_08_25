@@ -31,6 +31,7 @@ import {
   Delete
 } from '@mui/icons-material';
 import { produtosService } from '../services/api';
+import MobileConnectQR from './MobileConnectQR';
 
 const ProductAIAssistant = ({ onApplySuggestion, onProductCreated, onEditSuggestion }) => {
   const [texto, setTexto] = useState('');
@@ -52,6 +53,9 @@ const ProductAIAssistant = ({ onApplySuggestion, onProductCreated, onEditSuggest
   const canvasRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
+
+  // Estado para QR Code mobile
+  const [showQRDialog, setShowQRDialog] = useState(false);
 
   // Limpar recursos ao desmontar
   useEffect(() => {
@@ -287,6 +291,15 @@ const ProductAIAssistant = ({ onApplySuggestion, onProductCreated, onEditSuggest
               Áudio
             </Button>
 
+            <Button
+              variant="outlined"
+              color="primary"
+              startIcon={<CameraAlt />}
+              onClick={() => setShowQRDialog(true)}
+            >
+              📱 QR Mobile
+            </Button>
+
             <FormControlLabel
               control={
                 <Switch
@@ -397,6 +410,25 @@ const ProductAIAssistant = ({ onApplySuggestion, onProductCreated, onEditSuggest
                 <Button variant="contained" color="primary" onClick={confirmCapture}>Usar esta mídia</Button>
               </>
             )}
+          </DialogActions>
+        </Dialog>
+
+        {/* QR Code Mobile Dialog */}
+        <Dialog open={showQRDialog} onClose={() => setShowQRDialog(false)} maxWidth="xs">
+          <DialogTitle>Captura Mobile</DialogTitle>
+          <DialogContent>
+            <MobileConnectQR
+              context="product"
+              onUploadComplete={(file) => {
+                setArquivo(file);
+                setCapturedBlob(null);
+                setCapturedPreview(null);
+                setShowQRDialog(false);
+              }}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setShowQRDialog(false)}>Fechar</Button>
           </DialogActions>
         </Dialog>
 

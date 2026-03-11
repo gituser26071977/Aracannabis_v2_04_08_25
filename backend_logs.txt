@@ -1,0 +1,181 @@
+CONFIG.PY: DATABASE_URL lida do .env AQUI: postgresql://postgres:postgres@db:5432/aracannabis
+CONFIG.PY: SQLALCHEMY_DATABASE_URI (from getenv/default): postgresql://postgres:postgres@db:5432/aracannabis
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG LOGIN - FUNCAO LOGIN CHAMADA
+DEBUG LOGIN - Hash no banco: pbkdf2:sha256:100000$cq5XfHmmf8tW39HO$b19d9dd49ad1...
+DEBUG LOGIN - Senha recebida (length): 8
+DEBUG LOGIN - Senha sanitizada: 'admin123'
+DEBUG LOGIN - Resultado check_password_hash: False
+DEBUG LOGIN - FUNCAO LOGIN CHAMADA
+DEBUG LOGIN - Hash no banco: admin123...
+DEBUG LOGIN - Senha recebida (length): 8
+DEBUG LOGIN - Senha sanitizada: 'admin123'
+DEBUG LOGIN - Resultado check_password_hash: False
+CONFIG.PY: DATABASE_URL lida do .env AQUI: postgresql://postgres:postgres@db:5432/aracannabis
+CONFIG.PY: SQLALCHEMY_DATABASE_URI (from getenv/default): postgresql://postgres:postgres@db:5432/aracannabis
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG LOGIN - FUNCAO LOGIN CHAMADA
+DEBUG LOGIN - Hash no banco: scrypt:32768:8:1$1C4CRpOTBtEV3NOJ$c55e59108448a5a9...
+DEBUG LOGIN - Senha recebida (length): 8
+DEBUG LOGIN - Senha sanitizada: 'admin123'
+DEBUG LOGIN - Resultado check_password_hash: True
+DEBUG LOGIN - FUNCAO LOGIN CHAMADA
+DEBUG LOGIN - Hash no banco: scrypt:32768:8:1$1C4CRpOTBtEV3NOJ$c55e59108448a5a9...
+DEBUG LOGIN - Senha recebida (length): 8
+DEBUG LOGIN - Senha sanitizada: 'admin123'
+DEBUG LOGIN - Resultado check_password_hash: True
+DEBUG LOGIN - FUNCAO LOGIN CHAMADA
+DEBUG LOGIN - Hash no banco: scrypt:32768:8:1$1C4CRpOTBtEV3NOJ$c55e59108448a5a9...
+DEBUG LOGIN - Senha recebida (length): 8
+DEBUG LOGIN - Senha sanitizada: 'admin123'
+DEBUG LOGIN - Resultado check_password_hash: True
+DEBUG LOGIN - FUNCAO LOGIN CHAMADA
+DEBUG LOGIN - Hash no banco: scrypt:32768:8:1$1C4CRpOTBtEV3NOJ$c55e59108448a5a9...
+DEBUG LOGIN - Senha recebida (length): 8
+DEBUG LOGIN - Senha sanitizada: 'admin123'
+DEBUG LOGIN - Resultado check_password_hash: True
+DEBUG LOGIN - FUNCAO LOGIN CHAMADA
+DEBUG LOGIN - Hash no banco: scrypt:32768:8:1$1C4CRpOTBtEV3NOJ$c55e59108448a5a9...
+DEBUG LOGIN - Senha recebida (length): 8
+DEBUG LOGIN - Senha sanitizada: 'admin123'
+DEBUG LOGIN - Resultado check_password_hash: True
+CONFIG.PY: DATABASE_URL lida do .env AQUI: postgresql://postgres:postgres@db:5432/aracannabis
+CONFIG.PY: SQLALCHEMY_DATABASE_URI (from getenv/default): postgresql://postgres:postgres@db:5432/aracannabis
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+CONFIG.PY: DATABASE_URL lida do .env AQUI: postgresql://postgres:postgres@db:5432/aracannabis
+CONFIG.PY: SQLALCHEMY_DATABASE_URI (from getenv/default): postgresql://postgres:postgres@db:5432/aracannabis
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+CONFIG.PY: DATABASE_URL lida do .env AQUI: postgresql://postgres:postgres@db:5432/aracannabis
+CONFIG.PY: SQLALCHEMY_DATABASE_URI (from getenv/default): postgresql://postgres:postgres@db:5432/aracannabis
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG LOGIN - FUNCAO LOGIN CHAMADA
+DEBUG LOGIN - Hash no banco: scrypt:32768:8:1$1C4CRpOTBtEV3NOJ$c55e59108448a5a9...
+DEBUG LOGIN - Senha recebida (length): 8
+DEBUG LOGIN - Senha sanitizada: 'admin123'
+DEBUG LOGIN - Resultado check_password_hash: True
+CONFIG.PY: DATABASE_URL lida do .env AQUI: postgresql://postgres:postgres@db:5432/aracannabis
+CONFIG.PY: SQLALCHEMY_DATABASE_URI (from getenv/default): postgresql://postgres:postgres@db:5432/aracannabis
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG LOGIN - FUNCAO LOGIN CHAMADA
+DEBUG LOGIN - Hash no banco: scrypt:32768:8:1$1C4CRpOTBtEV3NOJ$c55e59108448a5a9...
+DEBUG LOGIN - Senha recebida (length): 8
+DEBUG LOGIN - Senha sanitizada: 'admin123'
+DEBUG LOGIN - Resultado check_password_hash: True
+DEBUG LOGIN - FUNCAO LOGIN CHAMADA
+DEBUG LOGIN - Hash no banco: scrypt:32768:8:1$1C4CRpOTBtEV3NOJ$c55e59108448a5a9...
+DEBUG LOGIN - Senha recebida (length): 8
+DEBUG LOGIN - Senha sanitizada: 'admin123'
+DEBUG LOGIN - Resultado check_password_hash: True
+CONFIG.PY: DATABASE_URL lida do .env AQUI: postgresql://postgres:postgres@db:5432/aracannabis
+CONFIG.PY: SQLALCHEMY_DATABASE_URI (from getenv/default): postgresql://postgres:postgres@db:5432/aracannabis
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+CONFIG.PY: DATABASE_URL lida do .env AQUI: postgresql://postgres:postgres@db:5432/aracannabis
+CONFIG.PY: SQLALCHEMY_DATABASE_URI (from getenv/default): postgresql://postgres:postgres@db:5432/aracannabis
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+CONFIG.PY: DATABASE_URL lida do .env AQUI: postgresql://postgres:postgres@db:5432/aracannabis
+CONFIG.PY: SQLALCHEMY_DATABASE_URI (from getenv/default): postgresql://postgres:postgres@db:5432/aracannabis
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG LOGIN - FUNCAO LOGIN CHAMADA
+DEBUG LOGIN - Hash no banco: scrypt:32768:8:1$1C4CRpOTBtEV3NOJ$c55e59108448a5a9...
+DEBUG LOGIN - Senha recebida (length): 8
+DEBUG LOGIN - Senha sanitizada: 'admin123'
+DEBUG LOGIN - Resultado check_password_hash: True
+DEBUG_CONTEXTO:
+
+Paciente ID 4 encontrado mas sem dados adicionais.
+CONFIG.PY: DATABASE_URL lida do .env AQUI: postgresql://postgres:postgres@db:5432/aracannabis
+CONFIG.PY: SQLALCHEMY_DATABASE_URI (from getenv/default): postgresql://postgres:postgres@db:5432/aracannabis
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+CONFIG.PY: DATABASE_URL lida do .env AQUI: postgresql://postgres:postgres@db:5432/aracannabis
+CONFIG.PY: SQLALCHEMY_DATABASE_URI (from getenv/default): postgresql://postgres:postgres@db:5432/aracannabis
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+CONFIG.PY: DATABASE_URL lida do .env AQUI: postgresql://postgres:postgres@db:5432/aracannabis
+CONFIG.PY: SQLALCHEMY_DATABASE_URI (from getenv/default): postgresql://postgres:postgres@db:5432/aracannabis
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+CONFIG.PY: DATABASE_URL lida do .env AQUI: postgresql://postgres:postgres@db:5432/aracannabis
+CONFIG.PY: SQLALCHEMY_DATABASE_URI (from getenv/default): postgresql://postgres:postgres@db:5432/aracannabis
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG LOGIN - FUNCAO LOGIN CHAMADA
+DEBUG LOGIN - Hash no banco: scrypt:32768:8:1$1C4CRpOTBtEV3NOJ$c55e59108448a5a9...
+DEBUG LOGIN - Senha recebida (length): 8
+DEBUG LOGIN - Senha sanitizada: 'admin123'
+DEBUG LOGIN - Resultado check_password_hash: True
+DEBUG_CONTEXTO:
+
+Paciente ID 4 encontrado mas sem dados adicionais.
+CONFIG.PY: DATABASE_URL lida do .env AQUI: postgresql://postgres:postgres@db:5432/aracannabis
+CONFIG.PY: SQLALCHEMY_DATABASE_URI (from getenv/default): postgresql://postgres:postgres@db:5432/aracannabis
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+CONFIG.PY: DATABASE_URL lida do .env AQUI: postgresql://postgres:postgres@db:5432/aracannabis
+CONFIG.PY: SQLALCHEMY_DATABASE_URI (from getenv/default): postgresql://postgres:postgres@db:5432/aracannabis
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+CONFIG.PY: DATABASE_URL lida do .env AQUI: postgresql://postgres:postgres@db:5432/aracannabis
+CONFIG.PY: SQLALCHEMY_DATABASE_URI (from getenv/default): postgresql://postgres:postgres@db:5432/aracannabis
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+CONFIG.PY: DATABASE_URL lida do .env AQUI: postgresql://postgres:postgres@db:5432/aracannabis
+CONFIG.PY: SQLALCHEMY_DATABASE_URI (from getenv/default): postgresql://postgres:postgres@db:5432/aracannabis
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG LOGIN - FUNCAO LOGIN CHAMADA
+DEBUG LOGIN - Hash no banco: scrypt:32768:8:1$1C4CRpOTBtEV3NOJ$c55e59108448a5a9...
+DEBUG LOGIN - Senha recebida (length): 8
+DEBUG LOGIN - Senha sanitizada: 'admin123'
+DEBUG LOGIN - Resultado check_password_hash: True
+CONFIG.PY: DATABASE_URL lida do .env AQUI: postgresql://postgres:postgres@db:5432/aracannabis
+CONFIG.PY: SQLALCHEMY_DATABASE_URI (from getenv/default): postgresql://postgres:postgres@db:5432/aracannabis
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+CONFIG.PY: DATABASE_URL lida do .env AQUI: postgresql://postgres:postgres@db:5432/aracannabis
+CONFIG.PY: SQLALCHEMY_DATABASE_URI (from getenv/default): postgresql://postgres:postgres@db:5432/aracannabis
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+CONFIG.PY: DATABASE_URL lida do .env AQUI: postgresql://postgres:postgres@db:5432/aracannabis
+CONFIG.PY: SQLALCHEMY_DATABASE_URI (from getenv/default): postgresql://postgres:postgres@db:5432/aracannabis
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+CONFIG.PY: DATABASE_URL lida do .env AQUI: postgresql://postgres:postgres@db:5432/aracannabis
+CONFIG.PY: SQLALCHEMY_DATABASE_URI (from getenv/default): postgresql://postgres:postgres@db:5432/aracannabis
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG: EmailService initialized. User=contato@arapath.com.br, DevMode=False
+DEBUG LOGIN - FUNCAO LOGIN CHAMADA
+DEBUG LOGIN - Hash no banco: scrypt:32768:8:1$1C4CRpOTBtEV3NOJ$c55e59108448a5a9...
+DEBUG LOGIN - Senha recebida (length): 8
+DEBUG LOGIN - Senha sanitizada: 'admin123'
+DEBUG LOGIN - Resultado check_password_hash: True

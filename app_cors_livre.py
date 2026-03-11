@@ -2,13 +2,14 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 
-from flask import Flask, jsonify, render_template_string, request, redirect
+from flask import Flask, jsonify, redirect
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from flask_migrate import Migrate
-from models import db, ReminderSettings
+from models import db
 from config import get_config
 from security_config import ALLOWED_ORIGINS, init_limiter, add_security_headers
+from tenant_lib import configure_tenant_filters
 import secrets
 
 def create_app():
@@ -35,6 +36,7 @@ def create_app():
     
     # Inicializar extensões
     db.init_app(app)
+    configure_tenant_filters(db)  # Ativar isolamento multi-tenant
     jwt = JWTManager(app)
     migrate = Migrate()
     migrate.init_app(app, db)
@@ -102,7 +104,7 @@ def create_app():
         })
     
     # Registrar blueprints
-    from routes.auth import auth_bp
+    from routes.auth import auth_bp, profissionais_bp
     from routes.pacientes import pacientes_bp
     from routes.sintomas import sintomas_bp
     from routes.dosagens import dosagens_bp
@@ -126,6 +128,7 @@ def create_app():
     from routes.gad7 import gad7_bp
 
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
+    app.register_blueprint(profissionais_bp, url_prefix='/api')
     app.register_blueprint(exames_bp)
     app.register_blueprint(pacientes_bp, url_prefix='/api/pacientes')
     app.register_blueprint(sintomas_bp, url_prefix='/api/sintomas')
@@ -133,10 +136,9 @@ def create_app():
     app.register_blueprint(evolucoes_bp, url_prefix='/api/evolucoes')
     app.register_blueprint(lgpd_bp, url_prefix='/api/lgpd')
     app.register_blueprint(consultas_bp, url_prefix='/api/consultas')
-    from routes.import_export import import_export_bp
     app.register_blueprint(import_export_bp, url_prefix='/api/import-export')
     app.register_blueprint(produtos_bp, url_prefix='/api')
-    app.register_blueprint(cadastro_prof_bp, url_prefix='/api/cadastro-profissionais')
+    app.register_blueprint(cadastro_prof_bp, url_prefix='/api/cadastro_profissionais')
     app.register_blueprint(anuncios_bp, url_prefix='/api')
     app.register_blueprint(snap_iv_bp, url_prefix='/api/snap-iv')
     app.register_blueprint(beck_depression_bp, url_prefix='/api/beck-depression')
@@ -144,6 +146,8 @@ def create_app():
     app.register_blueprint(gad7_bp, url_prefix='/api/gad7')
     from routes.prescricoes import prescricoes_bp
     app.register_blueprint(prescricoes_bp, url_prefix='/api/prescricoes')
+    from routes.prescricao_config import prescricao_config_bp
+    app.register_blueprint(prescricao_config_bp, url_prefix='/api/prescricao-config')
     from routes.mercadopago import mercadopago_bp
     app.register_blueprint(mercadopago_bp, url_prefix='/api/mercadopago')
     from routes.dashboard import dashboard_bp
@@ -158,6 +162,8 @@ def create_app():
     app.register_blueprint(crew_ai_bp, url_prefix='/api/crew-ai')
     app.register_blueprint(billing_bp, url_prefix='/api/billing')
     app.register_blueprint(ai_chat_simples_bp, url_prefix='/api')
+    from routes.utils import utils_bp
+    app.register_blueprint(utils_bp, url_prefix='/api/utils')
 
     from routes.patient_import_agent import patient_import_bp
     app.register_blueprint(patient_import_bp, url_prefix='/api/import-agent')
@@ -170,12 +176,13 @@ def create_app():
     
     # Association Management Module
     from association.routes import association_bp
-    from association.routes import association_bp
     app.register_blueprint(association_bp, url_prefix='/api/association')
 
     # [NEW] AI Clinical Pipeline
     from routes.ai_clinical import ai_clinical_bp
+    from routes.hc_report import hc_report_bp
     app.register_blueprint(ai_clinical_bp, url_prefix='/api/ai-clinical')
+    app.register_blueprint(hc_report_bp, url_prefix='/api/hc-report')
 
     # [NEW] Tenant Middleware
     from middleware.tenant_middleware import register_tenant_middleware

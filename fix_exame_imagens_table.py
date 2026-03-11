@@ -5,7 +5,6 @@ Script para corrigir a tabela exame_imagens adicionando a coluna created_at
 
 import psycopg2
 from dotenv import load_dotenv
-import os
 
 load_dotenv()
 

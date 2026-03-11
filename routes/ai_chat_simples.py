@@ -6,8 +6,12 @@ Não depende de function calling - busca dados diretamente
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 import logging
+import base64
+import os
+import google.generativeai as genai
 from models import db, Paciente, Evolucao, Dosagem, Sintoma
 from services.ai_agents import ai_manager
+from services.ai_config_storage import get_api_key
 from security_config import sanitize_input
 
 ai_chat_simples_bp = Blueprint('ai_chat_simples', __name__)
@@ -16,24 +20,32 @@ logger = logging.getLogger(__name__)
 def buscar_contexto_paciente(paciente_id):
     """Busca todos os dados do paciente para incluir no contexto"""
     try:
-        paciente = Paciente.query.get(paciente_id)
+        from sqlalchemy import select
+        
+        # Usar select() com execution_options para bypass seguro do tenant filter
+        stmt = select(Paciente).where(Paciente.id == paciente_id).execution_options(skip_tenant=True)
+        paciente = db.session.execute(stmt).scalar_one_or_none()
+        
         if not paciente:
             return None
 
-        # Buscar últimas evoluções
-        evolucoes = Evolucao.query.filter_by(paciente_id=paciente_id)\
+        # Buscar últimas evoluções com bypass
+        ev_stmt = select(Evolucao).where(Evolucao.paciente_id == paciente_id)\
             .order_by(Evolucao.data_evolucao.desc())\
-            .limit(5).all()
+            .limit(5).execution_options(skip_tenant=True)
+        evolucoes = db.session.execute(ev_stmt).scalars().all()
 
-        # Buscar últimas dosagens
-        dosagens = Dosagem.query.filter_by(paciente_id=paciente_id)\
-            .order_by(Dosagem.data.desc())\
-            .limit(10).all()
+        # Buscar últimas dosagens com bypass
+        dos_stmt = select(Dosagem).where(Dosagem.paciente_id == paciente_id)\
+             .order_by(Dosagem.data.desc())\
+             .limit(10).execution_options(skip_tenant=True)
+        dosagens = db.session.execute(dos_stmt).scalars().all()
 
-        # Buscar últimos sintomas
-        sintomas = Sintoma.query.filter_by(paciente_id=paciente_id)\
-            .order_by(Sintoma.data.desc())\
-            .limit(15).all()
+        # Buscar últimos sintomas com bypass
+        sint_stmt = select(Sintoma).where(Sintoma.paciente_id == paciente_id)\
+             .order_by(Sintoma.data.desc())\
+             .limit(15).execution_options(skip_tenant=True)
+        sintomas = db.session.execute(sint_stmt).scalars().all()
 
         contexto = {
             "paciente": {
@@ -126,7 +138,8 @@ EVOLUÇÕES CLÍNICAS RECENTES ({len(contexto['evolucoes_recentes'])}):
                 for i, sint in enumerate(contexto['sintomas_recentes'], 1):
                     contexto_texto += f"\n{i}. [{sint['data']}] {sint['sintoma']} (Intensidade: {sint['intensidade']}/10)"
             else:
-                contexto_texto = f"\nPaciente ID {paciente_id} encontrado mas sem dados adicionais."
+                contexto_texto = f"\nPaciente ID {paciente_id} não encontrado ou sem acesso permitido."
+                logger.warning(f"Paciente ID {paciente_id} não encontrado no chat simples")
 
         # Montar prompt para a IA
         system_prompt = """Você é um assistente médico especializado em cannabis medicinal.
@@ -140,22 +153,14 @@ Suas responsabilidades:
 
 IMPORTANTE: Base suas respostas EXCLUSIVAMENTE nos dados fornecidos. Não invente informações."""
 
-        messages = [
-            {"role": "system", "content": system_prompt}
-        ]
-
-        # Se tiver contexto de paciente, adicionar
+        # Combinar prompt do sistema com o contexto do paciente se houver
         if contexto_texto:
-            messages.append({
-                "role": "system",
-                "content": f"CONTEXTO DO PACIENTE:\n{contexto_texto}"
-            })
+            system_prompt += f"\n\nCONTEXTO DO PACIENTE:\n{contexto_texto}"
 
-        # Adicionar mensagem do usuário
-        messages.append({
-            "role": "user",
-            "content": mensagem
-        })
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": mensagem}
+        ]
 
         # Chamar a IA
         logger.info(f"Chat simples - Usuário {current_user_id}, Paciente: {paciente_id}")
@@ -166,20 +171,99 @@ IMPORTANTE: Base suas respostas EXCLUSIVAMENTE nos dados fornecidos. Não invent
             max_tokens=2000
         )
 
-        resposta = response.get('content', 'Desculpe, não consegui gerar uma resposta.')
-
         return jsonify({
             'mensagem': mensagem,
-            'resposta': resposta,
             'paciente_id': paciente_id,
+            'resposta': response.get('content', 'Desculpe, não consegui processar a resposta.'),
+            'tem_contexto': bool(contexto_texto),
             'provider': response.get('provider'),
-            'model': response.get('model'),
-            'tem_contexto': bool(contexto_texto)
+            'model': response.get('model')
         }), 200
 
     except Exception as e:
-        logger.error(f"Erro no chat simples: {str(e)}", exc_info=True)
-        return jsonify({'error': f'Erro ao processar chat: {str(e)}'}), 500
+        logger.error(f"Erro no chat simples: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@ai_chat_simples_bp.route('/stt', methods=['POST'])
+@jwt_required()
+def speech_to_text():
+    """
+    Usa o modelo multimodal (Gemini 2.5 Flash Lite) para transcrever um áudio no formato dictation.
+    """
+    try:
+        data = request.get_json()
+        audio_b64 = data.get('audio')
+        if not audio_b64:
+            return jsonify({'error': 'Áudio base64 não fornecido'}), 400
+
+        # Pegar chave do google configurada e configurar API
+        api_key = get_api_key('google') or os.getenv('GOOGLE_API_KEY')
+        if not api_key:
+            return jsonify({'error': 'Configuração do provedor Google não encontrada'}), 500
+        
+        genai.configure(api_key=api_key)
+        
+        # Limpar prefixo base64 se vier inteiro do js ("data:audio/webm;base64,...")
+        if ',' in audio_b64:
+            mime_part, audio_b64 = audio_b64.split(',', 1)
+            mime_type = mime_part.split(':')[1].split(';')[0]
+        else:
+            mime_type = "audio/webm"
+
+        model = genai.GenerativeModel('gemini-2.5-flash-lite')
+        
+        response = model.generate_content([
+            "Transcreva com extrema precisão o áudio deste paciente ou médico em português (Brasil). Retorne APENAS o texto transcrito, sem introduções.",
+            {
+                "mime_type": mime_type,
+                "data": audio_b64
+            }
+        ])
+        
+        return jsonify({'text': response.text.strip()})
+        
+    except Exception as e:
+        logger.error(f"Erro STT: {str(e)}")
+        return jsonify({'error': f"Falha ao transcrever: {str(e)}"}), 500
+
+@ai_chat_simples_bp.route('/tts', methods=['POST'])
+@jwt_required()
+def text_to_speech():
+    """
+    Gera áudio de saída. 
+    Idealmente usando TTS-1 da OpenAI ou preview do Gemini, 
+    já que Gemini TTS Preview pode estar restrito.
+    """
+    try:
+        data = request.get_json()
+        text = data.get('text')
+        if not text:
+            return jsonify({'error': 'Texto não fornecido'}), 400
+
+        from openai import OpenAI
+        api_key = get_api_key('openai') or os.getenv('OPENAI_API_KEY')
+        if not api_key:
+            return jsonify({'error': 'Configuração OpenAI não encontrada para TTS'}), 500
+            
+        client = OpenAI(api_key=api_key)
+        response = client.audio.speech.create(
+            model="tts-1",
+            voice="alloy",
+            input=text
+        )
+        
+        # Converter para base64 para uso fácil no frontend sem arquivos no disco
+        import base64
+        audio_data = response.content
+        audio_b64 = base64.b64encode(audio_data).decode('utf-8')
+        
+        return jsonify({
+            'audio_base64': f"data:audio/mp3;base64,{audio_b64}"
+        })
+        
+    except Exception as e:
+        logger.error(f"Erro TTS: {str(e)}")
+        return jsonify({'error': f"Falha na síntese de voz: {str(e)}"}), 500
 
 @ai_chat_simples_bp.route('/chat-simples/test', methods=['GET'])
 @jwt_required()

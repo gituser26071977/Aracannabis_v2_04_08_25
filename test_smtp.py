@@ -1,7 +1,5 @@
 
 import smtplib
-import os
-import sys
 
 smtp_server = "smtp.hostinger.com"
 smtp_port = 465

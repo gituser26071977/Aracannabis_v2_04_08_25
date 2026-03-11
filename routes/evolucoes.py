@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from models import db, Evolucao, Paciente, Profissional, LogAtividade, Dosagem, Exame
+from models import db, Evolucao, Paciente, Profissional, LogAtividade, Exame
 from datetime import datetime
 # Removido import json e process_evolution_input daqui, pois a lógica de IA será chamada de forma diferente
 # Agora importamos as db_tools e o processador de IA de forma separada
@@ -13,7 +13,7 @@ from werkzeug.utils import secure_filename
 
 def safe_ai_processing(text_input, llm_provider=None, llm_model_name=None, timeout=30):
     """Processamento seguro com IA incluindo fallback e timeout - TEMPORARIAMENTE DESABILITADO"""
-    current_app.logger.warning(f"SAFE_AI: IA temporariamente desabilitada para testes")
+    current_app.logger.warning("SAFE_AI: IA temporariamente desabilitada para testes")
     return {
         'narrative_evolution': text_input,
         'dosage_info': None,
@@ -121,7 +121,7 @@ def registrar_evolucao(paciente_id):
         ai_processed = False
 
         if use_ai_processing: # Somente processa com IA se explicitamente solicitado
-            current_app.logger.info(f"EVOLUCOES_ROUTE: Processamento com IA solicitado.")
+            current_app.logger.info("EVOLUCOES_ROUTE: Processamento com IA solicitado.")
             # 1. Processar o texto com IA para análise
             ai_analysis_result = safe_ai_processing(
                 evolution_text_input=input_text,
@@ -140,7 +140,7 @@ def registrar_evolucao(paciente_id):
                 dosage_info = ai_analysis_result.get('dosage_info')
             ai_processed = True
         else:
-            current_app.logger.info(f"EVOLUCOES_ROUTE: Processamento com IA NÃO solicitado. Salvando texto original.")
+            current_app.logger.info("EVOLUCOES_ROUTE: Processamento com IA NÃO solicitado. Salvando texto original.")
             # narrative_evolution já é input_text, dosage_info já é None
 
         # 2. Salvar a evolução no banco de dados

@@ -4,9 +4,7 @@ Script para corrigir problemas comuns de rede com agentes de IA
 """
 
 import os
-import sys
 from dotenv import load_dotenv, set_key
-import json
 
 # Carregar variáveis de ambiente
 load_dotenv()

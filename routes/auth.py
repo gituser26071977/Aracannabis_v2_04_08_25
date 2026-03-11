@@ -1,7 +1,7 @@
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from werkzeug.security import generate_password_hash, check_password_hash
-from models import db, Profissional, SenhaTemporaria
+from models import db, Profissional, SenhaTemporaria, Assinatura
 from security_config import (
     validate_password_strength,
     sanitize_input
@@ -18,6 +18,7 @@ email_service = EmailService()
 logger = logging.getLogger(__name__)
 
 auth_bp = Blueprint('auth', __name__)
+profissionais_bp = Blueprint('profissionais', __name__)
 
 @auth_bp.route('/create-admin', methods=['GET'])
 def create_admin():
@@ -35,6 +36,7 @@ def create_admin():
         uf_crm='XX',  # Dummy value for admin
         usuario='admin',
         senha=hashed_password,
+        role='admin',
         created_at=datetime.datetime.utcnow()
     )
     
@@ -105,6 +107,7 @@ def register():
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
+    print("DEBUG LOGIN - FUNCAO LOGIN CHAMADA", flush=True)
     data = request.get_json() or {}
 
     # DEBUG LOG
@@ -132,14 +135,24 @@ def login():
         logger.warning("LOGIN FAILED - Identificador não encontrado")
         return jsonify({'error': 'Credenciais inválidas'}), 401
 
-    if not check_password_hash(profissional.senha, senha):
+    # DEBUG - Verificação de senha detalhada
+    from werkzeug.security import check_password_hash
+    hash_no_banco = profissional.senha
+    print(f"DEBUG LOGIN - Hash no banco: {hash_no_banco[:50]}...", flush=True)
+    print(f"DEBUG LOGIN - Senha recebida (length): {len(senha)}", flush=True)
+    print(f"DEBUG LOGIN - Senha sanitizada: '{senha}'", flush=True)
+    
+    senha_valida = check_password_hash(hash_no_banco, senha)
+    print(f"DEBUG LOGIN - Resultado check_password_hash: {senha_valida}", flush=True)
+    
+    if not senha_valida:
         logger.warning("LOGIN FAILED - Senha incorreta para identificador informado")
         return jsonify({'error': 'Credenciais inválidas'}), 401
 
     logger.info(f"LOGIN SUCCESS - Usuario '{profissional.usuario}' logado com sucesso")
 
-    # Verificar expiração (exceto admin)
-    if profissional.role != 'admin' and profissional.data_expiracao and profissional.data_expiracao < datetime.datetime.now():
+    # Verificar expiração (exceto admin e superadmin)
+    if profissional.role not in ['admin', 'superadmin'] and profissional.data_expiracao and profissional.data_expiracao < datetime.datetime.now():
         logger.warning(f"LOGIN FAILED - Acesso expirado para {profissional.usuario}")
         pass
         # Enviar email de aviso
@@ -165,16 +178,36 @@ def login():
 
 @auth_bp.route('/profile', methods=['GET'])
 @jwt_required()
-def profile():
+def get_profile():
+    """Retorna o perfil do usuário autenticado"""
     current_user_id = get_jwt_identity()
     profissional = Profissional.query.get(int(current_user_id))
     
     if not profissional:
         return jsonify({'error': 'Profissional não encontrado'}), 404
     
-    return jsonify({
-        'user': profissional.to_dict()
-    }), 200
+    return jsonify({'user': profissional.to_dict()}), 200
+
+@profissionais_bp.route('/profissionais/<int:prof_id>/assinatura', methods=['GET'])
+@jwt_required()
+def get_subscription(prof_id):
+    """Retorna a assinatura do profissional"""
+    current_user_id = get_jwt_identity()
+    current_user = Profissional.query.get(int(current_user_id))
+    
+    # Only allow users to see their own subscription or admins to see any
+    if current_user.id != prof_id and current_user.role != 'admin':
+        return jsonify({'error': 'Acesso negado'}), 403
+    
+    profissional = Profissional.query.get(prof_id)
+    if not profissional:
+        return jsonify({'error': 'Profissional não encontrado'}), 404
+    
+    assinatura = Assinatura.query.filter_by(profissional_id=prof_id).first()
+    if not assinatura:
+        return jsonify({'error': 'Assinatura não encontrada'}), 404
+    
+    return jsonify(assinatura.to_dict()), 200
 
 @auth_bp.route('/change-password', methods=['POST'])
 @jwt_required()

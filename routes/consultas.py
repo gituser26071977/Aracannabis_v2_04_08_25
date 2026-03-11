@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from models import db, Consulta, Paciente, Profissional, LogAtividade
+from models import db, Consulta, Paciente, LogAtividade
 from datetime import datetime, timedelta
 import os
 import smtplib
@@ -98,6 +98,7 @@ def agendar_consulta():
         # Criar nova consulta
         nova_consulta = Consulta(
             paciente_id=data['paciente_id'],
+            associacao_id=paciente.associacao_id,
             profissional_id=profissional_id,
             data_hora=data_hora,
             duracao_minutos=data.get('duracao_minutos', 60),

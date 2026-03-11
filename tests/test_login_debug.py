@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import requests
-import json
 
 def test_login(port, usuario, senha, csrf_token=None):
     print(f"\n🔍 Testando login na porta {port}")

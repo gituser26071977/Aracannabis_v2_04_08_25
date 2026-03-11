@@ -1,5 +1,5 @@
 from app_cors_livre import create_app
-from models import db, Profissional, SolicitacoesCadastro
+from models import Profissional, SolicitacoesCadastro
 
 app = create_app()
 

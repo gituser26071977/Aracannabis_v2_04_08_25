@@ -4,7 +4,6 @@ Teste da API de compartilhamento de pacientes
 """
 
 import requests
-import json
 
 # Configurações
 BASE_URL = "http://localhost:5010/api"
@@ -27,7 +26,7 @@ def test_compartilhamento_api():
         
         if csrf_response.status_code == 200:
             csrf_token = csrf_response.json().get('csrf_token')
-            print(f"   ✅ Token CSRF obtido")
+            print("   ✅ Token CSRF obtido")
         else:
             print(f"   ❌ Erro ao obter CSRF: {csrf_response.text}")
             return
@@ -44,7 +43,7 @@ def test_compartilhamento_api():
         
         if login_response.status_code == 200:
             token = login_response.json().get('access_token')
-            print(f"   ✅ Login realizado com sucesso")
+            print("   ✅ Login realizado com sucesso")
             headers = {"Authorization": f"Bearer {token}"}
         else:
             print(f"   ❌ Erro no login: {login_response.text}")

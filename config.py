@@ -6,9 +6,9 @@ load_dotenv()
 print(f"CONFIG.PY: DATABASE_URL lida do .env AQUI: {os.getenv('DATABASE_URL')}") # Log de depuração
 
 class Config:
-    # Configuração do banco de dados
-    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', 'postgresql+psycopg2://postgres:postgres@localhost:5432/aracannabis') # Added psycopg2 driver
-    print(f"CONFIG.PY: SQLALCHEMY_DATABASE_URI (from getenv/default): {SQLALCHEMY_DATABASE_URI}") # Log ajustado
+    # Configuração do banco de dados (Postgres porta 5434)
+    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5434/aracannabis')
+    print(f"CONFIG.PY: SQLALCHEMY_DATABASE_URI: {SQLALCHEMY_DATABASE_URI}")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # Configuração do JWT

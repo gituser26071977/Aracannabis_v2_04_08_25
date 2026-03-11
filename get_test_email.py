@@ -1,10 +1,9 @@
 
-import os
 from dotenv import load_dotenv
 load_dotenv()
 
 from app_cors_livre import create_app
-from models import db, Profissional
+from models import Profissional
 
 def get_email():
     app = create_app()

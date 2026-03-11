@@ -2,7 +2,7 @@
 Rotas para integração com Mercado Pago
 """
 
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 import logging
 import re

@@ -1,9 +1,8 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from models import db, Plano, Assinatura, Fatura, PagamentoRegistro, Profissional
+from models import db, Plano, Assinatura, Fatura, Profissional
 from services.billing_service import billing_service
 from services.payment_service import payment_service
-from datetime import datetime
 
 billing_bp = Blueprint('billing', __name__)
 
@@ -11,7 +10,7 @@ billing_bp = Blueprint('billing', __name__)
 def admin_required():
     current_user_id = int(get_jwt_identity())
     profissional = Profissional.query.get(current_user_id)
-    if not profissional or profissional.role != 'admin':
+    if not profissional or profissional.role not in ['admin', 'superadmin']:
         return False
     return True
 

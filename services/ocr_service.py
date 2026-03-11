@@ -1,11 +1,8 @@
 import pytesseract
 import cv2
-import numpy as np
 from PIL import Image
-import json
 import re
 from datetime import datetime
-import os
 
 class OCRService:
     def __init__(self):

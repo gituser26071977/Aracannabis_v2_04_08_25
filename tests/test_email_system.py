@@ -4,7 +4,6 @@ Teste para o sistema de email
 """
 
 import requests
-import json
 
 BASE_URL = "http://localhost:5010"
 

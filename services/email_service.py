@@ -99,13 +99,13 @@ class EmailService:
             filename = os.path.join(email_dir, f"email_{timestamp}_{to_email.replace('@', '_at_')}.html")
             
             # Conteúdo do email simulado
-            simulated_content = f"<!DOCTYPE html><html><head><meta charset='utf-8'><title>Email Simulado</title></head><body>"
-            simulated_content += f"<div><h2>📧 Email Simulado (Modo Desenvolvimento)</h2>"
+            simulated_content = "<!DOCTYPE html><html><head><meta charset='utf-8'><title>Email Simulado</title></head><body>"
+            simulated_content += "<div><h2>📧 Email Simulado (Modo Desenvolvimento)</h2>"
             simulated_content += f"<p><strong>Para:</strong> {to_email}</p>"
             simulated_content += f"<p><strong>Assunto:</strong> {subject}</p>"
             simulated_content += f"<p><strong>Data:</strong> {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}</p></div>"
             simulated_content += f"<div>{html_body}</div>"
-            simulated_content += f"<div><p>Este email foi simulado em modo desenvolvimento.</p>"
+            simulated_content += "<div><p>Este email foi simulado em modo desenvolvimento.</p>"
             simulated_content += f"<p>Em produção, seria enviado via SMTP para: {to_email}</p></div></body></html>"
             
             # Salvar arquivo
@@ -142,14 +142,14 @@ class EmailService:
         
         # Create email body
         html_body = f"<p>Olá {nome},</p>"
-        html_body += f"<p>Sua solicitação de acesso ao sistema Aracannabis foi aprovada!</p>"
-        html_body += f"<p>Seus dados de acesso temporários:</p>"
+        html_body += "<p>Sua solicitação de acesso ao sistema Aracannabis foi aprovada!</p>"
+        html_body += "<p>Seus dados de acesso temporários:</p>"
         html_body += "<ul>"
         html_body += f"<li><strong>Usuário:</strong> {usuario}</li>"
         html_body += f"<li><strong>Senha temporária:</strong> {senha_temporaria}</li>"
         html_body += f"<li><strong>Validade:</strong> {data_formatada}</li>"
         html_body += "</ul>"
-        html_body += f"<p>Por favor, altere sua senha após o primeiro login.</p>"
+        html_body += "<p>Por favor, altere sua senha após o primeiro login.</p>"
         
         # Send email
         return self.send_email(email, subject, html_body)
@@ -197,8 +197,8 @@ class EmailService:
         if observacoes:
             html_body += f"<p><strong>Observações:</strong> {observacoes}</p>"
         
-        html_body += f"<p>Acesse o sistema Aracannabis para mais detalhes.</p>"
-        html_body += f"<p>Atenciosamente,<br>Equipe Aracannabis</p>"
+        html_body += "<p>Acesse o sistema Aracannabis para mais detalhes.</p>"
+        html_body += "<p>Atenciosamente,<br>Equipe Aracannabis</p>"
         
         # Send email
         return self.send_email(to_email, subject, html_body)
@@ -215,7 +215,7 @@ class EmailService:
         html_body += "<li><strong>Plano Com IA:</strong> R$ 250,00/mês ou R$ 2.550,00/ano (15% OFF)</li>"
         html_body += "</ul>"
         html_body += "<p>Acesse nossa página de pagamentos para regularizar sua assinatura e desbloquear seu acesso imediatamente:</p>"
-        html_body += f"<p><a href='http://localhost:3010/pagamento?plano=sem_ia'>Regularizar Assinatura</a></p>" # Ajustar URL em produção
+        html_body += "<p><a href='http://localhost:3010/pagamento?plano=sem_ia'>Regularizar Assinatura</a></p>" # Ajustar URL em produção
         html_body += "<p>Se tiver dúvidas, entre em contato com nosso suporte.</p>"
         
         return self.send_email(email, subject, html_body)

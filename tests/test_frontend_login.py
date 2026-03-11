@@ -4,7 +4,6 @@ Script para testar o login do frontend
 """
 
 import requests
-import json
 
 BASE_URL = "http://localhost:5000"
 

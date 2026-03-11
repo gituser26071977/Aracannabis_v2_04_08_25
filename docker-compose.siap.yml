@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  siap-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.siap
+    container_name: siap-api
+    ports:
+      - "5002:5002"
+    environment:
+      - DATABASE_URL=postgresql://siap_user:siap_pass@siap-db:5432/siap_db
+      - SECRET_KEY=SIAP_SECRET_REDACTED
+      - FLASK_ENV=development
+      - PORT=5002
+    depends_on:
+      - siap-db
+    volumes:
+      - .:/app
+      - /app/python_env
+    command: [ "python", "app_cors_livre.py", "--port", "5002" ]
+
+  siap-db:
+    image: postgres:13-alpine
+    container_name: siap-db
+    environment:
+      - POSTGRES_USER=siap_user
+      - POSTGRES_PASSWORD=siap_pass
+      - POSTGRES_DB=siap_db
+    volumes:
+      - siap_db_data:/var/lib/postgresql/data
+    ports:
+      - "5435:5432" # Exposto no host em 5435 para não conflitar com outros
+
+  siap-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        REACT_APP_API_URL: http://localhost:5002
+    container_name: siap-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:5002
+      - CHOKIDAR_USEPOLLING=true
+      - HOST=0.0.0.0
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    stdin_open: true
+    tty: true
+    command: npm start
+    depends_on:
+      - siap-api
+
+volumes:
+  siap_db_data:
