@@ -48,6 +48,7 @@ ALLOWED_ORIGINS = [
     'http://localhost:5010',
     'http://backend:5002',
     'https://aracannabis.com.br',
+    'https://www.aracannabis.com.br',
     'https://app.aracannabis.com.br',
     'http://192.168.0.104:3000',
     'http://192.168.0.104:3000',

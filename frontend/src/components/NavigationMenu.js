@@ -80,26 +80,21 @@ const NavigationMenu = ({ open, onClose }) => {
 
         // Se for admin, garante acesso a todos os módulos, não importa onde esteja
         // "God Mode": Admins veem tudo.
+        // Se o usuário estiver logado, garante acesso aos itens do SIAP (Prontuário)
+        currentItems = [...commonItems, ...siapItems];
+
+        // Se for admin, garante acesso a todos os módulos
         if (currentUser.role === 'admin') {
-            // Reset current items and add everything
-            currentItems = [...commonItems, ...siapItems, ...sgacItems, ...adminItems];
-        } else {
-            // Non-admin logic (Module based)
-            if (activeModule === 'SIAP') {
-                currentItems = [...currentItems, ...siapItems];
-            } else if (activeModule === 'SGAC') {
-                currentItems = [...currentItems, ...sgacItems];
-            }
-            
-            // Se o usuário não for admin global, mas estiver no SIAP, 
-            // ainda queremos dar a ele a opção de ir para o SGAC se ele tiver permissão de admin em alguma associação.
-            // Para simplificar no MVP, se o módulo SGAC estiver visível no dashboard principal, 
-            // vamos permitir que profissionais naveguem até lá.
-            if (activeModule === 'SIAP' && !currentItems.some(item => item.path === '/association')) {
-                // Adicionamos o link para o dashboard da associação se for um profissional querendo gerir sua clínica
-                currentItems.push({ text: 'Gestão da Clínica', icon: <BusinessIcon />, path: '/association', auth: true });
-            }
+            currentItems = [...currentItems, ...sgacItems, ...adminItems];
+        } else if (activeModule === 'SGAC') {
+            currentItems = [...currentItems, ...sgacItems];
         }
+        
+        // Se ainda não tiver o link da associação no menu, adicionamos como opção de gestão
+        if (!currentItems.some(item => item.path === '/association')) {
+            currentItems.push({ text: 'Gestão da Clínica', icon: <BusinessIcon />, path: '/association', auth: true });
+        }
+
     }
 
     const authItems = currentUser
