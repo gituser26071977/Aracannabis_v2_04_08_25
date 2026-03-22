@@ -74,194 +74,33 @@ class AIProviderManager:
     
     def __init__(self):
         self.providers = {
-            'groq': {
-                'available': GROQ_AVAILABLE,
-                'client': None,
-                'models': ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768'],
-                'type': 'cloud'
-            },
-            'openai': {
-                'available': OPENAI_AVAILABLE,
-                'client': None,
-                'models': ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo'],
-                'type': 'cloud'
-            },
-            'anthropic': {
-                'available': ANTHROPIC_AVAILABLE,
-                'client': None,
-                'models': ['claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022', 'claude-3-opus-20240229'],
-                'type': 'cloud'
-            },
             'google': {
                 'available': GOOGLE_AVAILABLE,
                 'client': None,
-                'models': ['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.0-flash-exp', 'gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-2.5-flash-native-audio-preview-12-2025', 'gemini-2.5-flash-preview-tts'],
-                'type': 'cloud'
-            },
-            'ollama_local': {
-                'available': OLLAMA_AVAILABLE,
-                'client': None,
-                'models': ['deepseek-ocr:latest', 'deepseek-coder:6.7b', 'gemma3:4b', 'gemma3:12b', 'gpt-oss:20b', 'llama3.1:8b', 'llama3.2:1b', 'llama3.2:3b', 'mistral:7b', 'phi3:mini', 'qwen3:1.7b', 'qwen3-coder:480b-cloud', 'qwen3-coder:latest', 'qwen3-vl:2b', 'qwen3-vl:8b'],
-                'type': 'local'
-            },
-            'ollama_cloud': {
-                'available': OLLAMA_AVAILABLE,
-                'client': None,
-                'models': ['deepseek-ocr:latest', 'deepseek-coder:6.7b', 'gemma3:4b', 'gemma3:12b', 'gpt-oss:20b', 'llama3.1:8b', 'llama3.2:1b', 'llama3.2:3b', 'mistral:7b', 'phi3:mini', 'qwen3:1.7b', 'qwen3-coder:480b-cloud', 'qwen3-coder:latest', 'qwen3-vl:2b', 'qwen3-vl:8b'],
-                'type': 'cloud'
-            },
-            'deepseek': {
-                'available': OPENAI_AVAILABLE,  # Uses OpenAI compatible API
-                'client': None,
-                'models': ['deepseek-chat', 'deepseek-coder'],
-                'type': 'cloud'
-            },
-            'maritaca': {
-                'available': MARITACA_AVAILABLE,
-                'client': None,
-                'models': ['sabiazinho-4', 'maritaca-ocr', 'maritaca-base'],
-                'type': 'cloud'
-            },
-            'xai': {
-                'available': False,  # xAI Grok API not publicly available yet
-                'client': None,
-                'models': ['grok-beta', 'grok-vision'],
-                'type': 'cloud'
-            },
-            'zhipu': {
-                'available': OPENAI_AVAILABLE, # Uses OpenAI compatible API
-                'client': None,
-                'models': ['glm-4', 'glm-4-plus', 'glm-4-air', 'glm-4-flash', 'glm-4v', 'glm-4v-flash', 'glm-4-alltools'],
+                'models': ['gemini-2.5-flash-lite'],
                 'type': 'cloud'
             }
         }
         
-        # Carregar configurações persistidas
-        if CONFIG_STORAGE_AVAILABLE:
-            try:
-                config = load_config()
-                self.default_provider = config.get('default_provider', os.getenv('DEFAULT_LLM_PROVIDER', 'groq'))
-                self.default_model = config.get('default_model', os.getenv('DEFAULT_LLM_MODEL', 'llama-3.3-70b-versatile'))
-                self.default_vision_provider = config.get('default_vision_provider', os.getenv('DEFAULT_LLM_VISION_PROVIDER', self.default_provider))
-                self.default_vision_model = config.get('default_vision_model', os.getenv('DEFAULT_LLM_VISION_MODEL', self.default_model))
-                self.default_multimodal_provider = config.get('default_multimodal_provider', os.getenv('DEFAULT_LLM_MULTIMODAL_PROVIDER', self.default_vision_provider))
-                self.default_multimodal_model = config.get('default_multimodal_model', os.getenv('DEFAULT_LLM_MULTIMODAL_MODEL', self.default_vision_model))
-                logger.info("Configurações carregadas do arquivo de persistência")
-            except Exception as e:
-                logger.warning(f"Erro ao carregar configurações persistidas: {e}. Usando variáveis de ambiente.")
-                self.default_provider = os.getenv('DEFAULT_LLM_PROVIDER', 'groq')
-                self.default_model = os.getenv('DEFAULT_LLM_MODEL', 'llama-3.3-70b-versatile')
-                self.default_vision_provider = os.getenv('DEFAULT_LLM_VISION_PROVIDER', self.default_provider)
-                self.default_vision_model = os.getenv('DEFAULT_LLM_VISION_MODEL', self.default_model)
-                self.default_multimodal_provider = os.getenv('DEFAULT_LLM_MULTIMODAL_PROVIDER', self.default_vision_provider)
-                self.default_multimodal_model = os.getenv('DEFAULT_LLM_MULTIMODAL_MODEL', self.default_vision_model)
-        else:
-            self.default_provider = os.getenv('DEFAULT_LLM_PROVIDER', 'groq')
-            self.default_model = os.getenv('DEFAULT_LLM_MODEL', 'llama-3.3-70b-versatile')
-            self.default_vision_provider = os.getenv('DEFAULT_LLM_VISION_PROVIDER', self.default_provider)
-            self.default_vision_model = os.getenv('DEFAULT_LLM_VISION_MODEL', self.default_model)
-            self.default_multimodal_provider = os.getenv('DEFAULT_LLM_MULTIMODAL_PROVIDER', self.default_vision_provider)
-            self.default_multimodal_model = os.getenv('DEFAULT_LLM_MULTIMODAL_MODEL', self.default_vision_model)
+        # Forçar uso exclusivo do Gemini 2.5 Flash Lite
+        self.default_provider = 'google'
+        self.default_model = 'gemini-2.5-flash-lite'
+        self.default_vision_provider = 'google'
+        self.default_vision_model = 'gemini-2.5-flash-lite'
+        self.default_multimodal_provider = 'google'
+        self.default_multimodal_model = 'gemini-2.5-flash-lite'
+
         
         self._initialize_clients()
     
     def _initialize_clients(self):
         """Inicializa os clientes dos provedores"""
         try:
-            if self.providers['groq']['available']:
-                api_key = get_api_key('groq') or os.getenv('GROQ_API_KEY')
-                if api_key:
-                    self.providers['groq']['client'] = groq.Groq(api_key=api_key)
-            
-            if self.providers['openai']['available']:
-                api_key = get_api_key('openai') or os.getenv('OPENAI_API_KEY')
-                if api_key:
-                    self.providers['openai']['client'] = OpenAI(api_key=api_key)
-            
-            if self.providers['anthropic']['available']:
-                api_key = get_api_key('anthropic') or os.getenv('ANTHROPIC_API_KEY')
-                if api_key:
-                    self.providers['anthropic']['client'] = anthropic.Anthropic(api_key=api_key)
-            
-            if self.providers['google']['available']:
+            if 'google' in self.providers and self.providers['google']['available']:
                 api_key = get_api_key('google') or os.getenv('GOOGLE_API_KEY')
                 if api_key:
                     genai.configure(api_key=api_key)
                     self.providers['google']['client'] = genai
-            
-            # Inicializar Ollama Local - verificar conectividade local
-            if self.providers['ollama_local']['available']:
-                try:
-                    # Testar conexão com Ollama local (default: localhost:11434)
-                    ollama.list()
-                    self.providers['ollama_local']['client'] = ollama
-                    logger.info("Ollama local conectado com sucesso")
-                except Exception as e:
-                    logger.warning(f"Ollama local não disponível: {str(e)}")
-                    self.providers['ollama_local']['available'] = False
-            
-            # Inicializar Ollama Cloud - configurar base URL customizada
-            if self.providers['ollama_cloud']['available']:
-                try:
-                    # Configurar Ollama para cloud (base URL customizada)
-                    ollama_cloud_url = os.getenv('OLLAMA_CLOUD_URL', 'http://localhost:11434')
-                    # Nota: o pacote ollama não suporta fácil mudança de URL base
-                    # Para cloud, precisaríamos de uma solução diferente
-                    # Por enquanto, usamos a mesma instância local
-                    ollama.list()
-                    self.providers['ollama_cloud']['client'] = ollama
-                    logger.info("Ollama cloud configurado (nota: usando instância local por padrão)")
-                except Exception as e:
-                    logger.warning(f"Ollama cloud não disponível: {str(e)}")
-                    self.providers['ollama_cloud']['available'] = False
-            
-            # Inicializar DeepSeek (compatível com OpenAI)
-            if self.providers['deepseek']['available']:
-                try:
-                    api_key = get_api_key('deepseek') or os.getenv('DEEPSEEK_API_KEY')
-                    if api_key:
-                        base_url = get_base_url('deepseek') or os.getenv('DEEPSEEK_BASE_URL', 'https://api.deepseek.com')
-                        self.providers['deepseek']['client'] = OpenAI(
-                            api_key=api_key,
-                            base_url=base_url
-                        )
-                except Exception as e:
-                    logger.warning(f"DeepSeek não disponível: {str(e)}")
-                    self.providers['deepseek']['available'] = False
-
-            # Inicializar Maritaca (compatível com OpenAI)
-            if self.providers['maritaca']['available']:
-                try:
-                    api_key = get_api_key('maritaca') or os.getenv('MARITACA_API_KEY')
-                    if api_key:
-                        base_url = get_base_url('maritaca') or os.getenv('MARITACA_BASE_URL', 'https://chat.maritaca.ai/api')
-                        self.providers['maritaca']['client'] = OpenAI(
-                            api_key=api_key,
-                            base_url=base_url,
-                            timeout=60.0
-                        )
-                    else:
-                        self.providers['maritaca']['available'] = False
-                except Exception as e:
-                    logger.warning(f"Maritaca não disponível: {str(e)}")
-                    self.providers['maritaca']['available'] = False
-
-            # Inicializar Zhipu AI (GLM-4)
-            if self.providers['zhipu']['available']:
-                try:
-                    api_key = get_api_key('zhipu') or os.getenv('ZHIPU_API_KEY')
-                    if api_key:
-                        base_url = get_base_url('zhipu') or os.getenv('ZHIPU_BASE_URL', "https://open.bigmodel.cn/api/paas/v4/")
-                        self.providers['zhipu']['client'] = OpenAI(
-                            api_key=api_key,
-                            base_url=base_url
-                        )
-                    else:
-                        self.providers['zhipu']['available'] = False
-                except Exception as e:
-                    logger.warning(f"Zhipu AI não disponível: {str(e)}")
-                    self.providers['zhipu']['available'] = False
-        
         except Exception as e:
             logger.error(f"Erro ao inicializar clientes de IA: {str(e)}")
     
