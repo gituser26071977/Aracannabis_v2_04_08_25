@@ -168,6 +168,10 @@ def create_app():
     from routes.patient_import_agent import patient_import_bp
     app.register_blueprint(patient_import_bp, url_prefix='/api/import-agent')
     
+    # [NEW] Virtual Secretary Dr. Anderson
+    from routes.dr_anderson_webhook import dr_anderson_bp
+    app.register_blueprint(dr_anderson_bp, url_prefix='/api/dr-anderson')
+    
     # Patient Portal (NEW)
     from routes.patient_auth import patient_auth_bp
     from routes.patient_portal import patient_portal_bp

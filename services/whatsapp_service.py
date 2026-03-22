@@ -5,9 +5,9 @@ import logging
 logger = logging.getLogger(__name__)
 
 class WhatsAppService:
-    def __init__(self):
+    def __init__(self, instance_name: str = None):
         self.api_url = os.environ.get('WHATSAPP_API_URL', 'http://localhost:8080')
-        self.instance_name = os.environ.get('WHATSAPP_INSTANCE_NAME', 'siap')
+        self.instance_name = instance_name or os.environ.get('WHATSAPP_INSTANCE_NAME', 'siap')
         self.api_key = os.environ.get('WHATSAPP_API_KEY')
         self.admin_phone = os.environ.get('WHATSAPP_ADMIN_PHONE') # Telefone do Super Admin
 
