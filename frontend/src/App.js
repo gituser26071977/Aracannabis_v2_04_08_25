@@ -65,6 +65,7 @@ import MembersPage from './pages/association/MembersPage';
 import StockPage from './pages/association/StockPage';
 import DispensationPage from './pages/association/DispensationPage';
 import ConfiguracaoPrescricaoPage from './pages/ConfiguracaoPrescricaoPage';
+import ConfiguracaoIAPage from './pages/ConfiguracaoIAPage';
 
 import NavigationMenu from './components/NavigationMenu';
 import BusinessIcon from '@mui/icons-material/Business';
@@ -108,6 +109,23 @@ function AdminRoute({ children }) {
 
 
 
+// ===== PAGE TRANSITION WRAPPER =====
+function PageTransition({ children }) {
+  return (
+    <Box
+      sx={{
+        animation: 'fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+        '@keyframes fadeInUp': {
+          from: { opacity: 0, transform: 'translateY(16px)' },
+          to: { opacity: 1, transform: 'translateY(0)' },
+        },
+      }}
+    >
+      {children}
+    </Box>
+  );
+}
+
 function LoginPage() {
   const [usuario, setUsuario] = useState('');
   const [senha, setSenha] = useState('');
@@ -130,7 +148,10 @@ function LoginPage() {
   };
 
   const { mode, toggleColorMode } = useColorMode();
-  const theme = useColorMode(); // Access theme directly if needed, but Context handles it
+
+  const bgGradient = mode === 'dark'
+    ? 'radial-gradient(ellipse at 20% 0%, #0d2f28 0%, #0a1512 40%, #050a08 100%)'
+    : 'radial-gradient(ellipse at 20% 0%, #e0f2e9 0%, #f0f4f1 40%, #e8ecea 100%)';
 
   return (
     <Box
@@ -143,13 +164,7 @@ function LoginPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundImage: mode === 'dark'
-          ? 'url(/login-bg.png)'
-          : `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%232e7d32' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-        backgroundColor: mode === 'dark' ? 'transparent' : '#fcfaf5',
-        backgroundSize: mode === 'dark' ? 'cover' : 'auto',
-        backgroundPosition: 'center',
-        backgroundRepeat: mode === 'dark' ? 'no-repeat' : 'repeat',
+        background: bgGradient,
         zIndex: 1000,
         '&::before': {
           content: '""',
@@ -158,24 +173,60 @@ function LoginPage() {
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: mode === 'dark' ? 'rgba(0, 0, 0, 0.6)' : 'rgba(46, 125, 50, 0.02)',
-          backdropFilter: mode === 'dark' ? 'blur(4px)' : 'none',
-          zIndex: 1
-        }
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+          opacity: mode === 'dark' ? 0.04 : 0.025,
+          pointerEvents: 'none',
+        },
       }}
     >
+      {/* Floating decorative elements */}
+      <Box
+        sx={{
+          position: 'absolute',
+          top: '10%',
+          left: '10%',
+          width: 200,
+          height: 200,
+          borderRadius: '50%',
+          background: mode === 'dark'
+            ? 'radial-gradient(circle, rgba(0,212,170,0.08) 0%, transparent 70%)'
+            : 'radial-gradient(circle, rgba(13,115,119,0.06) 0%, transparent 70%)',
+          filter: 'blur(40px)',
+          animation: 'float 6s ease-in-out infinite',
+        }}
+      />
+      <Box
+        sx={{
+          position: 'absolute',
+          bottom: '15%',
+          right: '15%',
+          width: 300,
+          height: 300,
+          borderRadius: '50%',
+          background: mode === 'dark'
+            ? 'radial-gradient(circle, rgba(245,166,35,0.06) 0%, transparent 70%)'
+            : 'radial-gradient(circle, rgba(245,166,35,0.04) 0%, transparent 70%)',
+          filter: 'blur(50px)',
+          animation: 'float 8s ease-in-out infinite reverse',
+        }}
+      />
+
       {/* Theme Toggle Button */}
       <IconButton
         onClick={toggleColorMode}
         sx={{
           position: 'absolute',
-          top: 20,
-          right: 20,
+          top: 24,
+          right: 24,
           zIndex: 1002,
-          color: mode === 'dark' ? 'white' : 'primary.main',
-          bgcolor: mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+          color: 'text.primary',
+          bgcolor: mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)',
+          backdropFilter: 'blur(8px)',
+          border: `1px solid ${mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)'}`,
+          transition: 'all 0.3s ease',
           '&:hover': {
-            bgcolor: mode === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)'
+            bgcolor: mode === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)',
+            transform: 'scale(1.1) rotate(15deg)',
           }
         }}
       >
@@ -183,63 +234,96 @@ function LoginPage() {
       </IconButton>
 
       <Paper
-        elevation={mode === 'dark' ? 24 : 3}
+        elevation={0}
         sx={{
-          p: 5,
+          p: { xs: 3, sm: 5 },
           width: '100%',
-          maxWidth: 450,
+          maxWidth: 460,
           position: 'relative',
           zIndex: 2,
-          backgroundColor: mode === 'dark' ? 'rgba(30, 30, 30, 0.8)' : 'background.paper',
-          backdropFilter: mode === 'dark' ? 'blur(20px)' : 'none',
-          borderRadius: 4,
-          border: mode === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : 'none',
-          color: mode === 'dark' ? 'white' : 'text.primary',
-          boxShadow: mode === 'dark' ? '0 8px 32px 0 rgba(0, 0, 0, 0.8)' : 3
+          background: mode === 'dark'
+            ? 'rgba(26, 31, 29, 0.75)'
+            : 'rgba(255, 255, 255, 0.72)',
+          backdropFilter: 'blur(24px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+          borderRadius: '24px',
+          border: `1px solid ${mode === 'dark' ? 'rgba(0,212,170,0.1)' : 'rgba(13,115,119,0.1)'}`,
+          boxShadow: mode === 'dark'
+            ? '0 25px 50px rgba(0,0,0,0.35), 0 0 0 1px rgba(0,212,170,0.05)'
+            : '0 25px 50px rgba(0,0,0,0.08), 0 0 0 1px rgba(13,115,119,0.05)',
+          animation: 'scaleIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+          '@keyframes scaleIn': {
+            from: { opacity: 0, transform: 'scale(0.95) translateY(10px)' },
+            to: { opacity: 1, transform: 'scale(1) translateY(0)' },
+          },
         }}
       >
         <Box sx={{ mb: 4, textAlign: 'center' }}>
-          <Typography variant="h4" component="h1" gutterBottom fontWeight="bold" sx={{ color: '#81c784' }}>
-            Aracannabis
+          <Typography
+            variant="h3"
+            component="h1"
+            gutterBottom
+            fontWeight={800}
+            sx={{
+              background: mode === 'dark'
+                ? 'linear-gradient(135deg, #00d4aa 0%, #33ddbf 50%, #ffd166 100%)'
+                : 'linear-gradient(135deg, #0d7377 0%, #14a085 50%, #f5a623 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              letterSpacing: '-0.03em',
+              fontSize: { xs: '2rem', sm: '2.5rem' },
+            }}
+          >
+            🌿 Aracannabis
           </Typography>
-          <Typography variant="subtitle1" sx={{ opacity: 0.8 }}>
+          <Typography
+            variant="subtitle1"
+            sx={{
+              opacity: 0.7,
+              fontWeight: 500,
+              letterSpacing: '0.02em',
+            }}
+          >
             Prontuário Médico & Gestão
           </Typography>
         </Box>
 
         {(loginError || error) && (
-          <Alert severity="error" sx={{ mb: 3, backgroundColor: 'rgba(211, 47, 47, 0.2)', color: '#ffcdd2' }}>
+          <Alert
+            severity="error"
+            sx={{
+              mb: 3,
+              animation: 'shake 0.5s ease',
+              '@keyframes shake': {
+                '0%, 100%': { transform: 'translateX(0)' },
+                '10%, 30%, 50%, 70%, 90%': { transform: 'translateX(-4px)' },
+                '20%, 40%, 60%, 80%': { transform: 'translateX(4px)' },
+              },
+            }}
+          >
             {loginError || error}
           </Alert>
         )}
 
         <form onSubmit={handleSubmit}>
           <TextField
-            label="Usuário"
+            label="👤 Usuário"
             variant="outlined"
             fullWidth
             margin="normal"
             value={usuario}
             onChange={(e) => setUsuario(e.target.value)}
             required
-            InputLabelProps={{ style: { color: mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'inherit' } }}
             sx={{
               '& .MuiOutlinedInput-root': {
-                '& fieldset': {
-                  borderColor: mode === 'dark' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.23)'
-                },
-                '&:hover fieldset': {
-                  borderColor: mode === 'dark' ? '#81c784' : 'primary.main'
-                },
-                '&.Mui-focused fieldset': {
-                  borderColor: mode === 'dark' ? '#81c784' : 'primary.main'
-                },
-                color: mode === 'dark' ? 'white' : 'inherit'
-              }
+                borderRadius: '14px',
+                transition: 'all 0.3s ease',
+              },
             }}
           />
           <TextField
-            label="Senha"
+            label="🔒 Senha"
             type="password"
             variant="outlined"
             fullWidth
@@ -247,20 +331,11 @@ function LoginPage() {
             value={senha}
             onChange={(e) => setSenha(e.target.value)}
             required
-            InputLabelProps={{ style: { color: mode === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'inherit' } }}
             sx={{
               '& .MuiOutlinedInput-root': {
-                '& fieldset': {
-                  borderColor: mode === 'dark' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.23)'
-                },
-                '&:hover fieldset': {
-                  borderColor: mode === 'dark' ? '#81c784' : 'primary.main'
-                },
-                '&.Mui-focused fieldset': {
-                  borderColor: mode === 'dark' ? '#81c784' : 'primary.main'
-                },
-                color: mode === 'dark' ? 'white' : 'inherit'
-              }
+                borderRadius: '14px',
+                transition: 'all 0.3s ease',
+              },
             }}
           />
 
@@ -269,7 +344,25 @@ function LoginPage() {
               component={Link}
               to="/definir-senha/solicitar"
               size="small"
-              sx={{ textTransform: 'none', color: '#f9a825', fontWeight: '500' }}
+              sx={{
+                textTransform: 'none',
+                fontWeight: 600,
+                color: 'secondary.main',
+                position: 'relative',
+                '&::after': {
+                  content: '""',
+                  position: 'absolute',
+                  bottom: 2,
+                  left: 0,
+                  width: 0,
+                  height: '1px',
+                  background: 'currentColor',
+                  transition: 'width 0.3s ease',
+                },
+                '&:hover::after': {
+                  width: '100%',
+                },
+              }}
             >
               Esqueceu a senha?
             </Button>
@@ -283,31 +376,66 @@ function LoginPage() {
             sx={{
               mt: 4,
               height: 56,
-              fontSize: '1.1rem',
-              fontWeight: 'bold',
-              borderRadius: 2,
-              boxShadow: '0 4px 14px 0 rgba(46, 125, 50, 0.39)',
+              fontSize: '1.05rem',
+              fontWeight: 700,
+              borderRadius: '14px',
+              background: mode === 'dark'
+                ? 'linear-gradient(135deg, #00d4aa 0%, #33ddbf 100%)'
+                : 'linear-gradient(135deg, #0d7377 0%, #14a085 100%)',
+              boxShadow: mode === 'dark'
+                ? '0 4px 20px rgba(0,212,170,0.35)'
+                : '0 4px 20px rgba(13,115,119,0.30)',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
               '&:hover': {
-                boxShadow: '0 6px 20px rgba(46, 125, 50, 0.23)',
-              }
+                transform: 'scale(1.02) translateY(-2px)',
+                boxShadow: mode === 'dark'
+                  ? '0 8px 30px rgba(0,212,170,0.45)'
+                  : '0 8px 30px rgba(13,115,119,0.40)',
+              },
+              '&:active': {
+                transform: 'scale(0.98)',
+              },
             }}
             disabled={loading}
           >
-            {loading ? <CircularProgress size={24} color="inherit" /> : 'Entrar na Plataforma'}
+            {loading ? (
+              <CircularProgress size={24} sx={{ color: 'inherit' }} />
+            ) : (
+              '✨ Entrar na Plataforma'
+            )}
           </Button>
         </form>
 
-        <Box sx={{ mt: 5, textAlign: 'center' }}>
-          <Typography variant="body2" sx={{ opacity: 0.6 }}>
+        <Box sx={{ mt: 4, textAlign: 'center' }}>
+          <Typography variant="body2" sx={{ opacity: 0.5, mb: 0.5 }}>
             Novo por aqui?
           </Typography>
           <Button
             component={Link}
             to="/cadastro-profissionais"
             variant="text"
-            sx={{ mt: 1, textTransform: 'none', color: '#81c784', fontWeight: 'bold' }}
+            sx={{
+              textTransform: 'none',
+              fontWeight: 700,
+              color: 'primary.main',
+              position: 'relative',
+              '&::after': {
+                content: '""',
+                position: 'absolute',
+                bottom: 2,
+                left: 0,
+                width: 0,
+                height: '2px',
+                background: 'currentColor',
+                transition: 'width 0.3s ease',
+                borderRadius: '1px',
+              },
+              '&:hover::after': {
+                width: '100%',
+              },
+            }}
           >
-            Solicite seu cadastro como profissional
+            👨‍⚕️ Solicite seu cadastro como profissional
           </Button>
         </Box>
       </Paper>
@@ -326,11 +454,21 @@ function App() {
 
 function AppContent() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const { currentUser } = useAuth();
   const location = useLocation();
   const { mode, toggleColorMode } = useColorMode();
 
   const isLoginPage = location.pathname === '/login' || location.pathname === '/patient/login';
+
+  // Scroll-aware AppBar
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const toggleMenu = () => {
     setMenuOpen(!menuOpen);
@@ -339,47 +477,133 @@ function AppContent() {
   return (
     <AssociationProvider>
       {!isLoginPage && (
-        <AppBar position="static">
-          <Toolbar>
+        <AppBar
+          position="sticky"
+          elevation={scrolled ? 2 : 0}
+          sx={{
+            transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+            bgcolor: scrolled
+              ? (mode === 'dark' ? 'rgba(10,15,13,0.85)' : 'rgba(255,255,255,0.85)')
+              : (mode === 'dark' ? 'transparent' : 'transparent'),
+            backdropFilter: scrolled ? 'blur(20px) saturate(180%)' : 'none',
+            WebkitBackdropFilter: scrolled ? 'blur(20px) saturate(180%)' : 'none',
+            borderBottom: scrolled
+              ? `1px solid ${mode === 'dark' ? 'rgba(0,212,170,0.08)' : 'rgba(13,115,119,0.08)'}`
+              : '1px solid transparent',
+          }}
+        >
+          <Toolbar sx={{ minHeight: { xs: 56, sm: 64 } }}>
             <IconButton
               edge="start"
               color="inherit"
               aria-label="menu"
               onClick={toggleMenu}
-              sx={{ mr: 2 }}
+              sx={{
+                mr: 2,
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  transform: 'scale(1.1)',
+                  bgcolor: (theme) => `${theme.palette.primary.main}14`,
+                },
+              }}
             >
               <MenuIcon />
             </IconButton>
-            <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-              {APP_TITLE}
+
+            <Typography
+              variant="h6"
+              component="div"
+              sx={{
+                flexGrow: 1,
+                fontWeight: 800,
+                letterSpacing: '-0.02em',
+                background: mode === 'dark'
+                  ? 'linear-gradient(135deg, #00d4aa 0%, #ffd166 100%)'
+                  : 'linear-gradient(135deg, #0d7377 0%, #14a085 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+                fontSize: { xs: '1.1rem', sm: '1.25rem' },
+              }}
+            >
+              🌿 {APP_TITLE}
             </Typography>
 
             {/* Association Selector for SaaS */}
             {currentUser && <AssociationSelector />}
 
-            <IconButton color="inherit" onClick={toggleColorMode}>
+            <IconButton
+              color="inherit"
+              onClick={toggleColorMode}
+              sx={{
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  transform: 'rotate(20deg) scale(1.1)',
+                  bgcolor: (theme) => `${theme.palette.primary.main}14`,
+                },
+              }}
+            >
               {mode === 'dark' ? <LightMode /> : <DarkMode />}
             </IconButton>
 
             {currentUser && (
-              <Typography variant="body1" sx={{ mr: 2, ml: 2 }}>
-                Olá, {currentUser.nome}
+              <Typography
+                variant="body2"
+                sx={{
+                  mr: 2,
+                  ml: 2,
+                  fontWeight: 600,
+                  opacity: 0.8,
+                  display: { xs: 'none', sm: 'block' },
+                }}
+              >
+                👋 Olá, {currentUser.nome}
               </Typography>
             )}
             {currentUser ? (
-              <Button color="inherit" onClick={() => window.open(`${process.env.REACT_APP_API_URL || 'http://localhost:5002'}/api/status`, '_blank')} target="_blank">
-                API
+              <Button
+                color="inherit"
+                onClick={() => window.open(`${process.env.REACT_APP_API_URL || 'http://localhost:5002'}/api/status`, '_blank')}
+                target="_blank"
+                sx={{
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  borderRadius: '10px',
+                  px: 2,
+                  display: { xs: 'none', sm: 'flex' },
+                  '&:hover': {
+                    bgcolor: (theme) => `${theme.palette.primary.main}14`,
+                  },
+                }}
+              >
+                🔌 API
               </Button>
             ) : (
-              <Button color="inherit" component={Link} to="/login">
-                Login
+              <Button
+                color="inherit"
+                component={Link}
+                to="/login"
+                sx={{
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  borderRadius: '10px',
+                  px: 2,
+                  '&:hover': {
+                    bgcolor: (theme) => `${theme.palette.primary.main}14`,
+                  },
+                }}
+              >
+                🔑 Login
               </Button>
             )}
           </Toolbar>
         </AppBar>
       )}
       <NavigationMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
-      <Container maxWidth={isLoginPage ? false : "lg"} sx={isLoginPage ? { p: 0, m: 0 } : { mt: 4 }}>
+      <Container
+        maxWidth={isLoginPage ? false : "xl"}
+        sx={isLoginPage ? { p: 0, m: 0 } : { mt: { xs: 2, sm: 4 }, mb: { xs: 2, sm: 4 } }}
+      >
         <Routes>
           <Route path="/" element={<LandingPage />} />
 
@@ -485,6 +709,14 @@ function AppContent() {
             element={
               <ProtectedRoute>
                 <ConfiguracaoPrescricaoPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/configuracao-ia"
+            element={
+              <ProtectedRoute>
+                <ConfiguracaoIAPage />
               </ProtectedRoute>
             }
           />

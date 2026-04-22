@@ -154,29 +154,16 @@ class OCRService:
         return structured_data
 
     def process_exam_image(self, image_path):
-        """Processa uma imagem de exame completo: OCR + análise de dados"""
-        try:
-            # Extrair texto
-            ocr_result = self.extract_text(image_path)
-
-            # Analisar dados médicos
-            structured_data = self.parse_medical_data(ocr_result['texto'])
-
-            return {
-                'texto_extraido': ocr_result['texto'],
-                'confianca': ocr_result['confianca'],
-                'dados_estruturados': structured_data,
-                'dados_brutos_ocr': ocr_result['dados_brutos'],
-                'status': 'concluido',
-                'processado_em': datetime.utcnow().isoformat()
-            }
-
-        except Exception as e:
-            return {
-                'erro': str(e),
-                'status': 'erro',
-                'processado_em': datetime.utcnow().isoformat()
-            }
+        """Processa uma imagem de exame completo: OCR + análise de dados (DESATIVADO)"""
+        logger.warning(f"OCR interceptado: Serviço desativado para {image_path}")
+        return {
+            "status": "disabled",
+            "message": "Serviço de OCR temporariamente desativado.",
+            "texto_extraido": "",
+            "confianca": 0,
+            "dados_estruturados": {},
+            "processado_em": datetime.utcnow().isoformat()
+        }
 
 # Instância global do serviço
 ocr_service = OCRService()

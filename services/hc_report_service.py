@@ -114,24 +114,14 @@ class HCReportService:
         """
         
         try:
-            # Tentar primariamente Zhipu (GLM-4) conforme politica de deploy
+            # Usar o ai_manager que agora está padronizado no Gemini 2.5 Flash Lite
             resp = ai_manager.chat_completion(
-                messages=[{"role": "user", "content": prompt}],
-                provider="zhipu",
-                model="glm-4-plus"
+                messages=[{"role": "user", "content": prompt}]
             )
             return resp.get('content', "Justificativa não gerada automaticamente.")
-        except Exception as e_zhipu:
-            # Fallback explícito para o Ollama local em caso de falha da API externa
-            try:
-                resp_fallback = ai_manager.chat_completion(
-                    messages=[{"role": "user", "content": prompt}],
-                    provider="ollama_local",
-                    model="llama3.1:8b"
-                )
-                return resp_fallback.get('content', "Justificativa não gerada automaticamente (Fallback Ollama).")
-            except Exception as e_ollama:
-                return f"Erro ao gerar justificativa automática (Zhipu falhou: {str(e_zhipu)} | Ollama falhou: {str(e_ollama)}). Por favor, redija manualmente."
+        except Exception as e:
+            logger.error(f"Erro ao gerar justificativa automática: {str(e)}")
+            return f"Erro ao gerar justificativa automática: {str(e)}. Por favor, redija manualmente."
 
     def _construir_pdf_hc(self, paciente, profissional, argumentacao, grafico_path, dosagens):
         pdf_filename = f"laudo_hc_{paciente.id}_{datetime.now().strftime('%Y%m%d%H%M%S')}.pdf"

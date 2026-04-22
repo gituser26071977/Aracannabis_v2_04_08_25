@@ -168,7 +168,7 @@ const DosageManager = ({ patientId }) => {
 
   const calcularDoseDiaria = (dosagem) => {
     const gotasPorMl = dosagem.gotas_por_ml || 30;
-    const mlPorGota = gotasPorMl > 0 ? 1 / gotasPorMl : 0.033;
+    const mlPorGota = gotasPorMl > 0 ? 1 / gotasPorMl : 0.05;
 
     let totalGotas = 0;
     if (dosagem.tipo_dose === 'variavel' && dosagem.esquema_doses) {

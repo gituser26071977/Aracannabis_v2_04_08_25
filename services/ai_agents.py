@@ -82,7 +82,7 @@ class AIProviderManager:
             }
         }
         
-        # Forçar uso exclusivo do Gemini 2.5 Flash Lite
+        # Padronizar no Gemini 2.5 Flash Lite
         self.default_provider = 'google'
         self.default_model = 'gemini-2.5-flash-lite'
         self.default_vision_provider = 'google'
@@ -90,19 +90,20 @@ class AIProviderManager:
         self.default_multimodal_provider = 'google'
         self.default_multimodal_model = 'gemini-2.5-flash-lite'
 
-        
         self._initialize_clients()
-    
+        logger.info(f"AI Manager iniciado (Padrao: {self.default_provider}/{self.default_model})")
+
     def _initialize_clients(self):
-        """Inicializa os clientes dos provedores"""
+        """Inicializa exclusivamente o cliente Google Gemini"""
         try:
             if 'google' in self.providers and self.providers['google']['available']:
                 api_key = get_api_key('google') or os.getenv('GOOGLE_API_KEY')
                 if api_key:
                     genai.configure(api_key=api_key)
                     self.providers['google']['client'] = genai
+                    logger.info("Google Gemini inicializado com sucesso.")
         except Exception as e:
-            logger.error(f"Erro ao inicializar clientes de IA: {str(e)}")
+            logger.error(f"Erro ao inicializar Google Gemini: {str(e)}")
     
     def get_available_providers(self) -> List[str]:
         """Retorna lista de provedores disponíveis"""
@@ -414,17 +415,29 @@ class AIProviderManager:
         """Chama API Google"""
         # Converter mensagens para formato Google
         contents = []
+        system_instruction = None
+        
         for msg in messages:
+            if msg['role'] == 'system':
+                system_instruction = msg['content']
+                continue
+                
+            role = "user" if msg['role'] == 'user' else "model"
             parts = [{"text": msg['content']}]
             contents.append({
-                "role": "user" if msg['role'] == 'user' else "model",
+                "role": role,
                 "parts": parts
             })
         
-        model_obj = self.providers['google']['client'].GenerativeModel(model)
+        # Google requer system_instruction na inicialização do modelo
+        model_obj = self.providers['google']['client'].GenerativeModel(
+            model_name=model,
+            system_instruction=system_instruction
+        )
+        
         response = model_obj.generate_content(
             contents,
-            generation_config=genai.types.GenerationConfig(
+            generation_config=self.providers['google']['client'].types.GenerationConfig(
                 temperature=temperature,
                 max_output_tokens=max_tokens
             )

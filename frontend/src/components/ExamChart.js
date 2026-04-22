@@ -109,9 +109,9 @@ const ExamChart = ({ patientId }) => {
 
         const data = await response.json();
 
-        // Ordenar dados por data
+        // Ordenar dados por data (forçar meio-dia para evitar deslocamento de timezone)
         if (data.dados && Array.isArray(data.dados)) {
-          data.dados.sort((a, b) => new Date(a.data) - new Date(b.data));
+          data.dados.sort((a, b) => new Date(a.data + 'T12:00:00') - new Date(b.data + 'T12:00:00'));
         }
 
         setChartData(data);
@@ -155,7 +155,7 @@ const ExamChart = ({ patientId }) => {
         break;
     }
 
-    return chartData.dados.filter(item => new Date(item.data) >= startDate);
+    return chartData.dados.filter(item => new Date(item.data + 'T12:00:00') >= startDate);
   }, [chartData, period]);
 
   // Calcular estatísticas
@@ -185,7 +185,7 @@ const ExamChart = ({ patientId }) => {
       return (
         <Paper elevation={4} sx={{ p: 2, bgcolor: 'background.paper', border: '1px solid #ccc' }}>
           <Typography variant="subtitle2" color="text.secondary">
-            {new Date(label).toLocaleDateString('pt-BR')}
+            {new Date(label + 'T12:00:00').toLocaleDateString('pt-BR')}
           </Typography>
           <Box sx={{ mt: 1 }}>
             <Typography variant="h6" color="primary" fontWeight="bold">
@@ -342,7 +342,7 @@ const ExamChart = ({ patientId }) => {
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee" />
                     <XAxis
                       dataKey="data"
-                      tickFormatter={(date) => new Date(date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                      tickFormatter={(date) => new Date(date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
                       tick={{ fontSize: 12, fill: '#666' }}
                       axisLine={{ stroke: '#ddd' }}
                       tickLine={false}

@@ -1,7 +1,8 @@
 """
 Serviço de verificação automática de cadastros usando agentes IA
 """
-from crewai import Agent
+from .crew_agents import Agent, tool
+from .ai_agents import ai_manager
 from models import SolicitacoesCadastro, db
 from services.registration_verification_tools import (
     validate_crm_format,
@@ -13,48 +14,26 @@ from services.registration_verification_tools import (
     analyze_registration_timing
 )
 import json
+import logging
 
+logger = logging.getLogger(__name__)
 
 class RegistrationVerificationService:
     """Serviço para verificação automática de solicitações de cadastro"""
     
     def __init__(self):
-        self.crm_validator = self._create_crm_validator()
-        self.email_verifier = self._create_email_verifier()
-        self.fraud_detector = self._create_fraud_detector()
+        # Os agentes agora serão usados para a decisão final baseada nos dados das ferramentas
+        self.decision_agent = self._create_decision_agent()
     
-    def _create_crm_validator(self):
-        """Cria agente validador de CRM"""
+    def _create_decision_agent(self):
+        """Cria agente de decisão final para o cadastro"""
+        # Em modo simulado (sem CrewAI), o Agent é uma classe simples ou IA direta
         return Agent(
-            role="Validador de CRM",
-            goal="Verificar se o CRM fornecido é válido e não está duplicado",
-            backstory="""Você é um especialista em validação de registros profissionais.
-            Sua função é verificar se o CRM fornecido está no formato correto e se não
-            há duplicatas no sistema.""",
-            verbose=True,
-            allow_delegation=False
-        )
-    
-    def _create_email_verifier(self):
-        """Cria agente verificador de email"""
-        return Agent(
-            role="Verificador de Email",
-            goal="Validar se o email é legítimo e não é descartável",
-            backstory="""Você é um especialista em validação de emails.
-            Sua função é verificar se o email fornecido é válido, se o domínio existe,
-            e se não é um serviço de email descartável.""",
-            verbose=True,
-            allow_delegation=False
-        )
-    
-    def _create_fraud_detector(self):
-        """Cria agente detector de fraude"""
-        return Agent(
-            role="Detector de Fraude",
-            goal="Identificar padrões suspeitos em solicitações de cadastro",
-            backstory="""Você é um especialista em detecção de fraudes.
-            Sua função é analisar padrões de cadastro e identificar comportamentos
-            suspeitos como duplicatas, timing anormal, ou dados inconsistentes.""",
+            role="Auditor de Cadastros Médicos",
+            goal="Analisar os dados de validação e decidir se o cadastro é legítimo",
+            backstory="""Você é um auditor sênior especializado em conformidade médica.
+            Sua função é revisar os resultados das ferramentas automáticas e dar o veredito final
+            sobre a aprovação de novos profissionais no sistema SIAP da Aracannabis.""",
             verbose=True,
             allow_delegation=False
         )
@@ -85,7 +64,8 @@ class RegistrationVerificationService:
         final_result = self._aggregate_results(
             crm_result, 
             email_result, 
-            fraud_result
+            fraud_result,
+            solicitacao
         )
         
         # Salvar resultado na solicitação
@@ -184,62 +164,96 @@ class RegistrationVerificationService:
             "recommendation": "approve" if risk_score < 0.5 else "review"
         }
     
-    def _aggregate_results(self, crm_result: dict, email_result: dict, fraud_result: dict) -> dict:
+    def _aggregate_results(self, crm_result: dict, email_result: dict, fraud_result: dict, solicitacao: SolicitacoesCadastro) -> dict:
         """
-        Agrega resultados dos agentes em decisão final
-        
-        Args:
-            crm_result: Resultado da verificação de CRM
-            email_result: Resultado da verificação de email
-            fraud_result: Resultado da detecção de fraude
-        
-        Returns:
-            dict com decisão final
+        Agrega resultados das ferramentas e usa IA para decisão final
         """
-        # Calcular confiança geral
-        overall_confidence = (
-            crm_result['confidence'] * 0.4 +
-            email_result['confidence'] * 0.4 +
-            fraud_result['confidence'] * 0.2
-        )
+        # Preparar contexto para a IA
+        context = {
+            "profissional": {
+                "nome": solicitacao.nome,
+                "email": solicitacao.email,
+                "crm": solicitacao.crm,
+                "uf": solicitacao.uf_crm,
+                "especialidade": solicitacao.especialidade
+            },
+            "validacoes": {
+                "crm": crm_result,
+                "email": email_result,
+                "fraude": fraud_result
+            }
+        }
+
+        system_prompt = """Você é um Auditor de Conformidade Médica da Aracannabis. 
+        Analise os dados de validação técnica e decida se o profissional deve ser aprovado, 
+        revisado manualmente ou rejeitado.
         
-        # Determinar se deve auto-aprovar
-        auto_approve = (
-            crm_result['valid'] and
-            email_result['valid'] and
-            fraud_result['risk_score'] < 0.5 and
-            overall_confidence > 0.85
-        )
-        
-        # Coletar issues
-        issues = []
-        if not crm_result['valid']:
-            issues.append(f"CRM: {crm_result['details']['format'].get('reason', 'Inválido')}")
-        if crm_result['details']['duplicate']['duplicate']:
-            issues.append(f"CRM: {crm_result['details']['duplicate']['reason']}")
-        if not email_result['valid']:
-            for check_name, check_result in email_result['details'].items():
-                if not check_result.get('valid', True) or check_result.get('duplicate', False) or check_result.get('disposable', False):
-                    issues.append(f"Email: {check_result.get('reason', 'Problema detectado')}")
-        if fraud_result['risk_score'] >= 0.5:
-            issues.append(f"Fraude: {fraud_result['details']['timing']['reason']}")
+        CRITÉRIOS DE AUTO-APROVAÇÃO:
+        1. CRM válido e sem duplicidade.
+        2. Email válido, corporativo/comum (não descartável) e sem duplicidade.
+        3. Risco de fraude baixo.
+        4. Alta confiança nas ferramentas técnicas (>85%).
+
+        Retorne EXCLUSIVAMENTE um JSON no seguinte formato:
+        {
+            "recommendation": "auto_approve" | "manual_review" | "reject",
+            "justification": "Texto explicando o porquê da decisão",
+            "confidence_score": 0.0 a 1.0,
+            "highlighted_issues": ["Lista de problemas se houver"]
+        }"""
+
+        try:
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"Dados para auditoria: {json.dumps(context, ensure_ascii=False)}"}
+            ]
+            
+            response = ai_manager.chat_completion(
+                messages=messages,
+                temperature=0.2,
+                max_tokens=800
+            )
+            
+            content = response['content']
+            # Limpar markdown se houver
+            if content.startswith('```json'):
+                content = content[7:-3]
+            elif content.startswith('```'):
+                content = content[3:-3]
+            
+            ai_decision = json.loads(content.strip())
+            # Garantir que as chaves existem
+            if "highlighted_issues" not in ai_decision:
+                ai_decision["highlighted_issues"] = []
+        except Exception as e:
+            logger.error(f"Erro na decisão da IA: {e}")
+            # Fallback seguro
+            ai_decision = {
+                "recommendation": "manual_review",
+                "justification": f"Erro no processamento da IA: {str(e)}",
+                "confidence_score": 0.0,
+                "highlighted_issues": ["Falha técnica na auditoria"]
+            }
+
+        auto_approve = ai_decision.get("recommendation") == "auto_approve"
         
         return {
             "auto_approve": auto_approve,
-            "overall_confidence": overall_confidence,
+            "overall_confidence": ai_decision.get("confidence_score", 0.0),
             "crm_validation": crm_result,
             "email_validation": email_result,
             "fraud_detection": fraud_result,
-            "issues": issues,
-            "recommendation": "auto_approve" if auto_approve else "manual_review",
-            "summary": self._generate_summary(auto_approve, issues, overall_confidence)
+            "issues": ai_decision.get("highlighted_issues", []),
+            "recommendation": ai_decision.get("recommendation", "manual_review"),
+            "justification": ai_decision.get("justification", ""),
+            "summary": self._generate_summary(auto_approve, ai_decision.get("highlighted_issues", []), ai_decision.get("confidence_score", 0.0))
         }
     
     def _generate_summary(self, auto_approve: bool, issues: list, confidence: float) -> str:
         """Gera resumo da verificação"""
         if auto_approve:
-            return f"✅ Verificação aprovada automaticamente (confiança: {confidence:.0%})"
+            return f"✅ Verificação aprovada automaticamente pela IA (confiança: {confidence:.0%})"
         elif not issues:
-            return f"⚠️ Revisão manual recomendada (confiança: {confidence:.0%})"
+            return f"⚠️ Revisão manual recomendada pela IA (confiança: {confidence:.0%})"
         else:
-            return f"❌ Problemas detectados: {'; '.join(issues)}"
+            return f"❌ Problemas detectados pela IA: {'; '.join(issues)}"
