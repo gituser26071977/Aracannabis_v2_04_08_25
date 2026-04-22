@@ -59,15 +59,26 @@ ALLOWED_ORIGINS = [
 
 # Cabeçalhos de segurança HTTP
 connect_src_origins = " ".join(ALLOWED_ORIGINS)
+# CSP otimizado para SPA React — permite recursos da mesma origem e conexões CORS configuradas
 SECURITY_HEADERS = {
-    'Content-Security-Policy': f"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self' {connect_src_origins}",
+    'Content-Security-Policy': (
+        f"default-src 'self'; "
+        f"script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+        f"style-src 'self' 'unsafe-inline'; "
+        f"img-src 'self' data: blob: https:; "
+        f"font-src 'self' data: https:; "
+        f"connect-src 'self' {connect_src_origins}; "
+        f"frame-src 'self'; "
+        f"media-src 'self' blob: data:;"
+    ),
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'SAMEORIGIN',
     'X-XSS-Protection': '1; mode=block',
     'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
     'Referrer-Policy': 'strict-origin-when-cross-origin',
-    'Cache-Control': 'no-store',
-    'Pragma': 'no-cache'
+    'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0',
 }
 
 # Inicializar rate limiter
