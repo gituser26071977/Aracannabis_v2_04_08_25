@@ -18,4 +18,4 @@ else
 fi
 
 echo "Starting App..."
-exec python app_cors_livre.py --port 3000
+exec python app_cors_livre.py --port 5002

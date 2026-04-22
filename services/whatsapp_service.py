@@ -36,14 +36,8 @@ class WhatsAppService:
         }
         payload = {
             "number": phone,
-            "options": {
-                "delay": 1200,
-                "presence": "composing",
-                "linkPreview": False
-            },
-            "textMessage": {
-                "text": message
-            }
+            "delay": 1200,
+            "text": message
         }
 
         try:

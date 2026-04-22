@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, send_from_directory
+from flask import Blueprint, request, jsonify, send_from_directory, g
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, Paciente, LogAtividade, Profissional, CompartilhamentoPaciente
 from security_config import sanitize_input
@@ -91,14 +91,14 @@ def obter_pacientes_acessiveis(profissional_id):
     """
     user = Profissional.query.get(profissional_id)
     
-    # Se for admin ou superadmin, vê tudo
+    # Se for admin ou superadmin, vê tudo (bypass tenant filter)
     if user and user.role in ['admin', 'superadmin']:
-        # Retorna todos os pacientes. O filtro de tenant no banco (tenant_lib) 
-        # já é contornado para superadmin via g.is_superadmin.
-        return Paciente.query
+        # Usa skip_tenant para contornar o filtro multi-tenant
+        return Paciente.query.execution_options(skip_tenant=True)
 
-    # Pacientes onde é responsável
-    pacientes_responsavel = Paciente.query.filter_by(profissional_responsavel_id=profissional_id)
+    # Pacientes onde é responsável - também bypass tenant filter para ver todos os seus pacientes
+    # independente da associação (um profissional pode ter pacientes em várias associações)
+    pacientes_responsavel = Paciente.query.execution_options(skip_tenant=True).filter_by(profissional_responsavel_id=profissional_id)
     
     # Pacientes compartilhados ativos
     compartilhamentos_ativos = CompartilhamentoPaciente.query.filter_by(
@@ -111,7 +111,8 @@ def obter_pacientes_acessiveis(profissional_id):
     if pacientes_compartilhados_ids:
         agora = datetime.utcnow()
         # Apenas retorna o paciente compartilhado se o dono (responsável) possuir assinatura ativa
-        pacientes_compartilhados = Paciente.query.join(
+        # Usa skip_tenant para contornar o filtro multi-tenant
+        pacientes_compartilhados = Paciente.query.execution_options(skip_tenant=True).join(
             Profissional, Paciente.profissional_responsavel_id == Profissional.id
         ).filter(
             Paciente.id.in_(pacientes_compartilhados_ids),
@@ -306,6 +307,15 @@ def cadastrar_paciente():
 
             # Tratar campo associação
             assoc_data = data.get('associacao')
+            
+            # Se o usuário tem uma associação ativa no contexto, usa ela por padrão
+            if hasattr(g, 'current_association') and g.current_association:
+                # Usa a associação do contexto (do tenant middleware)
+                if hasattr(g.current_association, 'id'):
+                    novo_paciente.associacao_id = g.current_association.id
+                    print(f"Paciente vinculado automaticamente à associação: {g.current_association.id}")
+            
+            # Se foi passado associação específica nos dados, sobrescreve
             if assoc_data:
                 try:
                     # Tenta converter para ID (inteiro)

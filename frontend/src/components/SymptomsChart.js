@@ -30,37 +30,40 @@ const SymptomsChart = ({ patientId }) => {
         const sintomasResponse = await sintomasService.listar(patientId);
         console.log('📊 Resposta da API de sintomas:', sintomasResponse);
         
-        if (sintomasResponse && Array.isArray(sintomasResponse)) {
-          console.log('✅ Dados recebidos como array:', sintomasResponse.length, 'itens');
+        const sintomasArray = sintomasResponse?.sintomas || [];
+        
+        if (Array.isArray(sintomasArray) && sintomasArray.length > 0) {
+          console.log('✅ Dados recebidos:', sintomasArray.length, 'itens');
           
           // Extrair nomes únicos de sintomas
-          const uniqueSintomas = [...new Set(sintomasResponse.map(s => s.nome_sintoma))];
+          const uniqueSintomas = [...new Set(sintomasArray.map(s => s.sintoma))];
           console.log('🏷️ Sintomas únicos encontrados:', uniqueSintomas);
           
           setSintomasList(uniqueSintomas);
           
           // Selecionar o primeiro sintoma por padrão
-          if (uniqueSintomas.length > 0 && !selectedSintoma) {
-            setSelectedSintoma(uniqueSintomas[0]);
-            console.log('🎯 Primeiro sintoma selecionado:', uniqueSintomas[0]);
+          const sintomaParaUsar = selectedSintoma || (uniqueSintomas.length > 0 ? uniqueSintomas[0] : '');
+          if (sintomaParaUsar && !selectedSintoma) {
+            setSelectedSintoma(sintomaParaUsar);
+            console.log('🎯 Primeiro sintoma selecionado:', sintomaParaUsar);
           }
           
           // Processar dados para o gráfico
-          if (selectedSintoma) {
-            const sintomasFiltrados = sintomasResponse
-              .filter(s => s.nome_sintoma === selectedSintoma)
+          if (sintomaParaUsar) {
+            const sintomasFiltrados = sintomasArray
+              .filter(s => s.sintoma === sintomaParaUsar)
               .map(s => ({
-                date: s.data_registro,
+                date: s.data,
                 intensidade: s.intensidade,
-                sintoma: s.nome_sintoma
+                sintoma: s.sintoma
               }))
-              .sort((a, b) => new Date(a.date) - new Date(b.date));
+              .sort((a, b) => new Date(a.date + 'T12:00:00') - new Date(b.date + 'T12:00:00'));
             
             console.log('📈 Sintomas filtrados para gráfico:', sintomasFiltrados);
             setSintomasData(sintomasFiltrados);
           }
         } else {
-          console.warn('⚠️ Resposta não é um array:', typeof sintomasResponse, sintomasResponse);
+          console.warn('⚠️ Nenhum sintoma encontrado:', sintomasResponse);
         }
         
         setError('');
@@ -163,7 +166,7 @@ const SymptomsChart = ({ patientId }) => {
                 borderRadius: 1
               }}>
                 <Typography variant="body2">
-                  {new Date(item.date).toLocaleDateString('pt-BR')}
+                  {new Date(item.date + 'T12:00:00').toLocaleDateString('pt-BR')}
                 </Typography>
                 <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
                   {item.intensidade}

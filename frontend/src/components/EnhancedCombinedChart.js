@@ -101,63 +101,54 @@ const EnhancedCombinedChart = ({ patientId }) => {
     }
     
     try {
-      // Processar dados de sintomas - corrigindo a lógica
+      // Processar dados de sintomas
+      // A API retorna: { dados_grafico: [ { label, data: [ {x, y} ] } ] }
       let processedSintomas = [];
       
-      // Verificar se sintomasData é um array de sintomas individuais
-      if (Array.isArray(sintomasData)) {
-        // Se for um array direto, processar cada sintoma
-        processedSintomas = sintomasData
-          .filter(sintoma => sintoma.label === selectedSintoma)
-          .map(sintoma => ({
-            date: moment(sintoma.x).format('YYYY-MM-DD'),
-            sintoma: sintoma.y,
-            sintoma_texto: `${selectedSintoma}: ${sintoma.y}`
-          }));
-      } else if (sintomasData.dados_grafico && Array.isArray(sintomasData.dados_grafico)) {
-        // Se for a estrutura com dados_grafico
-        const selectedSymptomData = sintomasData.dados_grafico.find(s => s.label === selectedSintoma);
-        
-        if (selectedSymptomData && selectedSymptomData.data && Array.isArray(selectedSymptomData.data)) {
-          processedSintomas = selectedSymptomData.data.map(point => ({
-            date: moment(point.x).format('YYYY-MM-DD'),
-            sintoma: point.y,
-            sintoma_texto: `${selectedSintoma}: ${point.y}`
-          }));
-        }
+      const datasets = Array.isArray(sintomasData) 
+        ? sintomasData 
+        : (sintomasData.dados_grafico || []);
+      
+      const selectedDataset = datasets.find(s => s.label === selectedSintoma);
+      
+      if (selectedDataset && Array.isArray(selectedDataset.data)) {
+        processedSintomas = selectedDataset.data.map(point => ({
+          date: moment(point.x).format('YYYY-MM-DD'),
+          sintoma: point.y,
+          sintoma_texto: `${selectedSintoma}: ${point.y}`
+        }));
       }
       
       // Processar dados de dosagens
+      // A API retorna: { dados_grafico: [ {x, y, dosagem_texto} ], dados_canabinoides: {cbd, thc, ...} }
       let processedDosagens = [];
-      if (dosagensData && dosagensData.length > 0) {
-        if (Array.isArray(dosagensData)) {
-          processedDosagens = dosagensData.map(point => ({
-            date: moment(point.data_registro || point.x).format('YYYY-MM-DD'),
-            dosagem: point.quantidade || point.y,
-            dosagem_texto: `Dosagem: ${point.quantidade || point.y}`
-          }));
-        } else if (dosagensData.dados_grafico && Array.isArray(dosagensData.dados_grafico)) {
-          processedDosagens = dosagensData.dados_grafico.map(point => ({
-            date: moment(point.x).format('YYYY-MM-DD'),
-            dosagem: point.y,
-            dosagem_texto: `Dosagem: ${point.y}`
-          }));
-        }
+      const dosagensList = Array.isArray(dosagensData)
+        ? dosagensData
+        : (dosagensData.dados_grafico || []);
+      
+      if (dosagensList.length > 0) {
+        processedDosagens = dosagensList.map(point => ({
+          date: moment(point.x).format('YYYY-MM-DD'),
+          dosagem: point.y,
+          dosagem_texto: point.dosagem_texto || `Dosagem: ${point.y} mg/dia`
+        }));
       }
       
-      // Criar mapa para combinar dados mantendo as estruturas originais
+      // Criar mapa para combinar dados por data
       const combinedMap = new Map();
       
       // Adicionar sintomas
       processedSintomas.forEach(item => {
         combinedMap.set(item.date, {
-          ...item,
+          date: item.date,
+          sintoma: item.sintoma,
+          sintoma_texto: item.sintoma_texto,
           dosagem: null,
           dosagem_texto: null
         });
       });
       
-      // Adicionar dosagens
+      // Adicionar dosagens (agregadas no backend, então 1 por data)
       processedDosagens.forEach(item => {
         if (combinedMap.has(item.date)) {
           const existing = combinedMap.get(item.date);
@@ -171,14 +162,15 @@ const EnhancedCombinedChart = ({ patientId }) => {
             date: item.date,
             sintoma: null,
             sintoma_texto: null,
-            ...item
+            dosagem: item.dosagem,
+            dosagem_texto: item.dosagem_texto
           });
         }
       });
       
-      // Converter para array e ordenar
+      // Converter para array e ordenar cronologicamente
       return Array.from(combinedMap.values()).sort((a, b) => 
-        moment(a.date).diff(moment(b.date))
+        moment(a.date).valueOf() - moment(b.date).valueOf()
       );
     } catch (error) {
       console.error('Erro ao processar dados combinados:', error);

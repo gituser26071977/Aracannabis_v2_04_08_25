@@ -1,137 +1,179 @@
+"""
+External Association Service — AAP (Arapath Agent Protocol)
+
+Comunicação SIAP ↔ SGAC via protocolo padronizado AAP.
+Substitui as chamadas HTTP diretas quebradas (JWT auth mismatch)
+por delegação de tasks via Agent-to-Agent.
+
+Mantém compatibilidade com a interface antiga:
+  - search_associate(cpf) -> dict|None
+  - sync_patient_to_association(paciente_data) -> bool
+"""
+
 import os
-import requests
 import re
 
+# AAP imports
+from services.aap_protocol import AAPClient, build_agent_card
+from services.aap_registry import get_registry
+
+
 class ExternalAssociationService:
-    @staticmethod
-    def _get_api_config():
-        """Helper to get API config"""
-        # Default to host.docker.internal for local dev between containers/host
-        api_url = os.getenv('EXTERNAL_ASSOC_API_URL', 'http://host.docker.internal:8011/api')
-        # Default assoc ID to 1 if not set
-        assoc_id = os.getenv('EXTERNAL_ASSOC_ID', '1')
-        api_token = os.getenv('EXTERNAL_ASSOC_API_TOKEN')
-        return api_url, assoc_id, api_token
+    """Cliente AAP para comunicação com SGAC (Agrobuds)."""
 
     @staticmethod
-    def search_associate(cpf):
+    def _get_aap_client() -> AAPClient:
+        """Factory do cliente AAP para o SGAC."""
+        sgac_url = os.getenv("SGAC_AAP_URL", os.getenv("EXTERNAL_ASSOC_API_URL", "http://host.docker.internal:8011"))
+        api_key = os.getenv("AAP_API_KEY")
+        secret_key = os.getenv("AAP_SECRET_KEY")
+        return AAPClient(agent_url=sgac_url, api_key=api_key, secret_key=secret_key)
+
+    @staticmethod
+    def _normalize_cpf(cpf: str) -> str:
+        return re.sub(r"\D", "", cpf or "")
+
+    @staticmethod
+    def search_associate(cpf: str):
         """
-        Busca associado em sistema externo via API.
-        Retorna dicionário com dados do associado ou None.
+        Busca associado no SGAC via AAP.
+        Retorna dicionário normalizado ou None.
         """
-        api_url, assoc_id, api_token = ExternalAssociationService._get_api_config()
-        
+        client = ExternalAssociationService._get_aap_client()
+        clean_cpf = ExternalAssociationService._normalize_cpf(cpf)
+
         try:
-            # Limpar CPF
-            clean_cpf = re.sub(r'\D', '', cpf)
-            
-            headers = {
-                'Authorization': f'Bearer {api_token}',
-                'Content-Type': 'application/json'
-            } if api_token else {}
-            
-            # Endpoint: /association/{id}/members/search?cpf=...
-            response = requests.get(
-                f"{api_url}/association/{assoc_id}/members/search", 
-                params={'cpf': clean_cpf},
-                headers=headers, 
-                timeout=5
+            # Descoberta opcional (cacheia no registry)
+            registry = get_registry()
+            if not registry.get("sgac-agrobuds"):
+                card = client.discover()
+                if card:
+                    registry.register("sgac-agrobuds", card)
+
+            # Delega task ao SGAC
+            result = client.submit_task(
+                capability_id="member.search",
+                method="search_by_cpf",
+                params={"query": clean_cpf, "association_id": int(os.getenv("EXTERNAL_ASSOC_ID", "1"))},
             )
-            
-            if response.status_code == 200:
-                data = response.json()
-                if not data:
-                    return None
-                    
-                # API returns list, get first item
-                if isinstance(data, list):
-                    if len(data) > 0:
-                        member_data = data[0]
-                    else:
-                        return None
-                else:
-                    member_data = data
 
-                # Create normalized dict using AGROBUDS schema keys
-                return {
-                    'nome': member_data.get('full_name'),
-                    'email': member_data.get('email'),
-                    'telefone': member_data.get('phone'),
-                    'endereco': member_data.get('address'),
-                    'data_nascimento': member_data.get('data_nascimento'),
-                    'rg': member_data.get('rg'), # Check if AGROBUDS has RG, might be in "address" or custom field? Schema didn't show RG explicitly in MemberBase, assuming standard fields or ignoring if missing.
-                    'id': member_data.get('id'),
-                    'external_id': member_data.get('id')
-                }
-            return None
+            if not result:
+                print("[AAP] search_associate: sem resposta do SGAC")
+                return None
+
+            task_id = result["task_id"]
+
+            # Tasks síncronas do mock SGAC retornam completed imediatamente;
+            # em produção real pode ser async, então fazemos polling simples.
+            import time
+            for _ in range(10):
+                task = client.get_task(task_id)
+                if task and task["status"] in ("completed", "failed"):
+                    break
+                time.sleep(0.3)
+
+            if not task or task["status"] != "completed":
+                print(f"[AAP] search_associate: task {task_id} não completou")
+                return None
+
+            members = task.get("result", [])
+            if not members or not isinstance(members, list):
+                return None
+
+            member_data = members[0]
+            return {
+                "nome": member_data.get("full_name"),
+                "email": member_data.get("email"),
+                "telefone": member_data.get("phone"),
+                "endereco": member_data.get("address"),
+                "data_nascimento": member_data.get("data_nascimento"),
+                "rg": member_data.get("rg"),
+                "id": member_data.get("id"),
+                "external_id": member_data.get("id"),
+            }
+
         except Exception as e:
-            print(f"Error searching external association: {str(e)}")
+            print(f"[AAP] Erro em search_associate: {e}")
             return None
 
     @staticmethod
-    def sync_patient_to_association(paciente_data):
+    def sync_patient_to_association(paciente_data: dict) -> bool:
         """
-        Envia dados do paciente do Prontuário para o sistema de Associação.
-        Usado quando um paciente é criado ou atualizado no Prontuário.
+        Sincroniza paciente do SIAP para o SGAC via AAP.
+        Decide CREATE vs UPDATE baseado em search_associate.
         """
-        api_url, assoc_id, api_token = ExternalAssociationService._get_api_config()
-        
-        if not api_url:
-            print("External Association API URL not configured. Skipping sync.")
+        client = ExternalAssociationService._get_aap_client()
+        cpf_clean = ExternalAssociationService._normalize_cpf(paciente_data.get("cpf", ""))
+        assoc_id = int(os.getenv("EXTERNAL_ASSOC_ID", "1"))
+
+        if not cpf_clean:
+            print("[AAP] sync_patient: CPF ausente, abortando")
             return False
-            
+
         try:
-            headers = {
-                'Authorization': f'Bearer {api_token}',
-                'Content-Type': 'application/json'
-            } if api_token else {}
-            
-            # 1. Search if member exists first to decide Create vs Update
-            cpf_clean = re.sub(r'\D', '', paciente_data.get('cpf', ''))
-            existing_member = ExternalAssociationService.search_associate(cpf_clean)
-            
-            # Map Prontuário fields to AGROBUDS Schema (MemberBase)
+            # 1. Verifica se já existe
+            existing = ExternalAssociationService.search_associate(cpf_clean)
+
+            # 2. Monta payload
+            data_nascimento = paciente_data.get("data_nascimento")
+            if hasattr(data_nascimento, "isoformat"):
+                data_nascimento = data_nascimento.isoformat()
+
             payload = {
-                'full_name': paciente_data.get('nome'),
-                'cpf': cpf_clean,
-                'email': paciente_data.get('email'),
-                'phone': paciente_data.get('telefone'),
-                'address': paciente_data.get('endereco'),
-                'data_nascimento': paciente_data.get('data_nascimento').isoformat() if paciente_data.get('data_nascimento') else None,
-                # 'status': 'Ativo', # Optional
+                "full_name": paciente_data.get("nome"),
+                "cpf": cpf_clean,
+                "email": paciente_data.get("email"),
+                "phone": paciente_data.get("telefone"),
+                "address": paciente_data.get("endereco"),
+                "data_nascimento": data_nascimento,
+                "association_id": assoc_id,
             }
-            
-            if existing_member:
-                # UPDATE
-                member_id = existing_member['id']
-                print(f"Syncing (UPDATE) member {member_id} in association...")
-                # Endpoint: PUT /association/members/{member_id}
-                # Note: AGROBUDS router prefix is /association, main prefix /api -> /api/association/members/{id}
-                # Wait, router has `prefix="/association"`. Update route is `@router.put("/members/{member_id}")`.
-                # So full path: /api/association/members/{id}
-                response = requests.put(
-                    f"{api_url}/association/members/{member_id}", 
-                    json=payload,
-                    headers=headers, 
-                    timeout=10
+
+            if existing and existing.get("id"):
+                # UPDATE via AAP
+                member_id = existing["id"]
+                print(f"[AAP] Sync UPDATE member {member_id}...")
+                result = client.submit_task(
+                    capability_id="member.update",
+                    method="update_member",
+                    params={
+                        "member_id": member_id,
+                        "updates": payload,
+                    },
                 )
             else:
-                # CREATE
-                print(f"Syncing (CREATE) new member in association {assoc_id}...")
-                # Endpoint: POST /association/{id}/members/
-                response = requests.post(
-                    f"{api_url}/association/{assoc_id}/members/", 
-                    json=payload,
-                    headers=headers, 
-                    timeout=10
+                # CREATE via AAP
+                print(f"[AAP] Sync CREATE member in association {assoc_id}...")
+                result = client.submit_task(
+                    capability_id="member.create",
+                    method="create_member",
+                    params=payload,
                 )
-            
-            if response.status_code in [200, 201]:
+
+            if not result:
+                print("[AAP] sync_patient: sem resposta do SGAC")
+                return False
+
+            # 3. Aguarda conclusão (polling)
+            import time
+            task_id = result["task_id"]
+            for _ in range(15):
+                task = client.get_task(task_id)
+                if task and task["status"] in ("completed", "failed"):
+                    break
+                time.sleep(0.3)
+
+            if not task:
+                print(f"[AAP] sync_patient: task {task_id} não encontrada")
+                return False
+
+            if task["status"] == "completed":
+                print(f"[AAP] sync_patient: sucesso — {task.get('result')}")
                 return True
             else:
-                print(f"Failed to sync patient to association. Status: {response.status_code}, Response: {response.text}")
+                print(f"[AAP] sync_patient: falha — {task.get('error')}")
                 return False
-                
+
         except Exception as e:
-            print(f"Error syncing to external association: {str(e)}")
+            print(f"[AAP] Erro em sync_patient_to_association: {e}")
             return False

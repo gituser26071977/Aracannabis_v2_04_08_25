@@ -9,7 +9,7 @@ const associationService = {
     // --- Association Management ---
     getAssociations: async () => {
         try {
-            const response = await api.get('/association/associations', {
+            const response = await api.get('/association/my-associations', {
                 headers: getAssociationHeader()
             });
             return response.data;

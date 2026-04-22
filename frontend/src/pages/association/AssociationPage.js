@@ -6,6 +6,7 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import BusinessIcon from '@mui/icons-material/Business';
 import { useNavigate } from 'react-router-dom';
 import associationService from '../../services/associationService';
 import api from '../../services/api';
@@ -98,20 +99,53 @@ const AssociationPage = () => {
         }
     };
 
+    const handleConnectAgrobuds = async () => {
+        setLookupLoading(true);
+        try {
+            const agrobudsData = {
+                nome: 'HC AGROBUDS',
+                cnpj: '00.000.000/0001-00',
+                endereco: 'Avenida Paulista, 1000 - São Paulo/SP',
+                telefone: '(11) 99999-9999',
+                email: 'contato@agrobuds.com.br'
+            };
+            await associationService.createAssociation(agrobudsData);
+            setSuccess('Conexão com Agrobuds estabelecida com sucesso!');
+            fetchAssociations();
+            setTimeout(() => setSuccess(''), 3000);
+        } catch (err) {
+            setError(err.error || 'Erro ao conectar com Agrobuds. Talvez já esteja conectada?');
+            console.error(err);
+        } finally {
+            setLookupLoading(false);
+        }
+    };
+
     return (
         <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
                 <Typography variant="h4" component="h1">
                     Gestão de Associações
                 </Typography>
-                <Button
-                    variant="contained"
-                    color="primary"
-                    startIcon={<AddIcon />}
-                    onClick={() => setOpen(true)}
-                >
-                    Nova Associação
-                </Button>
+                <Box display="flex" gap={2}>
+                    <Button
+                        variant="outlined"
+                        color="secondary"
+                        startIcon={<BusinessIcon />}
+                        onClick={handleConnectAgrobuds}
+                        disabled={lookupLoading}
+                    >
+                        {lookupLoading ? <CircularProgress size={24} /> : 'Conectar Agrobuds'}
+                    </Button>
+                    <Button
+                        variant="contained"
+                        color="primary"
+                        startIcon={<AddIcon />}
+                        onClick={() => setOpen(true)}
+                    >
+                        Nova Associação
+                    </Button>
+                </Box>
             </Box>
 
             {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}

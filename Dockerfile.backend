@@ -27,7 +27,7 @@ COPY . .
 RUN mkdir -p uploads/exames
 
 # Expor a porta que a aplicação Flask usa
-EXPOSE 5004
+EXPOSE 5002
 
 # Comando para rodar a aplicação
-CMD ["python", "app_cors_livre.py", "--port", "5004"]
+CMD ["python", "app_cors_livre.py", "--port", "5002"]

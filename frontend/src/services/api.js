@@ -747,6 +747,27 @@ export const consultasService = {
 
 
 
+// Serviço de Configuração IA (SDR Multi-Tenant)
+export const configIaTenantService = {
+  obter: async () => {
+    try {
+      const response = await api.get('/tenant-config/ia');
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+
+  salvar: async (configData) => {
+    try {
+      const response = await api.post('/tenant-config/ia', configData);
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  }
+};
+
 // Serviço de produtos
 export const produtosService = {
   listar: async () => {

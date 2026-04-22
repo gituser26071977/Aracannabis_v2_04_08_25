@@ -21,6 +21,11 @@ class TenantMiddleware:
 def register_tenant_middleware(app):
     @app.before_request
     def check_tenant():
+        # Inicializar flags padrão
+        g.is_superadmin = False
+        g.current_association = None
+        g.user_role = None
+        
         # Bypass for options and public routes (auth, status)
         if request.method == 'OPTIONS':
             return

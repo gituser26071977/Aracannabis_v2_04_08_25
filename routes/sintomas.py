@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, Sintoma, Paciente, LogAtividade, SnapIVTeste, PHQ9Teste, GAD7Teste
 from datetime import datetime, timedelta
+from collections import defaultdict
 
 sintomas_bp = Blueprint('sintomas', __name__)
 
@@ -403,7 +404,7 @@ def dados_grafico_sintomas(paciente_id):
     periodo = request.args.get('periodo', 'integral')
     data_fim_param = request.args.get('data_fim') # Manter data_fim opcional
     
-    hoje = datetime.now().date()
+    hoje = datetime.utcnow().date()
     data_inicio_calculada = None
 
     if periodo == '1m':
@@ -465,27 +466,36 @@ def dados_grafico_sintomas(paciente_id):
     snap_tests = snap_query.order_by(SnapIVTeste.data_realizacao).all()
     
     if snap_tests:
-        dados_grafico['TDAH - Desatenção'] = {'label': 'TDAH - Desatenção', 'data': []}
-        dados_grafico['TDAH - Hiperatividade'] = {'label': 'TDAH - Hiperatividade', 'data': []}
+        # Agregar múltiplos testes do mesmo dia usando média
+        from collections import defaultdict
+        snap_agg = defaultdict(lambda: {'desatencao': [], 'hiperatividade': []})
         
         for teste in snap_tests:
             data_str = teste.data_realizacao.date().isoformat()
+            snap_agg[data_str]['desatencao'].append(teste.pontos_desatencao)
+            snap_agg[data_str]['hiperatividade'].append(teste.pontos_hiperatividade)
+        
+        dados_grafico['TDAH - Desatenção'] = {'label': 'TDAH - Desatenção', 'data': []}
+        dados_grafico['TDAH - Hiperatividade'] = {'label': 'TDAH - Hiperatividade', 'data': []}
+        
+        for data_str in sorted(snap_agg.keys()):
+            agg = snap_agg[data_str]
+            avg_desatencao = sum(agg['desatencao']) / len(agg['desatencao'])
+            avg_hiperatividade = sum(agg['hiperatividade']) / len(agg['hiperatividade'])
             
-            # Normalizar Desatenção (Max 27 -> 10)
-            y_desatencao = round((teste.pontos_desatencao / 27) * 10, 2)
+            y_desatencao = round((avg_desatencao / 27) * 10, 2)
             dados_grafico['TDAH - Desatenção']['data'].append({
                 'x': data_str,
                 'y': y_desatencao,
-                'original_value': teste.pontos_desatencao,
+                'original_value': round(avg_desatencao, 2),
                 'max_value': 27
             })
             
-            # Normalizar Hiperatividade (Max 27 -> 10)
-            y_hiperatividade = round((teste.pontos_hiperatividade / 27) * 10, 2)
+            y_hiperatividade = round((avg_hiperatividade / 27) * 10, 2)
             dados_grafico['TDAH - Hiperatividade']['data'].append({
                 'x': data_str,
                 'y': y_hiperatividade,
-                'original_value': teste.pontos_hiperatividade,
+                'original_value': round(avg_hiperatividade, 2),
                 'max_value': 27
             })
 
@@ -503,18 +513,21 @@ def dados_grafico_sintomas(paciente_id):
     phq9_tests = phq9_query.order_by(PHQ9Teste.data_realizacao).all()
     
     if phq9_tests:
-        dados_grafico['Teste Depressão (PHQ-9)'] = {'label': 'Teste Depressão (PHQ-9)', 'data': []}
-        
+        phq9_agg = defaultdict(list)
         for teste in phq9_tests:
             data_str = teste.data_realizacao.date().isoformat()
-            
-            # Normalizar PHQ-9 (Max 27 -> 10)
-            y_phq9 = round((teste.pontuacao_total / 27) * 10, 2)
+            phq9_agg[data_str].append(teste.pontuacao_total)
+        
+        dados_grafico['Teste Depressão (PHQ-9)'] = {'label': 'Teste Depressão (PHQ-9)', 'data': []}
+        
+        for data_str in sorted(phq9_agg.keys()):
+            avg_phq9 = sum(phq9_agg[data_str]) / len(phq9_agg[data_str])
+            y_phq9 = round((avg_phq9 / 27) * 10, 2)
             
             dados_grafico['Teste Depressão (PHQ-9)']['data'].append({
                 'x': data_str,
                 'y': y_phq9,
-                'original_value': teste.pontuacao_total,
+                'original_value': round(avg_phq9, 2),
                 'max_value': 27
             })
 
@@ -532,18 +545,21 @@ def dados_grafico_sintomas(paciente_id):
     gad7_tests = gad7_query.order_by(GAD7Teste.data_realizacao).all()
 
     if gad7_tests:
-        dados_grafico['Teste Ansiedade (GAD-7)'] = {'label': 'Teste Ansiedade (GAD-7)', 'data': []}
-
+        gad7_agg = defaultdict(list)
         for teste in gad7_tests:
             data_str = teste.data_realizacao.date().isoformat()
+            gad7_agg[data_str].append(teste.pontuacao_total)
+        
+        dados_grafico['Teste Ansiedade (GAD-7)'] = {'label': 'Teste Ansiedade (GAD-7)', 'data': []}
 
-            # Normalizar GAD-7 (Max 21 -> 10)
-            y_gad7 = round((teste.pontuacao_total / 21) * 10, 2)
+        for data_str in sorted(gad7_agg.keys()):
+            avg_gad7 = sum(gad7_agg[data_str]) / len(gad7_agg[data_str])
+            y_gad7 = round((avg_gad7 / 21) * 10, 2)
 
             dados_grafico['Teste Ansiedade (GAD-7)']['data'].append({
                 'x': data_str,
                 'y': y_gad7,
-                'original_value': teste.pontuacao_total,
+                'original_value': round(avg_gad7, 2),
                 'max_value': 21
             })
     

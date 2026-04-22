@@ -166,7 +166,7 @@ def dados_grafico_dosagens(paciente_id):
     periodo = request.args.get('periodo', 'integral')
     data_fim_param = request.args.get('data_fim') # Manter data_fim opcional
 
-    hoje = datetime.now().date()
+    hoje = datetime.utcnow().date()
     data_inicio_calculada = None
 
     if periodo == '1m':
@@ -290,16 +290,79 @@ def get_dosage_chart_data(paciente_id):
     dosagens = query.order_by(Dosagem.data.asc()).all()
     
     # Preparar dados para o gráfico
-    dados_grafico = []
+    # Agregar múltiplas dosagens do mesmo dia (somar canabinoides)
+    from collections import defaultdict
+    agregado_por_data = defaultdict(lambda: {
+        'cbd_mg': 0, 'thc_mg': 0, 'cbg_mg': 0, 'cbn_mg': 0,
+        'canabinoides_totais': 0, 'gotas_total': 0, 'frequencias': [],
+        'dosagem_textos': []
+    })
     
     for dosagem in dosagens:
         dose_diaria = dosagem.calcular_dose_diaria()
+        data_str = dosagem.data.strftime('%Y-%m-%d')
+        
+        agregado = agregado_por_data[data_str]
+        agregado['cbd_mg'] += dose_diaria['cbd_mg']
+        agregado['thc_mg'] += dose_diaria['thc_mg']
+        agregado['cbg_mg'] += dose_diaria['cbg_mg']
+        agregado['cbn_mg'] += dose_diaria['cbn_mg']
+        agregado['canabinoides_totais'] += dose_diaria['canabinoides_totais']
+        agregado['gotas_total'] += (dosagem.gotas or 0) * (dosagem.frequencia_diaria or 1)
+        agregado['frequencias'].append(dosagem.frequencia_diaria or 1)
+        agregado['dosagem_textos'].append(f"{dosagem.dosagem}: {dosagem.gotas} gotas, {dosagem.frequencia_diaria}x/dia")
+    
+    # Montar arrays finais a partir do agregado
+    dados_grafico = []
+    dados_cbd = []
+    dados_thc = []
+    dados_cbg = []
+    dados_cbn = []
+    dados_canabinoides_totais = []
+    
+    for data_str in sorted(agregado_por_data.keys()):
+        agg = agregado_por_data[data_str]
+        dosagem_texto = ' | '.join(agg['dosagem_textos'])
+        
         dados_grafico.append({
-            'x': dosagem.data.strftime('%Y-%m-%d'),
-            'y': dose_diaria['cbd_mg'],
-            'dosagem_texto': f"Dosagem: {dosagem.dosagem}, {dosagem.gotas} gotas, {dosagem.frequencia_diaria}x/dia"
+            'x': data_str,
+            'y': round(agg['cbd_mg'], 2),
+            'dosagem_texto': dosagem_texto
+        })
+        
+        dados_cbd.append({
+            'x': data_str,
+            'y': round(agg['cbd_mg'], 2),
+            'dosagem_texto': f"CBD: {round(agg['cbd_mg'], 2)} mg/dia"
+        })
+        dados_thc.append({
+            'x': data_str,
+            'y': round(agg['thc_mg'], 2),
+            'dosagem_texto': f"THC: {round(agg['thc_mg'], 2)} mg/dia"
+        })
+        dados_cbg.append({
+            'x': data_str,
+            'y': round(agg['cbg_mg'], 2),
+            'dosagem_texto': f"CBG: {round(agg['cbg_mg'], 2)} mg/dia"
+        })
+        dados_cbn.append({
+            'x': data_str,
+            'y': round(agg['cbn_mg'], 2),
+            'dosagem_texto': f"CBN: {round(agg['cbn_mg'], 2)} mg/dia"
+        })
+        dados_canabinoides_totais.append({
+            'x': data_str,
+            'y': round(agg['canabinoides_totais'], 2),
+            'dosagem_texto': f"Total: {round(agg['canabinoides_totais'], 2)} mg/dia"
         })
     
     return jsonify({
-        'dados_grafico': dados_grafico
+        'dados_grafico': dados_grafico,
+        'dados_canabinoides': {
+            'cbd': dados_cbd,
+            'thc': dados_thc,
+            'cbg': dados_cbg,
+            'cbn': dados_cbn,
+            'total': dados_canabinoides_totais
+        }
     }), 200

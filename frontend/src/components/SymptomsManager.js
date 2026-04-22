@@ -90,6 +90,7 @@ const SymptomsManager = ({ patientId }) => {
   const [showChart, setShowChart] = useState(true);
   const [chartLoading, setChartLoading] = useState(false);
   const [chartDataType, setChartDataType] = useState('all'); // 'all', 'manual', 'test'
+  const [selectedPeriod, setSelectedPeriod] = useState('1y');
 
   // Estado para diálogo de confirmação de exclusão
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -440,9 +441,10 @@ const SymptomsManager = ({ patientId }) => {
     // Handle ISO dates (with 'T') and simple date strings
     let date;
     if (dateString.includes('T')) {
-      date = new Date(dateString);
+      // Se tiver T, pegamos só a parte da data e forçamos meio-dia
+      date = new Date(`${dateString.split('T')[0]}T12:00:00`);
     } else {
-      date = new Date(dateString + 'T00:00:00');
+      date = new Date(`${dateString}T12:00:00`);
     }
     return date.toLocaleDateString('pt-BR', {
       day: '2-digit',
@@ -460,9 +462,9 @@ const SymptomsManager = ({ patientId }) => {
       if (dateValue instanceof Date) {
         date = dateValue;
       }
-      // Se é uma string ou timestamp
       else {
-        date = new Date(dateValue);
+        const dStr = typeof dateValue === 'string' && dateValue.includes('T') ? dateValue.split('T')[0] : dateValue;
+        date = new Date(`${dStr}T12:00:00`);
       }
 
       // Verificar se a data é válida
@@ -649,7 +651,7 @@ const SymptomsManager = ({ patientId }) => {
     ];
 
     const filteredDatasets = chartData.filter(dataset => {
-      const isTest = dataset.data.some(p => p.original_value !== undefined);
+      const isTest = dataset.label.includes('Teste ') || dataset.label.includes('TDAH');
       if (chartDataType === 'manual') return !isTest;
       if (chartDataType === 'test') return isTest;
       return true;
@@ -659,17 +661,20 @@ const SymptomsManager = ({ patientId }) => {
 
     return {
       datasets: filteredDatasets.map((dataset, index) => {
-        const isTest = dataset.data.some(p => p.original_value !== undefined);
-        // Converter strings de data para objetos Date e ordenar cronologicamente
-        const processedData = dataset.data.map(point => ({
-          ...point,
-          x: new Date(point.x)
-        })).sort((a, b) => new Date(a.x) - new Date(b.x));
+        const isTest = dataset.label.includes('Teste ') || dataset.label.includes('TDAH');
+        // Converter strings de data para objetos Date no meio-dia local e ordenar cronologicamente
+        const processedData = dataset.data.map(point => {
+          const dateStr = point.x && typeof point.x === 'string' && point.x.includes('T') ? point.x.split('T')[0] : point.x;
+          return {
+            ...point,
+            x: new Date(`${dateStr}T12:00:00`)
+          };
+        }).sort((a, b) => new Date(a.x) - new Date(b.x));
 
         const baseColor = colors[index % colors.length];
 
         return {
-          label: isTest ? `📋 ${dataset.label} (IA)` : `✍️ ${dataset.label}`,
+          label: isTest ? `📋 ${dataset.label.replace('Teste ', '')} (IA)` : `✍️ ${dataset.label}`,
           data: processedData,
           borderColor: baseColor,
           backgroundColor: baseColor + '4D', // 0.3 opacity
@@ -845,10 +850,12 @@ const SymptomsManager = ({ patientId }) => {
                 <FormControl size="small" sx={{ minWidth: 150 }}>
                   <InputLabel>Período</InputLabel>
                   <Select
-                    value={'1y'} // Use state if period was in state
+                    value={selectedPeriod}
                     label="Período"
-                    onChange={(e) => loadChartData(e.target.value)}
-                    defaultValue="1y"
+                    onChange={(e) => {
+                      setSelectedPeriod(e.target.value);
+                      loadChartData(e.target.value);
+                    }}
                   >
                     <MenuItem value="1m">Último mês</MenuItem>
                     <MenuItem value="3m">Últimos 3 meses</MenuItem>

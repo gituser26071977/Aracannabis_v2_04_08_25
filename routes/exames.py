@@ -378,6 +378,15 @@ def processar_ocr_exame(exame_id):
                 try:
                     ocr_result = ocr_service.process_exam_image(filepath)
                     
+                    if ocr_result.get('status') == 'disabled':
+                        ocr_resultado.erro_processamento = ocr_result.get('message')
+                        ocr_resultado.status_processamento = 'disabled'
+                        db.session.commit()
+                        return jsonify({
+                            "error": "Serviço desativado",
+                            "message": ocr_result.get('message')
+                        }), 400
+                        
                     if ocr_result.get('status') == 'concluido':
                         # Atualizar registro com resultados reais
                         ocr_resultado.texto_extraido = ocr_result['texto_extraido']

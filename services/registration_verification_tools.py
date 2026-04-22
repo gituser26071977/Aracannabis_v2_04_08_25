@@ -146,23 +146,23 @@ def verify_email_domain(email: str) -> dict:
             "confidence": 0.85
         }
         
-    except dns.resolver.NXDOMAIN:
+    except (dns.resolver.NXDOMAIN, dns.resolver.NoNameservers):
         return {
             "valid": False,
             "reason": "Domínio não existe",
             "confidence": 1.0
         }
-    except dns.resolver.NoAnswer:
+    except (dns.resolver.NoAnswer, dns.resolver.Timeout):
         return {
             "valid": False,
-            "reason": "Domínio sem registros MX",
+            "reason": "Domínio sem resposta ou servidores indisponíveis (DNS)",
             "confidence": 0.8
         }
     except Exception as e:
         return {
             "valid": False,
-            "reason": f"Erro ao verificar domínio: {str(e)}",
-            "confidence": 0.5
+            "reason": f"Erro técnico ao verificar domínio: {str(e)}",
+            "confidence": 0.3
         }
 
 
