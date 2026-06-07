@@ -67,6 +67,24 @@ from araos.platform.identity.service_accounts import ServiceAccountAuthenticator
 from araos.platform.identity.delegated import DelegatedIdentity, DelegationContext, DelegationManager
 from araos.platform.identity.service import IdentityService
 
+# Event Bus (The Nervous System)
+from araos.platform.event_bus.envelope import EventEnvelopeV2, EventPriority, EventCategory, ClinicalEvent
+from araos.platform.event_bus.publisher import RedisEventPublisher
+from araos.platform.event_bus.consumer import RedisEventConsumer
+from araos.platform.event_bus.bus import AraOSEventBus
+from araos.platform.event_bus.router import EventRouter
+from araos.platform.event_bus.registry import HandlerRegistry
+from araos.platform.event_bus.store import EventStore, EventRecord
+from araos.platform.event_bus.dlq import DeadLetterQueue
+from araos.platform.event_bus.correlation import CorrelationEngine
+from araos.platform.event_bus.replay import EventReplay, ReplayResult
+from araos.platform.event_bus.metrics import EventMetrics
+from araos.platform.event_bus.pipeline import EventAuditPipeline
+
+# Audit Ledger
+from araos.platform.audit.ledger import AuditEntry, AuditLedger
+from araos.platform.audit.service import AuditService
+
 # Erros
 from araos.platform.shared.errors import (
     AraOSPlatformError,
@@ -139,6 +157,30 @@ __all__ = [
     "DelegationContext",
     "DelegationManager",
     "IdentityService",
+    
+    # Event Bus (Nervous System)
+    "EventEnvelopeV2",
+    "EventPriority",
+    "EventCategory",
+    "ClinicalEvent",
+    "RedisEventPublisher",
+    "RedisEventConsumer",
+    "AraOSEventBus",
+    "EventRouter",
+    "HandlerRegistry",
+    "EventStore",
+    "EventRecord",
+    "DeadLetterQueue",
+    "CorrelationEngine",
+    "EventReplay",
+    "ReplayResult",
+    "EventMetrics",
+    "EventAuditPipeline",
+    
+    # Audit Ledger
+    "AuditEntry",
+    "AuditLedger",
+    "AuditService",
     
     # Erros
     "AraOSPlatformError",
