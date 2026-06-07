@@ -146,6 +146,7 @@ def create_app(config_obj=None):
     from routes.consultas import consultas_bp
     from routes.import_export import import_export_bp
     from routes.produtos import produtos_bp
+    from routes.catalogo_routes import catalogo_bp
     from routes.cadastro_profissionais import (
         cadastro_profissionais_bp as cadastro_prof_bp,
     )
@@ -159,6 +160,7 @@ def create_app(config_obj=None):
     from routes.ai_management import ai_management_bp
     from routes.crew_ai import crew_ai_bp
     from routes.billing import billing_bp
+    from routes.webhooks import webhooks_bp
     from routes.ai_chat_simples import ai_chat_simples_bp
     from routes.gad7 import gad7_bp
     from routes.dynamic_tenant_webhook import tenant_webhook_bp
@@ -176,6 +178,7 @@ def create_app(config_obj=None):
     app.register_blueprint(consultas_bp, url_prefix="/api/consultas")
     app.register_blueprint(import_export_bp, url_prefix="/api/import-export")
     app.register_blueprint(produtos_bp, url_prefix="/api")
+    app.register_blueprint(catalogo_bp)
     app.register_blueprint(tenant_webhook_bp, url_prefix="/api/tenant")
     app.register_blueprint(config_ia_tenant_bp, url_prefix="/api/tenant-config")
     app.register_blueprint(sdr_bp, url_prefix="/api/sdr")
@@ -208,14 +211,24 @@ def create_app(config_obj=None):
     app.register_blueprint(ai_management_bp, url_prefix="/api/ai-management")
     app.register_blueprint(crew_ai_bp, url_prefix="/api/crew-ai")
     app.register_blueprint(billing_bp, url_prefix="/api/billing")
+    app.register_blueprint(webhooks_bp, url_prefix="/api/webhooks")
     app.register_blueprint(ai_chat_simples_bp, url_prefix="/api")
     from routes.utils import utils_bp
 
     app.register_blueprint(utils_bp, url_prefix="/api/utils")
 
+    # Onboarding & Email Verification Module
+    from routes.onboarding import onboarding_bp
+    app.register_blueprint(onboarding_bp)
+
     from routes.patient_import_agent import patient_import_bp
 
     app.register_blueprint(patient_import_bp, url_prefix="/api/import-agent")
+
+    # [NEW] Usage / Quotas (Squad B)
+    from routes.usage import usage_bp
+
+    app.register_blueprint(usage_bp, url_prefix="/api")
 
     # [NEW] AAP — Arapath Agent Protocol
     from routes.aap import aap_bp
@@ -250,6 +263,11 @@ def create_app(config_obj=None):
 
     register_tenant_middleware(app)
 
+    # [NEW] Subscription Middleware (Squad B)
+    from middleware.subscription_middleware import register_subscription_middleware
+
+    register_subscription_middleware(app)
+
     # Criar headers de segurança
     @app.after_request
     def apply_security_headers(response):
@@ -259,6 +277,8 @@ def create_app(config_obj=None):
     with app.app_context():
         # 1. Criar tabelas primeiro
         try:
+            # Importar models_extra para garantir que todas as tabelas sejam criadas
+            import models_extra
             db.create_all()
         except Exception as e:
             print(f"⚠️ Aviso: Erro ao criar tabelas: {e}")

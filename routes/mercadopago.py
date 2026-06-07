@@ -7,6 +7,8 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 import logging
 import re
 from services.mercadopago_service import mercadopago_service
+from services.webhook_handler import webhook_handler
+from services.feature_flag_service import FeatureFlagService
 
 logger = logging.getLogger(__name__)
 
@@ -117,38 +119,40 @@ def criar_preferencia_publica():
 @mercadopago_bp.route('/webhook', methods=['POST'])
 def webhook():
     """
-    Endpoint para receber notificações do Mercado Pago
+    Endpoint para receber notificações do Mercado Pago.
+    Se new_billing_v2 estiver ativo, delega ao webhook_handler unificado.
     """
     try:
-        # Obter dados do webhook
         dados_webhook = request.get_json()
         
         if not dados_webhook:
-            # Tentar obter dados do form
             dados_webhook = {
                 'topic': request.form.get('topic'),
                 'resource': request.form.get('resource'),
                 'id': request.form.get('id')
             }
         
-        logger.info(f"Webhook recebido: {dados_webhook}")
-        
-        # Processar webhook
-        resultado = mercadopago_service.processar_webhook(dados_webhook)
-        
-        if resultado['success']:
-            logger.info(f"Webhook processado com sucesso: {resultado}")
-            
-            # Se foi uma ativação de assinatura, você pode adicionar lógica adicional aqui
-            if resultado.get('action') == 'subscription_activated':
-                subscription = resultado.get('subscription', {})
-                logger.info(f"Assinatura ativada: {subscription}")
-                # Aqui você pode enviar email de confirmação, atualizar banco de dados, etc.
-            
-            return jsonify({'status': 'ok'}), 200
+        logger.info(f"Webhook Mercado Pago recebido: {dados_webhook}")
+
+        if FeatureFlagService.is_enabled('new_billing_v2'):
+            resultado = webhook_handler.process('mercadopago', dados_webhook)
+            if resultado['success']:
+                return jsonify({'status': 'ok', 'idempotent': resultado.get('idempotent', False)}), 200
+            else:
+                return jsonify({'status': 'error', 'error': resultado.get('error')}), 200
         else:
-            logger.error(f"Erro ao processar webhook: {resultado['error']}")
-            return jsonify({'status': 'error'}), 400
+            # Fallback para o serviço legado
+            resultado = mercadopago_service.processar_webhook(dados_webhook)
+            
+            if resultado['success']:
+                logger.info(f"Webhook processado com sucesso: {resultado}")
+                if resultado.get('action') == 'subscription_activated':
+                    subscription = resultado.get('subscription', {})
+                    logger.info(f"Assinatura ativada: {subscription}")
+                return jsonify({'status': 'ok'}), 200
+            else:
+                logger.error(f"Erro ao processar webhook: {resultado['error']}")
+                return jsonify({'status': 'error'}), 400
             
     except Exception as e:
         logger.error(f"Erro no webhook: {str(e)}")
@@ -163,7 +167,6 @@ def consultar_pagamento(payment_id):
     try:
         user_id = get_jwt_identity()
         
-        # Consultar pagamento
         resultado = mercadopago_service.consultar_pagamento(payment_id)
         
         if resultado['success']:
@@ -187,7 +190,6 @@ def status_integracao():
     Verifica o status da integração com Mercado Pago
     """
     try:
-        # Verificar se as configurações estão presentes
         configuracoes = {
             'access_token_configurado': bool(mercadopago_service.access_token),
             'public_key_configurado': bool(mercadopago_service.public_key),
@@ -195,11 +197,9 @@ def status_integracao():
             'sandbox_mode': mercadopago_service.sandbox
         }
         
-        # Verificar se o SDK está funcionando
         try:
-            # Tentar fazer uma consulta simples para testar a conexão
             test_response = mercadopago_service.sdk.payment().search()
-            sdk_funcionando = test_response.get('status') in [200, 404]  # 404 é normal se não houver pagamentos
+            sdk_funcionando = test_response.get('status') in [200, 404]
         except Exception:
             sdk_funcionando = False
         
@@ -232,7 +232,6 @@ def calcular_preco():
         periodo = dados.get('periodo', 'mensal')
         plano = dados.get('plano', 'sem_ia')
         
-        # Validar período
         periodos_validos = ['mensal', 'trimestral', 'semestral', 'anual']
         if periodo not in periodos_validos:
             return jsonify({
@@ -247,7 +246,6 @@ def calcular_preco():
                 'error': 'Plano inválido'
             }), 400
         
-        # Calcular preço usando a mesma lógica do serviço
         precos_base = {
             'sem_ia': 99.00,
             'com_ia': 250.00

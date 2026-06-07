@@ -2,7 +2,9 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, Plano, Assinatura, Fatura, Profissional
 from services.billing_service import billing_service
+from services.billing_service_v2 import billing_service_v2
 from services.payment_service import payment_service
+from services.feature_flag_service import FeatureFlagService
 
 billing_bp = Blueprint('billing', __name__)
 
@@ -52,9 +54,19 @@ def assinar_plano():
     data = request.get_json() or {}
     plano_id = data.get('plano_id')
     metodo = data.get('metodo', 'pix')
+    periodicidade = data.get('periodicidade', 'mensal')
+
     if not plano_id:
         return jsonify({'error': 'plano_id é obrigatório'}), 400
-    result = billing_service.criar_assinatura(current_user_id, plano_id, metodo)
+
+    # Feature flag new_billing_v2
+    if FeatureFlagService.is_enabled('new_billing_v2'):
+        result = billing_service_v2.criar_assinatura(
+            current_user_id, plano_id, metodo, periodicidade
+        )
+    else:
+        result = billing_service.criar_assinatura(current_user_id, plano_id, metodo)
+
     if result.get('error'):
         return jsonify(result), 400
     return jsonify(result), 201
@@ -64,6 +76,11 @@ def assinar_plano():
 @jwt_required()
 def listar_faturas():
     current_user_id = int(get_jwt_identity())
+
+    if FeatureFlagService.is_enabled('new_billing_v2'):
+        faturas = billing_service_v2.listar_faturas_profissional(current_user_id)
+        return jsonify({'faturas': faturas})
+
     assinaturas_ids = [a.id for a in Assinatura.query.filter_by(profissional_id=current_user_id).all()]
     faturas = Fatura.query.filter(Fatura.assinatura_id.in_(assinaturas_ids)).order_by(Fatura.created_at.desc()).all()
     return jsonify({'faturas': [f.to_dict() for f in faturas]})
@@ -72,7 +89,11 @@ def listar_faturas():
 @billing_bp.route('/invoices/<int:fatura_id>/pay', methods=['POST'])
 @jwt_required()
 def pagar_fatura(fatura_id):
-    result = billing_service.pagar_fatura(fatura_id)
+    if FeatureFlagService.is_enabled('new_billing_v2'):
+        result = billing_service_v2.pagar_fatura(fatura_id)
+    else:
+        result = billing_service.pagar_fatura(fatura_id)
+
     if result.get('error'):
         return jsonify(result), 404
     return jsonify(result), 200
@@ -100,3 +121,25 @@ def atualizar_status_pagamento(cobranca_id):
         return jsonify(payment_service.update_status(cobranca_id, status))
     except Exception as e:
         return jsonify({'error': str(e)}), 404
+
+
+# --- Novos endpoints v2 ---
+
+@billing_bp.route('/subscription/<int:assinatura_id>/cancel', methods=['POST'])
+@jwt_required()
+def cancelar_assinatura(assinatura_id):
+    if not FeatureFlagService.is_enabled('new_billing_v2'):
+        return jsonify({'error': 'Feature new_billing_v2 desativada'}), 403
+    result = billing_service_v2.cancelar_assinatura(assinatura_id)
+    if result.get('error'):
+        return jsonify(result), 400
+    return jsonify(result), 200
+
+
+@billing_bp.route('/providers', methods=['GET'])
+@jwt_required()
+def listar_provedores():
+    if not FeatureFlagService.is_enabled('multi_payment_provider'):
+        return jsonify({'error': 'Feature multi_payment_provider desativada'}), 403
+    from services.payment_provider_factory import PaymentProviderFactory
+    return jsonify({'providers': PaymentProviderFactory.list_providers()})
