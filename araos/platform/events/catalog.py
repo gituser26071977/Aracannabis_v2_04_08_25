@@ -434,6 +434,72 @@ _EVENT_CATALOG: Dict[str, EventDefinition] = {
         consumers=["audit", "lgpd"],
         sensitive=True,
     ),
+    
+    # ─── SISTEMA ─────────────────────────────────────────────────────
+    "SYSTEM_STARTED": EventDefinition(
+        event_type="SYSTEM_STARTED",
+        domain="system",
+        action="started",
+        aggregate_type="system",
+        description="Sistema iniciado",
+        consumers=["audit", "monitoring"],
+    ),
+    "SYSTEM_STOPPED": EventDefinition(
+        event_type="SYSTEM_STOPPED",
+        domain="system",
+        action="stopped",
+        aggregate_type="system",
+        description="Sistema parado",
+        consumers=["audit", "monitoring"],
+    ),
+    "SYSTEM_HEALTH_DEGRADED": EventDefinition(
+        event_type="SYSTEM_HEALTH_DEGRADED",
+        domain="system",
+        action="degraded",
+        aggregate_type="system",
+        description="Saúde do sistema degradada",
+        consumers=["audit", "monitoring", "connect"],
+    ),
+    "SYSTEM_HEALTH_RECOVERED": EventDefinition(
+        event_type="SYSTEM_HEALTH_RECOVERED",
+        domain="system",
+        action="recovered",
+        aggregate_type="system",
+        description="Saúde do sistema recuperada",
+        consumers=["audit", "monitoring", "connect"],
+    ),
+    "SYSTEM_MAINTENANCE_ENABLED": EventDefinition(
+        event_type="SYSTEM_MAINTENANCE_ENABLED",
+        domain="system",
+        action="enabled",
+        aggregate_type="maintenance",
+        description="Modo de manutenção habilitado",
+        consumers=["audit", "monitoring", "gateway"],
+    ),
+    "SYSTEM_MAINTENANCE_DISABLED": EventDefinition(
+        event_type="SYSTEM_MAINTENANCE_DISABLED",
+        domain="system",
+        action="disabled",
+        aggregate_type="maintenance",
+        description="Modo de manutenção desabilitado",
+        consumers=["audit", "monitoring", "gateway"],
+    ),
+    "SYSTEM_DEPLOY_STARTED": EventDefinition(
+        event_type="SYSTEM_DEPLOY_STARTED",
+        domain="system",
+        action="started",
+        aggregate_type="deploy",
+        description="Deploy iniciado",
+        consumers=["audit", "monitoring"],
+    ),
+    "SYSTEM_DEPLOY_COMPLETED": EventDefinition(
+        event_type="SYSTEM_DEPLOY_COMPLETED",
+        domain="system",
+        action="completed",
+        aggregate_type="deploy",
+        description="Deploy concluído",
+        consumers=["audit", "monitoring"],
+    ),
 }
 
 
