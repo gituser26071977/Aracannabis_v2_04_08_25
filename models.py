@@ -29,6 +29,14 @@ class Profissional(db.Model):
     aprovado_por = db.Column(db.String)  # 'system' ou ID do admin que aprovou
     validation_data = db.Column(db.JSON)  # Dados da validação CRM (resposta API, etc)
 
+    # Onboarding & Email Verification
+    status_conta = db.Column(
+        db.String, default="active", nullable=False
+    )  # 'pending_email', 'active', 'suspended'
+    email_verified = db.Column(db.Boolean, default=False)
+    onboarding_completed = db.Column(db.Boolean, default=False)
+    onboarding_step = db.Column(db.Integer, default=0)  # último passo completado no wizard
+
     evolucoes = db.relationship("Evolucao", backref="profissional", lazy=True)
     logs = db.relationship("LogAtividade", backref="profissional", lazy=True)
     consultas = db.relationship("Consulta", backref="profissional", lazy=True)
@@ -52,6 +60,10 @@ class Profissional(db.Model):
             "data_expiracao": self.data_expiracao.isoformat()
             if self.data_expiracao
             else None,
+            "status_conta": self.status_conta,
+            "email_verified": self.email_verified,
+            "onboarding_completed": self.onboarding_completed,
+            "onboarding_step": self.onboarding_step,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
@@ -773,6 +785,10 @@ class Produto(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String, nullable=False)
     tipo = db.Column(db.String, default="oleo")
+    categoria = db.Column(db.String(100), nullable=True)
+    unidade = db.Column(db.String(50), nullable=True)
+    concentracao = db.Column(db.String(50), nullable=True)
+    codigo_barras = db.Column(db.String(50), nullable=True)
     concentracao_cbd = db.Column(db.Float, default=0)
     concentracao_thc = db.Column(db.Float, default=0)
     concentracao_cbg = db.Column(db.Float, default=0)
@@ -801,6 +817,10 @@ class Produto(db.Model):
             "id": self.id,
             "nome": self.nome,
             "tipo": self.tipo,
+            "categoria": self.categoria,
+            "unidade": self.unidade,
+            "concentracao": self.concentracao,
+            "codigo_barras": self.codigo_barras,
             "concentracao_cbd": self.concentracao_cbd,
             "concentracao_thc": self.concentracao_thc,
             "concentracao_cbg": self.concentracao_cbg,
@@ -903,9 +923,14 @@ class Assinatura(db.Model):
     plano_id = db.Column(db.Integer, db.ForeignKey("planos.id"), nullable=False)
     status = db.Column(
         db.String, default="trial"
-    )  # trial, ativa, cancelada, inadimplente
+    )  # trial, ativa, cancelada, inadimplente, pending
     trial_ends_at = db.Column(db.DateTime)
     renovacao_em = db.Column(db.DateTime)
+    # --- campos v2 billing ---
+    provedor = db.Column(db.String(50))  # mercadopago, stripe, asaas
+    provider_subscription_id = db.Column(db.String(255))
+    periodicidade = db.Column(db.String(20), default="mensal")  # mensal, trimestral, semestral, anual
+    # -------------------------
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
@@ -927,6 +952,9 @@ class Assinatura(db.Model):
             "renovacao_em": self.renovacao_em.isoformat()
             if self.renovacao_em
             else None,
+            "provedor": self.provedor,
+            "provider_subscription_id": self.provider_subscription_id,
+            "periodicidade": self.periodicidade,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
@@ -942,8 +970,12 @@ class Fatura(db.Model):
     valor = db.Column(db.Float, nullable=False)
     status = db.Column(db.String, default="pendente")  # pendente, paga, cancelada
     vencimento = db.Column(db.DateTime)
-    cobranca_id = db.Column(db.String)  # id de cobrança no PSP (mock)
+    cobranca_id = db.Column(db.String)  # id de cobrança no PSP
     metodo = db.Column(db.String, default="pix")  # pix, boleto, card
+    # --- campos v2 billing ---
+    provedor = db.Column(db.String(50))
+    provider_invoice_id = db.Column(db.String(255))
+    # -------------------------
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
@@ -960,6 +992,8 @@ class Fatura(db.Model):
             "vencimento": self.vencimento.isoformat() if self.vencimento else None,
             "cobranca_id": self.cobranca_id,
             "metodo": self.metodo,
+            "provedor": self.provedor,
+            "provider_invoice_id": self.provider_invoice_id,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

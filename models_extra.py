@@ -120,6 +120,109 @@ class AuditLog(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
 
+# --- WebhookLog para idempotência e audit ---
+class WebhookLog(db.Model):
+    __tablename__ = 'webhook_logs'
+
+    id = db.Column(db.Integer, primary_key=True)
+    provider = db.Column(db.String(50), nullable=False)  # mercadopago, stripe, asaas
+    event_type = db.Column(db.String(100), nullable=False)
+    provider_event_id = db.Column(db.String(255), nullable=False, index=True)  # idempotência
+    payload = db.Column(db.JSON)
+    processed = db.Column(db.Boolean, default=False)
+    fatura_id = db.Column(db.Integer, db.ForeignKey('faturas.id'), nullable=True)
+    assinatura_id = db.Column(db.Integer, db.ForeignKey('assinaturas.id'), nullable=True)
+    error_message = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint('provider', 'provider_event_id', name='uq_webhook_provider_event'),
+    )
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'provider': self.provider,
+            'event_type': self.event_type,
+            'provider_event_id': self.provider_event_id,
+            'processed': self.processed,
+            'fatura_id': self.fatura_id,
+            'assinatura_id': self.assinatura_id,
+            'error_message': self.error_message,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class CatalogoImportLog(db.Model):
+    __tablename__ = 'catalogo_import_logs'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('profissionais.id', ondelete='SET NULL'), nullable=True)
+    filename = db.Column(db.String(255), nullable=True)
+    detected_count = db.Column(db.Integer, default=0)
+    imported_count = db.Column(db.Integer, default=0)
+    errors = db.Column(db.JSON, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship('Profissional', foreign_keys=[user_id])
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'user_nome': self.user.nome if self.user else None,
+            'filename': self.filename,
+            'detected_count': self.detected_count,
+            'imported_count': self.imported_count,
+            'errors': self.errors,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class EmailVerification(db.Model):
+    __tablename__ = 'email_verifications'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('profissionais.id', ondelete='CASCADE'), nullable=False)
+    token = db.Column(db.String(128), nullable=False, unique=True)
+    expires_at = db.Column(db.DateTime, nullable=False)
+    used = db.Column(db.Boolean, default=False, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'token': self.token,
+            'expires_at': self.expires_at.isoformat() if self.expires_at else None,
+            'used': self.used,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class OnboardingProgress(db.Model):
+    __tablename__ = 'onboarding_progress'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('profissionais.id', ondelete='CASCADE'), nullable=False, unique=True)
+    current_step = db.Column(db.Integer, default=1, nullable=False)
+    steps_data = db.Column(db.JSON, nullable=True)
+    completed_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'current_step': self.current_step,
+            'steps_data': self.steps_data,
+            'completed_at': self.completed_at.isoformat() if self.completed_at else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
 # Helper para criar entrada de audit log em rotas
 def create_audit_entry(tenant_id, user_id, action, resource_type=None, resource_id=None, details=None, ip=None):
     try:
