@@ -58,8 +58,14 @@ from araos.platform.contracts.audit import AuditProvider
 # Feature Flags
 from araos.platform.feature_flags.service import FeatureFlagService, FeatureFlagContext
 
-# Identity Client
+# Identity Platform
 from araos.platform.identity.client import IdentityClient
+from araos.platform.identity.permissions import Permission, RoleRegistry, PermissionRegistry
+from araos.platform.identity.tokens import JWTTokenProvider, TokenClaims, PlatformTokenPair
+from araos.platform.identity.context import IdentityContext, ActorType
+from araos.platform.identity.service_accounts import ServiceAccountAuthenticator, APIKeyCredentials
+from araos.platform.identity.delegated import DelegatedIdentity, DelegationContext, DelegationManager
+from araos.platform.identity.service import IdentityService
 
 # Erros
 from araos.platform.shared.errors import (
@@ -119,6 +125,20 @@ __all__ = [
     "FeatureFlagService",
     "FeatureFlagContext",
     "IdentityClient",
+    "Permission",
+    "RoleRegistry",
+    "PermissionRegistry",
+    "JWTTokenProvider",
+    "TokenClaims",
+    "PlatformTokenPair",
+    "IdentityContext",
+    "ActorType",
+    "ServiceAccountAuthenticator",
+    "APIKeyCredentials",
+    "DelegatedIdentity",
+    "DelegationContext",
+    "DelegationManager",
+    "IdentityService",
     
     # Erros
     "AraOSPlatformError",
