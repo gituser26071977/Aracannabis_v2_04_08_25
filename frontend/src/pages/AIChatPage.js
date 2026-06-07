@@ -104,10 +104,17 @@ const AIChatPage = () => {
     carregarPacientes();
   }, []);
 
-  useEffect(() => {
+  const scrollToBottom = () => {
     if (chatListRef.current) {
-      chatListRef.current.scrollTop = chatListRef.current.scrollHeight;
+      chatListRef.current.scrollTo({
+        top: chatListRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
     }
+  };
+
+  useEffect(() => {
+    scrollToBottom();
   }, [messages]);
 
   const appendMessage = (message) => {
@@ -213,9 +220,7 @@ const AIChatPage = () => {
             if (data.type === 'text' && data.text) {
               appendMessage(createAssistantMessage('📞 (Live): ' + data.text));
               // Scroll to bottom
-              setTimeout(() => {
-                if (chatListRef.current) chatListRef.current.scrollTop = chatListRef.current.scrollHeight;
-              }, 100);
+              setTimeout(scrollToBottom, 100);
             }
           } catch (e) { }
         }
@@ -636,6 +641,13 @@ const AIChatPage = () => {
                 </Box>
               );
             })}
+            {/* Âncora de scroll para a última mensagem */}
+            <Box
+              ref={(el) => {
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'end' });
+              }}
+              sx={{ height: 1 }}
+            />
           </Box>
         </Box>
 
