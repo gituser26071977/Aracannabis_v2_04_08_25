@@ -290,6 +290,14 @@ def create_app(config_obj=None):
         except Exception as e:
             print(f"⚠️ Erro ao inicializar anúncios: {e}")
 
+        # 3. Inicializar feature flags padrão
+        try:
+            from services.feature_flag_service import FeatureFlagService
+            FeatureFlagService.init_defaults()
+            print("✅ Feature flags inicializadas")
+        except Exception as e:
+            print(f"⚠️ Erro ao inicializar feature flags: {e}")
+
         # 3. Criar diretórios de upload
         upload_dir = app.config.get("UPLOAD_FOLDER_EXAMES")
         if upload_dir and not os.path.exists(upload_dir):

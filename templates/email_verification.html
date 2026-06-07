@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verifique seu Email - Aracannabis</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background: #ffffff;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+        .header {
+            background: linear-gradient(135deg, #0d7377 0%, #14a085 100%);
+            padding: 40px 30px;
+            text-align: center;
+        }
+        .header h1 {
+            color: #ffffff;
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .header p {
+            color: rgba(255,255,255,0.9);
+            margin: 10px 0 0;
+            font-size: 16px;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .greeting {
+            font-size: 18px;
+            margin-bottom: 20px;
+            color: #222;
+        }
+        .message {
+            font-size: 15px;
+            line-height: 1.7;
+            color: #555;
+            margin-bottom: 30px;
+        }
+        .cta-container {
+            text-align: center;
+            margin: 30px 0;
+        }
+        .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #0d7377 0%, #14a085 100%);
+            color: #ffffff;
+            text-decoration: none;
+            padding: 16px 40px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(13,115,119,0.3);
+            transition: transform 0.2s;
+        }
+        .cta-button:hover {
+            transform: translateY(-2px);
+        }
+        .link-fallback {
+            background: #f4f7f6;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            word-break: break-all;
+            font-size: 13px;
+            color: #666;
+        }
+        .footer {
+            background: #f9fafb;
+            padding: 30px;
+            text-align: center;
+            border-top: 1px solid #eee;
+        }
+        .footer p {
+            font-size: 13px;
+            color: #888;
+            margin: 5px 0;
+        }
+        .expiry-note {
+            background: #fff8e1;
+            border-left: 4px solid #ffc107;
+            padding: 12px 16px;
+            margin: 20px 0;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌿 Aracannabis</h1>
+            <p>Sistema de Prontuário Eletrônico</p>
+        </div>
+        <div class="content">
+            <p class="greeting">Olá, <strong>{{ nome }}</strong>!</p>
+            <p class="message">
+                Bem-vindo ao <strong>Aracannabis</strong>! Estamos felizes em tê-lo conosco.<br><br>
+                Para ativar sua conta e começar a utilizar o sistema, confirme seu endereço de email clicando no botão abaixo:
+            </p>
+            <div class="cta-container">
+                <a href="{{ link_verificacao }}" class="cta-button">✅ Verificar Meu Email</a>
+            </div>
+            <div class="expiry-note">
+                ⏰ Este link expira em <strong>{{ expiracao_horas }} horas</strong>.
+            </div>
+            <p class="message" style="font-size: 14px;">
+                Se o botão não funcionar, copie e cole o link abaixo no seu navegador:
+            </p>
+            <div class="link-fallback">
+                {{ link_verificacao }}
+            </div>
+            <p class="message" style="font-size: 14px; color: #777;">
+                Se você não criou uma conta no Aracannabis, ignore este email.
+            </p>
+        </div>
+        <div class="footer">
+            <p><strong>Aracannabis Sistema</strong></p>
+            <p>📧 suporte@aracannabis.com.br</p>
+            <p style="margin-top: 10px; font-size: 12px; color: #aaa;">
+                Este é um email automático. Por favor, não responda.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

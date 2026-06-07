@@ -12,6 +12,9 @@ import logging
 import secrets
 import os
 from services.email_service import EmailService
+from models_extra import EmailVerification
+from services.feature_flag_service import FeatureFlagService
+from services.subscription_expiration_service import SubscriptionExpirationService
 
 email_service = EmailService()
 
@@ -152,22 +155,27 @@ def login():
     logger.info(f"LOGIN SUCCESS - Usuario '{profissional.usuario}' logado com sucesso")
 
     # Verificar expiração (exceto admin e superadmin)
+    trial_expired = False
     if profissional.role not in ['admin', 'superadmin'] and profissional.data_expiracao and profissional.data_expiracao < datetime.datetime.now():
-        logger.warning(f"LOGIN FAILED - Acesso expirado para {profissional.usuario}")
-        pass
+        logger.warning(f"LOGIN - Acesso expirado para {profissional.usuario} (bloqueio suave)")
+        trial_expired = True
         # Enviar email de aviso
         try:
             email_service.send_trial_expired_email(profissional.email, profissional.nome)
         except Exception as e:
             logger.error(f"Erro ao enviar email de expiração: {e}")
-            
-        return jsonify({
-            'error': 'Seu período de testes expirou. Atualize seu plano.',
-            'expired': True
-        }), 403
     
     expires = datetime.timedelta(hours=12)
     access_token = create_access_token(identity=str(profissional.id), expires_delta=expires)
+
+    if trial_expired:
+        return jsonify({
+            'message': 'Login realizado, mas seu trial expirou.',
+            'access_token': access_token,
+            'user': profissional.to_dict(),
+            'token_expires_in_hours': 12,
+            'trial_expired': True
+        }), 200
 
     return jsonify({
         'message': 'Login realizado com sucesso',
