@@ -147,6 +147,7 @@ def create_app(config_obj=None):
     from routes.import_export import import_export_bp
     from routes.produtos import produtos_bp
     from routes.catalogo_routes import catalogo_bp
+    from routes.voice import voice_bp
     from routes.cadastro_profissionais import (
         cadastro_profissionais_bp as cadastro_prof_bp,
     )
@@ -179,6 +180,7 @@ def create_app(config_obj=None):
     app.register_blueprint(import_export_bp, url_prefix="/api/import-export")
     app.register_blueprint(produtos_bp, url_prefix="/api")
     app.register_blueprint(catalogo_bp)
+    app.register_blueprint(voice_bp)
     app.register_blueprint(tenant_webhook_bp, url_prefix="/api/tenant")
     app.register_blueprint(config_ia_tenant_bp, url_prefix="/api/tenant-config")
     app.register_blueprint(sdr_bp, url_prefix="/api/sdr")
@@ -279,6 +281,10 @@ def create_app(config_obj=None):
         try:
             # Importar models_extra para garantir que todas as tabelas sejam criadas
             import models_extra
+            from services.voice.models.voice_models import (
+                VoiceSessionModel, VoiceTranscriptModel,
+                VoiceEntityModel, VoiceActionModel, VoiceAuditLogModel
+            )
             db.create_all()
         except Exception as e:
             print(f"⚠️ Aviso: Erro ao criar tabelas: {e}")

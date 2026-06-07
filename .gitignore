@@ -1,90 +1,76 @@
-# Python
-__pycache__/
-*.py[cod]
+
 *$py.class
-*.so
-.Python
-env/
+.agent/
+# Agent metadata
+Backup/
 build/
+client_secret_*.json
+coverage/
+credentials*.json
+# Credentials & Secrets
+# Database
+*.db
 develop-eggs/
 dist/
 downloads/
-eggs/
+.DS_Store
+*.egg
+*.egg-info/
 .eggs/
+eggs/
+.env
+env/
+.env.development.local
+.env.local
+.env.production.local
+.env.test.local
+frontend/build/
+# Frontend build
+frontend/dist/
+GAVETA DE DADOS */
+# IDE
+.idea/
+.installed.cfg
+*.key
 lib/
 lib64/
-parts/
-sdist/
-var/
-*.egg-info/
-.installed.cfg
-*.egg
-venv/
-.env
-
+# Local backup & data
+*.log
+logs/
+# Logs
+# Misc
+models/
+.next/
 # Node.js
 node_modules/
 npm-debug.log
-yarn-debug.log
-yarn-error.log
+npm-debug.log*
+out/
+*.p12
+parts/
+*.pem
+*.pfx
 .pnp/
 .pnp.js
-coverage/
-.next/
-out/
-build/
-.DS_Store
-*.pem
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
-.DS_Store
-
-# Database
-*.sqlite3
-*.db
-
-# Logs
-logs/
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Frontend build
-frontend/build/
-frontend/dist/
-
-# Credentials & Secrets
-*.key
-*.p12
-*.pfx
-token.txt
-client_secret_*.json
-sgac-*.json
+__pycache__/
+*.py[cod]
+# Python
+.Python
+sdist/
 service-account*.json
-credentials*.json
-
-# Local backup & data
-Backup/
-GAVETA DE DADOS */
+sgac-*.json
+*.so
+*.sqlite3
+*.swo
+*.swp
 *.tar.gz
-*.zip
-
-# Agent metadata
-.agent/
-
-# Misc
-.DS_Store
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+token.txt
 uploads/
+var/
+venv/
+.vscode/
+yarn-debug.log
+yarn-debug.log*
+yarn-error.log
+yarn-error.log*
+*.zip
