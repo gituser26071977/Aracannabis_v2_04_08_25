@@ -85,6 +85,42 @@ from araos.platform.event_bus.pipeline import EventAuditPipeline
 from araos.platform.audit.ledger import AuditEntry, AuditLedger
 from araos.platform.audit.service import AuditService
 
+# Clinical Intelligence Foundation (Week 4)
+from araos.clinical.entities.models import (
+    ClinicalEntityBase,
+    Diagnosis,
+    Medication,
+    Allergy,
+    Procedure,
+    RiskFactor,
+)
+from araos.clinical.profile.models import ClinicalProfile
+from araos.clinical.timeline.models import ClinicalTimeline, TimelineEntry
+from araos.clinical.graph.models import (
+    ClinicalGraph,
+    ClinicalNode,
+    ClinicalRelationship,
+    ClinicalGraphBuilder,
+    NodeType,
+    RelationshipType,
+)
+from araos.clinical.summary.engine import ClinicalSummaryEngine, SummaryResult
+from araos.clinical.twin.models import PatientDigitalTwin, PatientDigitalTwinBuilder
+from araos.clinical.projections.engine import ClinicalProjectionEngine
+from araos.clinical.contracts.voice import VoiceClinicalAdapter, VoiceQuery, VoiceResponse
+from araos.clinical.contracts.concierge import (
+    ConciergeClinicalAdapter,
+    ConciergeQuery,
+    ConciergeResponse,
+)
+from araos.clinical.contracts.knowledge import (
+    KnowledgeStore,
+    VectorStore,
+    GraphStore,
+    ClinicalQuery,
+    KnowledgeResult,
+)
+
 # Erros
 from araos.platform.shared.errors import (
     AraOSPlatformError,
@@ -181,6 +217,39 @@ __all__ = [
     "AuditEntry",
     "AuditLedger",
     "AuditService",
+    
+    # Clinical Intelligence Foundation (Week 4)
+    "ClinicalEntityBase",
+    "Diagnosis",
+    "Medication",
+    "Allergy",
+    "Procedure",
+    "RiskFactor",
+    "ClinicalProfile",
+    "ClinicalTimeline",
+    "TimelineEntry",
+    "ClinicalGraph",
+    "ClinicalNode",
+    "ClinicalRelationship",
+    "ClinicalGraphBuilder",
+    "NodeType",
+    "RelationshipType",
+    "ClinicalSummaryEngine",
+    "SummaryResult",
+    "PatientDigitalTwin",
+    "PatientDigitalTwinBuilder",
+    "ClinicalProjectionEngine",
+    "VoiceClinicalAdapter",
+    "VoiceQuery",
+    "VoiceResponse",
+    "ConciergeClinicalAdapter",
+    "ConciergeQuery",
+    "ConciergeResponse",
+    "KnowledgeStore",
+    "VectorStore",
+    "GraphStore",
+    "ClinicalQuery",
+    "KnowledgeResult",
     
     # Erros
     "AraOSPlatformError",
