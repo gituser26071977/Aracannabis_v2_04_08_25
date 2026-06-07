@@ -872,24 +872,29 @@ const SymptomsManager = ({ patientId }) => {
               <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
                 <CircularProgress />
               </Box>
-            ) : chartData && chartData.length > 0 ? (
-              <>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ mb: 2, fontStyle: 'italic' }}
-                >
-                  Clique nos pontos do gráfico para ver detalhes. Passe o mouse sobre as linhas para informações adicionais.
-                </Typography>
-                <Box sx={{ height: 400, width: '100%' }}>
-                  <Line data={prepareChartData()} options={chartOptions} />
-                </Box>
-              </>
-            ) : (
-              <Alert severity="info" sx={{ mt: 2 }}>
-                Registre alguns sintomas para visualizar o gráfico de evolução.
-              </Alert>
-            )}
+            ) : (() => {
+              const prepared = prepareChartData();
+              return prepared ? (
+                <>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mb: 2, fontStyle: 'italic' }}
+                  >
+                    Clique nos pontos do gráfico para ver detalhes. Passe o mouse sobre as linhas para informações adicionais.
+                  </Typography>
+                  <Box sx={{ height: 400, width: '100%' }}>
+                    <Line data={prepared} options={chartOptions} />
+                  </Box>
+                </>
+              ) : (
+                <Alert severity="info" sx={{ mt: 2 }}>
+                  {chartData && chartData.length > 0
+                    ? 'Nenhum dado disponível para o filtro selecionado.'
+                    : 'Registre alguns sintomas para visualizar o gráfico de evolução.'}
+                </Alert>
+              );
+            })()}
           </Paper>
 
 
