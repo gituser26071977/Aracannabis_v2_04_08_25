@@ -62,6 +62,25 @@ yarn-error.log*
 frontend/build/
 frontend/dist/
 
+# Credentials & Secrets
+*.key
+*.p12
+*.pfx
+token.txt
+client_secret_*.json
+sgac-*.json
+service-account*.json
+credentials*.json
+
+# Local backup & data
+Backup/
+GAVETA DE DADOS */
+*.tar.gz
+*.zip
+
+# Agent metadata
+.agent/
+
 # Misc
 .DS_Store
 .env.local
