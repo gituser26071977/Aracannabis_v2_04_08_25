@@ -18,6 +18,7 @@ from .tenant import TenantProvider, TenantSettingsProvider
 from .identity import IdentityProvider, TokenProvider
 from .event_bus import EventPublisher, EventConsumer, EventBus
 from .audit import AuditProvider
+from .feature_flags import FeatureFlagProvider, FeatureFlagContext, FeatureFlagState
 
 __all__ = [
     "TenantProvider",
@@ -28,4 +29,7 @@ __all__ = [
     "EventConsumer",
     "EventBus",
     "AuditProvider",
+    "FeatureFlagProvider",
+    "FeatureFlagContext",
+    "FeatureFlagState",
 ]

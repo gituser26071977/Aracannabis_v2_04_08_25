@@ -24,6 +24,26 @@ Arquitetura:
 # Contexto
 from araos.platform.shared.context import TenantContext
 
+# Tenant Layer
+from araos.platform.tenant import (
+    Organization,
+    Clinic,
+    Professional,
+    User,
+    ServiceAccount,
+    FeatureFlag,
+    TenantContextResolver,
+    ResolverInput,
+    FlaskTenantMiddleware,
+    FastAPITenantMiddleware,
+    require_tenant,
+    require_feature_flag,
+    require_roles,
+    TenantService,
+    PlatformTenantProvider,
+    PlatformTenantSettingsProvider,
+)
+
 # Eventos
 from araos.platform.events.schemas import EventEnvelope, EventPayload, EventMetadata
 from araos.platform.events.catalog import EventCatalog, EventDefinition
@@ -57,6 +77,24 @@ from araos.platform.shared.constants import PLATFORM_NAME, PLATFORM_VERSION
 __all__ = [
     # Contexto
     "TenantContext",
+    
+    # Tenant Layer
+    "Organization",
+    "Clinic",
+    "Professional",
+    "User",
+    "ServiceAccount",
+    "FeatureFlag",
+    "TenantContextResolver",
+    "ResolverInput",
+    "FlaskTenantMiddleware",
+    "FastAPITenantMiddleware",
+    "require_tenant",
+    "require_feature_flag",
+    "require_roles",
+    "TenantService",
+    "PlatformTenantProvider",
+    "PlatformTenantSettingsProvider",
     
     # Eventos
     "EventEnvelope",
