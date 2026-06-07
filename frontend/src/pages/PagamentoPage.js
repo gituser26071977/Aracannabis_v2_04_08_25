@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -13,6 +13,7 @@ import {
   Alert,
   CircularProgress,
   Chip,
+  TextField,
   List,
   ListItem,
   ListItemIcon,
@@ -27,24 +28,69 @@ import {
   ArrowBack as ArrowBackIcon,
   Security as SecurityIcon
 } from '@mui/icons-material';
+import { mercadopagoService } from '../services/api';
 
 const PagamentoPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  
-  const plano = searchParams.get('plano') || 'profissional';
-  const periodo = searchParams.get('periodo') || 'mensal';
+  const [nome, setNome] = useState('');
+  const [email, setEmail] = useState('');
+  const [telefone, setTelefone] = useState('');
 
-  // Configurações de preços
-  const precoBase = 180.00;
-  const descontos = {
-    mensal: 0,
-    trimestral: 0.05,
-    semestral: 0.08,
-    anual: 0.12
+  const planoParam = searchParams.get('plano') || 'sem_ia';
+  const periodo = searchParams.get('periodo') || 'mensal';
+  const categoria = searchParams.get('categoria') || 'medico';
+
+  const planos = {
+    sem_ia: {
+      nome: 'Plano Sem IA',
+      descricao: 'Prontuario completo sem recursos de IA',
+      precoBase: 99.00,
+      recursos: [
+        'Pacientes ilimitados',
+        'Sem agentes de IA',
+        'Armazenamento de 5GB',
+        'Backup automático',
+        'Conformidade LGPD',
+        'Atualizacoes incluidas'
+      ]
+    },
+    com_ia: {
+      nome: 'Plano Com IA',
+      descricao: 'Prontuario completo com recursos de IA assistiva',
+      precoBase: 250.00,
+      recursos: [
+        'Pacientes ilimitados',
+        'Agentes de IA incluidos',
+        'Armazenamento de 5GB',
+        'Backup automático',
+        'Relatorios avancados',
+        'Conformidade LGPD',
+        'Atualizacoes incluidas'
+      ]
+    }
   };
+
+  const planoSelecionado = planos[planoParam] ? planoParam : 'sem_ia';
+  const planoInfo = planos[planoSelecionado];
+
+  // Configurações de preços e aplicação do desconto da categoria (60% para não médicos)
+  const precoBase = categoria === 'outros' ? (planoInfo.precoBase || 99.00) * 0.6 : (planoInfo.precoBase || 99.00);
+
+  // Descontos baseados no plano e período
+  const getDesconto = (plano, periodo) => {
+    if (periodo === 'mensal') return 0;
+    if (periodo === 'trimestral') return 0.05;
+    if (periodo === 'semestral') return 0.08;
+
+    if (periodo === 'anual') {
+      return plano === 'com_ia' ? 0.15 : 0.08;
+    }
+    return 0;
+  };
+
   const multiplicadores = {
     mensal: 1,
     trimestral: 3,
@@ -54,7 +100,7 @@ const PagamentoPage = () => {
 
   const calcularPreco = () => {
     const precoSemDesconto = precoBase * multiplicadores[periodo];
-    const desconto = descontos[periodo];
+    const desconto = getDesconto(planoSelecionado, periodo);
     const precoComDesconto = precoSemDesconto * (1 - desconto);
     return {
       original: precoSemDesconto,
@@ -66,20 +112,6 @@ const PagamentoPage = () => {
 
   const precoInfo = calcularPreco();
 
-  const planoInfo = {
-    nome: 'Plano Profissional',
-    descricao: 'Acesso completo ao sistema Aracannabis',
-    recursos: [
-      'Pacientes ilimitados',
-      'Todas as funcionalidades',
-      'Backup automático',
-      'Suporte prioritário',
-      'Relatórios avançados',
-      'Conformidade LGPD',
-      'Atualizações incluídas'
-    ]
-  };
-
   const periodoTexto = {
     mensal: '1 mês',
     trimestral: '3 meses',
@@ -88,45 +120,38 @@ const PagamentoPage = () => {
   };
 
   const handlePagamento = async (metodoPagamento) => {
-    setLoading(true);
     setError('');
 
+    if (!nome.trim() || !email.trim()) {
+      setError('Informe nome e email para continuar.');
+      return;
+    }
+
+    setLoading(true);
+
     try {
-      // Simular criação de preferência no Mercado Pago
-      // Em produção, isso seria uma chamada para o backend
-      
-      // Dados do pagamento
       const dadosPagamento = {
-        plano: plano,
+        plano: planoSelecionado,
         periodo: periodo,
-        valor: precoInfo.final,
-        metodo: metodoPagamento,
-        descricao: `${planoInfo.nome} - ${periodoTexto[periodo]}`
+        categoria: categoria,
+        nome: nome.trim(),
+        email: email.trim(),
+        telefone: telefone.trim(),
+        metodo: metodoPagamento
       };
 
-      console.log('Iniciando pagamento:', dadosPagamento);
+      const resp = await mercadopagoService.criarPreferenciaPublica(dadosPagamento);
+      const redirectUrl = resp.sandbox ? resp.sandbox_init_point : resp.init_point;
 
-      // Simular delay da API
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Em produção, aqui seria redirecionado para o Mercado Pago
-      if (metodoPagamento === 'pix') {
-        // Simular PIX
-        alert(`PIX gerado!\n\nValor: R$ ${precoInfo.final.toFixed(2)}\nChave PIX: 12345678901\n\nCopie e cole no seu app bancário.`);
-      } else if (metodoPagamento === 'boleto') {
-        // Simular Boleto
-        alert(`Boleto gerado!\n\nValor: R$ ${precoInfo.final.toFixed(2)}\nVencimento: 3 dias úteis\n\nO boleto será enviado por email.`);
+      if (redirectUrl) {
+        window.location.href = redirectUrl;
       } else {
-        // Simular Cartão
-        alert(`Redirecionando para pagamento com cartão...\n\nValor: R$ ${precoInfo.final.toFixed(2)}\n\nVocê será redirecionado para o Mercado Pago.`);
+        setError('Nao foi possivel iniciar o pagamento.');
       }
-
-      // Redirecionar para página de sucesso (simulado)
-      navigate('/pagamento-sucesso');
 
     } catch (err) {
       console.error('Erro no pagamento:', err);
-      setError('Erro ao processar pagamento. Tente novamente.');
+      setError(err?.error || 'Erro ao processar pagamento. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -144,7 +169,7 @@ const PagamentoPage = () => {
           >
             Voltar aos Planos
           </Button>
-          
+
           <Box sx={{ textAlign: 'center' }}>
             <PaymentIcon sx={{ fontSize: 60, color: 'primary.main', mb: 2 }} />
             <Typography variant="h4" gutterBottom>
@@ -164,10 +189,10 @@ const PagamentoPage = () => {
                 <Typography variant="h6" gutterBottom>
                   📋 Resumo do Pedido
                 </Typography>
-                
+
                 <Box sx={{ mb: 3 }}>
                   <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-                    {planoInfo.nome}
+                    {planoInfo.nome} {categoria === 'outros' && <Chip label="-40% Parceiro" color="success" size="small" sx={{ ml: 1 }} />}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     {planoInfo.descricao}
@@ -191,7 +216,7 @@ const PagamentoPage = () => {
                       </Typography>
                     </Box>
                   )}
-                  
+
                   {precoInfo.desconto > 0 && (
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                       <Typography variant="body2" color="success.main">
@@ -202,9 +227,9 @@ const PagamentoPage = () => {
                       </Typography>
                     </Box>
                   )}
-                  
+
                   <Divider sx={{ my: 1 }} />
-                  
+
                   <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                     <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
                       Total:
@@ -236,8 +261,8 @@ const PagamentoPage = () => {
                       <ListItemIcon sx={{ minWidth: 24 }}>
                         <CheckIcon color="success" fontSize="small" />
                       </ListItemIcon>
-                      <ListItemText 
-                        primary={recurso} 
+                      <ListItemText
+                        primary={recurso}
                         primaryTypographyProps={{ variant: 'body2' }}
                       />
                     </ListItem>
@@ -254,6 +279,33 @@ const PagamentoPage = () => {
                 <Typography variant="h6" gutterBottom>
                   💳 Escolha a forma de pagamento
                 </Typography>
+
+                <Box sx={{ mb: 2 }}>
+                  <TextField
+                    fullWidth
+                    label="Nome completo"
+                    margin="normal"
+                    value={nome}
+                    onChange={(e) => setNome(e.target.value)}
+                    required
+                  />
+                  <TextField
+                    fullWidth
+                    label="Email"
+                    type="email"
+                    margin="normal"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                  <TextField
+                    fullWidth
+                    label="Telefone (opcional)"
+                    margin="normal"
+                    value={telefone}
+                    onChange={(e) => setTelefone(e.target.value)}
+                  />
+                </Box>
 
                 {error && (
                   <Alert severity="error" sx={{ mb: 3 }}>
@@ -363,9 +415,9 @@ const PagamentoPage = () => {
                     Pagamento Seguro
                   </Typography>
                   <Typography variant="body2">
-                    • Processado pelo Mercado Pago<br/>
-                    • Dados criptografados SSL<br/>
-                    • Certificação PCI DSS<br/>
+                    • Processado pelo Mercado Pago<br />
+                    • Dados criptografados SSL<br />
+                    • Certificação PCI DSS<br />
                     • Nota fiscal eletrônica incluída
                   </Typography>
                 </Alert>
@@ -376,9 +428,9 @@ const PagamentoPage = () => {
                     📋 Política de Cancelamento
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    • Cancele a qualquer momento sem multas<br/>
-                    • Reembolso proporcional se cancelar antes do vencimento<br/>
-                    • Dados mantidos seguros por 120 dias após cancelamento<br/>
+                    • Cancele a qualquer momento sem multas<br />
+                    • Reembolso proporcional se cancelar antes do vencimento<br />
+                    • Dados mantidos seguros por 120 dias após cancelamento<br />
                     • Suporte disponível para dúvidas
                   </Typography>
                 </Box>

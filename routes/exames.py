@@ -1,478 +1,568 @@
-from flask import Blueprint, request, jsonify, current_app, send_file
+from flask import Blueprint, request, jsonify, current_app, send_from_directory, g
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from models import db, Exame, Paciente, Profissional
-from datetime import datetime, date
-import os
-import hashlib
-import uuid
+from models import db, Exame, ExameImagem, ExameLabResultado, OCRResultado, Paciente, Profissional
 from werkzeug.utils import secure_filename
-import mimetypes
+from datetime import datetime
+import os
+import uuid
+from services.email_service import EmailService
+from services.ocr_service import ocr_service  # OCR service - now implemented
+email_service = EmailService()  # Create an instance of the email service
 
-exames_bp = Blueprint('exames', __name__)
 
-# Configurações de upload
-UPLOAD_FOLDER = 'uploads/exames'
-ALLOWED_EXTENSIONS = {
-    'pdf': ['application/pdf'],
-    'jpg': ['image/jpeg'],
-    'jpeg': ['image/jpeg'],
-    'png': ['image/png'],
-    'gif': ['image/gif'],
-    'bmp': ['image/bmp'],
-    'tiff': ['image/tiff'],
-    'webp': ['image/webp']
-}
-MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
-
-def allowed_file(filename, mimetype):
-    """Verifica se o arquivo é permitido"""
-    if '.' not in filename:
+def verificar_acesso_exame(profissional_id, paciente_id):
+    """Verifica se o profissional tem acesso ao paciente do exame."""
+    paciente = Paciente.query.get(paciente_id)
+    if not paciente:
         return False
-    
-    extension = filename.rsplit('.', 1)[1].lower()
-    if extension not in ALLOWED_EXTENSIONS:
-        return False
-    
-    allowed_mimetypes = ALLOWED_EXTENSIONS[extension]
-    return mimetype in allowed_mimetypes
+    # Admin/superadmin tem acesso completo
+    user = Profissional.query.get(profissional_id)
+    if user and user.role in ['admin', 'superadmin']:
+        return True
+    # Responsável direto
+    if paciente.profissional_responsavel_id == profissional_id:
+        return True
+    # Verificar compartilhamento ativo
+    from models import CompartilhamentoPaciente
+    comp = CompartilhamentoPaciente.query.filter_by(
+        paciente_id=paciente_id, profissional_id=profissional_id, ativo=True
+    ).first()
+    return comp is not None
 
-def calculate_file_hash(file_path):
-    """Calcula hash MD5 do arquivo"""
-    hash_md5 = hashlib.md5()
-    with open(file_path, "rb") as f:
-        for chunk in iter(lambda: f.read(4096), b""):
-            hash_md5.update(chunk)
-    return hash_md5.hexdigest()
+exames_bp = Blueprint('exames', __name__, url_prefix='/api')
 
-def ensure_upload_folder():
-    """Garante que o diretório de upload existe"""
-    if not os.path.exists(UPLOAD_FOLDER):
-        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in current_app.config['ALLOWED_EXTENSIONS']
 
-@exames_bp.route('/paciente/<int:paciente_id>', methods=['GET'])
-@jwt_required()
-def listar_exames_paciente(paciente_id):
-    """Lista todos os exames de um paciente"""
-    try:
-        # Verificar se o paciente existe
-        paciente = Paciente.query.get_or_404(paciente_id)
-        
-        # Buscar exames do paciente
-        exames = Exame.query.filter_by(paciente_id=paciente_id).order_by(Exame.data_exame.desc()).all()
-        
-        return jsonify({
-            'success': True,
-            'exames': [exame.to_dict() for exame in exames],
-            'total': len(exames)
-        })
-        
-    except Exception as e:
-        current_app.logger.error(f"Erro ao listar exames do paciente {paciente_id}: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@exames_bp.route('/', methods=['POST'])
+@exames_bp.route('/exames', methods=['POST'])
 @jwt_required()
 def criar_exame():
-    """Cria um novo exame com upload de arquivo"""
-    try:
-        # Verificar se há arquivo no request
-        if 'arquivo' not in request.files:
-            return jsonify({'success': False, 'error': 'Nenhum arquivo enviado'}), 400
-        
-        arquivo = request.files['arquivo']
-        if arquivo.filename == '':
-            return jsonify({'success': False, 'error': 'Nenhum arquivo selecionado'}), 400
-        
-        # Verificar tamanho do arquivo
-        arquivo.seek(0, os.SEEK_END)
-        file_size = arquivo.tell()
-        arquivo.seek(0)
-        
-        if file_size > MAX_FILE_SIZE:
-            return jsonify({
-                'success': False, 
-                'error': f'Arquivo muito grande. Máximo permitido: {MAX_FILE_SIZE // (1024*1024)}MB'
-            }), 400
-        
-        # Verificar tipo de arquivo
-        mimetype = arquivo.mimetype
-        if not allowed_file(arquivo.filename, mimetype):
-            return jsonify({
-                'success': False, 
-                'error': 'Tipo de arquivo não permitido. Permitidos: PDF, JPG, PNG, GIF, BMP, TIFF, WEBP'
-            }), 400
-        
-        # Obter dados do formulário
-        data = request.form.to_dict()
-        
-        # Validar campos obrigatórios
-        required_fields = ['paciente_id', 'tipo_exame', 'data_exame']
-        for field in required_fields:
-            if field not in data or not data[field]:
-                return jsonify({'success': False, 'error': f'Campo obrigatório: {field}'}), 400
-        
-        # Verificar se o paciente existe
-        paciente = Paciente.query.get(data['paciente_id'])
-        if not paciente:
-            return jsonify({'success': False, 'error': 'Paciente não encontrado'}), 404
-        
-        # Obter profissional atual
-        current_user = get_jwt_identity()
-        profissional = Profissional.query.filter_by(usuario=current_user).first()
-        
-        # Garantir que o diretório de upload existe
-        ensure_upload_folder()
-        
-        # Gerar nome único para o arquivo
-        file_extension = arquivo.filename.rsplit('.', 1)[1].lower()
-        unique_filename = f"{uuid.uuid4().hex}.{file_extension}"
-        file_path = os.path.join(UPLOAD_FOLDER, unique_filename)
-        
-        # Salvar arquivo
-        arquivo.save(file_path)
-        
-        # Calcular hash do arquivo
-        file_hash = calculate_file_hash(file_path)
-        
-        # Converter datas
-        try:
-            data_exame = datetime.strptime(data['data_exame'], '%Y-%m-%d').date()
-        except ValueError:
-            os.remove(file_path)  # Remover arquivo se houver erro
-            return jsonify({'success': False, 'error': 'Formato de data inválido para data_exame'}), 400
-        
-        data_resultado = None
-        if data.get('data_resultado'):
-            try:
-                data_resultado = datetime.strptime(data['data_resultado'], '%Y-%m-%d').date()
-            except ValueError:
-                os.remove(file_path)  # Remover arquivo se houver erro
-                return jsonify({'success': False, 'error': 'Formato de data inválido para data_resultado'}), 400
-        
-        # Criar exame
-        exame = Exame(
-            paciente_id=int(data['paciente_id']),
-            profissional_id=profissional.id if profissional else None,
-            tipo_exame=data['tipo_exame'],
-            data_exame=data_exame,
-            data_resultado=data_resultado,
-            observacoes=data.get('observacoes', ''),
-            arquivo_nome=arquivo.filename,
-            arquivo_path=file_path,
-            arquivo_tipo=mimetype,
-            arquivo_tamanho=file_size,
-            arquivo_hash=file_hash
-        )
-        
-        db.session.add(exame)
-        db.session.commit()
-        
-        return jsonify({
-            'success': True,
-            'message': 'Exame criado com sucesso',
-            'exame': exame.to_dict()
-        }), 201
-        
-    except Exception as e:
-        db.session.rollback()
-        current_app.logger.error(f"Erro ao criar exame: {str(e)}")
-        
-        # Remover arquivo se foi salvo
-        if 'file_path' in locals() and os.path.exists(file_path):
-            os.remove(file_path)
-        
-        return jsonify({'success': False, 'error': str(e)}), 500
+    data = request.form
+    paciente_id = data.get('paciente_id')
+    profissional_id = data.get('profissional_id')
+    data_exame_str = data.get('data_exame')
+    tipo_exame = data.get('tipo_exame')
+    titulo = data.get('titulo')  # Novo campo para todos os tipos
+    descricao = data.get('descricao')  # Campo para tipo 'texto'
+    valor = data.get('valor')  # Campo para tipo 'numerico'
+    unidade = data.get('unidade')  # Campo para tipo 'numerico'
 
-@exames_bp.route('/<int:exame_id>', methods=['GET'])
+    if not paciente_id:
+        return jsonify({"error": "ID do paciente é obrigatório"}), 400
+    if not tipo_exame or tipo_exame not in ['texto', 'arquivo', 'numerico']:
+        return jsonify({"error": "Tipo de exame inválido. Deve ser 'texto', 'arquivo' ou 'numerico'"}), 400
+    if not titulo:
+        return jsonify({"error": "Título do exame é obrigatório"}), 400
+    if tipo_exame == 'texto' and not descricao:
+        return jsonify({"error": "Descrição é obrigatória para exames de texto"}), 400
+    if tipo_exame == 'numerico' and not valor:
+        return jsonify({"error": "Valor é obrigatório para exames numéricos"}), 400
+
+    try:
+        data_exame = datetime.strptime(data_exame_str, '%Y-%m-%d') if data_exame_str else datetime.utcnow()
+    except ValueError:
+        return jsonify({"error": "Formato de data inválido. Use YYYY-MM-DD"}), 400
+
+    # Automatically flag hemoglobin data for chart generation
+    is_chartable = False
+    if tipo_exame == 'numerico' and titulo and 'hemoglobina' in titulo.lower():
+        is_chartable = True
+
+    # Obter paciente para herdar associacao_id (multi-tenant)
+    paciente = Paciente.query.get(paciente_id)
+    if not paciente:
+        return jsonify({"error": "Paciente não encontrado"}), 404
+
+    novo_exame = Exame(
+        paciente_id=paciente_id,
+        associacao_id=paciente.associacao_id,
+        profissional_id=profissional_id,
+        data_exame=data_exame,
+        tipo_exame=tipo_exame,
+        titulo=titulo,
+        descricao=descricao,
+        valor=valor,
+        unidade=unidade,
+        is_chartable=is_chartable
+    )
+
+    db.session.add(novo_exame)
+    db.session.commit()
+
+    # Processar arquivos se for exame do tipo 'arquivo'
+    if tipo_exame == 'arquivo':
+        if 'arquivos' not in request.files:
+            return jsonify({"error": "Nenhum arquivo enviado"}), 400
+            
+        arquivos = request.files.getlist('arquivos')
+        arquivos_processados = 0
+        
+        for arq in arquivos:
+            if arq.filename == '':
+                continue
+            if arq and allowed_file(arq.filename):
+                filename = secure_filename(arq.filename)
+                unique_filename = f"{uuid.uuid4().hex}_{filename}"
+                filepath = os.path.join(current_app.config['UPLOAD_FOLDER_EXAMES'], unique_filename)
+                
+                # Criar diretório se não existir
+                os.makedirs(os.path.dirname(filepath), exist_ok=True)
+                
+                arq.save(filepath)
+                
+                nova_imagem = ExameImagem(
+                    exame_id=novo_exame.id,
+                    arquivo_nome=filename,
+                    arquivo_caminho=unique_filename,
+                    laudo=descricao or ''  # usando a descrição do exame para todos os arquivos
+                )
+                db.session.add(nova_imagem)
+                arquivos_processados += 1
+        
+        if arquivos_processados == 0:
+            return jsonify({"error": "Nenhum arquivo válido foi processado"}), 400
+    
+    # Não há processamento adicional necessário para 'texto' e 'numerico'
+    # pois os dados já estão armazenados no objeto Exame
+
+    db.session.commit()
+    
+    # Enviar email com resultados do exame
+    try:
+        # Obter paciente para email
+        paciente = Paciente.query.get(paciente_id)
+        if paciente and paciente.email:
+            # Formatar resultados com base no tipo de exame
+            if tipo_exame == 'texto':
+                resultados = descricao
+            elif tipo_exame == 'arquivo':
+                resultados = f"{len(arquivos)} arquivo(s) anexado(s)"
+            elif tipo_exame == 'numerico':
+                resultados = f"{valor} {unidade}"
+            else:
+                resultados = "Resultados disponíveis no sistema"
+            
+            # Enviar email
+            email_service.send_exam_email(
+                to_email=paciente.email,
+                paciente_nome=paciente.nome,
+                exame_titulo=titulo,
+                exame_data=data_exame,
+                exame_resultados=resultados,
+                observacoes="Resultados disponíveis no sistema"
+            )
+            email_status = "Email enviado com sucesso"
+        else:
+            email_status = "Paciente não possui email cadastrado"
+    except Exception as e:
+        current_app.logger.error(f"Erro ao enviar email de exame: {str(e)}")
+        email_status = f"Erro ao enviar email: {str(e)}"
+    
+    response = novo_exame.to_dict()
+    response['email_status'] = email_status
+    return jsonify(response), 201
+
+@exames_bp.route('/pacientes/<int:paciente_id>/exames', methods=['GET'])
+@jwt_required()
+def listar_exames_paciente(paciente_id):
+    profissional_id = int(get_jwt_identity())
+    if not verificar_acesso_exame(profissional_id, paciente_id):
+        return jsonify({'error': 'Acesso negado a este paciente'}), 403
+    exames = Exame.query.filter_by(paciente_id=paciente_id).all()
+    return jsonify([exame.to_dict() for exame in exames])
+
+@exames_bp.route('/exames/<int:exame_id>', methods=['GET'])
 @jwt_required()
 def obter_exame(exame_id):
-    """Obtém detalhes de um exame específico"""
-    try:
-        exame = Exame.query.get_or_404(exame_id)
-        return jsonify({
-            'success': True,
-            'exame': exame.to_dict()
-        })
-        
-    except Exception as e:
-        current_app.logger.error(f"Erro ao obter exame {exame_id}: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+    profissional_id = int(get_jwt_identity())
+    exame = Exame.query.get_or_404(exame_id)
+    if not verificar_acesso_exame(profissional_id, exame.paciente_id):
+        return jsonify({'error': 'Acesso negado a este exame'}), 403
+    return jsonify(exame.to_dict())
 
-@exames_bp.route('/<int:exame_id>', methods=['PUT'])
+@exames_bp.route('/exames/<int:exame_id>/imagens', methods=['GET'])
+@jwt_required()
+def listar_imagens_exame(exame_id):
+    profissional_id = int(get_jwt_identity())
+    exame = Exame.query.get_or_404(exame_id)
+    if not verificar_acesso_exame(profissional_id, exame.paciente_id):
+        return jsonify({'error': 'Acesso negado a este exame'}), 403
+    imagens = ExameImagem.query.filter_by(exame_id=exame_id).all()
+    return jsonify([img.to_dict() for img in imagens])
+
+@exames_bp.route('/exames/<int:exame_id>/resultados', methods=['GET'])
+@jwt_required()
+def listar_resultados_exame(exame_id):
+    profissional_id = int(get_jwt_identity())
+    exame = Exame.query.get_or_404(exame_id)
+    if not verificar_acesso_exame(profissional_id, exame.paciente_id):
+        return jsonify({'error': 'Acesso negado a este exame'}), 403
+    resultados = ExameLabResultado.query.filter_by(exame_id=exame_id).all()
+    return jsonify([res.to_dict() for res in resultados])
+
+@exames_bp.route('/exames/<int:exame_id>', methods=['PUT'])
 @jwt_required()
 def atualizar_exame(exame_id):
-    """Atualiza um exame existente"""
-    try:
-        exame = Exame.query.get_or_404(exame_id)
-        data = request.get_json()
-        
-        # Atualizar campos permitidos
-        if 'tipo_exame' in data:
-            exame.tipo_exame = data['tipo_exame']
-        
-        if 'data_exame' in data:
-            try:
-                exame.data_exame = datetime.strptime(data['data_exame'], '%Y-%m-%d').date()
-            except ValueError:
-                return jsonify({'success': False, 'error': 'Formato de data inválido para data_exame'}), 400
-        
-        if 'data_resultado' in data:
-            if data['data_resultado']:
-                try:
-                    exame.data_resultado = datetime.strptime(data['data_resultado'], '%Y-%m-%d').date()
-                except ValueError:
-                    return jsonify({'success': False, 'error': 'Formato de data inválido para data_resultado'}), 400
-            else:
-                exame.data_resultado = None
-        
-        if 'observacoes' in data:
-            exame.observacoes = data['observacoes']
-        
-        exame.updated_at = datetime.utcnow()
-        
-        db.session.commit()
-        
-        return jsonify({
-            'success': True,
-            'message': 'Exame atualizado com sucesso',
-            'exame': exame.to_dict()
-        })
-        
-    except Exception as e:
-        db.session.rollback()
-        current_app.logger.error(f"Erro ao atualizar exame {exame_id}: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@exames_bp.route('/<int:exame_id>', methods=['DELETE'])
-@jwt_required()
-def deletar_exame(exame_id):
-    """Deleta um exame e seu arquivo"""
-    try:
-        exame = Exame.query.get_or_404(exame_id)
-        
-        # Remover arquivo do sistema de arquivos
-        if exame.arquivo_path and os.path.exists(exame.arquivo_path):
-            os.remove(exame.arquivo_path)
-        
-        db.session.delete(exame)
-        db.session.commit()
-        
-        return jsonify({
-            'success': True,
-            'message': 'Exame deletado com sucesso'
-        })
-        
-    except Exception as e:
-        db.session.rollback()
-        current_app.logger.error(f"Erro ao deletar exame {exame_id}: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@exames_bp.route('/<int:exame_id>/download', methods=['GET'])
-@jwt_required()
-def download_arquivo_exame(exame_id):
-    """Faz download do arquivo de um exame"""
-    try:
-        exame = Exame.query.get_or_404(exame_id)
-        
-        if not exame.arquivo_path or not os.path.exists(exame.arquivo_path):
-            return jsonify({'success': False, 'error': 'Arquivo não encontrado'}), 404
-        
-        # Verificar integridade do arquivo
-        current_hash = calculate_file_hash(exame.arquivo_path)
-        if current_hash != exame.arquivo_hash:
-            current_app.logger.warning(f"Hash do arquivo {exame_id} não confere. Possível corrupção.")
-        
-        return send_file(
-            exame.arquivo_path,
-            as_attachment=True,
-            download_name=exame.arquivo_nome,
-            mimetype=exame.arquivo_tipo
-        )
-        
-    except Exception as e:
-        current_app.logger.error(f"Erro ao fazer download do arquivo do exame {exame_id}: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@exames_bp.route('/<int:exame_id>/view', methods=['GET'])
-@jwt_required()
-def view_exame_content(exame_id):
-    """Visualiza o conteúdo textual de um exame"""
-    try:
-        exame = Exame.query.get_or_404(exame_id)
-        
-        if not exame.arquivo_path or not os.path.exists(exame.arquivo_path):
-            return jsonify({'success': False, 'error': 'Arquivo não encontrado'}), 404
-        
-        # Verificar integridade do arquivo
-        current_hash = calculate_file_hash(exame.arquivo_path)
-        if current_hash != exame.arquivo_hash:
-            current_app.logger.warning(f"Hash do arquivo {exame_id} não confere. Possível corrupção.")
-        
-        # Extrair conteúdo com base no tipo de arquivo
-        content = ""
-        mimetype = exame.arquivo_tipo.lower()
-        
-        # PDF - extrair texto com PyPDF2
-        if mimetype == 'application/pdf':
-            from PyPDF2 import PdfReader
-            
-            with open(exame.arquivo_path, 'rb') as f:
-                reader = PdfReader(f)
-                for page in reader.pages:
-                    page_text = page.extract_text()
-                    if page_text:
-                        content += page_text + "\n"
-        
-        # Imagens - retornar mensagem
-        elif mimetype.startswith('image/'):
-            content = "Conteúdo de imagem. Visualize o arquivo original para ver a imagem completa."
-        
-        # Outros tipos - tentar ler como texto
-        else:
-            try:
-                with open(exame.arquivo_path, 'r', encoding='utf-8', errors='ignore') as f:
-                    content = f.read()
-            except:
-                content = "Conteúdo não disponível para visualização textual"
-        
-        return jsonify({
-            'success': True,
-            'content': content
-        })
-        
-    except Exception as e:
-        current_app.logger.error(f"Erro ao visualizar conteúdo do exame {exame_id}: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@exames_bp.route('/tipos', methods=['GET'])
-@jwt_required()
-def listar_tipos_exames():
-    """Lista os tipos de exames disponíveis"""
-    tipos_exames = [
-        'Hemograma Completo',
-        'Glicemia',
-        'Colesterol Total',
-        'Triglicerídeos',
-        'Ureia',
-        'Creatinina',
-        'TGO/AST',
-        'TGP/ALT',
-        'Raio-X de Tórax',
-        'Raio-X de Coluna',
-        'Ultrassonografia Abdominal',
-        'Tomografia Computadorizada',
-        'Ressonância Magnética',
-        'Eletrocardiograma',
-        'Ecocardiograma',
-        'Endoscopia',
-        'Colonoscopia',
-        'Mamografia',
-        'Papanicolau',
-        'Biópsia',
-        'Outros'
-    ]
+    profissional_id = int(get_jwt_identity())
+    exame = Exame.query.get_or_404(exame_id)
+    if not verificar_acesso_exame(profissional_id, exame.paciente_id):
+        return jsonify({'error': 'Acesso negado a este exame'}), 403
+    data = request.json
     
+    if 'data_exame' in data:
+        try:
+            exame.data_exame = datetime.strptime(data['data_exame'], '%Y-%m-%d')
+        except ValueError:
+            return jsonify({"error": "Formato de data inválido. Use YYYY-MM-DD"}), 400
+    
+    if 'tipo_exame' in data:
+        exame.tipo_exame = data['tipo_exame']
+    
+    db.session.commit()
+    return jsonify(exame.to_dict())
+
+@exames_bp.route('/exames/<int:exame_id>', methods=['DELETE'])
+@jwt_required()
+def excluir_exame(exame_id):
+    profissional_id = int(get_jwt_identity())
+    exame = Exame.query.get_or_404(exame_id)
+    if not verificar_acesso_exame(profissional_id, exame.paciente_id):
+        return jsonify({'error': 'Acesso negado a este exame'}), 403
+    
+    # Delete associated images
+    imagens = ExameImagem.query.filter_by(exame_id=exame_id).all()
+    for img in imagens:
+        filepath = os.path.join(current_app.config['UPLOAD_FOLDER_EXAMES'], img.arquivo_caminho)
+        if os.path.exists(filepath):
+            os.remove(filepath)
+        db.session.delete(img)
+    
+    # Delete associated lab results
+    resultados = ExameLabResultado.query.filter_by(exame_id=exame_id).all()
+    for res in resultados:
+        db.session.delete(res)
+    
+    db.session.delete(exame)
+    db.session.commit()
+    return jsonify({"message": "Exame e todos os dados associados excluídos com sucesso"}), 200
+
+@exames_bp.route('/imagens/<int:imagem_id>', methods=['GET'])
+@jwt_required()
+def obter_imagem(imagem_id):
+    profissional_id = int(get_jwt_identity())
+    imagem = ExameImagem.query.get_or_404(imagem_id)
+    exame = Exame.query.get_or_404(imagem.exame_id)
+    if not verificar_acesso_exame(profissional_id, exame.paciente_id):
+        return jsonify({'error': 'Acesso negado a esta imagem'}), 403
+    return jsonify(imagem.to_dict())
+
+@exames_bp.route('/imagens/<int:imagem_id>', methods=['DELETE'])
+@jwt_required()
+def excluir_imagem(imagem_id):
+    profissional_id = int(get_jwt_identity())
+    imagem = ExameImagem.query.get_or_404(imagem_id)
+    exame = Exame.query.get_or_404(imagem.exame_id)
+    if not verificar_acesso_exame(profissional_id, exame.paciente_id):
+        return jsonify({'error': 'Acesso negado a esta imagem'}), 403
+    filepath = os.path.join(current_app.config['UPLOAD_FOLDER_EXAMES'], imagem.arquivo_caminho)
+    if os.path.exists(filepath):
+        os.remove(filepath)
+    db.session.delete(imagem)
+    db.session.commit()
+    return jsonify({"message": "Imagem excluída com sucesso"}), 200
+
+@exames_bp.route('/resultados/<int:resultado_id>', methods=['PUT'])
+@jwt_required()
+def atualizar_resultado(resultado_id):
+    profissional_id = int(get_jwt_identity())
+    resultado = ExameLabResultado.query.get_or_404(resultado_id)
+    exame = Exame.query.get_or_404(resultado.exame_id)
+    if not verificar_acesso_exame(profissional_id, exame.paciente_id):
+        return jsonify({'error': 'Acesso negado a este resultado'}), 403
+    data = request.json
+    resultado.teste_nome = data.get('teste_nome', resultado.teste_nome)
+    resultado.valor = data.get('valor', resultado.valor)
+    resultado.unidade = data.get('unidade', resultado.unidade)
+    resultado.valor_referencia = data.get('valor_referencia', resultado.valor_referencia)
+    db.session.commit()
+    return jsonify(resultado.to_dict())
+
+@exames_bp.route('/resultados/<int:resultado_id>', methods=['DELETE'])
+@jwt_required()
+def excluir_resultado(resultado_id):
+    profissional_id = int(get_jwt_identity())
+    resultado = ExameLabResultado.query.get_or_404(resultado_id)
+    exame = Exame.query.get_or_404(resultado.exame_id)
+    if not verificar_acesso_exame(profissional_id, exame.paciente_id):
+        return jsonify({'error': 'Acesso negado a este resultado'}), 403
+    db.session.delete(resultado)
+    db.session.commit()
+    return jsonify({"message": "Resultado excluído com sucesso"}), 200
+
+# Rota para servir arquivos de exames
+@exames_bp.route('/exames/arquivos/<filename>')
+@jwt_required()
+def servir_arquivo_exame(filename):
+    profissional_id = int(get_jwt_identity())
+    try:
+        # Buscar imagem pelo nome do arquivo para verificar acesso
+        imagem = ExameImagem.query.filter_by(arquivo_caminho=filename).first()
+        if imagem:
+            exame = Exame.query.get(imagem.exame_id)
+            if exame and not verificar_acesso_exame(profissional_id, exame.paciente_id):
+                return jsonify({'error': 'Acesso negado a este arquivo'}), 403
+        # Get the full path to the uploads directory
+        uploads_dir = os.path.join(current_app.root_path, current_app.config['UPLOAD_FOLDER_EXAMES'])
+        return send_from_directory(uploads_dir, filename)
+    except FileNotFoundError:
+        return jsonify({"error": "Arquivo não encontrado"}), 404
+
+# Rota para gerar dados de gráfico para exames numéricos
+@exames_bp.route('/pacientes/<int:paciente_id>/exames/chart/<titulo>', methods=['GET'])
+@jwt_required()
+def gerar_dados_grafico_exame(paciente_id, titulo):
+    """Gerar dados para gráfico de evolução de exames numéricos"""
+    profissional_id = int(get_jwt_identity())
+    if not verificar_acesso_exame(profissional_id, paciente_id):
+        return jsonify({'error': 'Acesso negado a este paciente'}), 403
+    try:
+        # Buscar todos os exames numéricos do paciente com o título especificado
+        exames = Exame.query.filter_by(
+            paciente_id=paciente_id,
+            tipo_exame='numerico',
+            titulo=titulo
+        ).order_by(Exame.data_exame).all()
+
+        if not exames:
+            return jsonify({"error": "Nenhum exame encontrado com este título"}), 404
+
+        # Preparar dados para o gráfico
+        dados_grafico = []
+        unidade = None
+
+        for exame in exames:
+            if exame.valor is not None:
+                try:
+                    valor_numerico = float(exame.valor)
+                    dados_grafico.append({
+                        'data': exame.data_exame.strftime('%Y-%m-%d'),
+                        'valor': valor_numerico,
+                        'data_obj': exame.data_exame.isoformat()
+                    })
+
+                    # Capturar unidade do primeiro exame que tiver
+                    if not unidade and exame.unidade:
+                        unidade = exame.unidade
+
+                except (ValueError, TypeError):
+                    continue  # Pular valores não numéricos
+
+        if not dados_grafico:
+            return jsonify({"error": "Nenhum valor numérico válido encontrado"}), 404
+
+        # Ordenar por data
+        dados_grafico.sort(key=lambda x: x['data_obj'])
+
+        return jsonify({
+            'titulo': titulo,
+            'unidade': unidade or '',
+            'dados': dados_grafico,
+            'total_pontos': len(dados_grafico)
+        }), 200
+
+    except Exception as e:
+        current_app.logger.error(f"Erro ao gerar dados do gráfico: {str(e)}")
+        return jsonify({"error": f"Erro interno: {str(e)}"}), 500
+
+# Rota para listar exames numéricos disponíveis para gráfico
+@exames_bp.route('/pacientes/<int:paciente_id>/exames/chartable', methods=['GET'])
+@jwt_required()
+def listar_exames_chartable(paciente_id):
+    """Listar títulos de exames numéricos disponíveis para gráfico"""
+    profissional_id = int(get_jwt_identity())
+    if not verificar_acesso_exame(profissional_id, paciente_id):
+        return jsonify({'error': 'Acesso negado a este paciente'}), 403
+    try:
+        # Buscar exames numéricos únicos por título
+        exames = db.session.query(Exame.titulo, Exame.unidade).filter_by(
+            paciente_id=paciente_id,
+            tipo_exame='numerico'
+        ).distinct().all()
+
+        exames_chartable = []
+        for titulo, unidade in exames:
+            # Verificar se há pelo menos 2 exames para fazer gráfico
+            count = Exame.query.filter_by(
+                paciente_id=paciente_id,
+                tipo_exame='numerico',
+                titulo=titulo
+            ).count()
+
+            if count >= 2:
+                exames_chartable.append({
+                    'titulo': titulo,
+                    'unidade': unidade or '',
+                    'total_exames': count
+                })
+
+        return jsonify({
+            'exames_chartable': exames_chartable
+        }), 200
+
+    except Exception as e:
+        current_app.logger.error(f"Erro ao listar exames chartable: {str(e)}")
+        return jsonify({"error": f"Erro interno: {str(e)}"}), 500
+
+# Rota para processar OCR em imagens de exames
+@exames_bp.route('/exames/<int:exame_id>/ocr', methods=['POST'])
+@jwt_required()
+def processar_ocr_exame(exame_id):
+    profissional_id = int(get_jwt_identity())
+    exame = Exame.query.get_or_404(exame_id)
+    if not verificar_acesso_exame(profissional_id, exame.paciente_id):
+        return jsonify({'error': 'Acesso negado a este exame'}), 403
+
+    if exame.tipo_exame != 'arquivo':
+        return jsonify({"error": "OCR só pode ser aplicado em exames do tipo arquivo"}), 400
+
+    # Obter imagens do exame
+    imagens = ExameImagem.query.filter_by(exame_id=exame_id).all()
+
+    if not imagens:
+        return jsonify({"error": "Nenhuma imagem encontrada para este exame"}), 400
+
+    resultados_ocr = []
+
+    for imagem in imagens:
+        filepath = os.path.join(current_app.config['UPLOAD_FOLDER_EXAMES'], imagem.arquivo_caminho)
+
+        # Verificar se já existe resultado OCR para esta imagem
+        ocr_existente = OCRResultado.query.filter_by(exame_imagem_id=imagem.id).first()
+
+        if ocr_existente:
+            # Retornar resultado existente
+            resultados_ocr.append({
+                'imagem_id': imagem.id,
+                'arquivo_nome': imagem.arquivo_nome,
+                'status': ocr_existente.status_processamento,
+                'texto_extraido': ocr_existente.texto_extraido if ocr_existente.status_processamento == 'concluido' else None,
+                'dados_estruturados': ocr_existente.dados_estruturados if ocr_existente.status_processamento == 'concluido' else None,
+                'confianca': ocr_existente.confianca if ocr_existente.status_processamento == 'concluido' else None,
+                'ja_processado': True
+            })
+            continue
+
+        if os.path.exists(filepath):
+            try:
+                # Criar registro OCR inicial
+                ocr_resultado = OCRResultado(
+                    exame_imagem_id=imagem.id,
+                    status_processamento='processando'
+                )
+                db.session.add(ocr_resultado)
+                db.session.commit()
+
+                # Processar OCR usando o serviço real
+                try:
+                    ocr_result = ocr_service.process_exam_image(filepath)
+                    
+                    if ocr_result.get('status') == 'disabled':
+                        ocr_resultado.erro_processamento = ocr_result.get('message')
+                        ocr_resultado.status_processamento = 'disabled'
+                        db.session.commit()
+                        return jsonify({
+                            "error": "Serviço desativado",
+                            "message": ocr_result.get('message')
+                        }), 400
+                        
+                    if ocr_result.get('status') == 'concluido':
+                        # Atualizar registro com resultados reais
+                        ocr_resultado.texto_extraido = ocr_result['texto_extraido']
+                        ocr_resultado.dados_estruturados = ocr_result['dados_estruturados']
+                        ocr_resultado.confianca = ocr_result['confianca']
+                        ocr_resultado.status_processamento = 'concluido'
+                    else:
+                        ocr_resultado.erro_processamento = f"Erro no OCR: {ocr_result.get('erro', 'Erro desconhecido')}"
+                        ocr_resultado.status_processamento = 'erro'
+                        
+                except Exception as e:
+                    ocr_resultado.erro_processamento = f'Erro no processamento OCR: {str(e)}'
+                    ocr_resultado.status_processamento = 'erro'
+
+                ocr_resultado.processado_em = datetime.utcnow()
+                db.session.commit()
+
+                resultados_ocr.append({
+                    'imagem_id': imagem.id,
+                    'arquivo_nome': imagem.arquivo_nome,
+                    'status': ocr_resultado.status_processamento,
+                    'texto_extraido': ocr_resultado.texto_extraido,
+                    'dados_estruturados': ocr_resultado.dados_estruturados,
+                    'confianca': ocr_resultado.confianca,
+                    'ja_processado': False
+                })
+
+            except Exception as e:
+                # Atualizar status de erro se houver
+                if 'ocr_resultado' in locals():
+                    ocr_resultado.status_processamento = 'erro'
+                    ocr_resultado.erro_processamento = str(e)
+                    ocr_resultado.processado_em = datetime.utcnow()
+                    db.session.commit()
+
+                resultados_ocr.append({
+                    'imagem_id': imagem.id,
+                    'arquivo_nome': imagem.arquivo_nome,
+                    'erro': str(e),
+                    'status': 'erro',
+                    'ja_processado': False
+                })
+        else:
+            resultados_ocr.append({
+                'imagem_id': imagem.id,
+                'arquivo_nome': imagem.arquivo_nome,
+                'erro': 'Arquivo não encontrado',
+                'status': 'erro',
+                'ja_processado': False
+            })
+
     return jsonify({
-        'success': True,
-        'tipos_exames': tipos_exames
+        'exame_id': exame_id,
+        'resultados_ocr': resultados_ocr,
+        'total_imagens': len(imagens),
+        'processadas': len([r for r in resultados_ocr if r['status'] == 'concluido'])
     })
 
-@exames_bp.route('/buscar/<int:paciente_id>', methods=['GET'])
+# Rota para obter nomes de exames únicos para autocomplete
+@exames_bp.route('/exames/nomes-unicos', methods=['GET'])
 @jwt_required()
-def buscar_exames(paciente_id):
-    """Busca exames de um paciente com filtros"""
+def obter_nomes_exames_unicos():
+    """Retorna lista de nomes únicos de exames para autocomplete"""
     try:
-        # Verificar se o paciente existe
-        paciente = Paciente.query.get_or_404(paciente_id)
-        
-        # Obter parâmetros de busca
-        termo_busca = request.args.get('q', '').strip()
-        tipo_exame = request.args.get('tipo', '').strip()
-        data_inicio = request.args.get('data_inicio', '').strip()
-        data_fim = request.args.get('data_fim', '').strip()
-        
-        # Construir query base
-        query = Exame.query.filter_by(paciente_id=paciente_id)
-        
-        # Aplicar filtros
-        if termo_busca:
-            # Buscar em tipo_exame, observacoes e arquivo_nome
-            query = query.filter(
-                db.or_(
-                    Exame.tipo_exame.ilike(f'%{termo_busca}%'),
-                    Exame.observacoes.ilike(f'%{termo_busca}%'),
-                    Exame.arquivo_nome.ilike(f'%{termo_busca}%')
-                )
-            )
-        
-        if tipo_exame:
-            query = query.filter(Exame.tipo_exame == tipo_exame)
-        
-        if data_inicio:
-            try:
-                data_inicio_obj = datetime.strptime(data_inicio, '%Y-%m-%d').date()
-                query = query.filter(Exame.data_exame >= data_inicio_obj)
-            except ValueError:
-                return jsonify({'success': False, 'error': 'Formato de data_inicio inválido'}), 400
-        
-        if data_fim:
-            try:
-                data_fim_obj = datetime.strptime(data_fim, '%Y-%m-%d').date()
-                query = query.filter(Exame.data_exame <= data_fim_obj)
-            except ValueError:
-                return jsonify({'success': False, 'error': 'Formato de data_fim inválido'}), 400
-        
-        # Ordenar por data mais recente
-        exames = query.order_by(Exame.data_exame.desc()).all()
-        
-        return jsonify({
-            'success': True,
-            'exames': [exame.to_dict() for exame in exames],
-            'total': len(exames),
-            'filtros_aplicados': {
-                'termo_busca': termo_busca,
-                'tipo_exame': tipo_exame,
-                'data_inicio': data_inicio,
-                'data_fim': data_fim
-            }
-        })
-        
-    except Exception as e:
-        current_app.logger.error(f"Erro ao buscar exames do paciente {paciente_id}: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        # Buscar nomes únicos de exames ordenados por frequência de uso
+        nomes_exames = db.session.query(
+            Exame.titulo,
+            db.func.count(Exame.titulo).label('frequencia')
+        ).filter(
+            Exame.titulo.isnot(None),
+            Exame.titulo != ''
+        ).group_by(Exame.titulo).order_by(
+            db.desc('frequencia'),
+            Exame.titulo
+        ).all()
 
-@exames_bp.route('/estatisticas/<int:paciente_id>', methods=['GET'])
-@jwt_required()
-def estatisticas_exames_paciente(paciente_id):
-    """Obtém estatísticas dos exames de um paciente"""
-    try:
-        # Verificar se o paciente existe
-        paciente = Paciente.query.get_or_404(paciente_id)
-        
-        # Contar exames por tipo
-        exames = Exame.query.filter_by(paciente_id=paciente_id).all()
-        
-        tipos_count = {}
-        total_exames = len(exames)
-        
-        for exame in exames:
-            tipo = exame.tipo_exame
-            tipos_count[tipo] = tipos_count.get(tipo, 0) + 1
-        
-        # Exames mais recentes
-        exames_recentes = Exame.query.filter_by(paciente_id=paciente_id)\
-                                   .order_by(Exame.data_exame.desc())\
-                                   .limit(5).all()
-        
+        # Formatar resposta
+        exames_formatados = []
+        for titulo, frequencia in nomes_exames:
+            exames_formatados.append({
+                'titulo': titulo,
+                'frequencia': frequencia
+            })
+
         return jsonify({
-            'success': True,
-            'estatisticas': {
-                'total_exames': total_exames,
-                'tipos_count': tipos_count,
-                'exames_recentes': [exame.to_dict() for exame in exames_recentes]
-            }
-        })
-        
+            'exames': exames_formatados
+        }), 200
+
     except Exception as e:
-        current_app.logger.error(f"Erro ao obter estatísticas de exames do paciente {paciente_id}: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error(f"Erro ao obter nomes de exames únicos: {str(e)}")
+        return jsonify({"error": f"Erro interno: {str(e)}"}), 500

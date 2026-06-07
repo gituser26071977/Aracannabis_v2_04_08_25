@@ -1,0 +1,300 @@
+"""
+Template HTML profissional para prescrição médica
+"""
+
+def gerar_html_prescricao(prescricao_data: dict) -> str:
+    """
+    Gera HTML profissional para prescrição médica
+    
+    Args:
+        prescricao_data: Dict com dados da prescrição:
+            - paciente: Dict com dados do paciente
+            - profissional: Dict com dados do profissional
+            - medicamentos: List de dicts com medicamentos prescritos
+            - observacoes: str opcional
+            - data_emissao: datetime
+    
+    Returns:
+        HTML da prescrição formatado
+    """
+    paciente = prescricao_data['paciente']
+    profissional = prescricao_data['profissional']
+    medicamentos = prescricao_data['medicamentos']
+    observacoes = prescricao_data.get('observacoes', '')
+    data_emissao = prescricao_data['data_emissao']
+    
+    # Formatar data
+    data_formatada = data_emissao.strftime('%d/%m/%Y')
+    
+    # Gerar lista de medicamentos em HTML
+    medicamentos_html = ""
+    for i, med in enumerate(medicamentos, 1):
+        medicamentos_html += f"""
+        <div class="medicamento">
+            <div class="medicamento-numero">{i}</div>
+            <div class="medicamento-detalhes">
+                <p class="medicamento-nome"><strong>{med.get('nome', 'Não especificado')}</strong></p>
+                <p class="medicamento-composicao">{med.get('composicao', '')}</p>
+                <p class="medicamento-posologia">
+                    <strong>Posologia:</strong> {med.get('posologia', 'Conforme orientação médica')}
+                </p>
+                {f'<p class="medicamento-quantidade"><strong>Quantidade:</strong> {med.get("quantidade", "")}</p>' if med.get('quantidade') else ''}
+            </div>
+        </div>
+        """
+    
+    # Observações em HTML
+    observacoes_html = ""
+    if observacoes:
+        observacoes_html = f"""
+        <div class="observacoes">
+            <h3>Observações</h3>
+            <p>{observacoes}</p>
+        </div>
+        """
+    
+    html = f"""
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Prescrição Médica - {paciente.get('nome', '')}</title>
+        <style>
+            @page {{
+                size: A4;
+                margin: 2cm;
+            }}
+            
+            body {{
+                font-family: 'Arial', 'Helvetica', sans-serif;
+                line-height: 1.6;
+                color: #333;
+                max-width: 21cm;
+                margin: 0 auto;
+                padding: 20px;
+                background: white;
+            }}
+            
+            .cabecalho {{
+                border-bottom: 3px solid #2c5f2d;
+                padding-bottom: 20px;
+                margin-bottom: 30px;
+            }}
+            
+            .logo-area {{
+                text-align: center;
+                margin-bottom: 15px;
+            }}
+            
+            h1 {{
+                color: #2c5f2d;
+                font-size: 28px;
+                margin: 0;
+                text-align: center;
+                font-weight: bold;
+            }}
+            
+            .profissional-info {{
+                text-align: center;
+                margin-top: 15px;
+                font-size: 14px;
+            }}
+            
+            .profissional-info p {{
+                margin: 4px 0;
+            }}
+            
+            .profissional-nome {{
+                font-size: 16px;
+                font-weight: bold;
+                color: #2c5f2d;
+            }}
+            
+            .paciente-info {{
+                background-color: #f8f9fa;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 30px;
+                border-left: 4px solid #2c5f2d;
+            }}
+            
+            .paciente-info h2 {{
+                color: #2c5f2d;
+                font-size: 18px;
+                margin-top: 0;
+                margin-bottom: 10px;
+            }}
+            
+            .paciente-grid {{
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+            }}
+            
+            .paciente-campo {{
+                margin: 5px 0;
+            }}
+            
+            .paciente-campo strong {{
+                color: #555;
+            }}
+            
+            .prescricao {{
+                margin: 30px 0;
+            }}
+            
+            .prescricao h2 {{
+                color: #2c5f2d;
+                font-size: 20px;
+                border-bottom: 2px solid #2c5f2d;
+                padding-bottom: 10px;
+                margin-bottom: 20px;
+            }}
+            
+            .medicamento {{
+                padding: 15px;
+                border: 1px solid #ddd;
+                border-radius: 8px;
+                margin-bottom: 15px;
+                background-color: #ffffff;
+                display: flex;
+                gap: 15px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            }}
+            
+            .medicamento-numero {{
+                background-color: #2c5f2d;
+                color: white;
+                width: 35px;
+                height: 35px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+justify-content: center;
+                font-weight: bold;
+                font-size: 18px;
+                flex-shrink: 0;
+            }}
+            
+            .medicamento-detalhes {{
+                flex: 1;
+            }}
+            
+            .medicamento-nome {{
+                font-size: 16px;
+                color: #2c5f2d;
+                margin: 0 0 8px 0;
+            }}
+            
+            .medicamento-composicao {{
+                color: #666;
+                font-size: 14px;
+                margin: 0 0 8px 0;
+                font-style: italic;
+            }}
+            
+            .medicamento-posologia {{
+                margin: 8px 0;
+                font-size: 14px;
+            }}
+            
+            .medicamento-quantidade {{
+                margin: 5px 0;
+                font-size: 14px;
+                color: #555;
+            }}
+            
+            .observacoes {{
+                background-color: #fff3cd;
+                border-left: 4px solid #ffc107;
+                padding: 15px;
+                border-radius: 4px;
+                margin-top: 30px;
+            }}
+            
+            .observacoes h3 {{
+                color: #856404;
+                margin-top: 0;
+                font-size: 16px;
+            }}
+            
+            .assinatura {{
+                margin-top: 60px;
+                padding-top: 40px;
+                border-top: 2px solid #333;
+                text-align: center;
+            }}
+            
+            .assinatura-linha {{
+                width: 300px;
+                border-top: 1px solid #333;
+                margin: 40px auto 10px;
+            }}
+            
+            .rodape {{
+                margin-top: 50px;
+                padding-top: 20px;
+                border-top: 1px solid #ddd;
+                font-size: 12px;
+                color: #666;
+                text-align: center;
+            }}
+            
+            @media print {{
+                body {{
+                    padding: 0;
+                }}
+                .medicamento {{
+                    box-shadow: none;
+                    page-break-inside: avoid;
+                }}
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="cabecalho">
+            <div class="logo-area">
+                <h1>📋 PRESCRIÇÃO MÉDICA</h1>
+            </div>
+            <div class="profissional-info">
+                <p class="profissional-nome">{profissional.get('nome', 'Não especificado')}</p>
+                <p><strong>CRM:</strong> {profissional.get('crm', '')} / {profissional.get('uf_crm', '')}</p>
+                {f'<p><strong>Email:</strong> {profissional.get("email", "")}</p>' if profissional.get('email') else ''}
+            </div>
+        </div>
+        
+        <div class="paciente-info">
+            <h2>Dados do Paciente</h2>
+            <div class="paciente-grid">
+                <div class="paciente-campo"><strong>Nome:</strong> {paciente.get('nome', '')}</div>
+                <div class="paciente-campo"><strong>Data Nascimento:</strong> {paciente.get('data_nascimento', '')}</div>
+                {f'<div class="paciente-campo"><strong>CPF:</strong> {paciente.get("cpf", "")}</div>' if paciente.get('cpf') else ''}
+                {f'<div class="paciente-campo"><strong>Telefone:</strong> {paciente.get("telefone", "")}</div>' if paciente.get('telefone') else ''}
+            </div>
+            {f'<div class="paciente-campo" style="margin-top: 10px;"><strong>Diagnóstico:</strong> {paciente.get("diagnostico", "")}</div>' if paciente.get('diagnostico') else ''}
+        </div>
+        
+        <div class="prescricao">
+            <h2>Medicamentos Prescritos</h2>
+            {medicamentos_html}
+        </div>
+        
+        {observacoes_html}
+        
+        <div class="assinatura">
+            <div class="assinatura-linha"></div>
+            <p><strong>{profissional.get('nome', '')}</strong></p>
+            <p>CRM {profissional.get('crm', '')} / {profissional.get('uf_crm', '')}</p>
+        </div>
+        
+        <div class="rodape">
+            <p>Prescrição emitida em {data_formatada}</p>
+            <p>Este documento possui validade legal conforme legislação vigente</p>
+            <p><small>Sistema SIAP - Aracannabis</small></p>
+        </div>
+    </body>
+    </html>
+    """
+    
+    return html

@@ -1,0 +1,161 @@
+version: '3.8'
+
+# ================================================================
+# SIAP - Sistema de Prontuário Aracannabis
+# Docker Compose de PRODUÇÃO — Hostinger VPS
+# Domínio: aracannabis.com.br
+# Traefik v3 via rede externa "web"
+# Portas validadas no VPS (sem conflito)
+# ================================================================
+
+services:
+
+  # ── Banco de Dados PostgreSQL ──────────────────────────────────
+  siap-db:
+    image: postgres:16-alpine
+    container_name: siap-db
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-aracannabis}
+      POSTGRES_USER: ${POSTGRES_USER:-siap_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5440:5432" # Porta livre no VPS
+    volumes:
+      - siap_postgres_data:/var/lib/postgresql/data
+    networks:
+      - siap-internal
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-siap_user} -d ${POSTGRES_DB:-aracannabis}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis (cache e sessões) ─────────────────────────────────────
+  siap-redis:
+    image: redis:7-alpine
+    container_name: siap-redis
+    restart: always
+    networks:
+      - siap-internal
+
+  # ── Backend Flask ───────────────────────────────────────────────
+  siap-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: siap-backend
+    restart: always
+    env_file:
+      - .env.production
+    environment:
+      - FLASK_ENV=production
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-siap_user}:${POSTGRES_PASSWORD}@siap-db:5432/${POSTGRES_DB:-aracannabis}
+      - FRONTEND_BASE_URL=https://aracannabis.com.br
+      - CORS_ORIGINS=https://aracannabis.com.br,https://www.aracannabis.com.br
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - ANONYMIZATION_SERVICE_URL=http://siap-anonymization:8000
+      - OTEL_SDK_DISABLED=true
+      - CREWAI_DISABLE_TELEMETRY=true
+    volumes:
+      - siap_uploads:/app/uploads
+      - siap_logs:/app/logs
+    depends_on:
+      siap-db:
+        condition: service_healthy
+      siap-redis:
+        condition: service_started
+    networks:
+      - siap-internal
+      - web
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=web"
+      # Roteamento via subdomínio api.aracannabis.com.br
+      - "traefik.http.routers.siap-api.rule=Host(`api.aracannabis.com.br`)"
+      - "traefik.http.routers.siap-api.entrypoints=websecure"
+      - "traefik.http.routers.siap-api.tls=true"
+      - "traefik.http.routers.siap-api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.siap-api.loadbalancer.server.port=5002"
+      # Redirect HTTP → HTTPS
+      - "traefik.http.routers.siap-api-http.rule=Host(`api.aracannabis.com.br`)"
+      - "traefik.http.routers.siap-api-http.entrypoints=web"
+      - "traefik.http.routers.siap-api-http.middlewares=siap-redirect-https"
+      - "traefik.http.middlewares.siap-redirect-https.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.siap-redirect-https.redirectscheme.permanent=true"
+    command: [ "gunicorn", "--bind", "0.0.0.0:5002", "--timeout", "300", "--workers", "3", "--threads", "2", "app_cors_livre:create_app()" ]
+
+  # ── Frontend React (servido por Nginx) ─────────────────────────
+  siap-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        REACT_APP_API_URL: https://api.aracannabis.com.br
+        REACT_APP_WS_URL: wss://api.aracannabis.com.br/ws
+    container_name: siap-frontend
+    restart: always
+    networks:
+      - siap-internal
+      - web
+    depends_on:
+      - siap-backend
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=web"
+      # Frontend: aracannabis.com.br (naked)
+      - "traefik.http.routers.siap-web.rule=Host(`aracannabis.com.br`)"
+      - "traefik.http.routers.siap-web.entrypoints=websecure"
+      - "traefik.http.routers.siap-web.tls=true"
+      - "traefik.http.routers.siap-web.tls.certresolver=letsencrypt"
+      - "traefik.http.services.siap-web.loadbalancer.server.port=80"
+      # Frontend www → naked redirect
+      - "traefik.http.routers.siap-web-www.rule=Host(`www.aracannabis.com.br`)"
+      - "traefik.http.routers.siap-web-www.entrypoints=websecure"
+      - "traefik.http.routers.siap-web-www.tls=true"
+      - "traefik.http.routers.siap-web-www.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.siap-web-www.middlewares=siap-www-redirect"
+      - "traefik.http.routers.siap-web-www.service=siap-web"
+      # Middleware www → naked (compartilhado com o backend)
+      - "traefik.http.middlewares.siap-www-redirect.redirectregex.regex=^https://www\\.aracannabis\\.com\\.br(.*)"
+      - "traefik.http.middlewares.siap-www-redirect.redirectregex.replacement=https://aracannabis.com.br$${1}"
+      - "traefik.http.middlewares.siap-www-redirect.redirectregex.permanent=true"
+      # Redirect HTTP → HTTPS (naked e www)
+      - "traefik.http.routers.siap-web-http.rule=Host(`aracannabis.com.br`,`www.aracannabis.com.br`)"
+      - "traefik.http.routers.siap-web-http.entrypoints=web"
+      - "traefik.http.routers.siap-web-http.middlewares=siap-redirect-https"
+    healthcheck:
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── Serviço de Anonimização ─────────────────────────────────────
+  siap-anonymization:
+    build:
+      context: ./services/anonymization_service
+      dockerfile: Dockerfile
+    container_name: siap-anonymization
+    restart: always
+    environment:
+      - ANONYMIZATION_KEY=${ANONYMIZATION_KEY}
+      - AUDIT_MODEL=${ANONYMIZATION_AUDIT_MODEL:-qwen3:1.7b}
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+    networks:
+      - siap-internal
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  siap_postgres_data:
+  siap_uploads:
+  siap_logs:
+
+
+networks:
+  siap-internal:
+    driver: bridge
+  web:
+    external: true # Rede do Traefik já existente no VPS

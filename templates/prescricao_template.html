@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Receita Médica</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #2e7d32;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: #2e7d32;
+            margin: 0;
+            font-size: 24px;
+        }
+        .header p {
+            margin: 5px 0;
+            color: #666;
+            font-size: 14px;
+        }
+        .patient-info {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 30px;
+        }
+        .patient-info h3 {
+            margin-top: 0;
+            color: #2e7d32;
+            font-size: 16px;
+        }
+        .prescription-body {
+            min-height: 500px;
+        }
+        .medication-item {
+            margin-bottom: 25px;
+            padding-left: 15px;
+            border-left: 4px solid #2e7d32;
+        }
+        .medication-name {
+            font-weight: bold;
+            font-size: 18px;
+            color: #000;
+        }
+        .medication-details {
+            margin-top: 5px;
+            font-size: 14px;
+        }
+        .footer {
+            margin-top: 50px;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            border-top: 1px solid #ccc;
+            padding-top: 20px;
+        }
+        .signature-line {
+            margin-top: 80px;
+            border-top: 1px solid #000;
+            width: 200px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>{{ profissional.nome }}</h1>
+        <p>CRM: {{ profissional.crm }} - {{ profissional.uf_crm }}</p>
+        <p>Especialidade: {{ profissional.especialidade or 'Medicina Canabinoide' }}</p>
+    </div>
+
+    <div class="patient-info">
+        <h3>Paciente: {{ paciente.nome }}</h3>
+        <p>CPF: {{ paciente.cpf }} | Nasc: {{ paciente.data_nascimento_fmt }}</p>
+        <p>Data da Prescrição: {{ data_atual }}</p>
+    </div>
+
+    <div class="prescription-body">
+        <h2>Prescrição Médica</h2>
+        
+        {% for item in medicamentos %}
+        <div class="medication-item">
+            <div class="medication-name">
+                {{ loop.index }}. {{ item.nome }}
+            </div>
+            <div class="medication-details">
+                <strong>Uso:</strong> {{ item.uso }} <br>
+                <strong>Posologia:</strong> {{ item.posologia }}
+                {% if item.observacoes %}
+                <br><em>Obs: {{ item.observacoes }}</em>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+
+        {% if observacoes_gerais %}
+        <div style="margin-top: 30px;">
+            <h3>Observações Gerais:</h3>
+            <p>{{ observacoes_gerais }}</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="footer">
+        <div class="signature-line"></div>
+        <p>Assinatura e Carimbo</p>
+        <p>Documento gerado eletronicamente em {{ data_hora_geracao }}</p>
+    </div>
+</body>
+</html>

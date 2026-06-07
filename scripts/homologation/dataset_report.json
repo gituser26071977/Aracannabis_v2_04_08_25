@@ -1,0 +1,217 @@
+{
+  "generated_at": "2026-06-02T23:00:55.618716",
+  "physicians": [
+    {
+      "id": 6,
+      "nome": "Dra. Helena Marques",
+      "crm": "123456",
+      "uf_crm": "SP",
+      "usuario": "helena.cannabis",
+      "senha": "Teste@123456",
+      "email": "helena.cannabis@siap.test",
+      "especialidade": "Cannabis Medicinal",
+      "clinica": "Centro de Cannabis Medicinal São Paulo",
+      "perfil": "Especialista em cannabis medicinal com 12 anos de experiência. Focada em dor crônica, fibromialgia e neurologia."
+    },
+    {
+      "id": 7,
+      "nome": "Dr. Ricardo Oliveira",
+      "crm": "234567",
+      "uf_crm": "RJ",
+      "usuario": "ricardo.dor",
+      "senha": "Teste@123456",
+      "email": "ricardo.dor@siap.test",
+      "especialidade": "Medicina da Dor",
+      "clinica": "Instituto de Dor e Reabilitação Rio",
+      "perfil": "Médico da dor com pós-doutorado em neurofisiologia. Especialista em manejo multidisciplinar de dor crônica refratária."
+    },
+    {
+      "id": 8,
+      "nome": "Dra. Fernanda Costa",
+      "crm": "345678",
+      "uf_crm": "MG",
+      "usuario": "fernanda.neuro",
+      "senha": "Teste@123456",
+      "email": "fernanda.neuro@siap.test",
+      "especialidade": "Neurologia",
+      "clinica": "Neuroclínica Minas",
+      "perfil": "Neurologista com subespecialização em epilepsia e distúrbios do movimento. Pesquisadora em cannabis para condições neurológicas."
+    }
+  ],
+  "patients": [
+    {
+      "id": 4,
+      "nome": "Roberta Gomes Martins",
+      "medico": "Dra. Helena Marques",
+      "condicoes": "Transtorno de Ansiedade Generalizada; Dor Neuropática",
+      "sintomas": 12,
+      "evolucoes": 5,
+      "exames": 5,
+      "consultas": 5,
+      "prescricoes": 3
+    },
+    {
+      "id": 5,
+      "nome": "Eduardo Costa Ferreira",
+      "medico": "Dra. Helena Marques",
+      "condicoes": "Esclerose Múltipla; TEPT; TDAH",
+      "sintomas": 18,
+      "evolucoes": 5,
+      "exames": 5,
+      "consultas": 5,
+      "prescricoes": 3
+    },
+    {
+      "id": 6,
+      "nome": "Patrícia Souza Barbosa",
+      "medico": "Dra. Helena Marques",
+      "condicoes": "TEPT; Enxaqueca",
+      "sintomas": 12,
+      "evolucoes": 5,
+      "exames": 5,
+      "consultas": 5,
+      "prescricoes": 3
+    },
+    {
+      "id": 7,
+      "nome": "Rodrigo Teixeira Costa",
+      "medico": "Dra. Helena Marques",
+      "condicoes": "TEA; Distúrbio do Pânico",
+      "sintomas": 12,
+      "evolucoes": 5,
+      "exames": 5,
+      "consultas": 5,
+      "prescricoes": 3
+    },
+    {
+      "id": 8,
+      "nome": "João Castro Barbosa",
+      "medico": "Dra. Helena Marques",
+      "condicoes": "Dor Crônica",
+      "sintomas": 6,
+      "evolucoes": 5,
+      "exames": 5,
+      "consultas": 5,
+      "prescricoes": 3
+    },
+    {
+      "id": 9,
+      "nome": "Ana Santos Oliveira",
+      "medico": "Dr. Ricardo Oliveira",
+      "condicoes": "TEPT; Dor Neuropática",
+      "sintomas": 12,
+      "evolucoes": 5,
+      "exames": 5,
+      "consultas": 5,
+      "prescricoes": 3
+    },
+    {
+      "id": 10,
+      "nome": "Vanessa Santos Araújo",
+      "medico": "Dr. Ricardo Oliveira",
+      "condicoes": "Transtorno de Ansiedade Generalizada; Esclerose Múltipla",
+      "sintomas": 12,
+      "evolucoes": 5,
+      "exames": 5,
+      "consultas": 5,
+      "prescricoes": 3
+    },
+    {
+      "id": 11,
+      "nome": "Carolina Ribeiro Ribeiro",
+      "medico": "Dr. Ricardo Oliveira",
+      "condicoes": "Fibromialgia; Transtorno de Ansiedade Generalizada; Artrose",
+      "sintomas": 18,
+      "evolucoes": 5,
+      "exames": 5,
+      "consultas": 5,
+      "prescricoes": 3
+    },
+    {
+      "id": 12,
+      "nome": "Camila Dias Araújo",
+      "medico": "Dr. Ricardo Oliveira",
+      "condicoes": "Endometriose; TDAH",
+      "sintomas": 12,
+      "evolucoes": 5,
+      "exames": 5,
+      "consultas": 5,
+      "prescricoes": 3
+    },
+    {
+      "id": 13,
+      "nome": "Marcelo Araújo Melo",
+      "medico": "Dr. Ricardo Oliveira",
+      "condicoes": "Dor Neuropática; TEPT",
+      "sintomas": 12,
+      "evolucoes": 5,
+      "exames": 5,
+      "consultas": 5,
+      "prescricoes": 3
+    },
+    {
+      "id": 14,
+      "nome": "Marcelo Costa Gomes",
+      "medico": "Dra. Fernanda Costa",
+      "condicoes": "Dor Neuropática; TDAH; Endometriose",
+      "sintomas": 18,
+      "evolucoes": 5,
+      "exames": 5,
+      "consultas": 5,
+      "prescricoes": 3
+    },
+    {
+      "id": 15,
+      "nome": "Isabela Araújo Silva",
+      "medico": "Dra. Fernanda Costa",
+      "condicoes": "Dor Crônica; Fibromialgia",
+      "sintomas": 12,
+      "evolucoes": 5,
+      "exames": 5,
+      "consultas": 5,
+      "prescricoes": 3
+    },
+    {
+      "id": 16,
+      "nome": "Marcelo Oliveira Ribeiro",
+      "medico": "Dra. Fernanda Costa",
+      "condicoes": "Distúrbio do Pânico; Dor Lombar Crônica; Endometriose",
+      "sintomas": 18,
+      "evolucoes": 5,
+      "exames": 5,
+      "consultas": 5,
+      "prescricoes": 3
+    },
+    {
+      "id": 17,
+      "nome": "Luísa Teixeira Teixeira",
+      "medico": "Dra. Fernanda Costa",
+      "condicoes": "Dor Crônica; Artrose",
+      "sintomas": 12,
+      "evolucoes": 5,
+      "exames": 5,
+      "consultas": 5,
+      "prescricoes": 3
+    },
+    {
+      "id": 18,
+      "nome": "Carolina Ribeiro Dias",
+      "medico": "Dra. Fernanda Costa",
+      "condicoes": "Transtorno de Ansiedade Generalizada; Enxaqueca",
+      "sintomas": 12,
+      "evolucoes": 5,
+      "exames": 5,
+      "consultas": 5,
+      "prescricoes": 3
+    }
+  ],
+  "totals": {
+    "physicians": 3,
+    "patients": 15,
+    "symptoms": 198,
+    "evolutions": 75,
+    "exams": 75,
+    "consultations": 75,
+    "prescriptions": 45
+  }
+}

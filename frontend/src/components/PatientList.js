@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Paper, 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableContainer, 
-  TableHead, 
+import {
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
   TableRow,
   TablePagination,
   IconButton,
@@ -23,10 +23,14 @@ import {
   TextField,
   InputAdornment,
   Chip,
-  Grid
+  Grid,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem
 } from '@mui/material';
-import { 
-  Edit as EditIcon, 
+import {
+  Edit as EditIcon,
   Delete as DeleteIcon,
   Visibility as ViewIcon,
   Add as AddIcon,
@@ -37,11 +41,14 @@ import {
   AccountCircle as ResponsavelIcon,
   Group as CompartilhadoIcon
 } from '@mui/icons-material';
+import { Avatar } from '@mui/material';
 import { pacientesService } from '../services/api';
 import CompartilhamentoPaciente from './CompartilhamentoPaciente';
+import { useAuth } from '../contexts/AuthContext';
 
 const PatientList = ({ onEdit, onAdd, refreshTrigger }) => {
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
   const [patients, setPatients] = useState([]);
   const [filteredPatients, setFilteredPatients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -50,10 +57,35 @@ const PatientList = ({ onEdit, onAdd, refreshTrigger }) => {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [patientToDelete, setPatientToDelete] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
   const [compartilhamentoDialogOpen, setCompartilhamentoDialogOpen] = useState(false);
   const [pacienteParaCompartilhar, setPacienteParaCompartilhar] = useState(null);
-  
+  const [deletionStep, setDeletionStep] = useState(0);
+  const [confirmText, setConfirmText] = useState('');
+  const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
+
+  // Calcular idade a partir da data de nascimento
+  const calcularIdade = (dataNascimento) => {
+    if (!dataNascimento) return '';
+    const hoje = new Date();
+    const nascimento = new Date(dataNascimento);
+    let idade = hoje.getFullYear() - nascimento.getFullYear();
+    const mes = hoje.getMonth() - nascimento.getMonth();
+
+    if (mes < 0 || (mes === 0 && hoje.getDate() < nascimento.getDate())) {
+      idade--;
+    }
+
+    return `${idade} anos`;
+  };
+
+  // Função para obter URL da foto do paciente
+  const getFotoUrl = (patient) => {
+    if (patient.foto_nome) {
+      return `${process.env.REACT_APP_API_URL}/pacientes/foto/${patient.foto_nome}`;
+    }
+    return null;
+  };
+
   // Carregar pacientes
   useEffect(() => {
     const fetchPatients = async () => {
@@ -70,25 +102,48 @@ const PatientList = ({ onEdit, onAdd, refreshTrigger }) => {
         setLoading(false);
       }
     };
-    
+
     fetchPatients();
   }, [refreshTrigger]);
 
-  // Filtrar pacientes baseado no termo de busca
+  // Filtros
+  const [filterPeriodo, setFilterPeriodo] = useState('');
+  const [filterAssociacao, setFilterAssociacao] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+
+  // Carregar pacientes com filtros
   useEffect(() => {
-    if (!searchTerm.trim()) {
-      setFilteredPatients(patients);
-    } else {
-      const filtered = patients.filter(patient => 
-        patient.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        patient.cpf.includes(searchTerm) ||
-        patient.telefone.includes(searchTerm) ||
-        (patient.diagnostico && patient.diagnostico.toLowerCase().includes(searchTerm.toLowerCase()))
-      );
-      setFilteredPatients(filtered);
-    }
-    setPage(0); // Reset para primeira página ao buscar
-  }, [searchTerm, patients]);
+    const fetchPatients = async () => {
+      setLoading(true);
+      try {
+        const filtros = {};
+        if (searchTerm) filtros.nome = searchTerm;
+        if (filterAssociacao) filtros.associacao = filterAssociacao;
+        if (filterPeriodo) filtros.periodo_cadastro = filterPeriodo;
+
+        const data = await pacientesService.listar(filtros);
+        setPatients(data.pacientes || []);
+        setFilteredPatients(data.pacientes || []); // Agora o backend filtra
+        setError('');
+      } catch (err) {
+        console.error('Erro ao carregar pacientes:', err);
+        setError('Não foi possível carregar a lista de pacientes');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // Debounce na busca por nome para evitar muitas chamadas
+    const timeoutId = setTimeout(() => {
+      fetchPatients();
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [refreshTrigger, filterPeriodo, filterAssociacao, searchTerm]);
+
+  // Remover client-side effect de busca já que agora é server-side
+  // useEffect(() => { ... }, [searchTerm, patients]); excluido.
+
 
   // Manipular busca
   const handleSearchChange = (event) => {
@@ -98,32 +153,32 @@ const PatientList = ({ onEdit, onAdd, refreshTrigger }) => {
   const handleClearSearch = () => {
     setSearchTerm('');
   };
-  
+
   // Paginação
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
   };
-  
+
   const handleChangeRowsPerPage = (event) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
   };
-  
+
   // Diálogo de confirmação de exclusão
   const handleOpenDeleteDialog = (patient) => {
     setPatientToDelete(patient);
     setDeleteDialogOpen(true);
   };
-  
+
   const handleCloseDeleteDialog = () => {
     setDeleteDialogOpen(false);
     setPatientToDelete(null);
   };
-  
+
   // Excluir paciente
   const handleDeletePatient = async () => {
     if (!patientToDelete) return;
-    
+
     try {
       await pacientesService.excluir(patientToDelete.id);
       setPatients(patients.filter(p => p.id !== patientToDelete.id));
@@ -158,38 +213,40 @@ const PatientList = ({ onEdit, onAdd, refreshTrigger }) => {
     };
     fetchPatients();
   };
-  
-  // Formatar data
-  const formatDate = (dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('pt-BR');
-  };
+
 
   // Calcular estatísticas dos pacientes
   const patientsInTreatment = patients.filter(patient => patient.em_tratamento).length;
   const totalPatients = patients.length;
-  
+
   return (
     <Paper elevation={3} sx={{ p: 2 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h6">Pacientes</Typography>
-        <Button 
-          variant="contained" 
-          color="primary" 
+        <Typography variant="h6" sx={{ fontSize: '1.375rem' }}>Pacientes</Typography>
+        <Button
+          variant="contained"
+          color="primary"
           startIcon={<AddIcon />}
-          onClick={onAdd}
+          onClick={() => {
+            const exp = currentUser?.data_expiracao ? new Date(currentUser.data_expiracao) : null;
+            if (currentUser?.role !== 'admin' && exp && exp < new Date()) {
+              setUpgradeDialogOpen(true);
+            } else {
+              onAdd();
+            }
+          }}
+          sx={{ fontSize: '1.1rem', padding: '8px 16px' }}
         >
           Novo Paciente
         </Button>
       </Box>
-      
+
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
         </Alert>
       )}
-      
+
       {/* Contador de pacientes e campo de busca */}
       {!loading && patients.length > 0 && (
         <>
@@ -201,7 +258,7 @@ const PatientList = ({ onEdit, onAdd, refreshTrigger }) => {
                 label={`Total: ${totalPatients} pacientes`}
                 color="primary"
                 variant="outlined"
-                sx={{ width: '100%', justifyContent: 'flex-start' }}
+                sx={{ width: '100%', justifyContent: 'flex-start', fontSize: '1.1rem' }}
               />
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
@@ -210,7 +267,37 @@ const PatientList = ({ onEdit, onAdd, refreshTrigger }) => {
                 label={`Em tratamento: ${patientsInTreatment}`}
                 color="success"
                 variant="outlined"
-                sx={{ width: '100%', justifyContent: 'flex-start' }}
+                sx={{ width: '100%', justifyContent: 'flex-start', fontSize: '1.2rem' }}
+              />
+            </Grid>
+          </Grid>
+
+          {/* Filtros Avançados */}
+          <Grid container spacing={2} sx={{ mb: 2 }}>
+            <Grid item xs={12} sm={4}>
+              <FormControl fullWidth>
+                <InputLabel>Período de Cadastro</InputLabel>
+                <Select
+                  value={filterPeriodo}
+                  label="Período de Cadastro"
+                  onChange={(e) => setFilterPeriodo(e.target.value)}
+                >
+                  <MenuItem value="">Todos os períodos</MenuItem>
+                  <MenuItem value="hoje">Hoje</MenuItem>
+                  <MenuItem value="ontem">Ontem</MenuItem>
+                  <MenuItem value="7dias">Últimos 7 dias</MenuItem>
+                  <MenuItem value="30dias">Últimos 30 dias</MenuItem>
+                  <MenuItem value="mes_atual">Mês Atual</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                label="Filtrar por Associação"
+                value={filterAssociacao}
+                onChange={(e) => setFilterAssociacao(e.target.value)}
+                placeholder="Ex: ABRACE, Santa Cannabis..."
               />
             </Grid>
           </Grid>
@@ -220,28 +307,29 @@ const PatientList = ({ onEdit, onAdd, refreshTrigger }) => {
             <TextField
               fullWidth
               variant="outlined"
-              placeholder="Buscar por nome, CPF, telefone ou diagnóstico..."
+              placeholder="Buscar por nome..."
               value={searchTerm}
               onChange={handleSearchChange}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <SearchIcon />
+                    <SearchIcon fontSize="large" />
                   </InputAdornment>
                 ),
                 endAdornment: searchTerm && (
                   <InputAdornment position="end">
-                    <IconButton onClick={handleClearSearch} edge="end">
-                      <ClearIcon />
+                    <IconButton onClick={handleClearSearch} edge="end" size="large">
+                      <ClearIcon fontSize="large" />
                     </IconButton>
                   </InputAdornment>
                 ),
               }}
+              sx={{ '& .MuiInputBase-root': { fontSize: '1.32rem' } }}
             />
           </Box>
         </>
       )}
-      
+
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
           <CircularProgress />
@@ -260,13 +348,13 @@ const PatientList = ({ onEdit, onAdd, refreshTrigger }) => {
             <Table>
               <TableHead>
                 <TableRow>
-                  <TableCell>Nome</TableCell>
-                  <TableCell>Data de Nascimento</TableCell>
-                  <TableCell>CPF</TableCell>
-                  <TableCell>Telefone</TableCell>
-                  <TableCell>Diagnóstico</TableCell>
-                  <TableCell align="center">Acesso</TableCell>
-                  <TableCell align="center">Ações</TableCell>
+                  <TableCell sx={{ fontSize: '1.1rem' }}>Nome</TableCell>
+                  <TableCell sx={{ fontSize: '1.1rem' }}>Idade</TableCell>
+                  <TableCell sx={{ fontSize: '1.1rem' }}>Diagnóstico</TableCell>
+                  <TableCell sx={{ fontSize: '1.1rem' }}>Associação</TableCell>
+                  <TableCell align="center" sx={{ fontSize: '1.1rem' }}>Status</TableCell>
+                  <TableCell align="center" sx={{ fontSize: '1.1rem' }}>Acesso</TableCell>
+                  <TableCell align="center" sx={{ fontSize: '1.1rem' }}>Ações</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -274,59 +362,111 @@ const PatientList = ({ onEdit, onAdd, refreshTrigger }) => {
                   .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                   .map((patient) => (
                     <TableRow key={patient.id}>
-                      <TableCell>{patient.nome}</TableCell>
-                      <TableCell>{formatDate(patient.data_nascimento)}</TableCell>
-                      <TableCell>{patient.cpf}</TableCell>
-                      <TableCell>{patient.telefone}</TableCell>
-                      <TableCell>{patient.diagnostico}</TableCell>
-                      <TableCell align="center">
+                      <TableCell sx={{ fontSize: '1.1rem' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                          <Avatar
+                            src={getFotoUrl(patient)}
+                            sx={{ width: 40, height: 40 }}
+                          >
+                            {!getFotoUrl(patient) && patient.nome.charAt(0).toUpperCase()}
+                          </Avatar>
+                          <Typography variant="body1" sx={{ fontSize: '1.1rem' }}>
+                            {patient.nome}
+                          </Typography>
+                        </Box>
+                      </TableCell>
+                      <TableCell sx={{ fontSize: '1.1rem' }}>{calcularIdade(patient.data_nascimento)}</TableCell>
+                      <TableCell sx={{ fontSize: '1.1rem' }}>{patient.diagnostico}</TableCell>
+                      <TableCell sx={{ fontSize: '1.1rem' }}>{patient.associacao || '-'}</TableCell>
+                      <TableCell align="center" sx={{ fontSize: '1.1rem' }}>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'center' }}>
+                          {patient.em_tratamento ? (
+                            <Chip
+                              label="Em tratamento"
+                              color="success"
+                              variant="outlined"
+                              size="small"
+                              sx={{ fontSize: '1.1rem' }}
+                            />
+                          ) : (
+                            <Chip
+                              label="Não está em tratamento"
+                              color="default"
+                              variant="outlined"
+                              size="small"
+                              sx={{ fontSize: '1.1rem' }}
+                            />
+                          )}
+                          {patient.tdah_positivo && (
+                            <Chip
+                              label="TDAH"
+                              color="warning"
+                              variant="filled"
+                              size="small"
+                              sx={{
+                                fontSize: '0.9rem',
+                                fontWeight: 'bold',
+                                background: 'linear-gradient(45deg, #FF6B35 30%, #F7931E 90%)',
+                                color: 'white'
+                              }}
+                            />
+                          )}
+                        </Box>
+                      </TableCell>
+                      <TableCell align="center" sx={{ fontSize: '1.2rem' }}>
                         {patient.eh_responsavel ? (
                           <Chip
                             icon={<ResponsavelIcon />}
                             label="Responsável"
                             color="primary"
                             size="small"
+                            sx={{ fontSize: '1.1rem' }}
                           />
                         ) : (
                           <Chip
                             icon={<CompartilhadoIcon />}
-                            label={patient.nivel_acesso === 'leitura' ? 'Leitura' : 
-                                   patient.nivel_acesso === 'escrita' ? 'Escrita' : 'Completo'}
+                            label={patient.nivel_acesso === 'leitura' ? 'Leitura' :
+                              patient.nivel_acesso === 'escrita' ? 'Escrita' : 'Completo'}
                             color="secondary"
                             size="small"
+                            sx={{ fontSize: '1.1rem' }}
                           />
                         )}
                       </TableCell>
                       <TableCell align="center">
-                        <IconButton 
-                          color="primary" 
+                        <IconButton
+                          color="primary"
                           onClick={() => navigate(`/pacientes/detail/${patient.id}`)}
                           title="Visualizar"
+                          size="medium"
                         >
-                          <ViewIcon />
+                          <ViewIcon fontSize="medium" />
                         </IconButton>
-                        <IconButton 
-                          color="secondary" 
+                        <IconButton
+                          color="secondary"
                           onClick={() => onEdit(patient)}
                           title="Editar"
+                          size="medium"
                         >
-                          <EditIcon />
+                          <EditIcon fontSize="medium" />
                         </IconButton>
                         {patient.eh_responsavel && (
-                          <IconButton 
-                            color="info" 
+                          <IconButton
+                            color="info"
                             onClick={() => handleOpenCompartilhamento(patient)}
                             title="Compartilhar"
+                            size="medium"
                           >
-                            <ShareIcon />
+                            <ShareIcon fontSize="medium" />
                           </IconButton>
                         )}
-                        <IconButton 
-                          color="error" 
+                        <IconButton
+                          color="error"
                           onClick={() => handleOpenDeleteDialog(patient)}
                           title="Excluir"
+                          size="medium"
                         >
-                          <DeleteIcon />
+                          <DeleteIcon fontSize="medium" />
                         </IconButton>
                       </TableCell>
                     </TableRow>
@@ -334,7 +474,7 @@ const PatientList = ({ onEdit, onAdd, refreshTrigger }) => {
               </TableBody>
             </Table>
           </TableContainer>
-          
+
           <TablePagination
             rowsPerPageOptions={[5, 10, 25]}
             component="div"
@@ -345,29 +485,70 @@ const PatientList = ({ onEdit, onAdd, refreshTrigger }) => {
             onRowsPerPageChange={handleChangeRowsPerPage}
             labelRowsPerPage="Linhas por página:"
             labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
+            sx={{ '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows, & .MuiTablePagination-select': { fontSize: '1.1rem' } }}
           />
         </>
       )}
-      
+
       {/* Diálogo de confirmação de exclusão */}
       <Dialog
         open={deleteDialogOpen}
         onClose={handleCloseDeleteDialog}
       >
-        <DialogTitle>Confirmar exclusão</DialogTitle>
+        <DialogTitle sx={{ color: 'error.main', fontWeight: 'bold' }}>
+          {deletionStep === 0 ? 'Confirmar exclusão' : '⚠️ AÇÃO IRREVERSÍVEL ⚠️'}
+        </DialogTitle>
         <DialogContent>
-          <DialogContentText>
-            Tem certeza que deseja excluir o paciente {patientToDelete?.nome}? 
-            Esta ação não pode ser desfeita.
-          </DialogContentText>
+          {deletionStep === 0 ? (
+            <DialogContentText sx={{ fontSize: '1.1rem' }}>
+              Tem certeza que deseja excluir o paciente <strong>{patientToDelete?.nome}</strong>?
+              <br /><br />
+              Isso excluirá todos os dados do prontuário, consultas e histórico.
+            </DialogContentText>
+          ) : (
+            <Box>
+              <Alert severity="error" sx={{ mb: 2 }}>
+                Esta ação <strong>NÃO PODERÁ SER DESFEITA</strong>. Todos os dados serão perdidos permanentemente.
+              </Alert>
+              <Typography variant="body1" gutterBottom>
+                Para confirmar, digite <strong>EXCLUIR</strong> no campo abaixo:
+              </Typography>
+              <TextField
+                autoFocus
+                margin="dense"
+                fullWidth
+                variant="outlined"
+                value={confirmText}
+                onChange={(e) => setConfirmText(e.target.value.toUpperCase())}
+                placeholder="EXCLUIR"
+                color="error"
+              />
+            </Box>
+          )}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDeleteDialog} color="primary">
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={handleCloseDeleteDialog} color="primary" variant="outlined">
             Cancelar
           </Button>
-          <Button onClick={handleDeletePatient} color="error" autoFocus>
-            Excluir
-          </Button>
+          {deletionStep === 0 ? (
+            <Button
+              onClick={() => setDeletionStep(1)}
+              color="error"
+              variant="contained"
+              autoFocus
+            >
+              Continuar
+            </Button>
+          ) : (
+            <Button
+              onClick={handleDeletePatient}
+              color="error"
+              variant="contained"
+              disabled={confirmText !== 'EXCLUIR'}
+            >
+              Excluir Permanentemente
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
 
@@ -382,6 +563,40 @@ const PatientList = ({ onEdit, onAdd, refreshTrigger }) => {
           onCompartilhamentoAtualizado={handleCompartilhamentoAtualizado}
         />
       )}
+
+      {/* Modal de Paywall / Upgrade */}
+      <Dialog
+        open={upgradeDialogOpen}
+        onClose={() => setUpgradeDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+          Plano Expirado ou Perfil Avulso
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ fontSize: '1.1rem', mt: 1 }}>
+            Sua assinatura atual não permite o cadastro de <strong>novos pacientes como titular</strong>.
+            Isso ocorre porque seu período de avaliação expirou ou você é um profissional de equipe colaborativa.
+          </DialogContentText>
+          <DialogContentText sx={{ fontSize: '1.1rem', mt: 2 }}>
+            Para ser o responsável clínico (cadastrar, gerenciar faturamento e manter os prontuários seguros), é necessário ativar um plano.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ p: 3, pt: 1 }}>
+          <Button onClick={() => setUpgradeDialogOpen(false)} color="inherit">
+            Entendi
+          </Button>
+          <Button
+            onClick={() => navigate('/planos')}
+            color="primary"
+            variant="contained"
+            size="large"
+          >
+            Ver Planos de Assinatura
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Paper>
   );
 };

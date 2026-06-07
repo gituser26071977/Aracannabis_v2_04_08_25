@@ -8,7 +8,6 @@ from functools import wraps
 from flask import request, jsonify, current_app
 import secrets
 import string
-from datetime import datetime, timedelta
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
@@ -33,22 +32,53 @@ API_SEARCH_RATE_LIMIT = "200 per minute"
 # Lista de origens permitidas para CORS
 ALLOWED_ORIGINS = [
     'http://localhost:3000',
-    'http://localhost:3001',  # Adicionando a porta do frontend alternativa
+    'http://localhost:3001',
+    'http://localhost:3002',
+    'http://localhost:3003',
+    'http://localhost:3004',
+    'http://localhost:3005',
+    'http://localhost:3006',
+    'http://localhost:3007',
+    'http://localhost:3008',
+    'http://localhost:3009',
+    'http://localhost:3010',
     'http://localhost:5000',
+    'http://localhost:5002',
+    'http://localhost:5003',
+    'http://localhost:5010',
+    'http://backend:5002',
     'https://aracannabis.com.br',
-    'https://app.aracannabis.com.br'
+    'https://www.aracannabis.com.br',
+    'https://app.aracannabis.com.br',
+    'http://192.168.0.104:3000',
+    'http://192.168.0.104:3000',
+    'http://192.168.0.104:5002',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:5002'
 ]
 
 # Cabeçalhos de segurança HTTP
+connect_src_origins = " ".join(ALLOWED_ORIGINS)
+# CSP otimizado para SPA React — permite recursos da mesma origem e conexões CORS configuradas
 SECURITY_HEADERS = {
-    'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'",
+    'Content-Security-Policy': (
+        f"default-src 'self'; "
+        f"script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+        f"style-src 'self' 'unsafe-inline'; "
+        f"img-src 'self' data: blob: https:; "
+        f"font-src 'self' data: https:; "
+        f"connect-src 'self' {connect_src_origins}; "
+        f"frame-src 'self'; "
+        f"media-src 'self' blob: data:;"
+    ),
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'SAMEORIGIN',
     'X-XSS-Protection': '1; mode=block',
     'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
     'Referrer-Policy': 'strict-origin-when-cross-origin',
-    'Cache-Control': 'no-store',
-    'Pragma': 'no-cache'
+    'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0',
 }
 
 # Inicializar rate limiter

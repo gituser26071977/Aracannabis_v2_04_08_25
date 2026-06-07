@@ -1,86 +1,60 @@
 #!/usr/bin/env python3
 """
 Script para criar tabelas necessárias para o sistema de cadastro de profissionais
+usando PostgreSQL.
 """
 
 import os
-import sqlite3
-from datetime import datetime
+from sqlalchemy import create_engine, text
+
+DEFAULT_DATABASE_URL = "postgresql://postgres:postgres@localhost:5432/aracannabis"
 
 def create_tables():
     """Criar tabelas necessárias para o sistema de cadastro"""
-    
-    db_path = os.path.join("instance", "aracannabis.db")
-    
-    if not os.path.exists(db_path):
-        print(f"❌ Banco de dados não encontrado: {db_path}")
-        return False
-    
+    database_url = os.getenv("DATABASE_URL", DEFAULT_DATABASE_URL)
+    engine = create_engine(database_url)
+
     try:
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-        
         print("🔧 Criando tabelas para sistema de cadastro...")
-        
-        # 1. Tabela de solicitações de cadastro
-        cursor.execute('''
+
+        ddl_commands = [
+            """
             CREATE TABLE IF NOT EXISTS solicitacoes_cadastro (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 nome TEXT NOT NULL,
-                email TEXT NOT NULL UNIQUE,
+                email TEXT NOT NULL,
                 crm TEXT NOT NULL,
                 uf_crm TEXT NOT NULL,
                 telefone TEXT,
                 especialidade TEXT,
                 instituicao TEXT,
-                status TEXT DEFAULT 'pendente' CHECK(status IN ('pendente', 'aprovada', 'rejeitada')),
-                data_solicitacao DATETIME DEFAULT CURRENT_TIMESTAMP,
-                data_aprovacao DATETIME,
+                status TEXT NOT NULL DEFAULT 'pendente',
+                data_solicitacao TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                data_aprovacao TIMESTAMP,
                 observacoes TEXT,
-                aprovado_por INTEGER,
-                FOREIGN KEY (aprovado_por) REFERENCES profissionais (id)
-            )
-        ''')
-        
-        # 2. Tabela de senhas temporárias
-        cursor.execute('''
+                aprovado_por INTEGER REFERENCES profissionais(id) ON DELETE SET NULL
+            );
+            """,
+            """
             CREATE TABLE IF NOT EXISTS senhas_temporarias (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                usuario_id INTEGER NOT NULL,
+                id SERIAL PRIMARY KEY,
+                usuario_id INTEGER NOT NULL REFERENCES profissionais(id) ON DELETE CASCADE,
                 senha_hash TEXT NOT NULL,
-                data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP,
-                data_expiracao DATETIME NOT NULL,
-                usado BOOLEAN DEFAULT 0,
-                FOREIGN KEY (usuario_id) REFERENCES profissionais (id) ON DELETE CASCADE
-            )
-        ''')
-        
-        # 3. Verificar se a tabela profissionais tem as colunas necessárias
-        cursor.execute("PRAGMA table_info(profissionais)")
-        columns = [column[1] for column in cursor.fetchall()]
-        
-        # Adicionar colunas que podem estar faltando
-        new_columns = [
-            ('email', 'TEXT'),
-            ('telefone', 'TEXT'),
-            ('especialidade', 'TEXT'),
-            ('instituicao', 'TEXT'),
-            ('uf_crm', 'TEXT'),
-            ('ativo', 'BOOLEAN DEFAULT 1'),
-            ('tipo_conta', 'TEXT DEFAULT "permanente"'),
-            ('data_expiracao', 'DATETIME')
+                data_expiracao TIMESTAMP NOT NULL,
+                usado BOOLEAN NOT NULL DEFAULT FALSE
+            );
+            """,
+            "ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS email TEXT;",
+            "ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS telefone TEXT;",
+            "ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS especialidade TEXT;",
+            "ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS instituicao TEXT;",
+            "ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS uf_crm TEXT;",
+            "ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS ativo BOOLEAN NOT NULL DEFAULT TRUE;",
+            "ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS tipo_conta TEXT;",
+            "ALTER TABLE profissionais ADD COLUMN IF NOT EXISTS data_expiracao TIMESTAMP;"
         ]
-        
-        for column_name, column_type in new_columns:
-            if column_name not in columns:
-                try:
-                    cursor.execute(f'ALTER TABLE profissionais ADD COLUMN {column_name} {column_type}')
-                    print(f"✅ Coluna '{column_name}' adicionada à tabela profissionais")
-                except Exception as e:
-                    print(f"⚠️  Erro ao adicionar coluna '{column_name}': {e}")
-        
-        # 4. Criar índices para melhor performance
-        indices = [
+
+        index_commands = [
             "CREATE INDEX IF NOT EXISTS idx_solicitacoes_email ON solicitacoes_cadastro(email)",
             "CREATE INDEX IF NOT EXISTS idx_solicitacoes_status ON solicitacoes_cadastro(status)",
             "CREATE INDEX IF NOT EXISTS idx_senhas_temp_usuario ON senhas_temporarias(usuario_id)",
@@ -88,29 +62,29 @@ def create_tables():
             "CREATE INDEX IF NOT EXISTS idx_profissionais_email ON profissionais(email)",
             "CREATE INDEX IF NOT EXISTS idx_profissionais_ativo ON profissionais(ativo)"
         ]
-        
-        for index_sql in indices:
-            try:
-                cursor.execute(index_sql)
-            except Exception as e:
-                print(f"⚠️  Erro ao criar índice: {e}")
-        
-        conn.commit()
+
+        with engine.connect() as connection:
+            for command in ddl_commands:
+                connection.execute(text(command))
+            for command in index_commands:
+                connection.execute(text(command))
+            connection.commit()
+
         print("✅ Tabelas criadas com sucesso!")
-        
-        # Verificar tabelas criadas
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
-        tables = cursor.fetchall()
-        
-        print(f"\n📋 Tabelas existentes no banco:")
-        for table in tables:
-            cursor.execute(f"SELECT COUNT(*) FROM {table[0]}")
-            count = cursor.fetchone()[0]
-            print(f"   - {table[0]}: {count} registros")
-        
-        conn.close()
+
+        with engine.connect() as connection:
+            result = connection.execute(text(
+                "SELECT table_name FROM information_schema.tables WHERE table_schema='public' ORDER BY table_name"
+            ))
+            tables = [row[0] for row in result.fetchall()]
+
+            print("\n📋 Tabelas existentes no banco:")
+            for table in tables:
+                count = connection.execute(text(f"SELECT COUNT(*) FROM {table}")).scalar()
+                print(f"   - {table}: {count} registros")
+
         return True
-        
+
     except Exception as e:
         print(f"❌ Erro ao criar tabelas: {e}")
         return False
@@ -120,8 +94,8 @@ def test_email_system():
     print("\n📧 Testando sistema de email...")
     
     try:
-        from services.email_service import email_service
-        
+        from services.email_service import EmailService
+        email_service = EmailService()
         success, message = email_service.test_connection()
         
         if success:
@@ -151,17 +125,17 @@ def main():
     # Testar email
     email_working = test_email_system()
     
-    print(f"\n📊 RESUMO:")
+    print("\n📊 RESUMO:")
     print(f"   ✅ Tabelas: {'OK' if tables_created else 'ERRO'}")
     print(f"   {'✅' if email_working else '❌'} Email: {'OK' if email_working else 'ERRO'}")
     
     if tables_created and email_working:
-        print(f"\n🎉 Sistema de cadastro configurado com sucesso!")
-        print(f"   - Usuários podem solicitar cadastro")
-        print(f"   - Admins podem aprovar/rejeitar solicitações")
-        print(f"   - Emails de confirmação serão enviados automaticamente")
+        print("\n🎉 Sistema de cadastro configurado com sucesso!")
+        print("   - Usuários podem solicitar cadastro")
+        print("   - Admins podem aprovar/rejeitar solicitações")
+        print("   - Emails de confirmação serão enviados automaticamente")
     else:
-        print(f"\n⚠️  Sistema parcialmente configurado. Verifique os erros acima.")
+        print("\n⚠️  Sistema parcialmente configurado. Verifique os erros acima.")
 
 if __name__ == "__main__":
     main()

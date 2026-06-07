@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from models import db, Consulta, Paciente, Profissional, LogAtividade
+from models import db, Consulta, Paciente, LogAtividade
 from datetime import datetime, timedelta
 import os
 import smtplib
@@ -98,6 +98,7 @@ def agendar_consulta():
         # Criar nova consulta
         nova_consulta = Consulta(
             paciente_id=data['paciente_id'],
+            associacao_id=paciente.associacao_id,
             profissional_id=profissional_id,
             data_hora=data_hora,
             duracao_minutos=data.get('duracao_minutos', 60),
@@ -344,8 +345,8 @@ def enviar_email_lembrete(consulta):
         # Configurações do email (devem estar no .env)
         smtp_server = os.getenv('SMTP_SERVER', 'smtp.hostinger.com')
         smtp_port = int(os.getenv('SMTP_PORT', '465'))
-        email_user = os.getenv('EMAIL_USER')
-        email_password = os.getenv('EMAIL_PASSWORD')
+        email_user = os.getenv('SMTP_USERNAME')
+        email_password = os.getenv('SMTP_PASSWORD')
         
         if not email_user or not email_password:
             print("Configurações de email não encontradas")

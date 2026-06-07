@@ -1,0 +1,35 @@
+FROM python:3.10-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y \
+    gcc \
+    postgresql-client \
+    tesseract-ocr \
+    tesseract-ocr-por \
+    tesseract-ocr-eng \
+    libtesseract-dev \
+    libleptonica-dev \
+    pkg-config \
+    poppler-utils \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+
+# Instalar tudo, incluindo dependências extras
+# O original usa --no-cache-dir, vamos usar cache aqui para ser rápido
+RUN pip install --upgrade pip && \
+    pip install --retries 5 --timeout 60 -r requirements.txt
+
+# Copiar código
+COPY . .
+
+RUN mkdir -p uploads/exames
+
+EXPOSE 3000
+
+# Script de entrada para garantir DB
+COPY entrypoint_siap.sh /usr/local/bin/entrypoint_siap.sh
+RUN chmod +x /usr/local/bin/entrypoint_siap.sh
+
+CMD ["/usr/local/bin/entrypoint_siap.sh"]

@@ -85,14 +85,17 @@ def registrar_dosagem(paciente_id):
             concentracao_thc=data.get('concentracao_thc', 0.0),
             concentracao_cbg=data.get('concentracao_cbg', 0.0),
             concentracao_cbn=data.get('concentracao_cbn', 0.0),
-            gotas_por_ml=data.get('gotas_por_ml', 30)  # Padrão 30 gotas/ml
+            gotas_por_ml=data.get('gotas_por_ml', 30),  # Padrão 30 gotas/ml
+            tipo_dose=data.get('tipo_dose', 'fixa'), # Novo
+            esquema_doses=data.get('esquema_doses', {}) # Novo
         )
         
         db.session.add(nova_dosagem)
         
-        # Atualizar a dosagem atual do paciente
+        # Atualizar a dosagem atual do paciente e marcar como em tratamento
         paciente.dosagem = data['dosagem']
         paciente.updated_at = datetime.utcnow()
+        paciente.em_tratamento = True
         
         db.session.commit()
         
@@ -163,7 +166,7 @@ def dados_grafico_dosagens(paciente_id):
     periodo = request.args.get('periodo', 'integral')
     data_fim_param = request.args.get('data_fim') # Manter data_fim opcional
 
-    hoje = datetime.now().date()
+    hoje = datetime.utcnow().date()
     data_inicio_calculada = None
 
     if periodo == '1m':
@@ -242,30 +245,124 @@ def dados_grafico_dosagens(paciente_id):
         })
     
     return jsonify({
-        'dados_grafico': {
-            'label': 'Gotas',
-            'data': dados_grafico
-        },
+        'dados_grafico': dados_grafico,
         'dados_canabinoides': {
-            'cbd': {
-                'label': 'CBD (mg/dia)',
-                'data': dados_cbd
-            },
-            'thc': {
-                'label': 'THC (mg/dia)',
-                'data': dados_thc
-            },
-            'cbg': {
-                'label': 'CBG (mg/dia)',
-                'data': dados_cbg
-            },
-            'cbn': {
-                'label': 'CBN (mg/dia)',
-                'data': dados_cbn
-            },
-            'total': {
-                'label': 'Canabinoides Totais (mg/dia)',
-                'data': dados_canabinoides_totais
-            }
+            'cbd': dados_cbd,
+            'thc': dados_thc,
+            'cbg': dados_cbg,
+            'cbn': dados_cbn,
+            'total': dados_canabinoides_totais
+        }
+    }), 200
+
+# Add this new endpoint for the dosage chart
+@dosagens_bp.route('/dosagens/grafico/paciente/<int:paciente_id>', methods=['GET'])
+@jwt_required()
+def get_dosage_chart_data(paciente_id):
+    """Endpoint para obter dados do gráfico de dosagens"""
+    # Verificar se o paciente existe
+    paciente = Paciente.query.get(paciente_id)
+    if not paciente:
+        return jsonify({'error': 'Paciente não encontrado'}), 404
+    
+    # Obter parâmetros da URL
+    periodo = request.args.get('periodo', 'integral')
+    
+    # Calcular datas com base no período
+    hoje = datetime.utcnow().date()
+    if periodo == '1m':
+        start_date = hoje - timedelta(days=30)
+    elif periodo == '3m':
+        start_date = hoje - timedelta(days=90)
+    elif periodo == '6m':
+        start_date = hoje - timedelta(days=180)
+    elif periodo == '1y':
+        start_date = hoje - timedelta(days=365)
+    else:  # 'integral'
+        start_date = None
+    
+    # Construir a query
+    query = Dosagem.query.filter_by(paciente_id=paciente_id)
+    if start_date:
+        query = query.filter(Dosagem.data >= start_date)
+    
+    # Ordenar por data
+    dosagens = query.order_by(Dosagem.data.asc()).all()
+    
+    # Preparar dados para o gráfico
+    # Agregar múltiplas dosagens do mesmo dia (somar canabinoides)
+    from collections import defaultdict
+    agregado_por_data = defaultdict(lambda: {
+        'cbd_mg': 0, 'thc_mg': 0, 'cbg_mg': 0, 'cbn_mg': 0,
+        'canabinoides_totais': 0, 'gotas_total': 0, 'frequencias': [],
+        'dosagem_textos': []
+    })
+    
+    for dosagem in dosagens:
+        dose_diaria = dosagem.calcular_dose_diaria()
+        data_str = dosagem.data.strftime('%Y-%m-%d')
+        
+        agregado = agregado_por_data[data_str]
+        agregado['cbd_mg'] += dose_diaria['cbd_mg']
+        agregado['thc_mg'] += dose_diaria['thc_mg']
+        agregado['cbg_mg'] += dose_diaria['cbg_mg']
+        agregado['cbn_mg'] += dose_diaria['cbn_mg']
+        agregado['canabinoides_totais'] += dose_diaria['canabinoides_totais']
+        agregado['gotas_total'] += (dosagem.gotas or 0) * (dosagem.frequencia_diaria or 1)
+        agregado['frequencias'].append(dosagem.frequencia_diaria or 1)
+        agregado['dosagem_textos'].append(f"{dosagem.dosagem}: {dosagem.gotas} gotas, {dosagem.frequencia_diaria}x/dia")
+    
+    # Montar arrays finais a partir do agregado
+    dados_grafico = []
+    dados_cbd = []
+    dados_thc = []
+    dados_cbg = []
+    dados_cbn = []
+    dados_canabinoides_totais = []
+    
+    for data_str in sorted(agregado_por_data.keys()):
+        agg = agregado_por_data[data_str]
+        dosagem_texto = ' | '.join(agg['dosagem_textos'])
+        
+        dados_grafico.append({
+            'x': data_str,
+            'y': round(agg['cbd_mg'], 2),
+            'dosagem_texto': dosagem_texto
+        })
+        
+        dados_cbd.append({
+            'x': data_str,
+            'y': round(agg['cbd_mg'], 2),
+            'dosagem_texto': f"CBD: {round(agg['cbd_mg'], 2)} mg/dia"
+        })
+        dados_thc.append({
+            'x': data_str,
+            'y': round(agg['thc_mg'], 2),
+            'dosagem_texto': f"THC: {round(agg['thc_mg'], 2)} mg/dia"
+        })
+        dados_cbg.append({
+            'x': data_str,
+            'y': round(agg['cbg_mg'], 2),
+            'dosagem_texto': f"CBG: {round(agg['cbg_mg'], 2)} mg/dia"
+        })
+        dados_cbn.append({
+            'x': data_str,
+            'y': round(agg['cbn_mg'], 2),
+            'dosagem_texto': f"CBN: {round(agg['cbn_mg'], 2)} mg/dia"
+        })
+        dados_canabinoides_totais.append({
+            'x': data_str,
+            'y': round(agg['canabinoides_totais'], 2),
+            'dosagem_texto': f"Total: {round(agg['canabinoides_totais'], 2)} mg/dia"
+        })
+    
+    return jsonify({
+        'dados_grafico': dados_grafico,
+        'dados_canabinoides': {
+            'cbd': dados_cbd,
+            'thc': dados_thc,
+            'cbg': dados_cbg,
+            'cbn': dados_cbn,
+            'total': dados_canabinoides_totais
         }
     }), 200

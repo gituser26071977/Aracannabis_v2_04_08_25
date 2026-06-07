@@ -6,7 +6,7 @@ Baseado na documentação oficial: https://www.mercadopago.com.br/developers/pt/
 import os
 import mercadopago
 from datetime import datetime, timedelta
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 import logging
 
 logger = logging.getLogger(__name__)
@@ -21,10 +21,11 @@ class MercadoPagoService:
         self.notification_url = os.getenv('MERCADOPAGO_NOTIFICATION_URL')
         
         if not self.access_token:
-            raise ValueError("MERCADOPAGO_ACCESS_TOKEN não configurado no .env")
-        
-        # Inicializar SDK do Mercado Pago
-        self.sdk = mercadopago.SDK(self.access_token)
+            logger.warning("⚠️ MERCADOPAGO_ACCESS_TOKEN não configurado. Funcionalidades de pagamento estarão indisponíveis.")
+            self.sdk = None
+        else:
+            # Inicializar SDK do Mercado Pago
+            self.sdk = mercadopago.SDK(self.access_token)
         
         # Configurar sandbox se necessário
         if self.sandbox:
@@ -43,16 +44,20 @@ class MercadoPagoService:
             Dict com dados da preferência criada
         """
         try:
+            if not self.sdk:
+                return {"success": False, "error": "Integração Mercado Pago não configurada (Token ausente)"}
+
             # Calcular preços
-            preco_info = self._calcular_preco(dados_pedido['periodo'])
+            preco_info = self._calcular_preco(dados_pedido['plano'], dados_pedido['periodo'])
+            plano_nome = self._get_plano_nome(dados_pedido['plano'])
             
             # Dados da preferência
             preference_data = {
                 "items": [
                     {
                         "id": f"aracannabis_{dados_pedido['plano']}_{dados_pedido['periodo']}",
-                        "title": f"Aracannabis - Plano {dados_pedido['plano'].title()}",
-                        "description": f"Assinatura {self._get_periodo_texto(dados_pedido['periodo'])} do sistema Aracannabis",
+                        "title": f"Aracannabis - {plano_nome}",
+                        "description": f"Assinatura {self._get_periodo_texto(dados_pedido['periodo'])} ({plano_nome})",
                         "category_id": "services",
                         "quantity": 1,
                         "currency_id": "BRL",
@@ -87,6 +92,8 @@ class MercadoPagoService:
                     "plano": dados_pedido['plano'],
                     "periodo": dados_pedido['periodo'],
                     "user_id": dados_pedido.get('user_id'),
+                    "email": dados_pedido.get('email'),
+                    "nome": dados_pedido.get('nome'),
                     "sistema": "aracannabis",
                     "versao": "1.0"
                 }
@@ -238,24 +245,96 @@ class MercadoPagoService:
             logger.error(f"Erro ao processar notificação de pedido: {str(e)}")
             return {"success": False, "error": str(e)}
 
+
+
     def _ativar_assinatura(self, payment: Dict[str, Any]) -> Dict[str, Any]:
         """Ativa assinatura após pagamento aprovado"""
         try:
+            # Lazy imports para evitar dependência circular
+            from models import db, Profissional, Assinatura, Plano, Fatura, PagamentoRegistro
+
             metadata = payment.get("metadata", {})
             external_reference = payment.get("external_reference", "")
             
-            # Extrair informações da assinatura
-            plano = metadata.get("plano", "profissional")
+            # Extrair informações
+            plano_slug = metadata.get("plano", "sem_ia")
             periodo = metadata.get("periodo", "mensal")
             user_id = metadata.get("user_id")
+            transaction_amount = payment.get("transaction_amount", 0)
+            payment_method = payment.get("payment_method_id", "unknown")
             
+            if not user_id or user_id == 'guest':
+                # Tentar encontrar usuário pelo email se user_id vazio
+                 email = payment.get("payer", {}).get("email")
+                 if email:
+                     user = Profissional.query.filter_by(email=email).first()
+                     if user: user_id = user.id
+            
+            if not user_id:
+                logger.error("User ID não encontrado no metadata do pagamento")
+                return {"success": False, "error": "User ID not found"}
+
+            # Mapeamento de Plano Slug para ID do Plano no Banco
+            # 'sem_ia' -> ID 1, 'com_ia' -> ID 2 (assumindo defaults ou busca por nome)
+            plano_db = Plano.query.filter(Plano.nome.ilike(f"%{plano_slug.replace('_', ' ')}%")).first()
+            if not plano_db:
+                # Fallback genérico se não achar por nome exato
+                plano_db = Plano.query.filter_by(ativo=True).first()
+            
+            plano_id = plano_db.id if plano_db else 1
+
             # Calcular data de vencimento
             data_vencimento = self._calcular_data_vencimento(periodo)
             
-            # Aqui você integraria com seu sistema de usuários/assinaturas
-            # Por exemplo, atualizar tabela de assinaturas no banco de dados
+            # Verificar se já existe assinatura
+            assinatura = Assinatura.query.filter_by(profissional_id=user_id).first()
             
-            logger.info(f"Assinatura ativada - User: {user_id}, Plano: {plano}, Período: {periodo}")
+            if assinatura:
+                assinatura.plano_id = plano_id
+                assinatura.status = 'ativa'
+                assinatura.renovacao_em = data_vencimento
+                assinatura.updated_at = datetime.utcnow()
+            else:
+                assinatura = Assinatura(
+                    profissional_id=user_id,
+                    plano_id=plano_id,
+                    status='ativa',
+                    renovacao_em=data_vencimento,
+                    created_at=datetime.utcnow()
+                )
+                db.session.add(assinatura)
+            
+            db.session.flush() # Para garantir ID da assinatura
+
+            # Criar Fatura Paga - Histórico Financeiro
+            fatura = Fatura(
+                assinatura_id=assinatura.id,
+                valor=transaction_amount,
+                status='paga',
+                vencimento=data_vencimento, # Próximo vencimento
+                cobranca_id=str(payment["id"]),
+                metodo=payment_method,
+                created_at=datetime.utcnow()
+            )
+            db.session.add(fatura)
+            db.session.flush()
+
+            # Registro detalhado do Pagamento (Audit)
+            pagamento_reg = PagamentoRegistro(
+                fatura_id=fatura.id,
+                status=payment["status"],
+                metodo=payment_method,
+                valor=transaction_amount,
+                referencia_psp=str(payment["id"]),
+                payload=payment, # Salva todo o JSON do MP para debug
+                created_at=datetime.utcnow()
+            )
+            db.session.add(pagamento_reg)
+
+            # Efetivar Mudanças
+            db.session.commit()
+            
+            logger.info(f"Assinatura ATIVADA no banco - User: {user_id}, Plano: {plano_slug}, Até: {data_vencimento}")
             
             return {
                 "success": True,
@@ -263,7 +342,7 @@ class MercadoPagoService:
                 "payment": payment,
                 "subscription": {
                     "user_id": user_id,
-                    "plano": plano,
+                    "plano": plano_slug,
                     "periodo": periodo,
                     "data_vencimento": data_vencimento.isoformat(),
                     "payment_id": payment["id"]
@@ -274,9 +353,13 @@ class MercadoPagoService:
             logger.error(f"Erro ao ativar assinatura: {str(e)}")
             return {"success": False, "error": str(e)}
 
-    def _calcular_preco(self, periodo: str) -> Dict[str, float]:
+    def _calcular_preco(self, plano: str, periodo: str) -> Dict[str, float]:
         """Calcula preço baseado no período"""
-        preco_base = 180.00
+        precos_base = {
+            'sem_ia': 99.00,
+            'com_ia': 250.00
+        }
+        preco_base = precos_base.get(plano, precos_base['sem_ia'])
         
         descontos = {
             'mensal': 0,
@@ -328,13 +411,21 @@ class MercadoPagoService:
         }
         return textos.get(periodo, '1 mês')
 
+    def _get_plano_nome(self, plano: str) -> str:
+        """Converte plano para nome legível"""
+        nomes = {
+            'sem_ia': 'Plano Sem IA',
+            'com_ia': 'Plano Com IA'
+        }
+        return nomes.get(plano, 'Plano Sem IA')
+
     def _get_base_url(self) -> str:
         """Retorna URL base da aplicação"""
         # Em produção, isso viria de uma variável de ambiente
         if self.sandbox:
             return "http://localhost:3000"
         else:
-            return os.getenv('BASE_URL', 'https://seu-dominio.com')
+            return os.getenv('FRONTEND_BASE_URL') or os.getenv('BASE_URL', 'https://seu-dominio.com')
 
 # Instância global do serviço
 mercadopago_service = MercadoPagoService()

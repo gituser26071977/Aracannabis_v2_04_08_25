@@ -32,6 +32,14 @@ const ESTADOS_BRASIL = [
 
 const ESPECIALIDADES = [
   'Clínica Médica',
+  'Enfermagem',
+  'Fisioterapia',
+  'Fonoaudiologia',
+  'Nutrição',
+  'Odontologia',
+  'Psicologia',
+  'Serviço Social',
+  'Terapia Ocupacional',
   'Neurologia',
   'Psiquiatria',
   'Oncologia',
@@ -60,7 +68,7 @@ const CadastroProfissionaisPage = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [solicitacaoId, setSolicitacaoId] = useState(null);
-  
+
   const [formData, setFormData] = useState({
     nome: '',
     email: '',
@@ -68,8 +76,26 @@ const CadastroProfissionaisPage = () => {
     crm: '',
     uf_crm: '',
     especialidade: '',
-    instituicao: ''
+    instituicao: '',
+    tipo_vinculo: 'pessoal', // 'pessoal' ou 'existente'
+    associacao_id: ''
   });
+
+  const [associacoes, setAssociacoes] = React.useState([]);
+
+  React.useEffect(() => {
+    const fetchAssociacoes = async () => {
+      try {
+        const response = await api.get('/association/list');
+        if (response.data.success) {
+          setAssociacoes(response.data.associacoes);
+        }
+      } catch (err) {
+        console.error('Erro ao buscar associações:', err);
+      }
+    };
+    fetchAssociacoes();
+  }, []);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -96,14 +122,14 @@ const CadastroProfissionaisPage = () => {
           return false;
         }
         break;
-      
+
       case 1: // Dados Profissionais
         if (!formData.crm.trim()) {
-          setError('CRM é obrigatório');
+          setError('Número do Registro é obrigatório');
           return false;
         }
         if (!formData.uf_crm) {
-          setError('UF do CRM é obrigatória');
+          setError('UF do Registro é obrigatória');
           return false;
         }
         if (!formData.especialidade) {
@@ -111,7 +137,7 @@ const CadastroProfissionaisPage = () => {
           return false;
         }
         break;
-      
+
       default:
         break;
     }
@@ -130,13 +156,13 @@ const CadastroProfissionaisPage = () => {
 
   const handleSubmit = async () => {
     if (!validateStep(1)) return;
-    
+
     setLoading(true);
     setError('');
-    
+
     try {
-      const response = await api.post('/cadastro-profissionais/solicitar-cadastro', formData);
-      
+      const response = await api.post('/cadastro_profissionais/solicitar-cadastro', formData);
+
       if (response.data.success) {
         setSolicitacaoId(response.data.solicitacao_id);
         setSuccess('Solicitação enviada com sucesso!');
@@ -213,7 +239,7 @@ const CadastroProfissionaisPage = () => {
             <Grid item xs={12} sm={6}>
               <TextField
                 name="crm"
-                label="Número do CRM"
+                label="Número do Registro (Ex: CRM, COREN, CRP)"
                 value={formData.crm}
                 onChange={handleInputChange}
                 fullWidth
@@ -224,7 +250,7 @@ const CadastroProfissionaisPage = () => {
             <Grid item xs={12} sm={6}>
               <TextField
                 name="uf_crm"
-                label="UF do CRM"
+                label="UF do Registro"
                 select
                 value={formData.uf_crm}
                 onChange={handleInputChange}
@@ -265,6 +291,47 @@ const CadastroProfissionaisPage = () => {
                 placeholder="Hospital das Clínicas"
               />
             </Grid>
+            <Grid item xs={12}>
+              <Typography variant="subtitle1" gutterBottom sx={{ mt: 2 }}>
+                Como deseja atuar?
+              </Typography>
+              <TextField
+                name="tipo_vinculo"
+                label="Tipo de Vínculo"
+                select
+                value={formData.tipo_vinculo}
+                onChange={handleInputChange}
+                fullWidth
+                required
+                helperText="Escolha entre criar seu próprio consultório ou se vincular a uma clínica existente."
+              >
+                <MenuItem value="pessoal">Meu Consultório Virtual (Novo Espaço Personalizado)</MenuItem>
+                <MenuItem value="existente">Vincular a uma Clínica/Associação Existente</MenuItem>
+              </TextField>
+            </Grid>
+
+            {formData.tipo_vinculo === 'existente' && (
+              <Grid item xs={12}>
+                <TextField
+                  name="associacao_id"
+                  label="Selecione a Clínica/Associação"
+                  select
+                  value={formData.associacao_id}
+                  onChange={handleInputChange}
+                  fullWidth
+                  required
+                >
+                  {associacoes.map((assoc) => (
+                    <MenuItem key={assoc.id} value={assoc.id}>
+                      {assoc.nome}
+                    </MenuItem>
+                  ))}
+                  {associacoes.length === 0 && (
+                    <MenuItem disabled>Nenhuma clínica encontrada</MenuItem>
+                  )}
+                </TextField>
+              </Grid>
+            )}
           </Grid>
         );
 
@@ -285,13 +352,17 @@ const CadastroProfissionaisPage = () => {
                   <Typography>Nome: {formData.nome}</Typography>
                   <Typography>Email: {formData.email}</Typography>
                   {formData.telefone && <Typography>Telefone: {formData.telefone}</Typography>}
-                  
+
                   <Typography variant="subtitle1" gutterBottom sx={{ mt: 2 }}>
                     <strong>Dados Profissionais:</strong>
                   </Typography>
-                  <Typography>CRM: {formData.crm}/{formData.uf_crm}</Typography>
-                  <Typography>Especialidade: {formData.especialidade}</Typography>
+                  <Typography>Registro (CRM/COREN/etc): {formData.crm}/{formData.uf_crm}</Typography>
+                  <Typography>Especialidade/Profissão: {formData.especialidade}</Typography>
                   {formData.instituicao && <Typography>Instituição: {formData.instituicao}</Typography>}
+
+                  <Typography variant="subtitle2" sx={{ mt: 1 }}>
+                    Plano: {formData.tipo_vinculo === 'pessoal' ? 'Novo Consultório Virtual' : `Vincular a ${associacoes.find(a => a.id === formData.associacao_id)?.nome || 'Associação'}`}
+                  </Typography>
                 </CardContent>
               </Card>
             </Grid>
@@ -312,19 +383,19 @@ const CadastroProfissionaisPage = () => {
               <Typography variant="body2" color="text.secondary" paragraph>
                 ID da Solicitação: #{solicitacaoId}
               </Typography>
-              
+
               <Alert severity="info" sx={{ mt: 3, textAlign: 'left' }}>
                 <Typography variant="subtitle2" gutterBottom>
                   Próximos passos:
                 </Typography>
                 <Typography variant="body2">
-                  1. Nossa equipe irá analisar sua solicitação<br/>
-                  2. Verificaremos seus dados profissionais<br/>
-                  3. Após aprovação, você receberá um email com suas credenciais temporárias<br/>
+                  1. Nossa equipe irá analisar sua solicitação<br />
+                  2. Verificaremos seus dados profissionais<br />
+                  3. Após aprovação, você receberá um email com suas credenciais temporárias<br />
                   4. As credenciais serão válidas por 7 dias para avaliação do sistema
                 </Typography>
               </Alert>
-              
+
               <Box sx={{ mt: 3 }}>
                 <Button
                   variant="outlined"
@@ -397,7 +468,7 @@ const CadastroProfissionaisPage = () => {
           >
             Voltar
           </Button>
-          
+
           <Box>
             {activeStep === steps.length - 2 ? (
               <Button
@@ -425,9 +496,9 @@ const CadastroProfissionaisPage = () => {
               Informações importantes:
             </Typography>
             <Typography variant="body2">
-              • Apenas profissionais de saúde com CRM válido podem se cadastrar<br/>
-              • Todas as informações serão verificadas antes da aprovação<br/>
-              • Após aprovação, você receberá credenciais temporárias válidas por 7 dias<br/>
+              • Apenas profissionais de saúde com registro ativo (CRM, COREN, CRP, etc) podem se cadastrar<br />
+              • Todas as informações serão verificadas junto aos respectivos Conselhos de Classe antes da aprovação<br />
+              • Após aprovação, você receberá credenciais temporárias válidas por 7 dias<br />
               • O sistema é destinado ao acompanhamento de pacientes em tratamento com cannabis medicinal
             </Typography>
           </Alert>

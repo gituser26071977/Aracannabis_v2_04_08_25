@@ -53,12 +53,12 @@ export const AuthProvider = ({ children }) => {
       console.log('AUTH_CONTEXT: Resposta recebida:', data);
       setCurrentUser(data.user);
       console.log('AUTH_CONTEXT: Usuário definido, navegando para home...');
-      
+
       // Usar setTimeout para garantir que o estado seja atualizado antes da navegação
       setTimeout(() => {
-        navigate('/');
+        navigate('/dashboard');
       }, 100);
-      
+
       return data;
     } catch (error) {
       console.error('AUTH_CONTEXT: Erro capturado:', error);

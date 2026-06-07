@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { Create as CreateIcon, DarkMode, LightMode } from '@mui/icons-material';
+import { ThemeContextProvider, useColorMode } from './contexts/ThemeContext';
 import CssBaseline from '@mui/material/CssBaseline';
 import Container from '@mui/material/Container';
 import Box from '@mui/material/Box';
@@ -23,10 +24,18 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import SecurityIcon from '@mui/icons-material/Security';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import PaymentIcon from '@mui/icons-material/Payment';
+import SmartToyIcon from '@mui/icons-material/SmartToy';
+import ChatIcon from '@mui/icons-material/Chat';
+import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
+import SpeedIcon from '@mui/icons-material/Speed';
+import SettingsIcon from '@mui/icons-material/Settings';
 import Paper from '@mui/material/Paper';
 import TextField from '@mui/material/TextField';
 import Alert from '@mui/material/Alert';
-import { useAuth } from './contexts/AuthContext';
+import CircularProgress from '@mui/material/CircularProgress';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AssociationProvider } from './contexts/AssociationContext';
+import AssociationSelector from './components/AssociationSelector';
 
 // Importar páginas
 import PacientesPageComponent from './pages/PacientesPage';
@@ -36,105 +45,84 @@ import SecurityPage from './pages/SecurityPage';
 import ConsultasPage from './pages/ConsultasPage';
 import SimpleLogin from './components/SimpleLogin';
 import CadastroProfissionaisPage from './pages/CadastroProfissionaisPage';
-import PlanosPage from './pages/PlanosPage';
 import PagamentoPage from './pages/PagamentoPage';
+import PlanosPage from './pages/PlanosPage';
+import AdminPage from './pages/AdminPage';
+import LandingPage from './pages/LandingPage';
+import InternalDashboard from './pages/InternalDashboard';
+import AIDashboard from './pages/AIDashboard';
+import AIChatPage from './pages/AIChatPage';
+import BillingPage from './pages/BillingPage';
 import AdBanner from './components/AdBanner';
-import PrescriptionView from './components/PrescriptionView';
+import AIConfigPage from './pages/AIConfigPage';
+import PasswordSetupRequestPage from './pages/PasswordSetupRequestPage';
+import DefinePasswordPage from './pages/DefinePasswordPage';
+import MobileUploadPage from './pages/MobileUploadPage';
+import PaymentStatusPage from './pages/PaymentStatusPage';
+import BatchImportPage from './pages/BatchImportPage';
+import AssociationPage from './pages/association/AssociationPage';
+import MembersPage from './pages/association/MembersPage';
+import StockPage from './pages/association/StockPage';
+import DispensationPage from './pages/association/DispensationPage';
+import ConfiguracaoPrescricaoPage from './pages/ConfiguracaoPrescricaoPage';
+import ConfiguracaoIAPage from './pages/ConfiguracaoIAPage';
+
+import NavigationMenu from './components/NavigationMenu';
+import BusinessIcon from '@mui/icons-material/Business';
+
+// Patient Portal Pages
+import PatientLogin from './pages/patient/PatientLogin';
+import PatientRegister from './pages/patient/PatientRegister';
+import PatientDashboard from './pages/patient/PatientDashboard';
+
+const APP_TITLE = 'Aracannabis Prontuário';
+const APP_SUBTITLE = 'Sistema de Prontuário Eletrônico para Pacientes em Tratamento com Cannabis Medicinal';
 
 // Tema personalizado
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: '#2e7d32', // Verde
-    },
-    secondary: {
-      main: '#f9a825', // Amarelo
-    },
-  },
-});
+// Theme removed from here as it is now managed by ThemeContext
 
 // Componente de rota protegida
 function ProtectedRoute({ children }) {
   const { currentUser } = useAuth();
-  
+
   if (!currentUser) {
     return <Navigate to="/login" replace />;
   }
-  
+
   return children;
 }
 
-// Componentes de página
-function HomePage() {
+// Componente de rota administrativa (apenas admin)
+function AdminRoute({ children }) {
   const { currentUser } = useAuth();
 
-  return (
-    <Paper elevation={3} sx={{ p: { xs: 2, sm: 3, md: 4 }, my: 4 }}>
-      <Box sx={{ textAlign: 'center', mb: 4 }}>
-        <Typography variant="h2" component="h1" gutterBottom sx={{ fontWeight: 'bold', color: 'primary.main' }}>
-          Aracannabis
-        </Typography>
-        <Typography variant="h5" component="h2" color="text.secondary" gutterBottom>
-          Sistema de Prontuário Eletrônico para Pacientes de Cannabis Medicinal
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 2, fontStyle: 'italic' }}>
-          Versão Básica (Sem IA)
-        </Typography>
-      </Box>
+  if (!currentUser) {
+    return <Navigate to="/login" replace />;
+  }
 
-      <Box sx={{ textAlign: 'left', maxWidth: '800px', mx: 'auto' }}>
-        <Typography variant="body1" paragraph sx={{ fontSize: '1.1rem', lineHeight: 1.7 }}>
-          Bem-vindo{currentUser ? `, ${currentUser.nome}` : ''} ao sistema de prontuário eletrônico Aracannabis.
-        </Typography>
-        <Typography variant="body1" paragraph sx={{ fontSize: '1.1rem', lineHeight: 1.7 }}>
-          Este sistema foi cuidadosamente desenvolvido para oferecer uma plataforma segura e eficiente 
-          para o gerenciamento completo de informações de pacientes, acompanhamento de sintomas, 
-          ajuste de dosagens e registro da evolução do tratamento com cannabis medicinal.
-        </Typography>
-        <Typography variant="body1" sx={{ fontSize: '1.1rem', lineHeight: 1.7, mt: 3 }}>
-          Utilize o menu lateral para navegar pelas diversas funcionalidades disponíveis e otimizar 
-          o cuidado e acompanhamento dos seus pacientes.
-        </Typography>
-        
-        {!currentUser && (
-          <>
-            <Box sx={{ mt: 4, p: 3, backgroundColor: '#e8f5e9', borderRadius: 2 }}>
-              <Typography variant="h6" gutterBottom color="primary">
-                🌿 Profissional de Saúde?
-              </Typography>
-              <Typography variant="body1" paragraph>
-                Solicite acesso ao sistema Aracannabis e experimente todas as funcionalidades por 7 dias gratuitamente.
-              </Typography>
-              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  component={Link}
-                  to="/cadastro-profissionais"
-                  startIcon={<PersonAddIcon />}
-                >
-                  Solicitar Cadastro
-                </Button>
-                <Button
-                  variant="outlined"
-                  color="primary"
-                  component={Link}
-                  to="/planos"
-                  startIcon={<PaymentIcon />}
-                >
-                  Ver Planos e Preços
-                </Button>
-              </Box>
-            </Box>
-            
-            {/* Anúncios para usuários não logados */}
-            <Box sx={{ mt: 4 }}>
-              <AdBanner position="banner" maxAds={3} />
-            </Box>
-          </>
-        )}
-      </Box>
-    </Paper>
+  if (currentUser.role !== 'admin') {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return children;
+}
+
+
+
+// ===== PAGE TRANSITION WRAPPER =====
+function PageTransition({ children }) {
+  return (
+    <Box
+      sx={{
+        animation: 'fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+        '@keyframes fadeInUp': {
+          from: { opacity: 0, transform: 'translateY(16px)' },
+          to: { opacity: 1, transform: 'translateY(0)' },
+        },
+      }}
+    >
+      {children}
+    </Box>
   );
 }
 
@@ -147,235 +135,606 @@ function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('LOGIN_PAGE: Iniciando processo de login...');
     setLoginError('');
     setLoading(true);
-    
+
     try {
-      console.log('LOGIN_PAGE: Chamando função login com:', { usuario, senha: '***' });
       await login(usuario, senha);
-      console.log('LOGIN_PAGE: Login bem-sucedido!');
     } catch (error) {
-      console.error('LOGIN_PAGE: Erro no login:', error);
       setLoginError(error.error || error.message || 'Falha ao fazer login');
     } finally {
-      console.log('LOGIN_PAGE: Finalizando processo de login...');
       setLoading(false);
     }
   };
 
-  return (
-    <Paper elevation={3} sx={{ p: 4, my: 4, maxWidth: 500, mx: 'auto' }}>
-      <Typography variant="h4" component="h1" gutterBottom align="center">
-        Login
-      </Typography>
-      
-      {(loginError || error) && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {loginError || error}
-        </Alert>
-      )}
-      
-      <form onSubmit={handleSubmit}>
-        <TextField
-          label="Usuário"
-          variant="outlined"
-          fullWidth
-          margin="normal"
-          value={usuario}
-          onChange={(e) => setUsuario(e.target.value)}
-          required
-        />
-        <TextField
-          label="Senha"
-          type="password"
-          variant="outlined"
-          fullWidth
-          margin="normal"
-          value={senha}
-          onChange={(e) => setSenha(e.target.value)}
-          required
-        />
-        <Button
-          type="submit"
-          variant="contained"
-          color="primary"
-          fullWidth
-          sx={{ mt: 2 }}
-          disabled={loading}
-        >
-          {loading ? 'Entrando...' : 'Entrar'}
-        </Button>
-      </form>
-      
-      <Box sx={{ mt: 2, textAlign: 'center' }}>
-        <Typography variant="body2">
-          Não tem uma conta?{' '}
-          <Link to="/cadastro-profissionais" style={{ color: '#2e7d32', textDecoration: 'none' }}>
-            Solicite seu cadastro aqui
-          </Link>
-          {' ou '}
-          <Link to="/planos" style={{ color: '#2e7d32', textDecoration: 'none' }}>
-            veja nossos planos
-          </Link>
-        </Typography>
-      </Box>
-    </Paper>
-  );
-}
+  const { mode, toggleColorMode } = useColorMode();
 
-// Menu de navegação
-function NavigationMenu({ open, onClose }) {
-  const location = useLocation();
-  const { currentUser, logout } = useAuth();
-  
-  const menuItems = [
-    { text: 'Início', icon: <HomeIcon />, path: '/', auth: false },
-    { text: 'Pacientes', icon: <PersonIcon />, path: '/pacientes', auth: true },
-    { text: 'Consultas', icon: <EventIcon />, path: '/consultas', auth: true },
-    { text: 'Planos e Preços', icon: <PaymentIcon />, path: '/planos', auth: false },
-    { text: 'Segurança e LGPD', icon: <SecurityIcon />, path: '/seguranca', auth: false },
-    { text: 'Cadastro Profissionais', icon: <PersonAddIcon />, path: '/cadastro-profissionais', auth: false },
-  ];
-
-  const authItems = currentUser
-    ? [{ text: 'Sair', icon: <LogoutIcon />, onClick: logout }]
-    : [{ text: 'Login', icon: <LoginIcon />, path: '/login' }];
+  const bgGradient = mode === 'dark'
+    ? 'radial-gradient(ellipse at 20% 0%, #0d2f28 0%, #0a1512 40%, #050a08 100%)'
+    : 'radial-gradient(ellipse at 20% 0%, #e0f2e9 0%, #f0f4f1 40%, #e8ecea 100%)';
 
   return (
-    <Drawer anchor="left" open={open} onClose={onClose}>
-      <Box sx={{ width: 250 }} role="presentation" onClick={onClose}>
-        <List>
-          {menuItems
-            .filter(item => !item.auth || (item.auth && currentUser))
-            .map((item) => (
-              <ListItem 
-                button 
-                key={item.text} 
-                component={Link} 
-                to={item.path}
-                selected={location.pathname === item.path}
-              >
-                <ListItemIcon>{item.icon}</ListItemIcon>
-                <ListItemText primary={item.text} />
-              </ListItem>
-            ))}
-          
-          <Box sx={{ borderTop: 1, borderColor: 'divider', my: 1 }} />
-          
-          {authItems.map((item) => (
-            <ListItem 
-              button 
-              key={item.text} 
-              component={item.path ? Link : 'div'}
-              to={item.path}
-              onClick={item.onClick}
-              selected={item.path && location.pathname === item.path}
+    <Box
+      sx={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: bgGradient,
+        zIndex: 1000,
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+          opacity: mode === 'dark' ? 0.04 : 0.025,
+          pointerEvents: 'none',
+        },
+      }}
+    >
+      {/* Floating decorative elements */}
+      <Box
+        sx={{
+          position: 'absolute',
+          top: '10%',
+          left: '10%',
+          width: 200,
+          height: 200,
+          borderRadius: '50%',
+          background: mode === 'dark'
+            ? 'radial-gradient(circle, rgba(0,212,170,0.08) 0%, transparent 70%)'
+            : 'radial-gradient(circle, rgba(13,115,119,0.06) 0%, transparent 70%)',
+          filter: 'blur(40px)',
+          animation: 'float 6s ease-in-out infinite',
+        }}
+      />
+      <Box
+        sx={{
+          position: 'absolute',
+          bottom: '15%',
+          right: '15%',
+          width: 300,
+          height: 300,
+          borderRadius: '50%',
+          background: mode === 'dark'
+            ? 'radial-gradient(circle, rgba(245,166,35,0.06) 0%, transparent 70%)'
+            : 'radial-gradient(circle, rgba(245,166,35,0.04) 0%, transparent 70%)',
+          filter: 'blur(50px)',
+          animation: 'float 8s ease-in-out infinite reverse',
+        }}
+      />
+
+      {/* Theme Toggle Button */}
+      <IconButton
+        onClick={toggleColorMode}
+        sx={{
+          position: 'absolute',
+          top: 24,
+          right: 24,
+          zIndex: 1002,
+          color: 'text.primary',
+          bgcolor: mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)',
+          backdropFilter: 'blur(8px)',
+          border: `1px solid ${mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)'}`,
+          transition: 'all 0.3s ease',
+          '&:hover': {
+            bgcolor: mode === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)',
+            transform: 'scale(1.1) rotate(15deg)',
+          }
+        }}
+      >
+        {mode === 'dark' ? <LightMode /> : <DarkMode />}
+      </IconButton>
+
+      <Paper
+        elevation={0}
+        sx={{
+          p: { xs: 3, sm: 5 },
+          width: '100%',
+          maxWidth: 460,
+          position: 'relative',
+          zIndex: 2,
+          background: mode === 'dark'
+            ? 'rgba(26, 31, 29, 0.75)'
+            : 'rgba(255, 255, 255, 0.72)',
+          backdropFilter: 'blur(24px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+          borderRadius: '24px',
+          border: `1px solid ${mode === 'dark' ? 'rgba(0,212,170,0.1)' : 'rgba(13,115,119,0.1)'}`,
+          boxShadow: mode === 'dark'
+            ? '0 25px 50px rgba(0,0,0,0.35), 0 0 0 1px rgba(0,212,170,0.05)'
+            : '0 25px 50px rgba(0,0,0,0.08), 0 0 0 1px rgba(13,115,119,0.05)',
+          animation: 'scaleIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+          '@keyframes scaleIn': {
+            from: { opacity: 0, transform: 'scale(0.95) translateY(10px)' },
+            to: { opacity: 1, transform: 'scale(1) translateY(0)' },
+          },
+        }}
+      >
+        <Box sx={{ mb: 4, textAlign: 'center' }}>
+          <Typography
+            variant="h3"
+            component="h1"
+            gutterBottom
+            fontWeight={800}
+            sx={{
+              background: mode === 'dark'
+                ? 'linear-gradient(135deg, #00d4aa 0%, #33ddbf 50%, #ffd166 100%)'
+                : 'linear-gradient(135deg, #0d7377 0%, #14a085 50%, #f5a623 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              letterSpacing: '-0.03em',
+              fontSize: { xs: '2rem', sm: '2.5rem' },
+            }}
+          >
+            🌿 Aracannabis
+          </Typography>
+          <Typography
+            variant="subtitle1"
+            sx={{
+              opacity: 0.7,
+              fontWeight: 500,
+              letterSpacing: '0.02em',
+            }}
+          >
+            Prontuário Médico & Gestão
+          </Typography>
+        </Box>
+
+        {(loginError || error) && (
+          <Alert
+            severity="error"
+            sx={{
+              mb: 3,
+              animation: 'shake 0.5s ease',
+              '@keyframes shake': {
+                '0%, 100%': { transform: 'translateX(0)' },
+                '10%, 30%, 50%, 70%, 90%': { transform: 'translateX(-4px)' },
+                '20%, 40%, 60%, 80%': { transform: 'translateX(4px)' },
+              },
+            }}
+          >
+            {loginError || error}
+          </Alert>
+        )}
+
+        <form onSubmit={handleSubmit}>
+          <TextField
+            label="👤 Usuário"
+            variant="outlined"
+            fullWidth
+            margin="normal"
+            value={usuario}
+            onChange={(e) => setUsuario(e.target.value)}
+            required
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '14px',
+                transition: 'all 0.3s ease',
+              },
+            }}
+          />
+          <TextField
+            label="🔒 Senha"
+            type="password"
+            variant="outlined"
+            fullWidth
+            margin="normal"
+            value={senha}
+            onChange={(e) => setSenha(e.target.value)}
+            required
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '14px',
+                transition: 'all 0.3s ease',
+              },
+            }}
+          />
+
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
+            <Button
+              component={Link}
+              to="/definir-senha/solicitar"
+              size="small"
+              sx={{
+                textTransform: 'none',
+                fontWeight: 600,
+                color: 'secondary.main',
+                position: 'relative',
+                '&::after': {
+                  content: '""',
+                  position: 'absolute',
+                  bottom: 2,
+                  left: 0,
+                  width: 0,
+                  height: '1px',
+                  background: 'currentColor',
+                  transition: 'width 0.3s ease',
+                },
+                '&:hover::after': {
+                  width: '100%',
+                },
+              }}
             >
-              <ListItemIcon>{item.icon}</ListItemIcon>
-              <ListItemText primary={item.text} />
-            </ListItem>
-          ))}
-        </List>
-      </Box>
-    </Drawer>
+              Esqueceu a senha?
+            </Button>
+          </Box>
+
+          <Button
+            type="submit"
+            variant="contained"
+            color="primary"
+            fullWidth
+            sx={{
+              mt: 4,
+              height: 56,
+              fontSize: '1.05rem',
+              fontWeight: 700,
+              borderRadius: '14px',
+              background: mode === 'dark'
+                ? 'linear-gradient(135deg, #00d4aa 0%, #33ddbf 100%)'
+                : 'linear-gradient(135deg, #0d7377 0%, #14a085 100%)',
+              boxShadow: mode === 'dark'
+                ? '0 4px 20px rgba(0,212,170,0.35)'
+                : '0 4px 20px rgba(13,115,119,0.30)',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              '&:hover': {
+                transform: 'scale(1.02) translateY(-2px)',
+                boxShadow: mode === 'dark'
+                  ? '0 8px 30px rgba(0,212,170,0.45)'
+                  : '0 8px 30px rgba(13,115,119,0.40)',
+              },
+              '&:active': {
+                transform: 'scale(0.98)',
+              },
+            }}
+            disabled={loading}
+          >
+            {loading ? (
+              <CircularProgress size={24} sx={{ color: 'inherit' }} />
+            ) : (
+              '✨ Entrar na Plataforma'
+            )}
+          </Button>
+        </form>
+
+        <Box sx={{ mt: 4, textAlign: 'center' }}>
+          <Typography variant="body2" sx={{ opacity: 0.5, mb: 0.5 }}>
+            Novo por aqui?
+          </Typography>
+          <Button
+            component={Link}
+            to="/cadastro-profissionais"
+            variant="text"
+            sx={{
+              textTransform: 'none',
+              fontWeight: 700,
+              color: 'primary.main',
+              position: 'relative',
+              '&::after': {
+                content: '""',
+                position: 'absolute',
+                bottom: 2,
+                left: 0,
+                width: 0,
+                height: '2px',
+                background: 'currentColor',
+                transition: 'width 0.3s ease',
+                borderRadius: '1px',
+              },
+              '&:hover::after': {
+                width: '100%',
+              },
+            }}
+          >
+            👨‍⚕️ Solicite seu cadastro como profissional
+          </Button>
+        </Box>
+      </Paper>
+    </Box>
   );
 }
+
 
 function App() {
+  return (
+    <ThemeContextProvider>
+      <AppContent />
+    </ThemeContextProvider>
+  );
+}
+
+function AppContent() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const { currentUser } = useAuth();
+  const location = useLocation();
+  const { mode, toggleColorMode } = useColorMode();
+
+  const isLoginPage = location.pathname === '/login' || location.pathname === '/patient/login';
+
+  // Scroll-aware AppBar
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const toggleMenu = () => {
     setMenuOpen(!menuOpen);
   };
 
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <AppBar position="static">
-        <Toolbar>
-          <IconButton
-            edge="start"
-            color="inherit"
-            aria-label="menu"
-            onClick={toggleMenu}
-            sx={{ mr: 2 }}
-          >
-            <MenuIcon />
-          </IconButton>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            Aracannabis Prontuário - Versão Básica
-          </Typography>
-          {currentUser && (
-            <Typography variant="body1" sx={{ mr: 2 }}>
-              Olá, {currentUser.nome}
+    <AssociationProvider>
+      {!isLoginPage && (
+        <AppBar
+          position="sticky"
+          elevation={scrolled ? 2 : 0}
+          sx={{
+            transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+            bgcolor: scrolled
+              ? (mode === 'dark' ? 'rgba(10,15,13,0.85)' : 'rgba(255,255,255,0.85)')
+              : (mode === 'dark' ? 'transparent' : 'transparent'),
+            backdropFilter: scrolled ? 'blur(20px) saturate(180%)' : 'none',
+            WebkitBackdropFilter: scrolled ? 'blur(20px) saturate(180%)' : 'none',
+            borderBottom: scrolled
+              ? `1px solid ${mode === 'dark' ? 'rgba(0,212,170,0.08)' : 'rgba(13,115,119,0.08)'}`
+              : '1px solid transparent',
+          }}
+        >
+          <Toolbar sx={{ minHeight: { xs: 56, sm: 64 } }}>
+            <IconButton
+              edge="start"
+              color="inherit"
+              aria-label="menu"
+              onClick={toggleMenu}
+              sx={{
+                mr: 2,
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  transform: 'scale(1.1)',
+                  bgcolor: (theme) => `${theme.palette.primary.main}14`,
+                },
+              }}
+            >
+              <MenuIcon />
+            </IconButton>
+
+            <Typography
+              variant="h6"
+              component="div"
+              sx={{
+                flexGrow: 1,
+                fontWeight: 800,
+                letterSpacing: '-0.02em',
+                background: mode === 'dark'
+                  ? 'linear-gradient(135deg, #00d4aa 0%, #ffd166 100%)'
+                  : 'linear-gradient(135deg, #0d7377 0%, #14a085 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+                fontSize: { xs: '1.1rem', sm: '1.25rem' },
+              }}
+            >
+              🌿 {APP_TITLE}
             </Typography>
-          )}
-          {currentUser ? (
-            <Button color="inherit" onClick={() => window.open('http://localhost:5010/api/status', '_blank')} target="_blank">
-              API
-            </Button>
-          ) : (
-            <Button color="inherit" component={Link} to="/login">
-              Login
-            </Button>
-          )}
-        </Toolbar>
-      </AppBar>
+
+            {/* Association Selector for SaaS */}
+            {currentUser && <AssociationSelector />}
+
+            <IconButton
+              color="inherit"
+              onClick={toggleColorMode}
+              sx={{
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  transform: 'rotate(20deg) scale(1.1)',
+                  bgcolor: (theme) => `${theme.palette.primary.main}14`,
+                },
+              }}
+            >
+              {mode === 'dark' ? <LightMode /> : <DarkMode />}
+            </IconButton>
+
+            {currentUser && (
+              <Typography
+                variant="body2"
+                sx={{
+                  mr: 2,
+                  ml: 2,
+                  fontWeight: 600,
+                  opacity: 0.8,
+                  display: { xs: 'none', sm: 'block' },
+                }}
+              >
+                👋 Olá, {currentUser.nome}
+              </Typography>
+            )}
+            {currentUser ? (
+              <Button
+                color="inherit"
+                onClick={() => window.open(`${process.env.REACT_APP_API_URL || 'http://localhost:5002'}/api/status`, '_blank')}
+                target="_blank"
+                sx={{
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  borderRadius: '10px',
+                  px: 2,
+                  display: { xs: 'none', sm: 'flex' },
+                  '&:hover': {
+                    bgcolor: (theme) => `${theme.palette.primary.main}14`,
+                  },
+                }}
+              >
+                🔌 API
+              </Button>
+            ) : (
+              <Button
+                color="inherit"
+                component={Link}
+                to="/login"
+                sx={{
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  borderRadius: '10px',
+                  px: 2,
+                  '&:hover': {
+                    bgcolor: (theme) => `${theme.palette.primary.main}14`,
+                  },
+                }}
+              >
+                🔑 Login
+              </Button>
+            )}
+          </Toolbar>
+        </AppBar>
+      )}
       <NavigationMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
-      <Container maxWidth="lg">
+      <Container
+        maxWidth={isLoginPage ? false : "xl"}
+        sx={isLoginPage ? { p: 0, m: 0 } : { mt: { xs: 2, sm: 4 }, mb: { xs: 2, sm: 4 } }}
+      >
         <Routes>
-          <Route path="/" element={<HomePage />} />
+          <Route path="/" element={<LandingPage />} />
+
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/planos" element={<PlanosPage />} />
+          <Route path="/dashboard" element={
+            <ProtectedRoute>
+              <InternalDashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/definir-senha/solicitar" element={<PasswordSetupRequestPage />} />
+          <Route path="/definir-senha" element={<DefinePasswordPage />} />
           <Route path="/pagamento" element={<PagamentoPage />} />
+          <Route path="/planos" element={<PlanosPage />} />
           <Route path="/cadastro-profissionais" element={<CadastroProfissionaisPage />} />
           <Route path="/test-login" element={<SimpleLogin />} />
-          <Route 
-            path="/pacientes" 
+          <Route path="/pagamento-sucesso" element={<PaymentStatusPage />} />
+          <Route path="/pagamento-erro" element={<PaymentStatusPage />} />
+          <Route path="/pagamento-pendente" element={<PaymentStatusPage />} />
+          <Route
+            path="/pacientes"
             element={
               <ProtectedRoute>
                 <PacientesPageComponent />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/pacientes/detail/:patientId" 
+          <Route
+            path="/pacientes/detail/:patientId"
             element={
               <ProtectedRoute>
                 <PatientDetailPage />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/pacientes/edit/:patientId" 
+          <Route
+            path="/pacientes/edit/:patientId"
             element={
               <ProtectedRoute>
                 <PatientEditPage />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/consultas" 
+          <Route
+            path="/importar-prescricoes"
+            element={
+              <ProtectedRoute>
+                <BatchImportPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/consultas"
             element={
               <ProtectedRoute>
                 <ConsultasPage />
               </ProtectedRoute>
-            } 
+            }
           />
-          <Route 
-            path="/consultas/:consultaId/prescricao" 
+          <Route
+            path="/assistente-ia"
             element={
               <ProtectedRoute>
-                <PrescriptionView />
+                <AIChatPage />
               </ProtectedRoute>
-            } 
+            }
           />
+          <Route
+            path="/billing"
+            element={
+              <ProtectedRoute>
+                <BillingPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <AdminRoute>
+                <AdminPage />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/ai-dashboard"
+            element={
+              <AdminRoute>
+                <AIDashboard />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/ai-config"
+            element={
+              <AdminRoute>
+                <AIConfigPage />
+              </AdminRoute>
+            }
+          />
+          <Route path="/mobile-upload/:token" element={<MobileUploadPage />} />
           <Route path="/seguranca" element={<SecurityPage />} />
+          <Route
+            path="/configuracao-prescricao"
+            element={
+              <ProtectedRoute>
+                <ConfiguracaoPrescricaoPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/configuracao-ia"
+            element={
+              <ProtectedRoute>
+                <ConfiguracaoIAPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Association Module Routes */}
+          <Route path="/association" element={<ProtectedRoute><AssociationPage /></ProtectedRoute>} />
+          <Route path="/association/members" element={<ProtectedRoute><MembersPage /></ProtectedRoute>} />
+          <Route path="/association/stock" element={<ProtectedRoute><StockPage /></ProtectedRoute>} />
+          <Route path="/association/dispensation" element={<ProtectedRoute><DispensationPage /></ProtectedRoute>} />
+
+          {/* Patient Portal Routes (PUBLIC) */}
+          <Route path="/patient/login" element={<PatientLogin />} />
+          <Route path="/patient/register" element={<PatientRegister />} />
+          <Route path="/patient/dashboard" element={<PatientDashboard />} />
+
         </Routes>
       </Container>
-    </ThemeProvider>
+    </AssociationProvider>
   );
 }
 

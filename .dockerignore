@@ -1,0 +1,59 @@
+# .dockerignore
+
+# Pastas de dependências e ambientes virtuais
+node_modules
+venv
+python_env
+"GAVETA DE DADOS"
+instance
+__pycache__
+
+# Arquivos de configuração e git
+.git
+.gitignore
+Dockerfile
+docker-compose.yml
+.env
+
+# Arquivos de teste
+test_*.py
+
+*.test.js
+
+# Documentação
+*.md
+*.txt
+!requirements_basic.txt
+!requirements.txt
+docs/
+
+# Scripts de deploy e utilitários
+*.sh
+!entrypoint_siap.sh
+*.sql
+!saas_v1_init.sql
+
+# Backups e arquivos de SO
+*.bak
+*.swp
+.DS_Store
+
+# Grandes volumes e dados locais
+*.db
+aracannabis.db
+uploads/
+Backup/
+"GAVETA DE DADOS"/
+"GAVETA DE DADOS "/
+node_modules/
+frontend/node_modules/
+.venv/
+venv_local/
+venv_arac/
+venv_new/
+venv_multi_tenant/
+python_env/
+.pytest_cache/
+.ruff_cache/
+*.log
+nohup.out

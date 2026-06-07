@@ -2,9 +2,10 @@
 Rotas para integração com Mercado Pago
 """
 
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 import logging
+import re
 from services.mercadopago_service import mercadopago_service
 
 logger = logging.getLogger(__name__)
@@ -31,7 +32,7 @@ def criar_preferencia():
                 }), 400
         
         # Validar plano
-        planos_validos = ['profissional']
+        planos_validos = ['sem_ia', 'com_ia']
         if dados['plano'] not in planos_validos:
             return jsonify({
                 'success': False,
@@ -61,6 +62,53 @@ def criar_preferencia():
             
     except Exception as e:
         logger.error(f"Erro na rota criar_preferencia: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'Erro interno do servidor'
+        }), 500
+
+
+@mercadopago_bp.route('/criar-preferencia-publica', methods=['POST'])
+def criar_preferencia_publica():
+    """
+    Cria uma preferência de pagamento sem autenticação (fluxo público)
+    """
+    try:
+        dados = request.get_json() or {}
+
+        campos_obrigatorios = ['plano', 'periodo', 'email']
+        for campo in campos_obrigatorios:
+            if campo not in dados:
+                return jsonify({
+                    'success': False,
+                    'error': f'Campo obrigatório: {campo}'
+                }), 400
+
+        if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', dados.get('email', '')):
+            return jsonify({'success': False, 'error': 'Email inválido'}), 400
+
+        planos_validos = ['sem_ia', 'com_ia']
+        if dados['plano'] not in planos_validos:
+            return jsonify({
+                'success': False,
+                'error': 'Plano inválido'
+            }), 400
+
+        periodos_validos = ['mensal', 'trimestral', 'semestral', 'anual']
+        if dados['periodo'] not in periodos_validos:
+            return jsonify({
+                'success': False,
+                'error': 'Período inválido'
+            }), 400
+
+        resultado = mercadopago_service.criar_preferencia_pagamento(dados)
+
+        if resultado['success']:
+            return jsonify(resultado), 200
+        else:
+            return jsonify(resultado), 400
+    except Exception as e:
+        logger.error(f"Erro na rota criar_preferencia_publica: {str(e)}")
         return jsonify({
             'success': False,
             'error': 'Erro interno do servidor'
@@ -182,6 +230,7 @@ def calcular_preco():
     try:
         dados = request.get_json()
         periodo = dados.get('periodo', 'mensal')
+        plano = dados.get('plano', 'sem_ia')
         
         # Validar período
         periodos_validos = ['mensal', 'trimestral', 'semestral', 'anual']
@@ -190,30 +239,42 @@ def calcular_preco():
                 'success': False,
                 'error': 'Período inválido'
             }), 400
+
+        planos_validos = ['sem_ia', 'com_ia']
+        if plano not in planos_validos:
+            return jsonify({
+                'success': False,
+                'error': 'Plano inválido'
+            }), 400
         
         # Calcular preço usando a mesma lógica do serviço
-        preco_base = 180.00
-        
+        precos_base = {
+            'sem_ia': 99.00,
+            'com_ia': 250.00
+        }
+
         descontos = {
             'mensal': 0,
             'trimestral': 0.05,
             'semestral': 0.08,
             'anual': 0.12
         }
-        
+
         multiplicadores = {
             'mensal': 1,
             'trimestral': 3,
             'semestral': 6,
             'anual': 12
         }
-        
+
+        preco_base = precos_base[plano]
         preco_sem_desconto = preco_base * multiplicadores[periodo]
         desconto = descontos[periodo]
         preco_com_desconto = preco_sem_desconto * (1 - desconto)
         
         resultado = {
             'success': True,
+            'plano': plano,
             'periodo': periodo,
             'preco': {
                 'original': preco_sem_desconto,

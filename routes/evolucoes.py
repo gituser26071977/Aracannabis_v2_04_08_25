@@ -1,10 +1,10 @@
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from models import db, Evolucao, Paciente, Profissional, LogAtividade, Dosagem
+from models import db, Evolucao, Paciente, Profissional, LogAtividade, Exame
 from datetime import datetime
 # Removido import json e process_evolution_input daqui, pois a lógica de IA será chamada de forma diferente
 # Agora importamos as db_tools e o processador de IA de forma separada
-from services.ai_agents import process_evolution_input, process_audio_file, process_video_file # IA para análise de texto
+# from services.ai_agents import process_evolution_input, process_audio_file, process_video_file # IA para análise de texto - TEMPORARIAMENTE DESABILITADO
 from services.db_tools import save_evolution_to_db, save_dosage_to_db # Ferramentas de BD
 import os
 import tempfile
@@ -12,42 +12,13 @@ from werkzeug.utils import secure_filename
 
 
 def safe_ai_processing(text_input, llm_provider=None, llm_model_name=None, timeout=30):
-    """Processamento seguro com IA incluindo fallback e timeout"""
-    try:
-        current_app.logger.info(f"SAFE_AI: Iniciando processamento com timeout {timeout}s")
-        
-        # Tentar usar versão otimizada primeiro
-        try:
-            from services.ai_agents_optimized import process_evolution_input_optimized
-            result = process_evolution_input_optimized(
-                evolution_text_input=text_input,
-                llm_provider=llm_provider or 'groq',
-                llm_model_name=llm_model_name,
-                timeout=timeout
-            )
-            current_app.logger.info(f"SAFE_AI: Processamento otimizado concluído")
-            return result
-        except ImportError:
-            current_app.logger.warning(f"SAFE_AI: Versão otimizada não encontrada, usando original")
-            pass
-        
-        # Fallback para versão original com timeout reduzido
-        from services.ai_agents import process_evolution_input
-        result = process_evolution_input(
-            evolution_text_input=text_input,
-            llm_provider=llm_provider or 'groq',
-            llm_model_name=llm_model_name or 'llama-3.1-8b-instant'
-        )
-        current_app.logger.info(f"SAFE_AI: Processamento original concluído")
-        return result
-        
-    except Exception as e:
-        current_app.logger.error(f"SAFE_AI: Erro no processamento: {str(e)}")
-        return {
-            'narrative_evolution': text_input,
-            'dosage_info': None,
-            'error': f'IA temporariamente indisponível: {str(e)}'
-        }
+    """Processamento seguro com IA incluindo fallback e timeout - TEMPORARIAMENTE DESABILITADO"""
+    current_app.logger.warning("SAFE_AI: IA temporariamente desabilitada para testes")
+    return {
+        'narrative_evolution': text_input,
+        'dosage_info': None,
+        'error': 'IA temporariamente desabilitada para testes'
+    }
 
 evolucoes_bp = Blueprint('evolucoes', __name__)
 
@@ -76,11 +47,14 @@ def listar_evolucoes(paciente_id):
     # Ordenar por data decrescente
     evolucoes = query.order_by(Evolucao.data_evolucao.desc()).all()
     
+    # Buscar exames do paciente
+    exames = Exame.query.filter_by(paciente_id=paciente_id).order_by(Exame.data_exame.desc()).all()
+    
     # Registrar atividade
     log = LogAtividade(
         profissional_id=profissional_id,
         acao='Consulta',
-        detalhes=f'Listagem de evoluções do paciente ID {paciente_id}'
+        detalhes=f'Listagem de evoluções e exames do paciente ID {paciente_id}'
     )
     db.session.add(log)
     db.session.commit()
@@ -91,8 +65,15 @@ def listar_evolucoes(paciente_id):
         evolucao_dict = evolucao.to_dict()
         evolucoes_data.append(evolucao_dict)
     
+    # Preparar dados dos exames
+    exames_data = []
+    for exame in exames:
+        exame_dict = exame.to_dict()
+        exames_data.append(exame_dict)
+    
     return jsonify({
-        'evolucoes': evolucoes_data
+        'evolucoes': evolucoes_data,
+        'exames': exames_data
     }), 200
 
 @evolucoes_bp.route('/paciente/<int:paciente_id>', methods=['POST'])
@@ -140,7 +121,7 @@ def registrar_evolucao(paciente_id):
         ai_processed = False
 
         if use_ai_processing: # Somente processa com IA se explicitamente solicitado
-            current_app.logger.info(f"EVOLUCOES_ROUTE: Processamento com IA solicitado.")
+            current_app.logger.info("EVOLUCOES_ROUTE: Processamento com IA solicitado.")
             # 1. Processar o texto com IA para análise
             ai_analysis_result = safe_ai_processing(
                 evolution_text_input=input_text,
@@ -159,7 +140,7 @@ def registrar_evolucao(paciente_id):
                 dosage_info = ai_analysis_result.get('dosage_info')
             ai_processed = True
         else:
-            current_app.logger.info(f"EVOLUCOES_ROUTE: Processamento com IA NÃO solicitado. Salvando texto original.")
+            current_app.logger.info("EVOLUCOES_ROUTE: Processamento com IA NÃO solicitado. Salvando texto original.")
             # narrative_evolution já é input_text, dosage_info já é None
 
         # 2. Salvar a evolução no banco de dados
@@ -522,20 +503,22 @@ def upload_arquivo():
             )
             
         elif file_type == 'audio':
-            # Processar arquivo de áudio
-            ai_result = process_audio_file(
-                audio_file_path=temp_path,
-                llm_provider='groq',
-                llm_model_name='llama3-8b-8192'
-            )
+            # Processar arquivo de áudio - TEMPORARIAMENTE DESABILITADO
+            ai_result = {
+                'narrative_evolution': 'Processamento de áudio temporariamente desabilitado',
+                'transcribed_text': 'Funcionalidade de IA desabilitada',
+                'source': 'audio',
+                'error': 'IA temporariamente desabilitada'
+            }
             
         elif file_type == 'video':
-            # Processar arquivo de vídeo
-            ai_result = process_video_file(
-                video_file_path=temp_path,
-                llm_provider='groq',
-                llm_model_name='llama3-8b-8192'
-            )
+            # Processar arquivo de vídeo - TEMPORARIAMENTE DESABILITADO
+            ai_result = {
+                'narrative_evolution': 'Processamento de vídeo temporariamente desabilitado',
+                'transcribed_text': 'Funcionalidade de IA desabilitada',
+                'source': 'video',
+                'error': 'IA temporariamente desabilitada'
+            }
             
         else:
             return jsonify({'error': 'Tipo de arquivo não suportado'}), 400

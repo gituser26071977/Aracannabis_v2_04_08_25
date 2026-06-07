@@ -27,7 +27,7 @@ def listar_pacientes():
     log = LogAtividade(
         profissional_id=profissional_id,
         acao='Consulta',
-        detalhes=f'Listagem de pacientes'
+        detalhes='Listagem de pacientes'
     )
     db.session.add(log)
     db.session.commit()

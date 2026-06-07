@@ -19,9 +19,7 @@ import {
   DialogContentText,
   DialogTitle,
   InputAdornment,
-  Chip,
-  Tabs,
-  Tab
+  Chip
 } from '@mui/material';
 import { 
   Add as AddIcon, 
@@ -29,11 +27,14 @@ import {
   Edit as EditIcon,
   Search as SearchIcon,
   Clear as ClearIcon,
+  LocalHospital as SymptomsIcon,
+  Medication as DosageIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon
 } from '@mui/icons-material';
-import { evolucoesService } from '../services/api';
+import { evolucoesService, sintomasService, dosagensService } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
-import ExameManager from './ExameManager';
 
 // Componente TabPanel para exibir o conteúdo da aba selecionada
 function TabPanel(props) {
@@ -67,9 +68,9 @@ function a11yProps(index) {
 const EvolutionManager = ({ patientId }) => {
   const { currentUser } = useAuth();
   const [evolutions, setEvolutions] = useState([]);
+  const [exams, setExams] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [tabValue, setTabValue] = useState(0);
   
   // Estado para o formulário de nova evolução
   const [newEvolution, setNewEvolution] = useState({
@@ -89,20 +90,44 @@ const EvolutionManager = ({ patientId }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [searching, setSearching] = useState(false);
   
-
-  // Manipulador de mudança de aba
-  const handleTabChange = (event, newValue) => {
-    setTabValue(newValue);
-  };
+  // Estados para registro rápido de sintomas
+  const [showSymptomsForm, setShowSymptomsForm] = useState(false);
+  const [standardSymptoms, setStandardSymptoms] = useState([]);
+  const [customSymptoms, setCustomSymptoms] = useState([]);
+  const [newSymptom, setNewSymptom] = useState({
+    data: new Date().toISOString().split('T')[0],
+    sintoma: '',
+    intensidade: 5
+  });
   
-  // Carregar evoluções
+  // Estados para registro rápido de dosagens
+  const [showDosageForm, setShowDosageForm] = useState(false);
+  const [newDosage, setNewDosage] = useState({
+    data: new Date().toISOString().split('T')[0],
+    dosagem: '',
+    gotas: 0,
+    frequencia_diaria: 1,
+    concentracao_cbd: 0,
+    concentracao_thc: 0
+  });
+  
+
+  
+  // Carregar evoluções e sintomas padrão
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Carregar evoluções do paciente
+        // Carregar evoluções e exames do paciente
         const evolutionsData = await evolucoesService.listar(patientId, searchTerm);
         setEvolutions(evolutionsData.evolucoes || []);
+        setExams(evolutionsData.exames || []);
+        
+        // Carregar sintomas padrão para o formulário rápido
+        const standardData = await sintomasService.listarPadrao();
+        setStandardSymptoms(standardData.sintomas_padrao || []);
+        setCustomSymptoms(standardData.sintomas_personalizados || []);
+        
         setError('');
       } catch (err) {
         console.error('Erro ao carregar dados de evoluções:', err);
@@ -155,6 +180,93 @@ const EvolutionManager = ({ patientId }) => {
   const handleSearchKeyPress = (e) => {
     if (e.key === 'Enter') {
       handleSearch();
+    }
+  };
+  
+  // Manipuladores para sintomas
+  const handleSymptomInputChange = (e) => {
+    const { name, value } = e.target;
+    setNewSymptom(prev => ({
+      ...prev,
+      [name]: name === 'intensidade' ? parseInt(value) || 0 : value
+    }));
+  };
+  
+  const handleSymptomSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!newSymptom.sintoma) {
+      setError('Selecione um sintoma');
+      return;
+    }
+    
+    try {
+      await sintomasService.criar({
+        paciente_id: patientId,
+        ...newSymptom
+      });
+      
+      // Resetar formulário
+      setNewSymptom({
+        data: new Date().toISOString().split('T')[0],
+        sintoma: '',
+        intensidade: 5
+      });
+      
+      setError('');
+      alert('Sintoma registrado com sucesso!');
+    } catch (err) {
+      console.error('Erro ao registrar sintoma:', err);
+      setError('Não foi possível registrar o sintoma');
+    }
+  };
+  
+  // Manipuladores para dosagens
+  const handleDosageInputChange = (e) => {
+    const { name, value } = e.target;
+    
+    let processedValue = value;
+    if (['gotas', 'frequencia_diaria'].includes(name)) {
+      processedValue = parseInt(value) || 0;
+    } else if (['concentracao_cbd', 'concentracao_thc'].includes(name)) {
+      processedValue = parseFloat(value) || 0;
+    }
+    
+    setNewDosage(prev => ({
+      ...prev,
+      [name]: processedValue
+    }));
+  };
+  
+  const handleDosageSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!newDosage.dosagem.trim()) {
+      setError('Informe a descrição da dosagem');
+      return;
+    }
+    
+    try {
+      await dosagensService.criar({
+        paciente_id: patientId,
+        ...newDosage
+      });
+      
+      // Resetar formulário
+      setNewDosage({
+        data: new Date().toISOString().split('T')[0],
+        dosagem: '',
+        gotas: 0,
+        frequencia_diaria: 1,
+        concentracao_cbd: 0,
+        concentracao_thc: 0
+      });
+      
+      setError('');
+      alert('Dosagem registrada com sucesso!');
+    } catch (err) {
+      console.error('Erro ao registrar dosagem:', err);
+      setError('Não foi possível registrar a dosagem');
     }
   };
   
@@ -260,93 +372,82 @@ const EvolutionManager = ({ patientId }) => {
     }
   };
   
-  // Formatar data
-  const formatDate = (dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleString('pt-BR');
-  };
   
+  // Combinar evoluções e exames em uma única lista ordenada por data
+  const combinedItems = [
+    ...evolutions.map(item => ({ ...item, type: 'evolution' })),
+    ...exams.map(item => ({ ...item, type: 'exam' }))
+  ].sort((a, b) => {
+    const dateA = new Date(a.data_evolucao || a.data_exame);
+    const dateB = new Date(b.data_evolucao || b.data_exame);
+    return dateB - dateA;
+  });
+
   return (
     <Box sx={{ width: '100%' }}>
       <Typography variant="h6" gutterBottom>
         Evoluções e Exames
       </Typography>
       
-      {/* Abas */}
-      <Paper elevation={3} sx={{ mb: 3 }}>
-        <Tabs 
-          value={tabValue} 
-          onChange={handleTabChange} 
-          aria-label="Abas de evoluções e exames"
-          variant="fullWidth"
-        >
-          <Tab label="Evoluções" {...a11yProps(0)} />
-          <Tab label="Exames" {...a11yProps(1)} />
-        </Tabs>
-      </Paper>
-      
-      {/* Conteúdo das abas */}
-      <TabPanel value={tabValue} index={0}>
-        <Paper elevation={3} sx={{ p: 3 }}>
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
-          )}
-          
-          {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-              <CircularProgress />
-            </Box>
-          ) : (
-            <>
-              {/* Campo de busca */}
-              <Box sx={{ mb: 3 }}>
-                <TextField
-                  fullWidth
-                  variant="outlined"
-                  placeholder="Buscar nas evoluções..."
-                  value={searchTerm}
-                  onChange={handleSearchChange}
-                  onKeyPress={handleSearchKeyPress}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <SearchIcon />
-                      </InputAdornment>
-                    ),
-                    endAdornment: searchTerm && (
-                      <InputAdornment position="end">
-                        <IconButton
-                          aria-label="limpar busca"
-                          onClick={handleClearSearch}
-                          edge="end"
-                        >
-                          <ClearIcon />
-                        </IconButton>
-                      </InputAdornment>
-                    )
-                  }}
-                />
-                <Box sx={{ mt: 1, display: 'flex', justifyContent: 'flex-end' }}>
-                  <Button 
-                    variant="contained" 
-                    color="primary" 
-                    onClick={handleSearch}
-                    startIcon={<SearchIcon />}
-                    disabled={loading}
-                  >
-                    Buscar
-                  </Button>
-                </Box>
+      <Paper elevation={3} sx={{ p: 3 }}>
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+        
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+            <CircularProgress />
+          </Box>
+        ) : (
+          <>
+            {/* Campo de busca */}
+            <Box sx={{ mb: 3 }}>
+              <TextField
+                fullWidth
+                variant="outlined"
+                placeholder="Buscar em evoluções e exames..."
+                value={searchTerm}
+                onChange={handleSearchChange}
+                onKeyPress={handleSearchKeyPress}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                  endAdornment: searchTerm && (
+                    <InputAdornment position="end">
+                      <IconButton
+                        aria-label="limpar busca"
+                        onClick={handleClearSearch}
+                        edge="end"
+                      >
+                        <ClearIcon />
+                      </IconButton>
+                    </InputAdornment>
+                  )
+                }}
+              />
+              <Box sx={{ mt: 1, display: 'flex', justifyContent: 'flex-end' }}>
+                <Button 
+                  variant="contained" 
+                  color="primary" 
+                  onClick={handleSearch}
+                  startIcon={<SearchIcon />}
+                  disabled={loading}
+                >
+                  Buscar
+                </Button>
               </Box>
-              
-              {/* Formulário para registrar nova evolução ou editar existente */}
-              <Box component="form" onSubmit={handleSubmit} sx={{ mb: 4 }}>
-                <Typography variant="subtitle1" gutterBottom>
-                  {editMode ? 'Editar Evolução' : 'Registrar Nova Evolução'}
-                </Typography>
+            </Box>
+            
+            {/* Formulário para registrar nova evolução ou editar existente */}
+            <Box component="form" onSubmit={handleSubmit} sx={{ mb: 4 }}>
+              <Typography variant="subtitle1" gutterBottom>
+                {editMode ? 'Editar Evolução' : 'Registrar Nova Evolução'}
+              </Typography>
                     
                 <Grid container spacing={2}>
                   <Grid item xs={12} sm={3}>
@@ -401,37 +502,289 @@ const EvolutionManager = ({ patientId }) => {
                 </Grid>
               </Box>
               
-              {/* Lista de evoluções */}
-              {evolutions.length === 0 ? (
+              {/* Registro Rápido de Sintomas */}
+              <Paper 
+                elevation={2} 
+                sx={{ 
+                  p: 2, 
+                  mb: 3,
+                  background: 'linear-gradient(135deg, #e8f5e8 0%, #f1f8e9 100%)',
+                  border: '1px solid #4caf50'
+                }}
+              >
+                <Box 
+                  sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    cursor: 'pointer',
+                    mb: showSymptomsForm ? 2 : 0
+                  }}
+                  onClick={() => setShowSymptomsForm(!showSymptomsForm)}
+                >
+                  <SymptomsIcon sx={{ mr: 1, color: 'success.main' }} />
+                  <Typography variant="h6" sx={{ flexGrow: 1, color: 'success.main', fontWeight: 'bold' }}>
+                    📊 Registro Rápido de Sintomas
+                  </Typography>
+                  {showSymptomsForm ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                </Box>
+                
+                {showSymptomsForm && (
+                  <Box component="form" onSubmit={handleSymptomSubmit}>
+                    <Grid container spacing={2} alignItems="center">
+                      <Grid item xs={12} sm={3}>
+                        <TextField
+                          name="data"
+                          label="Data"
+                          type="date"
+                          value={newSymptom.data}
+                          onChange={handleSymptomInputChange}
+                          fullWidth
+                          size="small"
+                          InputLabelProps={{ shrink: true }}
+                        />
+                      </Grid>
+                      
+                      <Grid item xs={12} sm={4}>
+                        <TextField
+                          name="sintoma"
+                          label="Sintoma"
+                          select
+                          value={newSymptom.sintoma}
+                          onChange={handleSymptomInputChange}
+                          fullWidth
+                          size="small"
+                          SelectProps={{ native: true }}
+                        >
+                          <option value="">Selecione um sintoma</option>
+                          {standardSymptoms.map((symptom) => (
+                            <option key={symptom} value={symptom}>
+                              {symptom}
+                            </option>
+                          ))}
+                          {customSymptoms.map((symptom) => (
+                            <option key={symptom} value={symptom}>
+                              {symptom} (Personalizado)
+                            </option>
+                          ))}
+                        </TextField>
+                      </Grid>
+                      
+                      <Grid item xs={12} sm={3}>
+                        <TextField
+                          name="intensidade"
+                          label="Intensidade (0-10)"
+                          type="number"
+                          value={newSymptom.intensidade}
+                          onChange={handleSymptomInputChange}
+                          fullWidth
+                          size="small"
+                          inputProps={{ min: 0, max: 10 }}
+                        />
+                      </Grid>
+                      
+                      <Grid item xs={12} sm={2}>
+                        <Button
+                          type="submit"
+                          variant="contained"
+                          color="success"
+                          fullWidth
+                          size="small"
+                          startIcon={<AddIcon />}
+                        >
+                          Registrar
+                        </Button>
+                      </Grid>
+                    </Grid>
+                  </Box>
+                )}
+              </Paper>
+              
+              {/* Registro Rápido de Dosagens */}
+              <Paper 
+                elevation={2} 
+                sx={{ 
+                  p: 2, 
+                  mb: 3,
+                  background: 'linear-gradient(135deg, #e3f2fd 0%, #f1f8e9 100%)',
+                  border: '1px solid #2196f3'
+                }}
+              >
+                <Box 
+                  sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    cursor: 'pointer',
+                    mb: showDosageForm ? 2 : 0
+                  }}
+                  onClick={() => setShowDosageForm(!showDosageForm)}
+                >
+                  <DosageIcon sx={{ mr: 1, color: 'primary.main' }} />
+                  <Typography variant="h6" sx={{ flexGrow: 1, color: 'primary.main', fontWeight: 'bold' }}>
+                    💊 Registro Rápido de Dosagens
+                  </Typography>
+                  {showDosageForm ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                </Box>
+                
+                {showDosageForm && (
+                  <Box component="form" onSubmit={handleDosageSubmit}>
+                    <Grid container spacing={2} alignItems="center">
+                      <Grid item xs={12} sm={2}>
+                        <TextField
+                          name="data"
+                          label="Data"
+                          type="date"
+                          value={newDosage.data}
+                          onChange={handleDosageInputChange}
+                          fullWidth
+                          size="small"
+                          InputLabelProps={{ shrink: true }}
+                        />
+                      </Grid>
+                      
+                      <Grid item xs={12} sm={3}>
+                        <TextField
+                          name="dosagem"
+                          label="Descrição"
+                          value={newDosage.dosagem}
+                          onChange={handleDosageInputChange}
+                          fullWidth
+                          size="small"
+                          placeholder="Ex: Óleo CBD 10%"
+                        />
+                      </Grid>
+                      
+                      <Grid item xs={6} sm={1}>
+                        <TextField
+                          name="gotas"
+                          label="Gotas"
+                          type="number"
+                          value={newDosage.gotas || ''}
+                          onChange={handleDosageInputChange}
+                          fullWidth
+                          size="small"
+                          inputProps={{ min: 1 }}
+                        />
+                      </Grid>
+                      
+                      <Grid item xs={6} sm={1}>
+                        <TextField
+                          name="frequencia_diaria"
+                          label="Freq/dia"
+                          type="number"
+                          value={newDosage.frequencia_diaria}
+                          onChange={handleDosageInputChange}
+                          fullWidth
+                          size="small"
+                          inputProps={{ min: 1, max: 4 }}
+                        />
+                      </Grid>
+                      
+                      <Grid item xs={6} sm={2}>
+                        <TextField
+                          name="concentracao_cbd"
+                          label="CBD (mg/ml)"
+                          type="number"
+                          value={newDosage.concentracao_cbd || ''}
+                          onChange={handleDosageInputChange}
+                          fullWidth
+                          size="small"
+                          inputProps={{ min: 0, step: 0.1 }}
+                        />
+                      </Grid>
+                      
+                      <Grid item xs={6} sm={2}>
+                        <TextField
+                          name="concentracao_thc"
+                          label="THC (mg/ml)"
+                          type="number"
+                          value={newDosage.concentracao_thc || ''}
+                          onChange={handleDosageInputChange}
+                          fullWidth
+                          size="small"
+                          inputProps={{ min: 0, step: 0.1 }}
+                        />
+                      </Grid>
+                      
+                      <Grid item xs={12} sm={1}>
+                        <Button
+                          type="submit"
+                          variant="contained"
+                          color="primary"
+                          fullWidth
+                          size="small"
+                          startIcon={<AddIcon />}
+                        >
+                          Registrar
+                        </Button>
+                      </Grid>
+                    </Grid>
+                  </Box>
+                )}
+              </Paper>
+              
+              {/* Lista combinada de evoluções e exames */}
+              {combinedItems.length === 0 ? (
                 <Alert severity="info">
-                  Nenhuma evolução registrada para este paciente.
+                  Nenhum registro encontrado para este paciente.
                 </Alert>
               ) : (
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  {evolutions.map((evolution) => (
-                    <Card key={evolution.id} variant="outlined">
+                  {combinedItems.map((item) => (
+                    <Card key={`${item.type}-${item.id}`} variant="outlined">
                       <CardContent>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                        <Box sx={{ 
+                          display: 'flex', 
+                          justifyContent: 'space-between', 
+                          alignItems: 'center',
+                          mb: 1 
+                        }}>
+                          <Box>
+                            <Typography variant="subtitle2" color="text.secondary">
+                              {formatDate(item.data_evolucao || item.data_exame)}
+                            </Typography>
+                            <Chip 
+                              label={item.type === 'evolution' ? 'Evolução' : 'Exame'} 
+                              size="small"
+                              color={item.type === 'evolution' ? 'primary' : 'secondary'}
+                              sx={{ mt: 0.5 }}
+                            />
+                          </Box>
+                          
                           <Typography variant="subtitle2" color="text.secondary">
-                            {formatDate(evolution.data_evolucao)}
-                          </Typography>
-                          <Typography variant="subtitle2" color="text.secondary">
-                            {evolution.profissional_nome || 'Profissional não identificado'}
+                            {item.profissional_nome || 'Profissional não identificado'}
                           </Typography>
                         </Box>
+                        
                         <Divider sx={{ mb: 2 }} />
-                        <Typography variant="body1">
-                          {evolution.nota_evolucao}
-                        </Typography>
+                        
+                        {item.type === 'evolution' ? (
+                          <Typography variant="body1">
+                            {item.nota_evolucao}
+                          </Typography>
+                        ) : (
+                          <Box>
+                            <Typography variant="subtitle1" gutterBottom>
+                              {item.tipo_exame}
+                            </Typography>
+                            <Typography variant="body2">
+                              <strong>Arquivo:</strong> {item.arquivo_nome}
+                            </Typography>
+                            {item.observacoes && (
+                              <Typography variant="body2" sx={{ mt: 1 }}>
+                                <strong>Observações:</strong> {item.observacoes}
+                              </Typography>
+                            )}
+                          </Box>
+                        )}
                       </CardContent>
                       
-                      {/* Mostrar ações apenas se o usuário for o autor da evolução */}
-                      {currentUser && currentUser.id === evolution.profissional_id && (
+                      {/* Mostrar ações apenas para evoluções do usuário atual */}
+                      {item.type === 'evolution' && currentUser && currentUser.id === item.profissional_id && (
                         <CardActions sx={{ justifyContent: 'flex-end' }}>
                           <IconButton 
                             size="small" 
                             color="primary"
-                            onClick={() => handleStartEdit(evolution)}
+                            onClick={() => handleStartEdit(item)}
                             title="Editar"
                           >
                             <EditIcon />
@@ -439,7 +792,7 @@ const EvolutionManager = ({ patientId }) => {
                           <IconButton 
                             size="small" 
                             color="error"
-                            onClick={() => handleOpenDeleteDialog(evolution)}
+                            onClick={() => handleOpenDeleteDialog(item)}
                             title="Excluir"
                           >
                             <DeleteIcon />
@@ -452,37 +805,48 @@ const EvolutionManager = ({ patientId }) => {
               )}
             </>
           )}
-        </Paper>
-      </TabPanel>
-      
-      <TabPanel value={tabValue} index={1}>
-        <ExameManager pacienteId={patientId} />
-      </TabPanel>
-      
+      </Paper>
       
       {/* Diálogo de confirmação de exclusão */}
       <Dialog
-        open={deleteDialogOpen}
-        onClose={handleCloseDeleteDialog}
-      >
-        <DialogTitle>Confirmar exclusão</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            Tem certeza que deseja excluir esta evolução? 
-            Esta ação não pode ser desfeita.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDeleteDialog} color="primary">
-            Cancelar
-          </Button>
-          <Button onClick={handleDeleteEvolution} color="error" autoFocus>
-            Excluir
-          </Button>
-        </DialogActions>
-      </Dialog>
+          open={deleteDialogOpen}
+          onClose={handleCloseDeleteDialog}
+        >
+          <DialogTitle>Confirmar exclusão</DialogTitle>
+          <DialogContent>
+            <DialogContentText>
+              Tem certeza que deseja excluir esta evolução? 
+              Esta ação não pode ser desfeita.
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCloseDeleteDialog} color="primary">
+              Cancelar
+            </Button>
+            <Button onClick={handleDeleteEvolution} color="error" autoFocus>
+              Excluir
+            </Button>
+          </DialogActions>
+        </Dialog>
     </Box>
   );
 };
+
+// Função auxiliar para formatar data
+function formatDate(dateString) {
+  if (!dateString) return '';
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  } catch (e) {
+    return dateString;
+  }
+}
 
 export default EvolutionManager;

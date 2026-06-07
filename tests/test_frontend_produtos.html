@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Frontend - API de Produtos</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .button {
+            background: #2196f3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .button:hover {
+            background: #1976d2;
+        }
+        .success {
+            background: #4caf50;
+            color: white;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .error {
+            background: #f44336;
+            color: white;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .result {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Teste Frontend - API de Produtos</h1>
+    
+    <div class="container">
+        <h2>📡 Status da API</h2>
+        <button class="button" onclick="testarStatus()">Testar Status da API</button>
+        <div id="statusResult"></div>
+    </div>
+    
+    <div class="container">
+        <h2>📦 Listar Produtos</h2>
+        <button class="button" onclick="listarProdutos()">Listar Produtos</button>
+        <div id="listResult"></div>
+    </div>
+    
+    <div class="container">
+        <h2>➕ Criar Produto</h2>
+        <form onsubmit="criarProduto(event)">
+            <div class="form-group">
+                <label>Nome do Produto:</label>
+                <input type="text" id="nome" placeholder="Ex: Óleo CBD 25%" required>
+            </div>
+            
+            <div class="form-group">
+                <label>Fabricante:</label>
+                <input type="text" id="fabricante" placeholder="Ex: Laboratório XYZ">
+            </div>
+            
+            <div class="form-group">
+                <label>CBD (mg/ml):</label>
+                <input type="number" id="cbd" step="0.1" min="0" placeholder="250">
+            </div>
+            
+            <div class="form-group">
+                <label>THC (mg/ml):</label>
+                <input type="number" id="thc" step="0.1" min="0" placeholder="0">
+            </div>
+            
+            <div class="form-group">
+                <label>CBG (mg/ml):</label>
+                <input type="number" id="cbg" step="0.1" min="0" placeholder="5">
+            </div>
+            
+            <div class="form-group">
+                <label>CBN (mg/ml):</label>
+                <input type="number" id="cbn" step="0.1" min="0" placeholder="2">
+            </div>
+            
+            <div class="form-group">
+                <label>Gotas por ml:</label>
+                <input type="number" id="gotas_ml" min="1" max="50" value="30">
+            </div>
+            
+            <div class="form-group">
+                <label>Volume (ml):</label>
+                <input type="number" id="volume" min="1" value="30">
+            </div>
+            
+            <div class="form-group">
+                <label>Descrição:</label>
+                <textarea id="descricao" rows="3" placeholder="Descrição detalhada do produto"></textarea>
+            </div>
+            
+            <button type="submit" class="button">Criar Produto</button>
+        </form>
+        <div id="createResult"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:5004/api';
+        
+        function showResult(elementId, content, isError = false) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="${isError ? 'error' : 'success'}">${content}</div>`;
+        }
+        
+        function showData(elementId, data) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="result">${JSON.stringify(data, null, 2)}</div>`;
+        }
+        
+        async function testarStatus() {
+            try {
+                console.log('Testando status da API...');
+                const response = await fetch(`${API_BASE}/status`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResult('statusResult', '✅ API está online!');
+                    showData('statusResult', data);
+                } else {
+                    showResult('statusResult', `❌ Erro: ${response.status}`, true);
+                }
+            } catch (error) {
+                console.error('Erro ao testar status:', error);
+                showResult('statusResult', `❌ Erro de conexão: ${error.message}`, true);
+            }
+        }
+        
+        async function listarProdutos() {
+            try {
+                console.log('Listando produtos...');
+                const response = await fetch(`${API_BASE}/produtos`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResult('listResult', `✅ ${data.produtos.length} produtos encontrados`);
+                    showData('listResult', data);
+                } else {
+                    showResult('listResult', `❌ Erro: ${response.status}`, true);
+                    showData('listResult', data);
+                }
+            } catch (error) {
+                console.error('Erro ao listar produtos:', error);
+                showResult('listResult', `❌ Erro de conexão: ${error.message}`, true);
+            }
+        }
+        
+        async function criarProduto(event) {
+            event.preventDefault();
+            
+            const produto = {
+                nome: document.getElementById('nome').value,
+                fabricante: document.getElementById('fabricante').value,
+                concentracao_cbd: parseFloat(document.getElementById('cbd').value) || 0,
+                concentracao_thc: parseFloat(document.getElementById('thc').value) || 0,
+                concentracao_cbg: parseFloat(document.getElementById('cbg').value) || 0,
+                concentracao_cbn: parseFloat(document.getElementById('cbn').value) || 0,
+                gotas_por_ml: parseInt(document.getElementById('gotas_ml').value) || 30,
+                volume_ml: parseFloat(document.getElementById('volume').value) || 30,
+                descricao: document.getElementById('descricao').value,
+                tipo: 'oleo'
+            };
+            
+            try {
+                console.log('Criando produto:', produto);
+                const response = await fetch(`${API_BASE}/produtos`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(produto)
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResult('createResult', '✅ Produto criado com sucesso!');
+                    showData('createResult', data);
+                    
+                    // Limpar formulário
+                    document.querySelector('form').reset();
+                    document.getElementById('gotas_ml').value = 30;
+                    document.getElementById('volume').value = 30;
+                    
+                    // Atualizar lista de produtos
+                    listarProdutos();
+                } else {
+                    showResult('createResult', `❌ Erro: ${response.status}`, true);
+                    showData('createResult', data);
+                }
+            } catch (error) {
+                console.error('Erro ao criar produto:', error);
+                showResult('createResult', `❌ Erro de conexão: ${error.message}`, true);
+            }
+        }
+        
+        // Testar status automaticamente ao carregar a página
+        window.onload = function() {
+            console.log('Página carregada, testando API...');
+            testarStatus();
+            listarProdutos();
+        };
+    </script>
+</body>
+</html>
