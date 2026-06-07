@@ -17,6 +17,29 @@ export const AuthProvider = ({ children }) => {
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
+  const handlePostLoginRedirect = (user) => {
+    if (!user) return;
+    const path = window.location.pathname;
+    if (path === '/login' || path === '/verificar-email') return;
+
+    // Redirecionar para onboarding se não completou
+    if (user.onboarding_completed === false) {
+      navigate('/onboarding');
+      return;
+    }
+
+    // Redirecionar para trial ending se trial expirou ou está no último dia
+    if (user.data_expiracao) {
+      const exp = new Date(user.data_expiracao);
+      const now = new Date();
+      const daysLeft = Math.ceil((exp - now) / (1000 * 60 * 60 * 24));
+      if (daysLeft <= 1) {
+        navigate('/trial-ending');
+        return;
+      }
+    }
+  };
+
   // Verificar se o usuário está autenticado ao carregar a página
   useEffect(() => {
     const checkAuth = async () => {
@@ -26,11 +49,13 @@ export const AuthProvider = ({ children }) => {
             // Obter perfil do usuário do servidor
             const response = await authService.getProfile();
             setCurrentUser(response.user);
+            handlePostLoginRedirect(response.user);
           } catch (profileError) {
             console.error('Erro ao obter perfil:', profileError);
             // Se falhar, usar dados do localStorage como fallback
             const user = authService.getUser();
             setCurrentUser(user);
+            handlePostLoginRedirect(user);
           }
         }
       } catch (error) {
@@ -41,6 +66,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     checkAuth();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Função para fazer login
@@ -56,7 +82,23 @@ export const AuthProvider = ({ children }) => {
 
       // Usar setTimeout para garantir que o estado seja atualizado antes da navegação
       setTimeout(() => {
-        navigate('/dashboard');
+        // Verificar redirecionamentos pós-login
+        if (data.trial_expired) {
+          navigate('/trial-ending');
+        } else if (data.user?.onboarding_completed === false) {
+          navigate('/onboarding');
+        } else if (data.user?.data_expiracao) {
+          const exp = new Date(data.user.data_expiracao);
+          const now = new Date();
+          const daysLeft = Math.ceil((exp - now) / (1000 * 60 * 60 * 24));
+          if (daysLeft <= 1) {
+            navigate('/trial-ending');
+          } else {
+            navigate('/dashboard');
+          }
+        } else {
+          navigate('/dashboard');
+        }
       }, 100);
 
       return data;

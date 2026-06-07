@@ -1482,4 +1482,52 @@ export const prescricaoConfigService = {
   }
 };
 
+// Serviço de Onboarding
+export const onboardingService = {
+  status: async () => {
+    try {
+      const response = await api.get('/onboarding/status');
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  saveStep: async (stepNumber, data) => {
+    try {
+      const response = await api.post(`/onboarding/step/${stepNumber}`, { data });
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  skip: async () => {
+    try {
+      const response = await api.post('/onboarding/skip');
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  }
+};
+
+// Serviço de Verificação de Email
+export const emailVerificationService = {
+  verify: async (token) => {
+    try {
+      const response = await api.get(`/auth/verify-email/${token}`);
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  resend: async (email) => {
+    try {
+      const response = await api.post('/auth/resend-verification', { email });
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  }
+};
+
 export default api;

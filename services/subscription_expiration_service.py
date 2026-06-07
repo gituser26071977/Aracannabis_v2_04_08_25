@@ -239,10 +239,10 @@ class SubscriptionExpirationService:
         try:
             email_service = EmailService()
             return email_service.send_email(
-                destinatario=profissional.email,
-                assunto=subject,
-                corpo_html=html_body,
-                corpo_texto=f"Seu acesso expira em {days_remaining} dia(s). Acesse para renovar: http://localhost:3000/pricing"
+                to_email=profissional.email,
+                subject=subject,
+                html_body=html_body,
+                text_body=f"Seu acesso expira em {days_remaining} dia(s). Acesse para renovar: http://localhost:3000/pricing"
             )
         except Exception as e:
             logger.error(f"Erro ao enviar email de aviso: {str(e)}")
@@ -323,10 +323,10 @@ class SubscriptionExpirationService:
         try:
             email_service = EmailService()
             return email_service.send_email(
-                destinatario=profissional.email,
-                assunto=subject,
-                corpo_html=html_body,
-                corpo_texto="Seu trial expirou. Continue usando o Aracannabis! Veja os planos em: http://localhost:3000/pricing"
+                to_email=profissional.email,
+                subject=subject,
+                html_body=html_body,
+                text_body="Seu trial expirou. Continue usando o Aracannabis! Veja os planos em: http://localhost:3000/pricing"
             )
         except Exception as e:
             logger.error(f"Erro ao enviar proposta de assinatura: {str(e)}")

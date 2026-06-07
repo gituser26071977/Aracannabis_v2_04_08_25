@@ -66,6 +66,11 @@ import StockPage from './pages/association/StockPage';
 import DispensationPage from './pages/association/DispensationPage';
 import ConfiguracaoPrescricaoPage from './pages/ConfiguracaoPrescricaoPage';
 import ConfiguracaoIAPage from './pages/ConfiguracaoIAPage';
+import CatalogoPage from './pages/CatalogoPage';
+import OnboardingPage from './pages/OnboardingPage';
+import TrialEndingPage from './pages/TrialEndingPage';
+import VerifyEmailPage from './pages/VerifyEmailPage';
+import TrialBanner from './components/TrialBanner';
 
 import NavigationMenu from './components/NavigationMenu';
 import BusinessIcon from '@mui/icons-material/Business';
@@ -84,9 +89,19 @@ const APP_SUBTITLE = 'Sistema de Prontuário Eletrônico para Pacientes em Trata
 // Componente de rota protegida
 function ProtectedRoute({ children }) {
   const { currentUser } = useAuth();
+  const location = useLocation();
 
   if (!currentUser) {
     return <Navigate to="/login" replace />;
+  }
+
+  // Bloqueio suave: se trial expirou, redirecionar para trial-ending (exceto se já estiver lá)
+  if (location.pathname !== '/trial-ending' && currentUser.data_expiracao) {
+    const exp = new Date(currentUser.data_expiracao);
+    const now = new Date();
+    if (exp < now && currentUser.role !== 'admin' && currentUser.role !== 'superadmin') {
+      return <Navigate to="/trial-ending" replace />;
+    }
   }
 
   return children;
@@ -460,6 +475,8 @@ function AppContent() {
   const { mode, toggleColorMode } = useColorMode();
 
   const isLoginPage = location.pathname === '/login' || location.pathname === '/patient/login';
+  const isOnboardingPage = location.pathname === '/onboarding';
+  const showTrialBanner = currentUser && !isLoginPage && !isOnboardingPage;
 
   // Scroll-aware AppBar
   useEffect(() => {
@@ -476,6 +493,7 @@ function AppContent() {
 
   return (
     <AssociationProvider>
+      {showTrialBanner && <TrialBanner />}
       {!isLoginPage && (
         <AppBar
           position="sticky"
@@ -618,6 +636,17 @@ function AppContent() {
           <Route path="/pagamento" element={<PagamentoPage />} />
           <Route path="/planos" element={<PlanosPage />} />
           <Route path="/cadastro-profissionais" element={<CadastroProfissionaisPage />} />
+          <Route path="/verificar-email" element={<VerifyEmailPage />} />
+          <Route path="/onboarding" element={
+            <ProtectedRoute>
+              <OnboardingPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/trial-ending" element={
+            <ProtectedRoute>
+              <TrialEndingPage />
+            </ProtectedRoute>
+          } />
           <Route path="/test-login" element={<SimpleLogin />} />
           <Route path="/pagamento-sucesso" element={<PaymentStatusPage />} />
           <Route path="/pagamento-erro" element={<PaymentStatusPage />} />
@@ -717,6 +746,14 @@ function AppContent() {
             element={
               <ProtectedRoute>
                 <ConfiguracaoIAPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/catalogo"
+            element={
+              <ProtectedRoute>
+                <CatalogoPage />
               </ProtectedRoute>
             }
           />

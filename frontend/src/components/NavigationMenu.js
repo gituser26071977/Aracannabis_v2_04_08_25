@@ -86,6 +86,7 @@ const NavigationMenu = ({ open, onClose }) => {
         { text: '📥 Importar Documentos', icon: <PersonAddIcon />, path: '/importar-prescricoes', auth: true },
         { text: '🤖 Chat IA (LIA)', icon: <ChatIcon />, path: '/assistente-ia', auth: true },
         { text: '⚙️ Configurar IA SDR', icon: <SettingsIcon />, path: '/configuracao-ia', auth: true },
+        { text: '📦 Catálogo → Importar por IA', icon: <LocalHospitalIcon />, path: '/catalogo', auth: true },
     ];
 
     const sgacItems = [

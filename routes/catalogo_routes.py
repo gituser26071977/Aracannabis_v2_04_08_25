@@ -494,3 +494,128 @@ def listar_sugestoes():
         'pages': pagination.pages,
         'current_page': page
     })
+
+# ============================================================================
+# ROTAS DE EXTRAÇÃO POR IA (SGA → SIAP) — Feature Flag: sga_catalog_extraction
+# ============================================================================
+
+from services.catalogo_extraction_service import extraction_service
+from services.feature_flag_service import feature_required
+from models_extra import CatalogoImportLog
+
+
+@catalogo_bp.route('/extrair-ia', methods=['POST'])
+@jwt_required_custom
+@feature_required('sga_catalog_extraction')
+def extrair_catalogo_ia():
+    """
+    Extrai produtos de um arquivo (PDF, PNG, JPG, XLSX) usando IA.
+    
+    Form-data:
+    - arquivo: arquivo a ser enviado
+    
+    Retorna JSON: {detected_products: [...], count: N}
+    Rate limit: 10 extrações/dia no trial.
+    """
+    if 'arquivo' not in request.files:
+        return jsonify({'error': 'Nenhum arquivo enviado'}), 400
+    
+    file = request.files['arquivo']
+    if file.filename == '':
+        return jsonify({'error': 'Nenhum arquivo selecionado'}), 400
+    
+    allowed_extensions = {'.pdf', '.png', '.jpg', '.jpeg', '.xlsx', '.xls'}
+    ext = os.path.splitext(file.filename.lower())[1]
+    if ext not in allowed_extensions:
+        return jsonify({
+            'error': 'Formato não suportado. Use: PDF, PNG, JPG, XLSX'
+        }), 400
+    
+    file_bytes = file.read()
+    if len(file_bytes) > 20 * 1024 * 1024:  # 20MB max
+        return jsonify({'error': 'Arquivo muito grande. Máximo 20MB.'}), 400
+    
+    user_id = get_current_profissional_id()
+    if not user_id:
+        return jsonify({'error': 'Usuário não autenticado'}), 401
+    
+    result = extraction_service.extract_from_file(
+        file_bytes=file_bytes,
+        filename=file.filename,
+        mime_type=file.mimetype,
+        user_id=int(user_id)
+    )
+    
+    if result.get('error') and result.get('count') == 0:
+        status_code = 429 if 'Limite diário' in result.get('message', '') else 400
+        return jsonify(result), status_code
+    
+    return jsonify(result), 200
+
+
+@catalogo_bp.route('/importar-selecionados', methods=['POST'])
+@jwt_required_custom
+@feature_required('sga_catalog_extraction')
+def importar_produtos_selecionados():
+    """
+    Importa produtos selecionados para o estoque SIAP.
+    
+    Body (JSON):
+    {
+        "produtos": [
+            {"nome": "...", "categoria": "...", "descricao": "...", "unidade": "...", ...},
+            ...
+        ]
+    }
+    """
+    data = request.get_json()
+    if not data or not isinstance(data.get('produtos'), list):
+        return jsonify({'error': 'Envie um array de produtos em "produtos"'}), 400
+    
+    user_id = get_current_profissional_id()
+    if not user_id:
+        return jsonify({'error': 'Usuário não autenticado'}), 401
+    
+    result = extraction_service.import_products(
+        products=data['produtos'],
+        user_id=int(user_id)
+    )
+    
+    if result.get('success'):
+        return jsonify(result), 201
+    return jsonify(result), 400
+
+
+@catalogo_bp.route('/import-logs', methods=['GET'])
+@jwt_required_custom
+@feature_required('sga_catalog_extraction')
+def listar_import_logs():
+    """
+    Lista logs de importação de catálogo (admin).
+    
+    Query params:
+    - page: página (default 1)
+    - per_page: itens por página (default 20)
+    """
+    from models import Profissional
+    
+    user_id = get_current_profissional_id()
+    profissional = Profissional.query.get(user_id) if user_id else None
+    
+    # Apenas admin pode ver todos os logs; profissionais veem só os seus
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    
+    query = CatalogoImportLog.query.order_by(CatalogoImportLog.created_at.desc())
+    
+    if not profissional or profissional.role != 'admin':
+        query = query.filter_by(user_id=user_id)
+    
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+    
+    return jsonify({
+        'logs': [log.to_dict() for log in pagination.items],
+        'total': pagination.total,
+        'pages': pagination.pages,
+        'current_page': page
+    })

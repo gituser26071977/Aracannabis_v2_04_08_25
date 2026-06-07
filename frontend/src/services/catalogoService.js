@@ -171,3 +171,42 @@ export const buscarAtualizacoesWeb = async (marca = '') => {
     : '/api/catalogo/atualizacoes-web';
   return fetchWithAuth(url);
 };
+
+// Extração de catálogo por IA (SGA → SIAP)
+export const extrairCatalogoIA = async (file) => {
+  const formData = new FormData();
+  formData.append('arquivo', file);
+  
+  const token = localStorage.getItem('token');
+  
+  const response = await fetch(`${API_URL}/api/catalogo/extrair-ia`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+    body: formData,
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || error.error || 'Erro na extração IA');
+  }
+  
+  return response.json();
+};
+
+// Importar produtos selecionados
+export const importarProdutosSelecionados = async (produtos) => {
+  return fetchWithAuth('/api/catalogo/importar-selecionados', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ produtos }),
+  });
+};
+
+// Listar logs de importação (admin)
+export const listarImportLogs = async (page = 1, perPage = 20) => {
+  return fetchWithAuth(`/api/catalogo/import-logs?page=${page}&per_page=${perPage}`);
+};
