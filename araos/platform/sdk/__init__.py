@@ -121,6 +121,30 @@ from araos.clinical.contracts.knowledge import (
     KnowledgeResult,
 )
 
+# Agent Runtime & Integration (Week 5)
+from araos.agents.runtime.agent import BaseAgent, AgentCapability, AgentResult
+from araos.agents.runtime.context import AgentContext, CorrelationContext
+from araos.agents.runtime.memory import AgentMemory, MemoryStore, AgentMemoryRecord
+from araos.agents.runtime.executor import AgentExecutor
+from araos.agents.runtime.runtime import AgentRuntime
+from araos.agents.registry.registry import AgentRegistry, AgentDefinition, AgentRegistration
+from araos.agents.events.catalog import AgentEventCatalog
+from araos.agents.workflows.engine import WorkflowEngine, WorkflowStep, WorkflowResult
+
+from araos.integration.voice_adapter import VoiceAdapter, VoiceCommand, VoiceCommandResult
+from araos.integration.concierge_adapter import ConciergeAdapter, ConciergeMessage, ConciergeResponse
+from araos.integration.smart_flow_adapter import SmartFlowAdapter, FlowEvent, FlowAction
+from araos.integration.core_adapter import CoreAdapter, CorePatientQuery, CoreConsultation
+
+from araos.platform.api.agents import AgentAPI
+from araos.platform.api.context import ContextAPI
+from araos.platform.api.twin import TwinAPI
+from araos.platform.api.events import EventAPI
+
+from araos.intelligence.llm import LLMProvider, LLMMessage, LLMResponse, LLMRequest
+from araos.intelligence.embeddings import EmbeddingProvider, EmbeddingResult
+from araos.intelligence.vector import VectorStoreProvider, VectorSearchResult
+
 # Erros
 from araos.platform.shared.errors import (
     AraOSPlatformError,
@@ -250,6 +274,49 @@ __all__ = [
     "GraphStore",
     "ClinicalQuery",
     "KnowledgeResult",
+    
+    # Agent Runtime & Integration (Week 5)
+    "BaseAgent",
+    "AgentCapability",
+    "AgentResult",
+    "AgentContext",
+    "CorrelationContext",
+    "AgentMemory",
+    "MemoryStore",
+    "AgentMemoryRecord",
+    "AgentExecutor",
+    "AgentRuntime",
+    "AgentRegistry",
+    "AgentDefinition",
+    "AgentRegistration",
+    "AgentEventCatalog",
+    "WorkflowEngine",
+    "WorkflowStep",
+    "WorkflowResult",
+    "VoiceAdapter",
+    "VoiceCommand",
+    "VoiceCommandResult",
+    "ConciergeAdapter",
+    "ConciergeMessage",
+    "ConciergeResponse",
+    "SmartFlowAdapter",
+    "FlowEvent",
+    "FlowAction",
+    "CoreAdapter",
+    "CorePatientQuery",
+    "CoreConsultation",
+    "AgentAPI",
+    "ContextAPI",
+    "TwinAPI",
+    "EventAPI",
+    "LLMProvider",
+    "LLMMessage",
+    "LLMResponse",
+    "LLMRequest",
+    "EmbeddingProvider",
+    "EmbeddingResult",
+    "VectorStoreProvider",
+    "VectorSearchResult",
     
     # Erros
     "AraOSPlatformError",
