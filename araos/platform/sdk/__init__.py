@@ -145,6 +145,29 @@ from araos.intelligence.llm import LLMProvider, LLMMessage, LLMResponse, LLMRequ
 from araos.intelligence.embeddings import EmbeddingProvider, EmbeddingResult
 from araos.intelligence.vector import VectorStoreProvider, VectorSearchResult
 
+# Trust Levels (Week 7B)
+from araos.intelligence.trust.levels import SourceType, TrustLevel, TrustedResponse
+
+# Knowledge Layer (Week 8)
+from araos.knowledge.types import KnowledgeType, KnowledgeStatus, KnowledgeSourceType
+from araos.knowledge.models import (
+    KnowledgeDocument,
+    KnowledgeChunk,
+    KnowledgeCollection,
+    KnowledgeSource,
+    KnowledgeMetadata,
+)
+from araos.knowledge.repository import KnowledgeRepository, InMemoryKnowledgeRepository
+from araos.knowledge.retrieval import KnowledgeRetrievalEngine, RetrievalResult
+from araos.knowledge.adapter import LLMKnowledgeAdapter, KnowledgeContext
+from araos.knowledge.observability import KnowledgeObservability, KnowledgeQueryMetric
+from araos.knowledge.sources.organizational import OrganizationalMemory
+from araos.knowledge.sources.professional import ProfessionalMemory
+from araos.knowledge.sources.patient import PatientKnowledgeSource
+# Embedding contracts da Knowledge Layer (Week 8 Part 8)
+# Futuro: unificar com intelligence.embeddings.EmbeddingProvider
+# from araos.knowledge.embedding_contracts import ...
+
 # Erros
 from araos.platform.shared.errors import (
     AraOSPlatformError,
@@ -318,6 +341,31 @@ __all__ = [
     "VectorStoreProvider",
     "VectorSearchResult",
     
+    # Trust Levels (Week 7B)
+    "SourceType",
+    "TrustLevel",
+    "TrustedResponse",
+    
+    # Knowledge Layer (Week 8)
+    "KnowledgeType",
+    "KnowledgeStatus",
+    "KnowledgeSourceType",
+    "KnowledgeDocument",
+    "KnowledgeChunk",
+    "KnowledgeCollection",
+    "KnowledgeSource",
+    "KnowledgeMetadata",
+    "KnowledgeRepository",
+    "InMemoryKnowledgeRepository",
+    "KnowledgeRetrievalEngine",
+    "RetrievalResult",
+    "LLMKnowledgeAdapter",
+    "KnowledgeContext",
+    "KnowledgeObservability",
+    "KnowledgeQueryMetric",
+    "OrganizationalMemory",
+    "ProfessionalMemory",
+    "PatientKnowledgeSource",
     # Erros
     "AraOSPlatformError",
     "EventValidationError",
