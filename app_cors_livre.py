@@ -186,6 +186,18 @@ def create_app(config_obj=None):
     app.register_blueprint(sdr_bp, url_prefix="/api/sdr")
     app.register_blueprint(cadastro_prof_bp, url_prefix="/api/cadastro_profissionais")
     app.register_blueprint(anuncios_bp, url_prefix="/api")
+
+    # Week 11D — Cannabis Module API
+    from routes.cannabis import cannabis_bp
+    app.register_blueprint(cannabis_bp, url_prefix="/api/cannabis")
+
+    # Week 11D — Digital Twin API
+    from routes.twin import twin_bp
+    app.register_blueprint(twin_bp, url_prefix="/api/twin")
+
+    # Week 11D — Follow-up Engine API
+    from routes.followup import followup_bp
+    app.register_blueprint(followup_bp, url_prefix="/api/followup")
     app.register_blueprint(snap_iv_bp, url_prefix="/api/snap-iv")
     app.register_blueprint(beck_depression_bp, url_prefix="/api/beck-depression")
     app.register_blueprint(phq9_bp, url_prefix="/api/phq9")
