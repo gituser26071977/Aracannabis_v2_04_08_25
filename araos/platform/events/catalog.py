@@ -500,6 +500,62 @@ _EVENT_CATALOG: Dict[str, EventDefinition] = {
         description="Deploy concluído",
         consumers=["audit", "monitoring"],
     ),
+    
+    # ─── FOLLOW-UP ───────────────────────────────────────────────────
+    "FOLLOWUP_STARTED": EventDefinition(
+        event_type="FOLLOWUP_STARTED",
+        domain="followup",
+        action="started",
+        aggregate_type="followup_program",
+        description="Programa de acompanhamento iniciado",
+        consumers=["audit", "knowledge", "digital_twin", "connect"],
+        sensitive=True,
+    ),
+    "FOLLOWUP_COMPLETED": EventDefinition(
+        event_type="FOLLOWUP_COMPLETED",
+        domain="followup",
+        action="completed",
+        aggregate_type="followup_program",
+        description="Programa de acompanhamento concluído",
+        consumers=["audit", "knowledge", "digital_twin"],
+        sensitive=True,
+    ),
+    "FOLLOWUP_RESPONSE_RECEIVED": EventDefinition(
+        event_type="FOLLOWUP_RESPONSE_RECEIVED",
+        domain="followup",
+        action="received",
+        aggregate_type="followup_response",
+        description="Resposta de questionário recebida",
+        consumers=["audit", "knowledge", "digital_twin", "followup_engine"],
+        sensitive=True,
+    ),
+    "FOLLOWUP_ALERT_TRIGGERED": EventDefinition(
+        event_type="FOLLOWUP_ALERT_TRIGGERED",
+        domain="followup",
+        action="triggered",
+        aggregate_type="followup_alert",
+        description="Alerta de follow-up disparado",
+        consumers=["audit", "connect", "digital_twin"],
+        sensitive=True,
+    ),
+    "FOLLOWUP_ESCALATED": EventDefinition(
+        event_type="FOLLOWUP_ESCALATED",
+        domain="followup",
+        action="escalated",
+        aggregate_type="followup_alert",
+        description="Alerta de follow-up escalonado",
+        consumers=["audit", "connect", "concierge"],
+        sensitive=True,
+    ),
+    "FOLLOWUP_PHASE_CHANGED": EventDefinition(
+        event_type="FOLLOWUP_PHASE_CHANGED",
+        domain="followup",
+        action="changed",
+        aggregate_type="followup_program",
+        description="Fase do programa de acompanhamento alterada",
+        consumers=["audit", "knowledge", "digital_twin"],
+        sensitive=True,
+    ),
 }
 
 

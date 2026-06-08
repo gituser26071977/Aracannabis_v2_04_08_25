@@ -182,6 +182,18 @@ from araos.specialties.core.registry import SpecialtyRegistry
 from araos.specialties.core.agent import SpecialtyAgent
 from araos.specialties.core.knowledge import SpecialtyKnowledgeSource
 
+# Follow-up Engine (Week 11A)
+from araos.followup.core.models import (
+    FollowupProgram, FollowupPhase, FollowupCheckpoint,
+    FollowupQuestionnaire, FollowupQuestion, FollowupResponse,
+    FollowupRule, FollowupAlert,
+    FollowupStatus, AlertSeverity, AlertStatus, QuestionType,
+)
+from araos.followup.core.engine import AdaptiveFollowupEngine
+from araos.followup.core.specialty_integration import SpecialtyFollowupProgram
+from araos.followup.rules.engine import FollowupRuleEngine, RuleEvaluationContext
+from araos.followup.observability.metrics import FollowupObservability, FollowupMetric
+
 # Erros
 from araos.platform.shared.errors import (
     AraOSPlatformError,
@@ -410,6 +422,25 @@ __all__ = [
     "SpecialtyRegistry",
     "SpecialtyAgent",
     "SpecialtyKnowledgeSource",
+    # Follow-up Engine (Week 11A)
+    "FollowupProgram",
+    "FollowupPhase",
+    "FollowupCheckpoint",
+    "FollowupQuestionnaire",
+    "FollowupQuestion",
+    "FollowupResponse",
+    "FollowupRule",
+    "FollowupAlert",
+    "FollowupStatus",
+    "AlertSeverity",
+    "AlertStatus",
+    "QuestionType",
+    "AdaptiveFollowupEngine",
+    "SpecialtyFollowupProgram",
+    "FollowupRuleEngine",
+    "RuleEvaluationContext",
+    "FollowupObservability",
+    "FollowupMetric",
     # Erros
     "AraOSPlatformError",
     "EventValidationError",
