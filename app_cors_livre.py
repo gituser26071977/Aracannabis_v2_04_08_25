@@ -106,7 +106,7 @@ def create_app(config_obj=None):
     def api_root():
         return jsonify(
             {
-                "name": "Aracannabis API",
+                "name": "AraOS API",
                 "version": "1.0.0",
                 "status": "online",
                 "endpoints": {
@@ -129,7 +129,7 @@ def create_app(config_obj=None):
         return jsonify(
             {
                 "status": "online",
-                "message": "API Aracannabis funcionando corretamente",
+                "message": "AraOS API operacional",
                 "cors": "Configurado com origens permitidas",
                 "security": "CSRF e rate limiting habilitados",
                 "documentation": "Swagger UI available at /api/swagger",
@@ -335,7 +335,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     app = create_app()
-    print("🚀 SERVIDOR ARACANNABIS INICIADO!")
+    print("🚀 AraOS SERVER STARTED!")
     print("🔒 CORS: Configurado com origens permitidas")
     print("🔑 CSRF: Habilitado")
     print("🛡️ Rate limiting: Ativo")

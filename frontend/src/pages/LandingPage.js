@@ -9,7 +9,6 @@ import {
     CardContent,
     useTheme,
     alpha,
-    Avatar,
     Stack
 } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
@@ -19,8 +18,7 @@ import {
     Psychology as BrainIcon,
     Speed as SpeedIcon,
     Devices as DevicesIcon,
-    SupportAgent as SupportIcon,
-    CheckCircle as CheckIcon,
+    Hub as HubIcon,
     ArrowForward as ArrowForwardIcon
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
@@ -31,24 +29,24 @@ const LandingPage = () => {
 
     const features = [
         {
+            icon: <HubIcon sx={{ fontSize: 40 }} />,
+            title: 'Operational Orchestration',
+            description: 'Deterministic runtime connecting clinicians, AI systems and legacy infrastructure through supervised execution pipelines.'
+        },
+        {
             icon: <BrainIcon sx={{ fontSize: 40 }} />,
-            title: 'IA Assistiva Avançada',
-            description: 'Assistentes inteligentes que ajudam na análise clínica, sugestão de tratamentos e monitoramento de pacientes.'
+            title: 'Clinical Intelligence',
+            description: 'Context-aware operational intelligence that augments clinical workflows without replacing human judgment.'
         },
         {
             icon: <SecurityIcon sx={{ fontSize: 40 }} />,
-            title: 'Segurança & LGPD',
-            description: 'Seus dados protegidos com criptografia de ponta a ponta e total conformidade com a legislação vigente.'
-        },
-        {
-            icon: <DevicesIcon sx={{ fontSize: 40 }} />,
-            title: 'Acesso Multiplataforma',
-            description: 'Acesse de qualquer lugar. Desktop, tablet ou celular com experiência otimizada e sincronização em tempo real.'
+            title: 'Audit & Compliance',
+            description: 'Full traceability, audit trails and LGPD compliance with end-to-end encryption and deterministic replay.'
         },
         {
             icon: <SpeedIcon sx={{ fontSize: 40 }} />,
-            title: 'Alta Performance',
-            description: 'Interface fluida e responsiva projetada para agilizar o atendimento médico sem travamentos.'
+            title: 'High Performance Runtime',
+            description: 'Distributed execution engine designed for operational continuity in healthcare environments.'
         }
     ];
 
@@ -66,7 +64,6 @@ const LandingPage = () => {
                     background: `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`
                 }}
             >
-                {/* Abstract Background Shapes */}
                 <Box
                     sx={{
                         position: 'absolute',
@@ -94,65 +91,50 @@ const LandingPage = () => {
 
                 <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1 }}>
                     <Grid container spacing={4} alignItems="center">
-                        <Grid item xs={12} md={6}>
+                        <Grid item xs={12} md={7}>
+                            <Typography
+                                variant="overline"
+                                sx={{ opacity: 0.8, letterSpacing: 3, fontWeight: 600 }}
+                            >
+                                VisualSmartFlow Platform
+                            </Typography>
                             <Typography
                                 variant="h2"
                                 fontWeight="800"
                                 gutterBottom
                                 sx={{
-                                    fontSize: { xs: '2.5rem', md: '3.5rem' },
-                                    textShadow: '0px 2px 4px rgba(0,0,0,0.2)'
+                                    fontSize: { xs: '2.2rem', md: '3.2rem' },
+                                    textShadow: '0px 2px 4px rgba(0,0,0,0.2)',
+                                    mt: 1
                                 }}
                             >
-                                O Futuro da <br />
-                                <Box component="span" sx={{ color: theme.palette.secondary.main }}>Cannabis Medicinal</Box>
+                                Operational Intelligence Infrastructure for Healthcare
                             </Typography>
-                            <Typography variant="h6" sx={{ mb: 4, opacity: 0.9, maxWidth: 500 }}>
-                                O sistema de prontuário eletrônico maia avançado do mercado. Inteligência Artificial, segurança total e facilidade de uso em uma única plataforma.
+                            <Typography variant="h6" sx={{ mb: 4, opacity: 0.9, maxWidth: 600 }}>
+                                Connecting clinicians, AI and legacy systems through a deterministic, auditable and supervised operational runtime.
                             </Typography>
                             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                                {currentUser ? (
-                                    <Button
-                                        component={RouterLink}
-                                        to="/dashboard"
-                                        variant="contained"
-                                        color="secondary"
-                                        size="large"
-                                        endIcon={<ArrowForwardIcon />}
-                                        sx={{
-                                            px: 4,
-                                            py: 1.5,
-                                            borderRadius: 2,
-                                            fontSize: '1.1rem',
-                                            fontWeight: 'bold',
-                                            boxShadow: theme.shadows[4]
-                                        }}
-                                    >
-                                        Acessar Sistema
-                                    </Button>
-                                ) : (
-                                    <Button
-                                        component={RouterLink}
-                                        to="/cadastro-profissionais"
-                                        variant="contained"
-                                        color="secondary"
-                                        size="large"
-                                        endIcon={<RocketIcon />}
-                                        sx={{
-                                            px: 4,
-                                            py: 1.5,
-                                            borderRadius: 2,
-                                            fontSize: '1.1rem',
-                                            fontWeight: 'bold',
-                                            boxShadow: theme.shadows[4]
-                                        }}
-                                    >
-                                        Começar Agora
-                                    </Button>
-                                )}
                                 <Button
                                     component={RouterLink}
-                                    to="/planos"
+                                    to="/login"
+                                    variant="contained"
+                                    color="secondary"
+                                    size="large"
+                                    endIcon={<RocketIcon />}
+                                    sx={{
+                                        px: 4,
+                                        py: 1.5,
+                                        borderRadius: 2,
+                                        fontSize: '1.1rem',
+                                        fontWeight: 'bold',
+                                        boxShadow: theme.shadows[4]
+                                    }}
+                                >
+                                    Explore AraOS
+                                </Button>
+                                <Button
+                                    component={RouterLink}
+                                    to="/cadastro-profissionais"
                                     variant="outlined"
                                     color="inherit"
                                     size="large"
@@ -165,31 +147,59 @@ const LandingPage = () => {
                                         '&:hover': { borderWidth: 2, bgcolor: alpha('#fff', 0.1) }
                                     }}
                                 >
-                                    Ver Planos
+                                    Request Demo
                                 </Button>
                             </Stack>
                         </Grid>
-                        <Grid item xs={12} md={6} sx={{ display: { xs: 'none', md: 'block' } }}>
-                            {/* Mockup / Image Placeholder */}
+                        <Grid item xs={12} md={5} sx={{ display: { xs: 'none', md: 'block' } }}>
                             <Box
-                                component="img"
-                                src="/assets/dashboard-mockup.png"
-                                alt="Dashboard do Sistema Aracannabis"
                                 sx={{
                                     width: '100%',
-                                    height: 'auto',
-                                    display: 'block',
+                                    height: 320,
                                     borderRadius: 4,
-                                    boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
-                                    transform: 'perspective(1000px) rotateY(-5deg) rotateX(2deg)',
-                                    transition: 'transform 0.5s ease',
-                                    '&:hover': {
-                                        transform: 'perspective(1000px) rotateY(0deg) rotateX(0deg) scale(1.02)'
-                                    }
+                                    bgcolor: alpha('#fff', 0.08),
+                                    border: `1px solid ${alpha('#fff', 0.15)}`,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    flexDirection: 'column',
+                                    gap: 2
                                 }}
-                            />
+                            >
+                                <HubIcon sx={{ fontSize: 80, opacity: 0.4 }} />
+                                <Typography variant="h6" sx={{ opacity: 0.6 }}>
+                                    Distributed Runtime
+                                </Typography>
+                            </Box>
                         </Grid>
                     </Grid>
+                </Container>
+            </Box>
+
+            {/* AraOS Product Banner */}
+            <Box sx={{ bgcolor: 'grey.900', color: 'white', py: 4 }}>
+                <Container maxWidth="lg">
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2, flexWrap: 'wrap' }}>
+                        <Typography variant="h6" fontWeight="bold" sx={{ color: theme.palette.secondary.main }}>
+                            AraOS
+                        </Typography>
+                        <Typography variant="body1" sx={{ opacity: 0.7 }}>
+                            — Clinical Operations Module running on VisualSmartFlow Platform
+                        </Typography>
+                        <Button
+                            component={RouterLink}
+                            to="/login"
+                            variant="outlined"
+                            size="small"
+                            sx={{
+                                color: theme.palette.secondary.main,
+                                borderColor: theme.palette.secondary.main,
+                                '&:hover': { borderColor: theme.palette.secondary.light, bgcolor: alpha(theme.palette.secondary.main, 0.1) }
+                            }}
+                        >
+                            Launch AraOS <ArrowForwardIcon fontSize="small" sx={{ ml: 0.5 }} />
+                        </Button>
+                    </Box>
                 </Container>
             </Box>
 
@@ -197,10 +207,10 @@ const LandingPage = () => {
             <Container maxWidth="lg" sx={{ py: 10 }}>
                 <Box sx={{ textAlign: 'center', mb: 8 }}>
                     <Typography variant="overline" color="primary" fontWeight="bold" letterSpacing={2}>
-                        POR QUE ESCOLHER O ARACANNABIS?
+                        PLATFORM CAPABILITIES
                     </Typography>
                     <Typography variant="h3" fontWeight="bold" sx={{ mt: 1 }}>
-                        Tudo o que você precisa em um só lugar
+                        Everything you need in one operational runtime
                     </Typography>
                 </Box>
 
@@ -245,39 +255,7 @@ const LandingPage = () => {
                 </Grid>
             </Container>
 
-            {/* Social Proof / Trust Section */}
-            <Box sx={{ bgcolor: 'grey.50', py: 8 }}>
-                <Container maxWidth="lg">
-                    <Grid container spacing={4} alignItems="center" justifyContent="center">
-                        <Grid item xs={12} md={4} sx={{ textAlign: 'center' }}>
-                            <Typography variant="h2" color="primary.main" fontWeight="bold">
-                                +5.000
-                            </Typography>
-                            <Typography variant="h6" color="text.secondary">
-                                Pacientes Atendidos
-                            </Typography>
-                        </Grid>
-                        <Grid item xs={12} md={4} sx={{ textAlign: 'center' }}>
-                            <Typography variant="h2" color="primary.main" fontWeight="bold">
-                                99.9%
-                            </Typography>
-                            <Typography variant="h6" color="text.secondary">
-                                Uptime Garantido
-                            </Typography>
-                        </Grid>
-                        <Grid item xs={12} md={4} sx={{ textAlign: 'center' }}>
-                            <Typography variant="h2" color="primary.main" fontWeight="bold">
-                                24/7
-                            </Typography>
-                            <Typography variant="h6" color="text.secondary">
-                                Suporte Especializado
-                            </Typography>
-                        </Grid>
-                    </Grid>
-                </Container>
-            </Box>
-
-            {/* CTA Plans Section */}
+            {/* CTA Section */}
             <Container maxWidth="md" sx={{ py: 10 }}>
                 <Box
                     sx={{
@@ -302,26 +280,50 @@ const LandingPage = () => {
                     />
 
                     <Typography variant="h3" fontWeight="bold" gutterBottom sx={{ position: 'relative' }}>
-                        Pronto para transformar sua clínica?
+                        Ready to transform your clinical operations?
                     </Typography>
                     <Typography variant="h6" sx={{ mb: 4, opacity: 0.9, position: 'relative' }}>
-                        Escolha o plano ideal e comece a usar hoje mesmo. Sem cartão de crédito para testar.
+                        Deploy AraOS on your VisualSmartFlow runtime. Start today.
                     </Typography>
                     <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="center" sx={{ position: 'relative' }}>
                         <Button
                             component={RouterLink}
-                            to="/planos"
+                            to="/login"
                             variant="contained"
                             color="secondary"
                             size="large"
                             endIcon={<ArrowForwardIcon />}
                             sx={{ px: 4, py: 1.5, fontSize: '1.1rem', fontWeight: 'bold' }}
                         >
-                            Ver Planos e Preços
+                            Launch AraOS
+                        </Button>
+                        <Button
+                            component={RouterLink}
+                            to="/cadastro-profissionais"
+                            variant="outlined"
+                            color="inherit"
+                            size="large"
+                            sx={{ px: 4, py: 1.5, fontSize: '1.1rem', borderWidth: 2 }}
+                        >
+                            Request Access
                         </Button>
                     </Stack>
                 </Box>
             </Container>
+
+            {/* Footer */}
+            <Box sx={{ bgcolor: 'grey.50', py: 4, borderTop: '1px solid', borderColor: 'divider' }}>
+                <Container maxWidth="lg">
+                    <Box sx={{ textAlign: 'center' }}>
+                        <Typography variant="body2" color="text.secondary">
+                            AraOS • Powered by VisualSmartFlow Platform
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                            © {new Date().getFullYear()} Arapath. All rights reserved.
+                        </Typography>
+                    </Box>
+                </Container>
+            </Box>
         </Box>
     );
 };

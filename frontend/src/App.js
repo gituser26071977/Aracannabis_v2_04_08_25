@@ -47,8 +47,9 @@ import SimpleLogin from './components/SimpleLogin';
 import CadastroProfissionaisPage from './pages/CadastroProfissionaisPage';
 import PagamentoPage from './pages/PagamentoPage';
 import PlanosPage from './pages/PlanosPage';
-import AdminPage from './pages/AdminPage';
 import LandingPage from './pages/LandingPage';
+import AdminPage from './pages/AdminPage';
+
 import InternalDashboard from './pages/InternalDashboard';
 import AIDashboard from './pages/AIDashboard';
 import AIChatPage from './pages/AIChatPage';
@@ -80,7 +81,7 @@ import PatientLogin from './pages/patient/PatientLogin';
 import PatientRegister from './pages/patient/PatientRegister';
 import PatientDashboard from './pages/patient/PatientDashboard';
 
-const APP_TITLE = 'Aracannabis Prontuário';
+const APP_TITLE = 'AraOS';
 const APP_SUBTITLE = 'Sistema de Prontuário Eletrônico para Pacientes em Tratamento com Cannabis Medicinal';
 
 // Tema personalizado
@@ -290,7 +291,7 @@ function LoginPage() {
               fontSize: { xs: '2rem', sm: '2.5rem' },
             }}
           >
-            🌿 Aracannabis
+            AraOS
           </Typography>
           <Typography
             variant="subtitle1"
@@ -300,7 +301,7 @@ function LoginPage() {
               letterSpacing: '0.02em',
             }}
           >
-            Prontuário Médico & Gestão
+            Powered by VisualSmartFlow Platform
           </Typography>
         </Box>
 
@@ -416,7 +417,7 @@ function LoginPage() {
             {loading ? (
               <CircularProgress size={24} sx={{ color: 'inherit' }} />
             ) : (
-              '✨ Entrar na Plataforma'
+              '✨ Entrar'
             )}
           </Button>
         </form>
