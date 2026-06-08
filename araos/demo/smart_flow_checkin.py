@@ -92,8 +92,8 @@ async def run_smart_flow_checkin(env: DemoEnvironment = None) -> dict:
     # Voice carrega Digital Twin do paciente
     from araos.clinical.twin.models import PatientDigitalTwinBuilder
     
-    builder = PatientDigitalTwinBuilder(env.db, env.patient_id, env.tenant_id)
-    twin = await builder.build()
+    builder = PatientDigitalTwinBuilder(env.repository, cache=env.cache)
+    twin = await builder.build(env.patient_id, env.tenant_id)
     
     print(f"   ✓ Voice recebe contexto do paciente automaticamente")
     print(f"   ✓ Diagnósticos: {len(twin.active_diagnoses)}")

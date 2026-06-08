@@ -7,6 +7,10 @@ Configura ambiente completo para demonstrações:
     - Professional, User
     - Patient (como entidade clínica)
     - Event Bus em memória
+    - Clinical Repository (Week 7A)
+    - Digital Twin Cache (Week 7A)
+    - Idempotency Tracker (Week 7A)
+    - Clinical Projection Consumer (Week 7A)
 """
 
 import uuid
@@ -24,6 +28,11 @@ from araos.clinical.entities.models import (
 )
 from araos.clinical.profile.models import ClinicalProfile
 from araos.clinical.timeline.models import TimelineEntry
+from araos.clinical.repository import SqlAlchemyClinicalRepository
+from araos.clinical.cache import InMemoryTwinCache
+from araos.clinical.idempotency import InMemoryIdempotencyTracker
+from araos.clinical.projections.engine import ClinicalProjectionEngine
+from araos.clinical.consumers import ClinicalProjectionConsumer
 
 
 def generate_uuid() -> str:
@@ -73,13 +82,11 @@ class DemoEnvironment:
     """
     Ambiente completo para demonstrações.
     
-    Uso:
-        env = DemoEnvironment()
-        env.setup()
-        
-        # Usar em fluxos
-        env.db.query(ClinicalProfile).filter(...)
-        await env.event_bus.publish(event)
+    Week 7A:
+        - ClinicalRepository desacoplado
+        - TwinCache (in-memory)
+        - IdempotencyTracker (in-memory)
+        - ClinicalProjectionConsumer registrado no Event Bus
     """
     
     def __init__(self):
@@ -94,12 +101,36 @@ class DemoEnvironment:
         self.patient_id = "demo_patient_001"
         self.doctor_id = "demo_doctor_001"
         self.nurse_id = "demo_nurse_001"
+        
+        # Week 7A: dependências desacopladas
+        self.repository: Optional[SqlAlchemyClinicalRepository] = None
+        self.cache: Optional[InMemoryTwinCache] = None
+        self.tracker: Optional[InMemoryIdempotencyTracker] = None
+        self.projection: Optional[ClinicalProjectionEngine] = None
     
     def setup(self) -> "DemoEnvironment":
         """Configura ambiente completo."""
         # Criar tabelas
         Base.metadata.create_all(self.engine)
         self.db = self.Session()
+        
+        # Week 7A: inicializar dependências desacopladas
+        self.repository = SqlAlchemyClinicalRepository(self.db)
+        self.cache = InMemoryTwinCache()
+        self.tracker = InMemoryIdempotencyTracker()
+        self.projection = ClinicalProjectionEngine(
+            repository=self.repository,
+            tracker=self.tracker,
+            cache=self.cache,
+        )
+        
+        # Week 7A: registrar consumer no Event Bus
+        consumer = ClinicalProjectionConsumer(self.projection)
+        # Usar subscribe síncrono (InMemoryEventBus não precisa de await)
+        for et in consumer.CLINICAL_EVENT_TYPES:
+            if et not in self.event_bus.subscribers:
+                self.event_bus.subscribers[et] = []
+            self.event_bus.subscribers[et].append(consumer.handle)
         
         # Criar organização
         org = Organization(
@@ -247,6 +278,11 @@ class DemoEnvironment:
         if self.db:
             self.db.close()
         self.event_bus.clear()
+        if self.tracker:
+            self.tracker.clear()
+        if self.cache:
+            # InMemoryTwinCache não tem clear, mas podemos ignorar
+            pass
     
     def print_header(self, title: str) -> None:
         """Imprime cabeçalho formatado."""

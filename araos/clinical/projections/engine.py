@@ -1,20 +1,12 @@
 """
 AraOS Clinical — Projection Engine.
 
-Consome eventos clínicos da Week 3 e atualiza o modelo de conhecimento.
+Consome eventos clínicos e atualiza o modelo de conhecimento.
 
-Eventos → Entidades:
-    DIAGNOSIS_ADDED → Diagnosis
-    MEDICATION_PRESCRIBED → Medication
-    ALLERGY_REGISTERED → Allergy
-    EXAM_RESULTED → atualiza last_exams
-    PROCEDURE realizado → Procedure
-
-Entidades → Profile:
-    Sempre que entidades mudam, ClinicalProfile é atualizado.
-
-Profile → Summary:
-    Sempre que profile muda, resumo é regenerado.
+Week 7A Hardening:
+    - Usa ClinicalRepository (desacoplado do ORM)
+    - IdempotencyTracker (exactly-once processing)
+    - Invalida cache do Digital Twin após projeção
 """
 
 from typing import Dict, Any, Optional
@@ -26,39 +18,76 @@ from ..entities.models import (
 from ..profile.models import ClinicalProfile
 from ..timeline.models import TimelineEntry
 from ..summary.engine import ClinicalSummaryEngine
+from ..repository import ClinicalRepository
+from ..idempotency import IdempotencyTracker
+from ..cache import TwinCache
 
 
 class ClinicalProjectionEngine:
     """
     Engine de projeções clínicas.
     
-    Consome eventos e projeta estado atualizado.
+    Args:
+        repository: ClinicalRepository para acesso a dados
+        tracker: IdempotencyTracker para deduplicação
+        cache: TwinCache para invalidação após projeção
     """
     
-    def __init__(self, db_session):
-        self.db = db_session
+    def __init__(
+        self,
+        repository: ClinicalRepository,
+        tracker: Optional[IdempotencyTracker] = None,
+        cache: Optional[TwinCache] = None,
+    ):
+        self.repository = repository
+        self.tracker = tracker
+        self.cache = cache
     
     async def process(self, event: EventEnvelopeV2) -> Dict[str, Any]:
         """
-        Processa um evento clínico.
+        Processa um evento clínico com idempotência.
         
         Returns:
             Resultado da projeção
         """
+        # 1. Idempotência
+        if self.tracker:
+            is_processed = await self.tracker.is_processed(event.event_id)
+            if is_processed:
+                return {"processed": False, "reason": "already_processed", "event_id": event.event_id}
+        
+        # 2. Validação de categoria
         if event.event_category != EventCategory.CLINICAL:
             return {"processed": False, "reason": "not_clinical"}
         
+        # 3. Routing
         handler = self._get_handler(event.event_type)
         if not handler:
             return {"processed": False, "reason": "no_handler"}
         
-        result = handler(event)
+        # 4. Execução
+        try:
+            result = handler(event)
+        except Exception as e:
+            if self.tracker:
+                await self.tracker.mark_failed(event.event_id)
+            raise
         
-        # Atualizar timeline
+        # 5. Timeline
         await self._add_timeline_entry(event, result.get("entity_type"), result.get("entity_id"))
         
-        # Atualizar perfil
+        # 6. Profile
         await self._update_profile(event.tenant_id, event.payload.get("patient_id"))
+        
+        # 7. Marcar como processado
+        if self.tracker:
+            await self.tracker.mark_processed(event.event_id)
+        
+        # 8. Invalidar cache do Digital Twin
+        if self.cache:
+            patient_id = event.payload.get("patient_id")
+            if patient_id:
+                await self.cache.invalidate(patient_id, event.tenant_id)
         
         return {"processed": True, **result}
     
@@ -96,8 +125,7 @@ class ClinicalProjectionEngine:
             status=ClinicalEntityStatus.ACTIVE.value,
         )
         
-        self.db.add(diagnosis)
-        self.db.commit()
+        self.repository.save_entity(diagnosis)
         
         return {
             "entity_type": "diagnosis",
@@ -106,15 +134,23 @@ class ClinicalProjectionEngine:
         }
     
     def _handle_diagnosis_updated(self, event: EventEnvelopeV2) -> Dict[str, Any]:
-        """Atualiza diagnóstico existente e marca anterior como não atual."""
+        """Atualiza diagnóstico existente."""
         data = event.payload
         diagnosis_id = data.get("diagnosis_id")
         
-        old = self.db.query(Diagnosis).filter(Diagnosis.id == diagnosis_id).first()
-        if old:
-            old.is_current = False
-            old.status = data.get("status", old.status)
-            self.db.commit()
+        # Nota: repository não tem get_by_id ainda; fallback para query direta
+        # em implementação real, adicionar método ao repository
+        diagnoses = self.repository.get_diagnoses(
+            patient_id=data.get("patient_id", ""),
+            tenant_id=event.tenant_id,
+            active_only=False,
+        )
+        for old in diagnoses:
+            if old.id == diagnosis_id:
+                old.is_current = False
+                old.status = data.get("status", old.status)
+                self.repository.commit()
+                break
         
         return {
             "entity_type": "diagnosis",
@@ -139,8 +175,7 @@ class ClinicalProjectionEngine:
             recorded_by=event.actor_id,
         )
         
-        self.db.add(medication)
-        self.db.commit()
+        self.repository.save_entity(medication)
         
         return {
             "entity_type": "medication",
@@ -153,12 +188,18 @@ class ClinicalProjectionEngine:
         data = event.payload
         medication_id = data.get("medication_id")
         
-        med = self.db.query(Medication).filter(Medication.id == medication_id).first()
-        if med:
-            med.status = ClinicalEntityStatus.INACTIVE.value
-            med.stopped_at = data.get("stopped_at")
-            med.stopped_reason = data.get("reason")
-            self.db.commit()
+        meds = self.repository.get_medications(
+            patient_id=data.get("patient_id", ""),
+            tenant_id=event.tenant_id,
+            active_only=False,
+        )
+        for med in meds:
+            if med.id == medication_id:
+                med.status = ClinicalEntityStatus.INACTIVE.value
+                med.stopped_at = data.get("stopped_at")
+                med.stopped_reason = data.get("reason")
+                self.repository.commit()
+                break
         
         return {
             "entity_type": "medication",
@@ -180,8 +221,7 @@ class ClinicalProjectionEngine:
             recorded_by=event.actor_id,
         )
         
-        self.db.add(allergy)
-        self.db.commit()
+        self.repository.save_entity(allergy)
         
         return {
             "entity_type": "allergy",
@@ -194,10 +234,16 @@ class ClinicalProjectionEngine:
         data = event.payload
         allergy_id = data.get("allergy_id")
         
-        allergy = self.db.query(Allergy).filter(Allergy.id == allergy_id).first()
-        if allergy:
-            allergy.status = ClinicalEntityStatus.INACTIVE.value
-            self.db.commit()
+        allergies = self.repository.get_allergies(
+            patient_id=data.get("patient_id", ""),
+            tenant_id=event.tenant_id,
+            active_only=False,
+        )
+        for allergy in allergies:
+            if allergy.id == allergy_id:
+                allergy.status = ClinicalEntityStatus.INACTIVE.value
+                self.repository.commit()
+                break
         
         return {
             "entity_type": "allergy",
@@ -211,15 +257,21 @@ class ClinicalProjectionEngine:
         patient_id = data.get("patient_id")
         exam_type = data.get("exam_type")
         
-        # Atualizar last_exams no perfil
-        profile = self._get_or_create_profile(event.tenant_id, patient_id)
+        profile = self.repository.get_profile(event.tenant_id, patient_id)
+        if not profile:
+            profile = ClinicalProfile(
+                tenant_id=event.tenant_id,
+                patient_id=patient_id,
+            )
+            self.repository.save_entity(profile)
+        
         profile.add_exam_result(exam_type, {
             "value": data.get("value"),
             "unit": data.get("unit"),
             "reference_range": data.get("reference_range"),
             "date": data.get("resulted_at"),
         })
-        self.db.commit()
+        self.repository.update_profile(profile)
         
         return {
             "entity_type": "exam",
@@ -247,8 +299,7 @@ class ClinicalProjectionEngine:
             recorded_by=event.actor_id,
         )
         
-        self.db.add(procedure)
-        self.db.commit()
+        self.repository.save_entity(procedure)
         
         return {
             "entity_type": "procedure",
@@ -260,18 +311,14 @@ class ClinicalProjectionEngine:
     
     def _get_or_create_profile(self, tenant_id: str, patient_id: str) -> ClinicalProfile:
         """Busca ou cria ClinicalProfile."""
-        profile = self.db.query(ClinicalProfile).filter(
-            ClinicalProfile.tenant_id == tenant_id,
-            ClinicalProfile.patient_id == patient_id,
-        ).first()
+        profile = self.repository.get_profile(patient_id, tenant_id)
         
         if not profile:
             profile = ClinicalProfile(
                 tenant_id=tenant_id,
                 patient_id=patient_id,
             )
-            self.db.add(profile)
-            self.db.commit()
+            self.repository.save_entity(profile)
         
         return profile
     
@@ -282,37 +329,12 @@ class ClinicalProjectionEngine:
         
         profile = self._get_or_create_profile(tenant_id, patient_id)
         
-        # Buscar entidades atuais
-        diagnoses = self.db.query(Diagnosis).filter(
-            Diagnosis.tenant_id == tenant_id,
-            Diagnosis.patient_id == patient_id,
-            Diagnosis.is_current == True,
-        ).all()
+        diagnoses = self.repository.get_diagnoses(patient_id, tenant_id, active_only=True)
+        medications = self.repository.get_medications(patient_id, tenant_id, active_only=True)
+        allergies = self.repository.get_allergies(patient_id, tenant_id, active_only=True)
+        risk_factors = self.repository.get_risk_factors(patient_id, tenant_id, active_only=True)
+        procedures = self.repository.get_procedures(patient_id, tenant_id, limit=10)
         
-        medications = self.db.query(Medication).filter(
-            Medication.tenant_id == tenant_id,
-            Medication.patient_id == patient_id,
-            Medication.status == ClinicalEntityStatus.ACTIVE.value,
-        ).all()
-        
-        allergies = self.db.query(Allergy).filter(
-            Allergy.tenant_id == tenant_id,
-            Allergy.patient_id == patient_id,
-            Allergy.status == ClinicalEntityStatus.ACTIVE.value,
-        ).all()
-        
-        risk_factors = self.db.query(RiskFactor).filter(
-            RiskFactor.tenant_id == tenant_id,
-            RiskFactor.patient_id == patient_id,
-            RiskFactor.is_active == True,
-        ).all()
-        
-        procedures = self.db.query(Procedure).filter(
-            Procedure.tenant_id == tenant_id,
-            Procedure.patient_id == patient_id,
-        ).order_by(Procedure.performed_at.desc()).limit(10).all()
-        
-        # Atualizar profile
         profile.update_from_entities(
             diagnoses=[d.to_dict() for d in diagnoses],
             medications=[m.to_dict() for m in medications],
@@ -321,13 +343,12 @@ class ClinicalProjectionEngine:
             procedures=[p.to_dict() for p in procedures],
         )
         
-        # Regenerar resumo
         engine = ClinicalSummaryEngine()
         summary = engine.generate(profile.to_dict())
         profile.last_summary = summary.text
         profile.summary_version = summary.version
         
-        self.db.commit()
+        self.repository.update_profile(profile)
     
     async def _add_timeline_entry(
         self,
@@ -340,7 +361,6 @@ class ClinicalProjectionEngine:
         if not patient_id:
             return
         
-        # Título baseado no tipo de evento
         title_map = {
             "DIAGNOSIS_ADDED": "Diagnóstico registrado",
             "MEDICATION_PRESCRIBED": "Medicação prescrita",
@@ -367,5 +387,4 @@ class ClinicalProjectionEngine:
             source=event.metadata.get("source", "unknown"),
         )
         
-        self.db.add(entry)
-        self.db.commit()
+        self.repository.add_timeline_entry(entry)

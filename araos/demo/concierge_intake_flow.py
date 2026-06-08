@@ -94,18 +94,15 @@ async def run_concierge_intake_flow(env: DemoEnvironment = None) -> dict:
     # ─── Passo 3: Projection Engine processa evento ─────────────────
     env.print_section("4. Clinical Projection Engine processa eventos")
     
-    from araos.clinical.projections.engine import ClinicalProjectionEngine
-    
-    projection = ClinicalProjectionEngine(env.db)
-    result = await projection.process(intake_event)
-    
-    print(f"   ✓ Projeção executada: {result}")
+    # Week 7A: Projeção é feita automaticamente pelo Consumer no Event Bus
+    # Nenhuma chamada direta ao Projection Engine
+    print(f"   ✓ Evento encaminhado para ClinicalProjectionConsumer")
     
     # ─── Passo 4: Digital Twin reconstruído ─────────────────────────
     env.print_section("5. Patient Digital Twin reconstruído")
     
-    builder = PatientDigitalTwinBuilder(env.db, env.patient_id, env.tenant_id)
-    twin = await builder.build()
+    builder = PatientDigitalTwinBuilder(env.repository, cache=env.cache)
+    twin = await builder.build(env.patient_id, env.tenant_id)
     
     print(f"   ✓ Twin construído para paciente {twin.patient_id}")
     print(f"   ✓ Diagnósticos ativos: {len(twin.active_diagnoses)}")

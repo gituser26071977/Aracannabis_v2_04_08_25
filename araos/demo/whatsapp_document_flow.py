@@ -117,11 +117,8 @@ async def run_whatsapp_document_flow(env: DemoEnvironment = None) -> dict:
     await env.event_bus.publish(med_event)
     print(f"   ✓ Evento MEDICATION_PRESCRIBED emitido")
     
-    # Aplicar projeção
-    from araos.clinical.projections.engine import ClinicalProjectionEngine
-    projection = ClinicalProjectionEngine(env.db)
-    await projection.process(med_event)
-    print(f"   ✓ ClinicalProjectionEngine atualizou entidades")
+    # Week 7A: Projeção é feita automaticamente pelo Consumer no Event Bus
+    print(f"   ✓ Evento encaminhado para ClinicalProjectionConsumer")
     
     # ─── Passo 4: Timeline atualizada ───────────────────────────────
     env.print_section("5. Timeline clínica atualizada")
@@ -143,8 +140,8 @@ async def run_whatsapp_document_flow(env: DemoEnvironment = None) -> dict:
     
     from araos.clinical.twin.models import PatientDigitalTwinBuilder
     
-    builder = PatientDigitalTwinBuilder(env.db, env.patient_id, env.tenant_id)
-    twin = await builder.build()
+    builder = PatientDigitalTwinBuilder(env.repository, cache=env.cache)
+    twin = await builder.build(env.patient_id, env.tenant_id)
     
     print(f"   ✓ Twin reconstruído")
     print(f"   ✓ Diagnósticos: {len(twin.active_diagnoses)}")
