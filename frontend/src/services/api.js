@@ -1530,4 +1530,249 @@ export const emailVerificationService = {
   }
 };
 
+// ═══════════════════════════════════════════════════════════════
+// AraOS Week 11D — Digital Twin API
+// ═══════════════════════════════════════════════════════════════
+export const twinService = {
+  obterTwin: async (patientId) => {
+    try {
+      const response = await api.get(`/twin/${patientId}`);
+      return response.data.data || response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  obterResumo: async (patientId) => {
+    try {
+      const response = await api.get(`/twin/${patientId}/summary`);
+      return response.data.data || response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  obterTimeline: async (patientId) => {
+    try {
+      const response = await api.get(`/twin/${patientId}/timeline`);
+      return response.data.data || response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  obterOutcomes: async (patientId) => {
+    try {
+      const response = await api.get(`/twin/${patientId}/outcomes`);
+      return response.data.data || response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  obterDashboard: async (patientId) => {
+    try {
+      const response = await api.get(`/twin/${patientId}/dashboard`);
+      return response.data.data || response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════
+// AraOS Week 11D — Cannabis Module API
+// ═══════════════════════════════════════════════════════════════
+export const cannabisService = {
+  obterPerfil: async (patientId) => {
+    try {
+      const response = await api.get(`/cannabis/profiles/${patientId}`);
+      return response.data.data || response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  criarPerfil: async (payload) => {
+    try {
+      const response = await api.post('/cannabis/profiles', payload);
+      return response.data.data || response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  atualizarPerfil: async (patientId, payload) => {
+    try {
+      const response = await api.put(`/cannabis/profiles/${patientId}`, payload);
+      return response.data.data || response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  listarProdutos: async () => {
+    try {
+      const response = await api.get('/cannabis/products');
+      return response.data.data || response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  criarProduto: async (payload) => {
+    try {
+      const response = await api.post('/cannabis/products', payload);
+      return response.data.data || response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  listarDoses: async (patientId) => {
+    try {
+      const response = await api.get(`/cannabis/doses/${patientId}`);
+      return response.data.data || response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  criarDose: async (payload) => {
+    try {
+      const response = await api.post('/cannabis/doses', payload);
+      return response.data.data || response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  listarOutcomes: async (patientId, metric = null) => {
+    try {
+      const url = metric
+        ? `/cannabis/outcomes/${patientId}?metric=${encodeURIComponent(metric)}`
+        : `/cannabis/outcomes/${patientId}`;
+      const response = await api.get(url);
+      return response.data.data || response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  criarOutcome: async (payload) => {
+    try {
+      const response = await api.post('/cannabis/outcomes', payload);
+      return response.data.data || response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  listarAlertas: async (params = {}) => {
+    try {
+      const query = new URLSearchParams();
+      if (params.patient_id) query.append('patient_id', params.patient_id);
+      if (params.status) query.append('status', params.status);
+      if (params.severity) query.append('severity', params.severity);
+      const response = await api.get(`/cannabis/alerts?${query.toString()}`);
+      return response.data.data || response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  resolverAlerta: async (alertId) => {
+    try {
+      const response = await api.post(`/cannabis/alerts/${alertId}/resolve`);
+      return response.data.data || response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════
+// AraOS Week 11D — Follow-up Engine API
+// ═══════════════════════════════════════════════════════════════
+export const followupService = {
+  listarProgramas: async (patientId = null) => {
+    try {
+      const url = patientId ? `/followup/programs?patient_id=${patientId}` : '/followup/programs';
+      const response = await api.get(url);
+      return response.data.data || response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  criarPrograma: async (payload) => {
+    try {
+      const response = await api.post('/followup/programs', payload);
+      return response.data.data || response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  obterPrograma: async (programId) => {
+    try {
+      const response = await api.get(`/followup/programs/${programId}`);
+      return response.data.data || response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  listarFases: async (programId = null) => {
+    try {
+      const url = programId ? `/followup/phases?program_id=${programId}` : '/followup/phases';
+      const response = await api.get(url);
+      return response.data.data || response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  listarCheckpoints: async (params = {}) => {
+    try {
+      const query = new URLSearchParams();
+      if (params.program_id) query.append('program_id', params.program_id);
+      if (params.status) query.append('status', params.status);
+      const response = await api.get(`/followup/checkpoints?${query.toString()}`);
+      return response.data.data || response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  listarQuestionarios: async (programId = null) => {
+    try {
+      const url = programId ? `/followup/questionnaires?program_id=${programId}` : '/followup/questionnaires';
+      const response = await api.get(url);
+      return response.data.data || response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  listarRespostas: async (params = {}) => {
+    try {
+      const query = new URLSearchParams();
+      if (params.patient_id) query.append('patient_id', params.patient_id);
+      if (params.questionnaire_id) query.append('questionnaire_id', params.questionnaire_id);
+      const response = await api.get(`/followup/responses?${query.toString()}`);
+      return response.data.data || response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  criarResposta: async (payload) => {
+    try {
+      const response = await api.post('/followup/responses', payload);
+      return response.data.data || response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  listarAlertas: async (params = {}) => {
+    try {
+      const query = new URLSearchParams();
+      if (params.patient_id) query.append('patient_id', params.patient_id);
+      if (params.status) query.append('status', params.status);
+      const response = await api.get(`/followup/alerts?${query.toString()}`);
+      return response.data.data || response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  resolverAlerta: async (alertId) => {
+    try {
+      const response = await api.post(`/followup/alerts/${alertId}/resolve`);
+      return response.data.data || response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  }
+};
+
 export default api;

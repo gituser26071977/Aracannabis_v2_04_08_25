@@ -118,7 +118,7 @@ const PatientLogin = () => {
                         Portal do Paciente
                     </Typography>
                     <Typography variant="subtitle1" sx={{ opacity: 0.8 }}>
-                        Aracannabis - Sua Saúde em Primeiro Lugar
+                        AraOS • Powered by VisualSmartFlow Platform
                     </Typography>
                 </Box>
 

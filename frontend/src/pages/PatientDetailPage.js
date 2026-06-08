@@ -23,6 +23,9 @@ import EvolutionManager from '../components/EvolutionManager';
 import CombinedChartView from '../components/CombinedChartView';
 import ExameManager from '../components/ExameManager';
 import HCReportPanel from '../components/HCReportPanel';
+import DigitalTwinPanel from '../components/DigitalTwinPanel';
+import CannabisProfilePanel from '../components/CannabisProfilePanel';
+import FollowupPanel from '../components/FollowupPanel';
 
 // Componente TabPanel para exibir o conteúdo da aba selecionada
 function TabPanel(props) {
@@ -195,6 +198,9 @@ const PatientDetailPage = () => {
           <Tab label="Documentos" {...a11yProps(4)} />
           <Tab label="📊 Gráficos" {...a11yProps(5)} />
           <Tab label="⚖️ Laudo HC" {...a11yProps(6)} />
+          <Tab label="🧬 Twin Digital" {...a11yProps(7)} />
+          <Tab label="🌿 Perfil Cannabis" {...a11yProps(8)} />
+          <Tab label="📋 Acompanhamento" {...a11yProps(9)} />
         </Tabs>
       </Paper>
 
@@ -229,6 +235,18 @@ const PatientDetailPage = () => {
 
       <TabPanel value={tabValue} index={6}>
         <HCReportPanel patientId={patientId} />
+      </TabPanel>
+
+      <TabPanel value={tabValue} index={7}>
+        <DigitalTwinPanel patientId={patientId} />
+      </TabPanel>
+
+      <TabPanel value={tabValue} index={8}>
+        <CannabisProfilePanel patientId={patientId} />
+      </TabPanel>
+
+      <TabPanel value={tabValue} index={9}>
+        <FollowupPanel patientId={patientId} />
       </TabPanel>
 
     </Box>

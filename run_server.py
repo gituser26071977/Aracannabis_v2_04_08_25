@@ -7,7 +7,7 @@ from app_cors_livre import create_app
 
 if __name__ == '__main__':
     app = create_app()
-    print("🚀 Iniciando servidor Aracannabis...")
+    print("🚀 Starting AraOS server...")
     print("📱 API disponível em: http://localhost:5001")
     print("🔍 Status da API: http://localhost:5001/api/status")
     print("⏹️  Pressione Ctrl+C para parar")
