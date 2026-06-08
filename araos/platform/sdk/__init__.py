@@ -164,9 +164,23 @@ from araos.knowledge.observability import KnowledgeObservability, KnowledgeQuery
 from araos.knowledge.sources.organizational import OrganizationalMemory
 from araos.knowledge.sources.professional import ProfessionalMemory
 from araos.knowledge.sources.patient import PatientKnowledgeSource
-# Embedding contracts da Knowledge Layer (Week 8 Part 8)
-# Futuro: unificar com intelligence.embeddings.EmbeddingProvider
-# from araos.knowledge.embedding_contracts import ...
+# Specialty Framework (Week 10)
+from araos.specialties.core.definitions import (
+    SpecialtyDefinition, SpecialtyCategory, SpecialtyStatus, SpecialtyCapability,
+)
+from araos.specialties.core.profile import SpecialtyProfile, SpecialtyField, SpecialtyScore
+from araos.specialties.core.timeline import SpecialtyTimeline, SpecialtyTimelineEvent
+from araos.specialties.core.protocol import SpecialtyProtocol, ProtocolStep, ProtocolStepType, ProtocolTrigger
+from araos.specialties.core.workflow import (
+    SpecialtyWorkflow, WorkflowCheckpoint, WorkflowInstance, WorkflowStatus, WorkflowPhase,
+)
+from araos.specialties.core.dashboard import (
+    SpecialtyDashboard, SpecialtyMetric, SpecialtyKPI, SpecialtyChart,
+    SpecialtyMetricsCollector, MetricType, ChartType, KpiSeverity,
+)
+from araos.specialties.core.registry import SpecialtyRegistry
+from araos.specialties.core.agent import SpecialtyAgent
+from araos.specialties.core.knowledge import SpecialtyKnowledgeSource
 
 # Erros
 from araos.platform.shared.errors import (
@@ -366,6 +380,36 @@ __all__ = [
     "OrganizationalMemory",
     "ProfessionalMemory",
     "PatientKnowledgeSource",
+    # Specialty Framework (Week 10)
+    "SpecialtyDefinition",
+    "SpecialtyCategory",
+    "SpecialtyStatus",
+    "SpecialtyCapability",
+    "SpecialtyProfile",
+    "SpecialtyField",
+    "SpecialtyScore",
+    "SpecialtyTimeline",
+    "SpecialtyTimelineEvent",
+    "SpecialtyProtocol",
+    "ProtocolStep",
+    "ProtocolStepType",
+    "ProtocolTrigger",
+    "SpecialtyWorkflow",
+    "WorkflowCheckpoint",
+    "WorkflowInstance",
+    "WorkflowStatus",
+    "WorkflowPhase",
+    "SpecialtyDashboard",
+    "SpecialtyMetric",
+    "SpecialtyKPI",
+    "SpecialtyChart",
+    "SpecialtyMetricsCollector",
+    "MetricType",
+    "ChartType",
+    "KpiSeverity",
+    "SpecialtyRegistry",
+    "SpecialtyAgent",
+    "SpecialtyKnowledgeSource",
     # Erros
     "AraOSPlatformError",
     "EventValidationError",

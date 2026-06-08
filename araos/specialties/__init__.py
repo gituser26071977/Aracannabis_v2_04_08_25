@@ -1,0 +1,113 @@
+"""
+AraOS Specialty Framework.
+
+Camada oficial de especialidades da plataforma AraOS.
+
+Permite que qualquer especialidade seja implementada como um plugin.
+Nenhuma especialidade depende de código específico fora do framework.
+
+Week 10 — Specialty Framework Foundation
+"""
+
+from .core import (
+    SpecialtyDefinition,
+    SpecialtyCategory,
+    SpecialtyStatus,
+    SpecialtyCapability,
+    SpecialtyProfile,
+    SpecialtyField,
+    SpecialtyScore,
+    SpecialtyTimeline,
+    SpecialtyTimelineEvent,
+    SpecialtyProtocol,
+    ProtocolStep,
+    ProtocolStepType,
+    ProtocolTrigger,
+    SpecialtyWorkflow,
+    WorkflowCheckpoint,
+    WorkflowInstance,
+    WorkflowStatus,
+    WorkflowPhase,
+    SpecialtyDashboard,
+    SpecialtyMetric,
+    SpecialtyKPI,
+    SpecialtyChart,
+    SpecialtyMetricsCollector,
+    MetricType,
+    ChartType,
+    KpiSeverity,
+    SpecialtyRegistry,
+    SpecialtyAgent,
+    SpecialtyKnowledgeSource,
+)
+
+from .stubs import (
+    CANNABIS_DEFINITION,
+    CannabisProfile,
+    NUTROLOGY_DEFINITION,
+    NutrologyProfile,
+    PSYCHIATRY_DEFINITION,
+    PsychiatryProfile,
+    PSYCHOLOGY_DEFINITION,
+    PsychologyProfile,
+    CARDIOLOGY_DEFINITION,
+    CardiologyProfile,
+    NEPHROLOGY_DEFINITION,
+    NephrologyProfile,
+    PULMONOLOGY_DEFINITION,
+    PulmonologyProfile,
+    INFECTOLOGY_DEFINITION,
+    InfectologyProfile,
+    ALL_SPECIALTY_DEFINITIONS,
+)
+
+__all__ = [
+    # Core
+    "SpecialtyDefinition",
+    "SpecialtyCategory",
+    "SpecialtyStatus",
+    "SpecialtyCapability",
+    "SpecialtyProfile",
+    "SpecialtyField",
+    "SpecialtyScore",
+    "SpecialtyTimeline",
+    "SpecialtyTimelineEvent",
+    "SpecialtyProtocol",
+    "ProtocolStep",
+    "ProtocolStepType",
+    "ProtocolTrigger",
+    "SpecialtyWorkflow",
+    "WorkflowCheckpoint",
+    "WorkflowInstance",
+    "WorkflowStatus",
+    "WorkflowPhase",
+    "SpecialtyDashboard",
+    "SpecialtyMetric",
+    "SpecialtyKPI",
+    "SpecialtyChart",
+    "SpecialtyMetricsCollector",
+    "MetricType",
+    "ChartType",
+    "KpiSeverity",
+    "SpecialtyRegistry",
+    "SpecialtyAgent",
+    "SpecialtyKnowledgeSource",
+    # Stubs
+    "CANNABIS_DEFINITION",
+    "CannabisProfile",
+    "NUTROLOGY_DEFINITION",
+    "NutrologyProfile",
+    "PSYCHIATRY_DEFINITION",
+    "PsychiatryProfile",
+    "PSYCHOLOGY_DEFINITION",
+    "PsychologyProfile",
+    "CARDIOLOGY_DEFINITION",
+    "CardiologyProfile",
+    "NEPHROLOGY_DEFINITION",
+    "NephrologyProfile",
+    "PULMONOLOGY_DEFINITION",
+    "PulmonologyProfile",
+    "INFECTOLOGY_DEFINITION",
+    "InfectologyProfile",
+    "ALL_SPECIALTY_DEFINITIONS",
+]
