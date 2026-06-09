@@ -134,10 +134,44 @@ class VSFBridge:
     # Agendamentos
     # ──────────────────────────────────────────────
 
+    def criar_paciente(
+        self,
+        name: str,
+        phone: Optional[str] = None,
+        email: Optional[str] = None,
+        face_image_b64: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Cria um paciente no VSF (necessário para enrollment facial unificado).
+        Endpoint público /patients/register — não requer token."""
+        url = f"{self.base_url}/patients/register"
+
+        payload = {
+            "name": name,
+            "phone": phone,
+            "email": email,
+            "consent_data_processing": True,
+            "consent_version": "1.0",
+            "org_id": VSF_ORG_ID,
+        }
+        if face_image_b64:
+            payload["face_image_b64"] = face_image_b64
+
+        try:
+            resp = requests.post(url, json=payload, timeout=30)
+            resp.raise_for_status()
+            return resp.json()
+        except requests.exceptions.HTTPError as e:
+            logger.error(f"Erro HTTP ao criar paciente VSF: {e.response.text}")
+            raise
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Erro de rede ao criar paciente VSF: {e}")
+            raise
+
     def criar_agendamento(
         self,
         patient_name: str,
         patient_external_id: str,
+        vsf_patient_id: str,
         scheduled_for: datetime,
         exam_type: str = "consulta",
         room_id: Optional[str] = None,
@@ -150,6 +184,7 @@ class VSFBridge:
         payload = {
             "patient_name": patient_name,
             "patient_external_id": patient_external_id,
+            "patient_id": vsf_patient_id,
             "scheduled_for": scheduled_for.isoformat(),
             "exam_type": exam_type,
             "room_id": room_id,
