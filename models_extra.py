@@ -8,7 +8,7 @@ class UsuarioAssociacao(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     profissional_id = db.Column(db.Integer, db.ForeignKey('profissionais.id', ondelete='CASCADE'), nullable=False)
-    associacao_id = db.Column(db.String(36), db.ForeignKey('associacoes.id', ondelete='CASCADE'), nullable=False)
+    associacao_id = db.Column(db.Integer, db.ForeignKey('associacoes.id', ondelete='CASCADE'), nullable=False)
     role = db.Column(db.String, default='member') # 'admin', 'member', 'viewer'
     status = db.Column(db.String, default='active') # 'active', 'suspended', 'pending'
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
