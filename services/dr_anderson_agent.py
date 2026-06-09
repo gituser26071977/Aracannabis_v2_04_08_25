@@ -167,12 +167,35 @@ def criar_paciente_no_siap(dados: Dict) -> Optional[int]:
         return None
 
 
+def _criar_paciente_vsf(dados: Dict, face_image_b64: Optional[str] = None) -> Optional[str]:
+    """Cria paciente no Visual Smart Flow e retorna o patient_id."""
+    try:
+        result = vsf_bridge.criar_paciente(
+            name=dados.get("nome_completo", "Paciente"),
+            phone=dados.get("telefone", ""),
+            email=dados.get("email", ""),
+            face_image_b64=face_image_b64,
+        )
+        patient_id = result.get("id")
+        logger.info(f"[VSF] Paciente criado: {patient_id}")
+        return patient_id
+    except Exception as e:
+        logger.error(f"[VSF] Erro ao criar paciente: {e}")
+        return None
+
+
 def _sincronizar_agendamento_vsf(dados: Dict, data_hora: datetime) -> Optional[str]:
     """Cria agendamento no Visual Smart Flow e retorna o appointment_id."""
     try:
+        vsf_patient_id = dados.get("vsf_patient_id")
+        if not vsf_patient_id:
+            logger.warning("[VSF] vsf_patient_id não disponível, pulando agendamento")
+            return None
+
         result = vsf_bridge.criar_agendamento(
             patient_name=dados.get("nome_completo", "Paciente"),
             patient_external_id=str(dados.get("paciente_id_siap", "")),
+            vsf_patient_id=vsf_patient_id,
             scheduled_for=data_hora,
             exam_type="consulta",
             professional_id="1",  # Dr. Anderson
@@ -184,21 +207,6 @@ def _sincronizar_agendamento_vsf(dados: Dict, data_hora: datetime) -> Optional[s
     except Exception as e:
         logger.error(f"[VSF] Erro ao criar agendamento: {e}")
         return None
-
-
-def _enroll_face_vsf(appointment_id: str, image_base64: str) -> bool:
-    """Cadastra face do paciente no VSF."""
-    try:
-        result = vsf_bridge.enroll_face(
-            appointment_id=appointment_id,
-            image_base64=image_base64,
-            consent=True,
-        )
-        logger.info(f"[VSF] Enrollment facial realizado: {result.get('success')}")
-        return result.get("success", False)
-    except Exception as e:
-        logger.error(f"[VSF] Erro no enrollment facial: {e}")
-        return False
 
 
 # ──────────────────────────────────────────────
@@ -509,17 +517,46 @@ class DrAndersonAgent:
         state = get_state(phone)
         dados = state.get("dados", {})
 
-        # Se enviou foto (mídia) e já tem paciente cadastrado, tentar enrollment facial
+        # Se enviou foto (mídia), cadastrar/atualizar paciente no VSF com reconhecimento facial
         if media_base64 and mime_type and mime_type.startswith("image/"):
-            vsf_apt_id = state.get("vsf_appointment_id")
-            if vsf_apt_id:
-                success = _enroll_face_vsf(vsf_apt_id, media_base64)
-                if success:
+            vsf_patient_id = state.get("vsf_patient_id")
+            if not vsf_patient_id:
+                # Criar paciente no VSF com a foto (cadastro facial)
+                vsf_patient_id = _criar_paciente_vsf(dados, face_image_b64=media_base64)
+                if vsf_patient_id:
+                    state["vsf_patient_id"] = vsf_patient_id
+                    set_state(phone, state)
+                    
+                    # Se já tem agendamento no VSF, sincronizar patient_id (recria agendamento)
+                    if state.get("vsf_appointment_id"):
+                        try:
+                            # Aqui idealmente atualizaríamos o agendamento; por ora recriamos
+                            from datetime import timezone
+                            dt_str = state.get("vsf_scheduled_for")
+                            if dt_str:
+                                dt_obj = datetime.fromisoformat(dt_str)
+                                vsf_apt_id = _sincronizar_agendamento_vsf(dados, dt_obj)
+                                if vsf_apt_id:
+                                    state["vsf_appointment_id"] = vsf_apt_id
+                                    set_state(phone, state)
+                        except Exception as e:
+                            print(f"DEBUG: [Agent] Erro ao re-sincronizar agendamento VSF: {e}", flush=True)
+                    
                     return "✅ Selfie recebida e cadastro facial realizado com sucesso! Ao chegar na clínica, basta passar pela recepção que nosso sistema de visão computacional vai reconhecê-lo(a) automaticamente."
                 else:
-                    return "Recebi sua foto, mas não consegui cadastrar o reconhecimento facial. Pode tentar enviar outra selfie com mais luz e olhando para a câmera? 📸"
+                    return "Recebi sua foto, mas não consegui cadastrar o reconhecimento facial no momento. Pode tentar enviar outra selfie com mais luz e olhando para a câmera? 📸"
             else:
-                return "Recebi sua foto! Se quiser fazer o cadastro facial para check-in automático, precisamos agendar sua consulta primeiro. Me diga qual dia e horário prefere. 🌿"
+                # Paciente já existe no VSF, tentar atualizar face (recriar paciente com mesmos dados + nova foto)
+                # O endpoint /patients/register pode reconhecer e retornar o existente; se não, cria novo
+                try:
+                    novo_id = _criar_paciente_vsf(dados, face_image_b64=media_base64)
+                    if novo_id:
+                        state["vsf_patient_id"] = novo_id
+                        set_state(phone, state)
+                        return "✅ Selfie atualizada! Seu cadastro facial foi atualizado com sucesso."
+                except Exception as e:
+                    logger.error(f"[VSF] Erro ao atualizar face: {e}")
+                return "Recebi sua foto! Seu cadastro facial já está ativo. Se quiser atualizar, posso tentar novamente. 📸"
 
         # Tentar agendar se houver intenção clara
         agendamento = self._extrair_agendamento_ia(message)
@@ -538,9 +575,18 @@ class DrAndersonAgent:
                     vsf_msg = ""
                     if dados.get("paciente_id_siap"):
                         try:
+                            # Garantir que temos vsf_patient_id; se não, criar sem foto
+                            if not state.get("vsf_patient_id"):
+                                vsf_patient_id = _criar_paciente_vsf(dados)
+                                if vsf_patient_id:
+                                    state["vsf_patient_id"] = vsf_patient_id
+                                    dados["vsf_patient_id"] = vsf_patient_id
+                                    set_state(phone, state)
+                            
                             vsf_apt_id = _sincronizar_agendamento_vsf(dados, dt_obj)
                             if vsf_apt_id:
                                 state["vsf_appointment_id"] = vsf_apt_id
+                                state["vsf_scheduled_for"] = dt_obj.isoformat()
                                 set_state(phone, state)
                                 vsf_msg = "\n\n🔮 Também cadastrei seu agendamento no sistema de check-in inteligente. Se enviar uma selfie, farei seu cadastro facial para reconhecimento automático na recepção."
                         except Exception as vsf_err:
