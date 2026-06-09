@@ -15,8 +15,8 @@ class EmailService:
         self.password = os.getenv('SMTP_PASSWORD', '')
         self.use_tls = os.getenv('SMTP_USE_TLS', 'True').lower() == 'true'
         self.use_ssl = os.getenv('SMTP_USE_SSL', 'False').lower() == 'true'
-        self.email_from = os.getenv('EMAIL_FROM', 'suporte.aracannabis@arapath.com.br')
-        self.email_from_name = os.getenv('EMAIL_FROM_NAME', 'Aracannabis Sistema')
+        self.email_from = os.getenv('EMAIL_FROM', 'suporte@arapath.com.br')
+        self.email_from_name = os.getenv('EMAIL_FROM_NAME', 'AraOS — Clinical Intelligence Operating System')
         self.development_mode = os.getenv('EMAIL_DEVELOPMENT_MODE', 'True').lower() == 'true'
         print(f"DEBUG: EmailService initialized. User={self.username}, DevMode={self.development_mode}")
         
@@ -88,7 +88,7 @@ class EmailService:
         try:
             # Criar diretório de emails se não existir (usando caminho absoluto)
             base_dir = os.path.dirname(os.path.abspath(__file__))
-            project_root = os.path.dirname(base_dir)  # Only one level up to ARACANNABIS_PRONTUARIO_NO_AI
+            project_root = os.path.dirname(base_dir)  # Only one level up to ARAOS_PROJECT
             email_dir = os.path.join(project_root, "emails_simulados")
             os.makedirs(email_dir, exist_ok=True)
             logger.info(f"Diretório de emails simulado criado em: {email_dir}")
@@ -128,7 +128,7 @@ class EmailService:
     
     def send_approval_email(self, email, nome, usuario, senha_temporaria, data_expiracao):
         # Enviar email de aprovação com credenciais temporárias
-        subject = "🎉 Sua solicitação foi aprovada - Aracannabis Sistema"
+        subject = "🎉 Sua solicitação foi aprovada - AraOS"
         
         # Formatear data de expiração
         try:
@@ -142,7 +142,7 @@ class EmailService:
         
         # Create email body
         html_body = f"<p>Olá {nome},</p>"
-        html_body += "<p>Sua solicitação de acesso ao sistema Aracannabis foi aprovada!</p>"
+        html_body += "<p>Sua solicitação de acesso ao AraOS foi aprovada!</p>"
         html_body += "<p>Seus dados de acesso temporários:</p>"
         html_body += "<ul>"
         html_body += f"<li><strong>Usuário:</strong> {usuario}</li>"
@@ -155,7 +155,7 @@ class EmailService:
         return self.send_email(email, subject, html_body)
 
     def send_password_setup_email(self, email, nome, link_definicao, data_expiracao):
-        subject = "🔐 Defina sua senha - Aracannabis Sistema"
+        subject = "🔐 Defina sua senha - AraOS"
 
         try:
             if isinstance(data_expiracao, str):
@@ -167,17 +167,17 @@ class EmailService:
             data_formatada = "em 24 horas"
 
         html_body = f"<p>Olá {nome},</p>"
-        html_body += "<p>Recebemos sua solicitação para definir a senha de acesso ao Aracannabis.</p>"
+        html_body += "<p>Recebemos sua solicitação para definir a senha de acesso ao AraOS.</p>"
         html_body += f"<p><strong>Link para definir senha:</strong> <a href=\"{link_definicao}\">Definir senha</a></p>"
         html_body += f"<p>Este link expira em: <strong>{data_formatada}</strong></p>"
         html_body += "<p>Se você não solicitou, ignore este email.</p>"
-        html_body += "<p>Atenciosamente,<br>Equipe Aracannabis</p>"
+        html_body += "<p>Atenciosamente,<br>Equipe AraOS</p>"
 
         return self.send_email(email, subject, html_body)
 
     def send_exam_email(self, to_email, paciente_nome, exame_titulo, exame_data, exame_resultados, observacoes):
         # Enviar email de notificação de exame
-        subject = f"🔬 Resultado de Exame - {exame_titulo} - Aracannabis"
+        subject = f"🔬 Resultado de Exame - {exame_titulo} - AraOS"
         
         # Formatear data do exame
         try:
@@ -197,17 +197,17 @@ class EmailService:
         if observacoes:
             html_body += f"<p><strong>Observações:</strong> {observacoes}</p>"
         
-        html_body += "<p>Acesse o sistema Aracannabis para mais detalhes.</p>"
-        html_body += "<p>Atenciosamente,<br>Equipe Aracannabis</p>"
+        html_body += "<p>Acesse o AraOS para mais detalhes.</p>"
+        html_body += "<p>Atenciosamente,<br>Equipe AraOS</p>"
         
         # Send email
         return self.send_email(to_email, subject, html_body)
 
     def send_trial_expired_email(self, email, nome):
-        subject = "⏳ Seu período de testes acabou - Aracannabis"
+        subject = "⏳ Seu período de testes acabou - AraOS"
         
         html_body = f"<p>Olá {nome},</p>"
-        html_body += "<p>Esperamos que tenha aproveitado seu período de testes no Aracannabis!</p>"
+        html_body += "<p>Esperamos que tenha aproveitado seu período de testes no AraOS!</p>"
         html_body += "<p>Seu acesso gratuito de 7 dias expirou.</p>"
         html_body += "<h3>Para continuar usando o sistema, escolha um de nossos planos:</h3>"
         html_body += "<ul>"
@@ -221,12 +221,12 @@ class EmailService:
         return self.send_email(email, subject, html_body)
 
     def send_registration_received_email(self, email, nome):
-        subject = "🌿 Solicitação de Cadastro Recebida - Aracannabis"
+        subject = "🌿 Solicitação de Cadastro Recebida - AraOS"
         
         html_body = f"<p>Olá {nome},</p>"
-        html_body += "<p>Recebemos sua solicitação de cadastro no sistema Aracannabis.</p>"
+        html_body += "<p>Recebemos sua solicitação de cadastro no AraOS.</p>"
         html_body += "<p>Nossa equipe irá analisar seus dados (CRM, etc) e em breve você receberá um email com o resultado.</p>"
         html_body += "<p>Se aprovado, você terá 7 dias de acesso gratuito para testar a plataforma.</p>"
-        html_body += "<p>Atenciosamente,<br>Equipe Aracannabis</p>"
+        html_body += "<p>Atenciosamente,<br>Equipe AraOS</p>"
         
         return self.send_email(email, subject, html_body)

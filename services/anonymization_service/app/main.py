@@ -14,7 +14,7 @@ logger = logging.getLogger("anonymization_service")
 # Criar tabelas se não existirem (apenas se rodando isolado)
 # Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Aracannabis Anonymization Service", version="1.0.0")
+app = FastAPI(title="AraOS Anonymization Service", version="1.0.0")
 
 # Inicializar Core Services
 anonymizer = Anonymizer()

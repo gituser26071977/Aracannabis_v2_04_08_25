@@ -1,5 +1,5 @@
 """
-Rotas de configuração de IA para o Aracannabis
+Rotas de configuração de IA para o AraOS
 """
 
 from flask import Blueprint, request, jsonify

@@ -1,9 +1,9 @@
 version: '3.8'
 
 # ================================================================
-# SIAP - Sistema de Prontuário Aracannabis
+# AraOS — Clinical Intelligence Operating System
 # Docker Compose de PRODUÇÃO — Hostinger VPS
-# Domínio: aracannabis.com.br
+# Domínio: visualsmartflow.com.br / araos.visualsmartflow.com.br
 # Traefik v3 via rede externa "web"
 # Portas validadas no VPS (sem conflito)
 # ================================================================
@@ -51,8 +51,8 @@ services:
     environment:
       - FLASK_ENV=production
       - DATABASE_URL=postgresql://${POSTGRES_USER:-siap_user}:${POSTGRES_PASSWORD}@siap-db:5432/${POSTGRES_DB:-aracannabis}
-      - FRONTEND_BASE_URL=https://aracannabis.com.br
-      - CORS_ORIGINS=https://aracannabis.com.br,https://www.aracannabis.com.br
+      - FRONTEND_BASE_URL=https://visualsmartflow.com.br
+      - CORS_ORIGINS=https://visualsmartflow.com.br,https://www.visualsmartflow.com.br,https://araos.visualsmartflow.com.br
       - OLLAMA_BASE_URL=http://host.docker.internal:11434
       - ANONYMIZATION_SERVICE_URL=http://siap-anonymization:8000
       - OTEL_SDK_DISABLED=true
@@ -73,14 +73,14 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=web"
-      # Roteamento via subdomínio api.aracannabis.com.br
-      - "traefik.http.routers.siap-api.rule=Host(`api.aracannabis.com.br`)"
+      # Roteamento via subdomínio api.visualsmartflow.com.br
+      - "traefik.http.routers.siap-api.rule=Host(`api.visualsmartflow.com.br`)"
       - "traefik.http.routers.siap-api.entrypoints=websecure"
       - "traefik.http.routers.siap-api.tls=true"
       - "traefik.http.routers.siap-api.tls.certresolver=letsencrypt"
       - "traefik.http.services.siap-api.loadbalancer.server.port=5002"
       # Redirect HTTP → HTTPS
-      - "traefik.http.routers.siap-api-http.rule=Host(`api.aracannabis.com.br`)"
+      - "traefik.http.routers.siap-api-http.rule=Host(`api.visualsmartflow.com.br`)"
       - "traefik.http.routers.siap-api-http.entrypoints=web"
       - "traefik.http.routers.siap-api-http.middlewares=siap-redirect-https"
       - "traefik.http.middlewares.siap-redirect-https.redirectscheme.scheme=https"
@@ -93,8 +93,8 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        REACT_APP_API_URL: https://api.aracannabis.com.br
-        REACT_APP_WS_URL: wss://api.aracannabis.com.br/ws
+        REACT_APP_API_URL: https://api.visualsmartflow.com.br
+        REACT_APP_WS_URL: wss://api.visualsmartflow.com.br/ws
     container_name: siap-frontend
     restart: always
     networks:
@@ -105,25 +105,25 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=web"
-      # Frontend: aracannabis.com.br (naked)
-      - "traefik.http.routers.siap-web.rule=Host(`aracannabis.com.br`)"
+      # Frontend: visualsmartflow.com.br / araos.visualsmartflow.com.br
+      - "traefik.http.routers.siap-web.rule=Host(`visualsmartflow.com.br`) || Host(`araos.visualsmartflow.com.br`)"
       - "traefik.http.routers.siap-web.entrypoints=websecure"
       - "traefik.http.routers.siap-web.tls=true"
       - "traefik.http.routers.siap-web.tls.certresolver=letsencrypt"
       - "traefik.http.services.siap-web.loadbalancer.server.port=80"
       # Frontend www → naked redirect
-      - "traefik.http.routers.siap-web-www.rule=Host(`www.aracannabis.com.br`)"
+      - "traefik.http.routers.siap-web-www.rule=Host(`www.visualsmartflow.com.br`)"
       - "traefik.http.routers.siap-web-www.entrypoints=websecure"
       - "traefik.http.routers.siap-web-www.tls=true"
       - "traefik.http.routers.siap-web-www.tls.certresolver=letsencrypt"
       - "traefik.http.routers.siap-web-www.middlewares=siap-www-redirect"
       - "traefik.http.routers.siap-web-www.service=siap-web"
       # Middleware www → naked (compartilhado com o backend)
-      - "traefik.http.middlewares.siap-www-redirect.redirectregex.regex=^https://www\\.aracannabis\\.com\\.br(.*)"
-      - "traefik.http.middlewares.siap-www-redirect.redirectregex.replacement=https://aracannabis.com.br$${1}"
+      - "traefik.http.middlewares.siap-www-redirect.redirectregex.regex=^https://www\\.visualsmartflow\\.com\\.br(.*)"
+      - "traefik.http.middlewares.siap-www-redirect.redirectregex.replacement=https://visualsmartflow.com.br$${1}"
       - "traefik.http.middlewares.siap-www-redirect.redirectregex.permanent=true"
       # Redirect HTTP → HTTPS (naked e www)
-      - "traefik.http.routers.siap-web-http.rule=Host(`aracannabis.com.br`,`www.aracannabis.com.br`)"
+      - "traefik.http.routers.siap-web-http.rule=Host(`visualsmartflow.com.br`,`www.visualsmartflow.com.br`,`araos.visualsmartflow.com.br`)"
       - "traefik.http.routers.siap-web-http.entrypoints=web"
       - "traefik.http.routers.siap-web-http.middlewares=siap-redirect-https"
     healthcheck:

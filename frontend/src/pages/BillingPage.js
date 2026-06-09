@@ -118,7 +118,7 @@ const BillingPage = () => {
                 </Stack>
                 <Typography variant="h4" color="success.main">R${plano.preco_mensal}/mês</Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ my: 1 }}>
-                  {plano.descricao || 'Plano do sistema Aracannabis'}
+                  {plano.descricao || 'Plano do AraOS — Clinical Intelligence Operating System'}
                 </Typography>
                 <Stack spacing={1}>
                   <Chip label={`Pacientes: ${formatPacientes(plano.limite_pacientes)}`} size="small" />

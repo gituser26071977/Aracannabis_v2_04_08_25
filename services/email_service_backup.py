@@ -20,7 +20,7 @@ class EmailService:
         self.use_tls = os.getenv('SMTP_USE_TLS', 'True').lower() == 'true'
         self.use_ssl = os.getenv('SMTP_USE_SSL', 'False').lower() == 'true'
         self.email_from = os.getenv('EMAIL_FROM', 'suporte@agentesinteligentes.pro')
-        self.email_from_name = os.getenv('EMAIL_FROM_NAME', 'Aracannabis Sistema')
+        self.email_from_name = os.getenv('EMAIL_FROM_NAME', 'AraOS')
         
     def send_email(self, to_email, subject, html_body, text_body=None):
         """Enviar email usando SMTP"""
@@ -62,7 +62,7 @@ class EmailService:
     def send_approval_email(self, email, nome, usuario, senha_temporaria, data_expiracao):
         """Enviar email de aprovação com credenciais temporárias"""
         
-        subject = "🎉 Sua solicitação foi aprovada - Aracannabis Sistema"
+        subject = "🎉 Sua solicitação foi aprovada - AraOS"
         
         # Formatear data de expiração
         try:
@@ -93,14 +93,14 @@ class EmailService:
         <body>
             <div class="container">
                 <div class="header">
-                    <h1>🌿 Aracannabis Sistema</h1>
+                    <h1>🌿 AraOS</h1>
                     <p>Sua solicitação foi aprovada!</p>
                 </div>
                 
                 <div class="content">
                     <h2>Olá, {nome}!</h2>
                     
-                    <p>Temos o prazer de informar que sua solicitação de acesso ao sistema Aracannabis foi <strong>aprovada</strong>!</p>
+                    <p>Temos o prazer de informar que sua solicitação de acesso ao AraOS foi <strong>aprovada</strong>!</p>
                     
                     <p>Você agora tem acesso temporário ao nosso sistema de prontuário eletrônico para pacientes de cannabis medicinal.</p>
                     
@@ -140,12 +140,12 @@ class EmailService:
                     <p>Esperamos que o sistema atenda às suas necessidades. Após o período de avaliação, entre em contato para discutir a contratação.</p>
                     
                     <p>Atenciosamente,<br>
-                    <strong>Equipe Aracannabis</strong></p>
+                    <strong>Equipe AraOS</strong></p>
                 </div>
                 
                 <div class="footer">
                     <p>Este é um email automático. Para suporte, responda este email ou entre em contato conosco.</p>
-                    <p>© 2025 Aracannabis Sistema - Todos os direitos reservados</p>
+                    <p>© 2025 AraOS - Todos os direitos reservados</p>
                 </div>
             </div>
         </body>
@@ -153,11 +153,11 @@ class EmailService:
         """
         
         text_body = f"""
-        Aracannabis Sistema - Solicitação Aprovada
+        AraOS - Solicitação Aprovada
         
         Olá, {nome}!
         
-        Sua solicitação de acesso ao sistema Aracannabis foi APROVADA!
+        Sua solicitação de acesso ao AraOS foi APROVADA!
         
         CREDENCIAIS DE ACESSO:
         Usuário: {usuario}
@@ -172,7 +172,7 @@ class EmailService:
         Acesse: http://localhost:3000/login
         
         Atenciosamente,
-        Equipe Aracannabis
+        Equipe AraOS
         """
         
         return self.send_email(email, subject, html_body, text_body)
@@ -180,7 +180,7 @@ class EmailService:
     def send_rejection_email(self, email, nome, observacoes=""):
         """Enviar email de rejeição"""
         
-        subject = "Solicitação de Acesso - Aracannabis Sistema"
+        subject = "Solicitação de Acesso - AraOS"
         
         html_body = f"""
         <!DOCTYPE html>
@@ -199,14 +199,14 @@ class EmailService:
         <body>
             <div class="container">
                 <div class="header">
-                    <h1>🌿 Aracannabis Sistema</h1>
+                    <h1>🌿 AraOS</h1>
                     <p>Sobre sua solicitação de acesso</p>
                 </div>
                 
                 <div class="content">
                     <h2>Olá, {nome}!</h2>
                     
-                    <p>Agradecemos seu interesse no sistema Aracannabis.</p>
+                    <p>Agradecemos seu interesse no AraOS.</p>
                     
                     <p>Após análise, não foi possível aprovar sua solicitação de acesso no momento.</p>
                     
@@ -217,12 +217,12 @@ class EmailService:
                     <p>Para dúvidas ou esclarecimentos, entre em contato conosco.</p>
                     
                     <p>Atenciosamente,<br>
-                    <strong>Equipe Aracannabis</strong></p>
+                    <strong>Equipe AraOS</strong></p>
                 </div>
                 
                 <div class="footer">
                     <p>Este é um email automático. Para suporte, responda este email.</p>
-                    <p>© 2025 Aracannabis Sistema - Todos os direitos reservados</p>
+                    <p>© 2025 AraOS - Todos os direitos reservados</p>
                 </div>
             </div>
         </body>
@@ -230,11 +230,11 @@ class EmailService:
         """
         
         text_body = f"""
-        Aracannabis Sistema - Solicitação de Acesso
+        AraOS - Solicitação de Acesso
         
         Olá, {nome}!
         
-        Agradecemos seu interesse no sistema Aracannabis.
+        Agradecemos seu interesse no AraOS.
         
         Após análise, não foi possível aprovar sua solicitação no momento.
         
@@ -243,7 +243,7 @@ class EmailService:
         Você pode enviar uma nova solicitação a qualquer momento.
         
         Atenciosamente,
-        Equipe Aracannabis
+        Equipe AraOS
         """
         
         return self.send_email(email, subject, html_body, text_body)

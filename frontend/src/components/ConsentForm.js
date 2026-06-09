@@ -69,7 +69,7 @@ const ConsentForm = ({ patientId, onConsent, initialConsent = false }) => {
       ) : null}
       
       <Typography variant="body1" paragraph>
-        Ao utilizar os serviços da Aracannabis, você concorda com a coleta e processamento dos seus dados pessoais 
+        Ao utilizar os serviços da AraOS, você concorda com a coleta e processamento dos seus dados pessoais 
         conforme descrito em nossa Política de Privacidade. Este consentimento é necessário para que possamos 
         fornecer os serviços médicos e acompanhar seu tratamento adequadamente.
       </Typography>
@@ -224,7 +224,7 @@ const ConsentForm = ({ patientId, onConsent, initialConsent = false }) => {
             </Typography>
             <Typography variant="body1" paragraph>
               Para exercer seus direitos ou obter mais informações sobre como tratamos seus dados pessoais, 
-              entre em contato conosco através do e-mail: privacidade@aracannabis.com.br
+              entre em contato conosco através do e-mail: privacidade@arapath.com.br
             </Typography>
           </DialogContentText>
         </DialogContent>

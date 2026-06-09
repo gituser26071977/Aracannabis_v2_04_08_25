@@ -291,7 +291,7 @@ justify-content: center;
         <div class="rodape">
             <p>Prescrição emitida em {data_formatada}</p>
             <p>Este documento possui validade legal conforme legislação vigente</p>
-            <p><small>Sistema SIAP - Aracannabis</small></p>
+            <p><small>AraOS — Clinical Intelligence Operating System</small></p>
         </div>
     </body>
     </html>

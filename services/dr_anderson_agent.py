@@ -114,7 +114,7 @@ def criar_lead_no_siap(dados: Dict) -> bool:
 # Agente de IA
 # ──────────────────────────────────────────────
 
-SYSTEM_PROMPT_BASE = """Você é a LIA, assistente SDR dedicada do Dr. Anderson Holzwarth, especialista em Cannabis Medicinal pela Aracannabis.
+SYSTEM_PROMPT_BASE = """Você é a LIA, assistente SDR dedicada do Dr. Anderson Holzwarth, especialista em Cannabis Medicinal pela Arapath.
 
 PERFIL DO MÉDICO:
 - Dr. Anderson Holzwarth

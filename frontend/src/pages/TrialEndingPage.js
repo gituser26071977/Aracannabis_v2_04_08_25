@@ -31,7 +31,7 @@ const DEPOIMENTOS = [
   {
     nome: "Dra. Ana Paula Silva",
     especialidade: "Neurologista",
-    texto: "O Aracannabis transformou minha prática clínica. Consigo acompanhar meus pacientes de cannabis medicinal com precisão e segurança.",
+    texto: "O AraOS transformou minha prática clínica. Consigo acompanhar meus pacientes com precisão e segurança.",
     avatar: "AS"
   },
   {
@@ -223,7 +223,7 @@ const TrialEndingPage = () => {
         <Box sx={{ mt: 4 }}>
           <Typography variant="body2" color="text.secondary">
             Dúvidas? Fale com nosso suporte:{' '}
-            <strong>suporte@aracannabis.com.br</strong>
+            <strong>suporte@arapath.com.br</strong>
           </Typography>
         </Box>
       </Paper>

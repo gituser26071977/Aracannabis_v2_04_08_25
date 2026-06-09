@@ -19,7 +19,7 @@ const SecurityPage = () => {
         </Typography>
         
         <Typography variant="body1" paragraph>
-          A Aracannabis está comprometida em proteger a privacidade e a segurança dos dados de nossos pacientes. 
+          A AraOS está comprometida em proteger a privacidade e a segurança dos dados de nossos pacientes. 
           Implementamos medidas técnicas e organizacionais robustas para garantir a conformidade com a Lei Geral 
           de Proteção de Dados (LGPD) do Brasil e as melhores práticas de segurança da informação.
         </Typography>
@@ -62,14 +62,14 @@ const SecurityPage = () => {
         
         <Typography variant="body1" paragraph>
           Se você tiver dúvidas sobre nossa política de privacidade ou quiser exercer seus direitos como titular de dados, 
-          entre em contato conosco através do e-mail: <Link href="mailto:privacidade@aracannabis.com.br">privacidade@aracannabis.com.br</Link>
+          entre em contato conosco através do e-mail: <Link href="mailto:privacidade@arapath.com.br">privacidade@arapath.com.br</Link>
         </Typography>
         
         <Typography variant="body1" paragraph>
           Estamos à disposição para esclarecer qualquer dúvida e atender às solicitações relacionadas aos seus dados pessoais.
         </Typography>
         
-        <Button variant="contained" color="primary" href="mailto:privacidade@aracannabis.com.br">
+        <Button variant="contained" color="primary" href="mailto:privacidade@arapath.com.br">
           Contatar Responsável pela Proteção de Dados
         </Button>
       </Paper>

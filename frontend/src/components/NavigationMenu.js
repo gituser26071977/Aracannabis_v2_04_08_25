@@ -67,7 +67,7 @@ const NavigationMenu = ({ open, onClose }) => {
         if (pathname.startsWith('/cultivo')) return 'SGC';
         const publicPages = ['/', '/login', '/planos', '/cadastro-profissionais', '/definir-senha', '/seguranca'];
         if (publicPages.some(p => pathname.startsWith(p)) && pathname !== '/') return 'PUBLIC';
-        return 'SIAP';
+        return 'AraOS';
     };
 
     const activeModule = getActiveModule(location.pathname);
@@ -112,7 +112,7 @@ const NavigationMenu = ({ open, onClose }) => {
     if (!currentUser) {
         sections.push({ title: '🌐 NAVEGAÇÃO', items: publicItems });
     } else {
-        // SIAP Section
+        // AraOS Section
         const siapSectionItems = [...commonItems, ...siapItems];
         sections.push({ title: '📋 PRONTUÁRIO', items: siapSectionItems });
 
@@ -413,7 +413,7 @@ const NavigationMenu = ({ open, onClose }) => {
                     }}
                 >
                     <Typography variant="caption" sx={{ fontSize: '0.65rem', letterSpacing: '0.05em' }}>
-                        🌿 Aracannabis SIAP v2.0
+                        AraOS • Powered by VisualSmartFlow Platform
                     </Typography>
                 </Box>
             </Box>

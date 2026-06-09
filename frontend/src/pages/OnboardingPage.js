@@ -463,7 +463,7 @@ const OnboardingPage = () => {
       <Paper elevation={2} sx={{ p: { xs: 2, sm: 4 }, borderRadius: 4 }}>
         <Box sx={{ textAlign: 'center', mb: 3 }}>
           <Typography variant="h4" gutterBottom fontWeight={700}>
-            🌿 Bem-vindo ao Aracannabis
+            AraOS — Clinical Intelligence Operating System
           </Typography>
           <Typography variant="body1" color="text.secondary">
             Vamos configurar sua conta em poucos passos

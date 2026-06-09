@@ -1,5 +1,5 @@
 """
-Rotas administrativas do sistema Aracannabis.
+Rotas administrativas do sistema AraOS.
 Acesso restrito a usuários com role 'admin'.
 """
 from flask import Blueprint, request, jsonify, current_app

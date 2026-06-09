@@ -44,7 +44,7 @@ const VerifyEmailPage = () => {
     <Container maxWidth="sm" sx={{ py: 8 }}>
       <Paper elevation={2} sx={{ p: 4, borderRadius: 4, textAlign: 'center' }}>
         <Typography variant="h4" gutterBottom fontWeight={700}>
-          🌿 Aracannabis
+          AraOS
         </Typography>
         <Typography variant="body1" color="text.secondary" gutterBottom>
           Verificação de Email

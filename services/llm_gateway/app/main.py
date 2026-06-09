@@ -14,7 +14,7 @@ logger = logging.getLogger("llm_gateway")
 
 # Base.metadata.create_all(bind=engine) # Tabelas já devem vir do migration central ou create_compliance_tables
 
-app = FastAPI(title="Aracannabis LLM Gateway", version="1.0.0")
+app = FastAPI(title="AraOS LLM Gateway", version="1.0.0")
 
 # Provider Factory
 def get_provider(name: str):

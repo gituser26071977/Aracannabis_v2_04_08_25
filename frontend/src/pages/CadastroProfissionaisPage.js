@@ -435,7 +435,7 @@ const CadastroProfissionaisPage = () => {
             Cadastro de Profissionais
           </Typography>
           <Typography variant="body1" color="text.secondary">
-            Solicite acesso ao sistema Aracannabis
+            Solicite acesso ao AraOS — Clinical Intelligence Operating System
           </Typography>
         </Box>
 

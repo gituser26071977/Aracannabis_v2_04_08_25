@@ -392,7 +392,7 @@ const AIChatPage = () => {
       </Stack>
 
       <Typography variant="body1" color="text.secondary" mb={3} maxWidth={750}>
-        Esta experiência é baseada no mesmo chat inteligente utilizado pelo Aracannabis, com
+        Esta experiência é baseada no mesmo chat inteligente utilizado pelo AraOS, com
         atalhos rápidos, histórico persistido e acesso ao prontuário selecionado. Use um paciente
         para contextualizar ou continue sem contexto para perguntas gerais.
       </Typography>

@@ -84,7 +84,7 @@ class MercadoPagoProvider(IPaymentProvider):
                 "transaction_amount": float(amount),
                 "currency_id": "BRL",
             },
-            "back_url": kwargs.get("back_url", "https://app.aracannabis.com.br/pagamento-sucesso"),
+            "back_url": kwargs.get("back_url", "https://araos.visualsmartflow.com.br/pagamento-sucesso"),
             "status": "pending",
         }
         result = self._request("POST", "/preapproval", payload)

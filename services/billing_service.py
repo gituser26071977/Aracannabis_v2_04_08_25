@@ -54,7 +54,7 @@ class BillingService:
             customer_email="cliente@example.com",
             amount=valor,
             method=metodo,
-            description="Assinatura Aracannabis"
+            description="Assinatura AraOS"
         )
         fatura.cobranca_id = charge.get("id")
         db.session.commit()

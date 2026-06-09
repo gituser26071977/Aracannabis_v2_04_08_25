@@ -9,7 +9,7 @@ import google.generativeai as genai
 
 sdr_bp = Blueprint("sdr", __name__)
 
-SIAP_API_URL = os.getenv("SIAP_API_URL", "https://api.aracannabis.com.br")
+SIAP_API_URL = os.getenv("SIAP_API_URL", "https://api.visualsmartflow.com.br")
 EVOLUTION_API_URL = os.getenv("EVOLUTION_API_URL", "http://147.93.33.253:8080")
 EVOLUTION_API_KEY = os.getenv(
     "EVOLUTION_API_KEY",

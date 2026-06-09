@@ -1,5 +1,5 @@
 """
-Configurações de segurança para o sistema Aracannabis.
+Configurações de segurança para o sistema AraOS.
 Este módulo contém configurações e funções relacionadas à segurança da aplicação.
 """
 
@@ -47,9 +47,9 @@ ALLOWED_ORIGINS = [
     'http://localhost:5003',
     'http://localhost:5010',
     'http://backend:5002',
-    'https://aracannabis.com.br',
-    'https://www.aracannabis.com.br',
-    'https://app.aracannabis.com.br',
+    'https://visualsmartflow.com.br',
+    'https://www.visualsmartflow.com.br',
+    'https://araos.visualsmartflow.com.br',
     'http://192.168.0.104:3000',
     'http://192.168.0.104:3000',
     'http://192.168.0.104:5002',

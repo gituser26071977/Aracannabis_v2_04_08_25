@@ -1,5 +1,5 @@
 """
-Sistema de Agentes de IA para o Aracannabis
+Sistema de Agentes de IA para o AraOS
 Versão otimizada com fallbacks e tratamento de erros
 """
 

@@ -35,7 +35,7 @@ function SimpleLogin() {
         },
         body: JSON.stringify({
           usuario: usuario || 'admin',
-          senha: senha || 'Aracannabis@2025'
+          senha: senha || 'AraOS@2025'
         })
       });
 
@@ -88,7 +88,7 @@ function SimpleLogin() {
         margin="normal"
         value={senha}
         onChange={(e) => setSenha(e.target.value)}
-        placeholder="Aracannabis@2025"
+        placeholder="AraOS@2025"
       />
       
       <Button
