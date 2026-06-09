@@ -82,7 +82,7 @@ class WhatsAppService:
             
         msg = (
             f"Olá Dr(a). {nome}, tudo bem? 👋\n\n"
-            f"Seu cadastro no *Aracannabis Prontuário* foi aprovado! ✅\n\n"
+            f"Seu cadastro no *AraOS* foi aprovado! ✅\n\n"
             f"Você já pode acessar seu consultório virtual e começar a atender.\n"
             f"Se tiver dúvidas, estamos à disposição."
         )

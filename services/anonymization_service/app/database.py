@@ -8,7 +8,7 @@ load_dotenv()
 
 # Conectar ao mesmo banco da aplicação principal para compartilhar dados de consentimento e mapas
 # Em produção, pode ser um esquema separado, mas aqui precisamos acessar patient_consents
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///../../../aracannabis.db")
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///../../../araos.db")
 
 # Ajuste para SQLite relativo se necessário
 if DATABASE_URL.startswith("sqlite"):

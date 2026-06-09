@@ -1,5 +1,5 @@
 """
-Rotas para o sistema multi-agente CrewAI do Aracannabis
+Rotas para o sistema multi-agente CrewAI do AraOS
 """
 
 import os
@@ -265,7 +265,7 @@ def enviar_relatorio_email():
         <body>
             <div class="container">
                 <div class="header">
-                    <h1>🏥 Relatório Médico - Aracannabis</h1>
+                    <h1>🏥 Relatório Médico - AraOS</h1>
                     <p>Paciente: {paciente.nome} | Data: {datetime.now().strftime('%d/%m/%Y')}</p>
                 </div>
                 
@@ -274,9 +274,9 @@ def enviar_relatorio_email():
                 </div>
                 
                 <div class="footer">
-                    <p>Este relatório foi gerado automaticamente pelo sistema Aracannabis usando inteligência artificial.</p>
+                    <p>Este relatório foi gerado automaticamente pelo AraOS usando inteligência artificial.</p>
                     <p>Em caso de dúvidas, entre em contato com o profissional responsável.</p>
-                    <p><strong>Sistema Aracannabis</strong> - Assistência Médica Inteligente</p>
+                    <p><strong>AraOS</strong> — Clinical Intelligence Operating System</p>
                 </div>
             </div>
         </body>
@@ -284,7 +284,7 @@ def enviar_relatorio_email():
         """
         
         corpo_texto = f"""
-        Relatório Médico - Aracannabis
+        Relatório Médico - AraOS
         
         Paciente: {paciente.nome}
         Data: {datetime.now().strftime('%d/%m/%Y')}
@@ -292,10 +292,10 @@ def enviar_relatorio_email():
         {relatorio}
         
         ---
-        Este relatório foi gerado automaticamente pelo sistema Aracannabis usando inteligência artificial.
+        Este relatório foi gerado automaticamente pelo AraOS usando inteligência artificial.
         Em caso de dúvidas, entre em contato com o profissional responsável.
         
-        Sistema Aracannabis - Assistência Médica Inteligente
+        AraOS — Clinical Intelligence Operating System
         """
         
         # Enviar email

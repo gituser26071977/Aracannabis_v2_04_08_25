@@ -189,7 +189,7 @@ def gerar_html_relatorio(relatorio_data: dict) -> str:
         </div>
         
         <div class="rodape">
-            <p>Documento gerado eletronicamente pelo Sistema Aracannabis em {data_formatada}</p>
+            <p>Documento gerado eletronicamente pelo AraOS em {data_formatada}</p>
             <p>Este relatório é confidencial e destinado apenas ao paciente e equipe médica autorizada.</p>
         </div>
     </body>

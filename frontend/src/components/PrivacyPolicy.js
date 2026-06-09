@@ -32,7 +32,7 @@ const PrivacyPolicy = () => {
       <Divider sx={{ my: 2 }} />
       
       <Typography variant="body1" paragraph>
-        A Aracannabis está comprometida com a proteção da sua privacidade e com o cumprimento da 
+        A AraOS está comprometida com a proteção da sua privacidade e com o cumprimento da 
         Lei Geral de Proteção de Dados (LGPD) do Brasil. Esta política de privacidade descreve como 
         coletamos, usamos, compartilhamos e protegemos suas informações pessoais.
       </Typography>
@@ -189,7 +189,7 @@ const PrivacyPolicy = () => {
         
         <Typography variant="body1" paragraph>
           Para exercer seus direitos ou obter mais informações sobre como tratamos seus dados pessoais, 
-          entre em contato conosco através do e-mail: privacidade@aracannabis.com.br
+          entre em contato conosco através do e-mail: privacidade@arapath.com.br
         </Typography>
       </Box>
       

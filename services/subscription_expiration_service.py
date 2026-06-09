@@ -204,7 +204,7 @@ class SubscriptionExpirationService:
         if not profissional.email:
             return {'error': 'Profissional sem email cadastrado'}
         
-        subject = f"⏰ Seu acesso expira em {days_remaining} dia(s) - Aracannabis"
+        subject = f"⏰ Seu acesso expira em {days_remaining} dia(s) - AraOS"
         
         html_body = f"""
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -219,7 +219,7 @@ class SubscriptionExpirationService:
                 <p style="margin: 5px 0 0 0;"><strong>📅 Data de expiração:</strong> {profissional.data_expiracao.strftime('%d/%m/%Y às %H:%M')}</p>
             </div>
             
-            <p>Para continuar utilizando o sistema Aracannabis sem interrupções, escolha um de nossos planos:</p>
+            <p>Para continuar utilizando o AraOS sem interrupções, escolha um de nossos planos:</p>
             
             <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
                 <h3 style="margin-top: 0;">📋 Planos Disponíveis</h3>
@@ -228,11 +228,11 @@ class SubscriptionExpirationService:
             </div>
             
             <p style="margin-top: 30px;">Caso tenha dúvidas, nossa equipe está à disposição:</p>
-            <p>📧 Email: contato@aracannabis.com.br<br>
+            <p>📧 Email: contato@arapath.com.br<br>
             📱 WhatsApp: (11) 99999-9999</p>
             
             <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
-            <p style="color: #666; font-size: 12px;">Este é um email automático do sistema Aracannabis.</p>
+            <p style="color: #666; font-size: 12px;">Este é um email automático do AraOS.</p>
         </div>
         """
         
@@ -262,7 +262,7 @@ class SubscriptionExpirationService:
         if not profissional.email:
             return {'error': 'Profissional sem email cadastrado'}
         
-        subject = "💼 Continue usando o Aracannabis - Escolha seu Plano"
+        subject = "💼 Continue usando o AraOS - Escolha seu Plano"
         
         html_body = f"""
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -270,13 +270,13 @@ class SubscriptionExpirationService:
             
             <p>Olá <strong>Dr(a). {profissional.nome}</strong>,</p>
             
-            <p>Esperamos que tenha aproveitado o período de teste do <strong>Aracannabis</strong>!</p>
+            <p>Esperamos que tenha aproveitado o período de teste do <strong>AraOS</strong>!</p>
             
             <div style="background: #e3f2fd; border-left: 4px solid #2196F3; padding: 15px; margin: 20px 0;">
                 <p style="margin: 0;">Seu acesso expirou, mas você pode continuar aproveitando todos os benefícios do sistema.</p>
             </div>
             
-            <h3>🎯 Por que assinar o Aracannabis?</h3>
+            <h3>🎯 Por que assinar o AraOS?</h3>
             
             <ul style="line-height: 1.8;">
                 <li>📊 <strong>Gestão completa</strong> de prontuários e pacientes</li>
@@ -307,7 +307,7 @@ class SubscriptionExpirationService:
             </div>
             
             <p style="margin-top: 30px;">Precisa de ajuda para escolher? Entre em contato:</p>
-            <p>📧 Email: contato@aracannabis.com.br<br>
+            <p>📧 Email: contato@arapath.com.br<br>
             📱 WhatsApp: (11) 99999-9999<br>
             💬 Chat: Disponível no sistema</p>
             
@@ -316,7 +316,7 @@ class SubscriptionExpirationService:
             </div>
             
             <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
-            <p style="color: #666; font-size: 12px;">Este email foi enviado automaticamente pelo sistema Aracannabis.</p>
+            <p style="color: #666; font-size: 12px;">Este email foi enviado automaticamente pelo AraOS.</p>
         </div>
         """
         
@@ -326,7 +326,7 @@ class SubscriptionExpirationService:
                 to_email=profissional.email,
                 subject=subject,
                 html_body=html_body,
-                text_body="Seu trial expirou. Continue usando o Aracannabis! Veja os planos em: http://localhost:3000/pricing"
+                text_body="Seu trial expirou. Continue usando o AraOS! Veja os planos em: http://localhost:3000/pricing"
             )
         except Exception as e:
             logger.error(f"Erro ao enviar proposta de assinatura: {str(e)}")

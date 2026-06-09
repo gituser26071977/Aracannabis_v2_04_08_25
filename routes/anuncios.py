@@ -77,7 +77,7 @@ def init_anuncios_table():
                 {
                     'titulo': 'Laboratório de Análises Canábicas',
                     'descricao': 'Análises completas de potência, pesticidas e metais pesados. Laudos técnicos certificados.',
-                    'imagem': '/Aracannabis.png',
+                    'imagem': '/AraOS.png',
                     'url': 'https://example.com/laboratorio',
                     'empresa': 'CannaLab Análises',
                     'categoria': 'Serviços',
@@ -90,7 +90,7 @@ def init_anuncios_table():
                 {
                     'titulo': 'Equipamentos para Cultivo',
                     'descricao': 'LED grow lights, estufas, sistemas de irrigação e todos os equipamentos para cultivo medicinal.',
-                    'imagem': '/Aracannabis.png',
+                    'imagem': '/AraOS.png',
                     'url': 'https://example.com/equipamentos',
                     'empresa': 'GrowTech Brasil',
                     'categoria': 'Equipamentos',
@@ -103,7 +103,7 @@ def init_anuncios_table():
                 {
                     'titulo': 'Consultoria Jurídica Cannabis',
                     'descricao': 'Assessoria jurídica especializada em cannabis medicinal. Habeas corpus e licenças.',
-                    'imagem': '/Aracannabis.png',
+                    'imagem': '/AraOS.png',
                     'url': 'https://example.com/juridico',
                     'empresa': 'Cannabis Legal Advocacia',
                     'categoria': 'Jurídico',

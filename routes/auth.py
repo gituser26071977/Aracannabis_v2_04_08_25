@@ -30,7 +30,7 @@ def create_admin():
     if admin:
         return jsonify({'message': 'Usuário admin já existe!', 'usuario': 'admin'}), 200
     
-    senha_segura = "Aracannabis@2025"
+    senha_segura = "AraOS@2025"
     hashed_password = generate_password_hash(senha_segura, method='pbkdf2:sha256:100000')
     
     admin = Profissional(

@@ -358,7 +358,7 @@ def enviar_email_lembrete(consulta):
         msg = MIMEMultipart()
         msg['From'] = email_user
         msg['To'] = consulta.paciente.email
-        msg['Subject'] = 'Lembrete de Consulta - Aracannabis'
+        msg['Subject'] = 'Lembrete de Consulta - AraOS'
         
         # Corpo do email
         data_formatada = consulta.data_hora.strftime('%d/%m/%Y às %H:%M')
@@ -375,7 +375,7 @@ Duração: {consulta.duracao_minutos} minutos
 Em caso de dúvidas ou necessidade de reagendamento, entre em contato conosco.
 
 Atenciosamente,
-Equipe Aracannabis
+Equipe AraOS
         """
         
         msg.attach(MIMEText(corpo, 'plain'))
@@ -416,7 +416,7 @@ def enviar_whatsapp_lembrete(consulta):
         
         data_formatada = consulta.data_hora.strftime('%d/%m/%Y às %H:%M')
         mensagem = f"""
-🏥 *Lembrete de Consulta - Aracannabis*
+🏥 *Lembrete de Consulta - AraOS*
 
 Olá {consulta.paciente.nome}!
 

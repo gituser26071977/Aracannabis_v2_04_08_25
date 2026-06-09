@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Conectar ao banco principal
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///../../../aracannabis.db")
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///../../../araos.db")
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

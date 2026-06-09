@@ -55,8 +55,8 @@ class MercadoPagoService:
             preference_data = {
                 "items": [
                     {
-                        "id": f"aracannabis_{dados_pedido['plano']}_{dados_pedido['periodo']}",
-                        "title": f"Aracannabis - {plano_nome}",
+                        "id": f"araos_{dados_pedido['plano']}_{dados_pedido['periodo']}",
+                        "title": f"AraOS — {plano_nome}",
                         "description": f"Assinatura {self._get_periodo_texto(dados_pedido['periodo'])} ({plano_nome})",
                         "category_id": "services",
                         "quantity": 1,
@@ -83,8 +83,8 @@ class MercadoPagoService:
                     "installments": 12  # Até 12x no cartão
                 },
                 "notification_url": self.notification_url,
-                "statement_descriptor": "ARACANNABIS",
-                "external_reference": f"aracannabis_{dados_pedido.get('user_id', 'guest')}_{int(datetime.now().timestamp())}",
+                "statement_descriptor": "ARAPATH ARAOS",
+                "external_reference": f"araos_{dados_pedido.get('user_id', 'guest')}_{int(datetime.now().timestamp())}",
                 "expires": True,
                 "expiration_date_from": datetime.now().isoformat(),
                 "expiration_date_to": (datetime.now() + timedelta(hours=24)).isoformat(),
@@ -94,7 +94,7 @@ class MercadoPagoService:
                     "user_id": dados_pedido.get('user_id'),
                     "email": dados_pedido.get('email'),
                     "nome": dados_pedido.get('nome'),
-                    "sistema": "aracannabis",
+                    "sistema": "araos",
                     "versao": "1.0"
                 }
             }

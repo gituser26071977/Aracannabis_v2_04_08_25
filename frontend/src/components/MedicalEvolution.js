@@ -449,7 +449,7 @@ ${soap.plan || '-'}
 
       <Box sx={{ mt: 4, textAlign: 'center' }}>
         <Typography variant="body2" color="text.secondary">
-          Aracannabis © {new Date().getFullYear()} - Sistema de Controle de Pacientes
+          AraOS © {new Date().getFullYear()} — Clinical Intelligence Operating System
         </Typography>
         <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
           Dados protegidos conforme LGPD (Lei 13.709/2018)

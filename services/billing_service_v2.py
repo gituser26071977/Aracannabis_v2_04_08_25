@@ -77,7 +77,7 @@ class BillingServiceV2:
 
         # Criar/atualizar customer no provedor
         customer_result = provider.create_customer(
-            email=profissional.email or f"user_{profissional_id}@aracannabis.com",
+            email=profissional.email or f"user_{profissional_id}@arapath.com",
             name=profissional.nome or "Cliente",
         )
         if not customer_result.success:
@@ -93,7 +93,7 @@ class BillingServiceV2:
                 amount=valor,
                 description=f"Assinatura {plano.nome} - {periodicidade}",
                 payer_email=profissional.email,
-                external_reference=f"aracannabis_sub_{profissional_id}_{plano_id}",
+                external_reference=f"araos_sub_{profissional_id}_{plano_id}",
             )
             if not sub_result.success:
                 return {"error": f"Erro ao criar assinatura: {sub_result.error}"}
@@ -139,7 +139,7 @@ class BillingServiceV2:
                 method=metodo,
                 payer_email=profissional.email,
                 payer_name=profissional.nome,
-                external_reference=f"aracannabis_inv_{profissional_id}_{plano_id}",
+                external_reference=f"araos_inv_{profissional_id}_{plano_id}",
             )
             if not invoice_result.success:
                 return {"error": f"Erro ao criar cobrança: {invoice_result.error}"}

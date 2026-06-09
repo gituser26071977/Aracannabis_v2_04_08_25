@@ -83,7 +83,7 @@ def registrar_consentimento(paciente_id):
 def obter_politica_privacidade():
     """Endpoint para obter a política de privacidade"""
     return jsonify({
-        'titulo': 'Política de Privacidade - Aracannabis',
+        'titulo': 'Política de Privacidade - AraOS',
         'ultima_atualizacao': '2025-05-21',
         'versao': '1.0',
         'url': '/politica-privacidade'

@@ -11,7 +11,7 @@ import {
 
 function LoginDireto() {
   const [usuario, setUsuario] = useState('admin');
-  const [senha, setSenha] = useState('Aracannabis@2025');
+  const [senha, setSenha] = useState('AraOS@2025');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('info');
@@ -94,7 +94,7 @@ function LoginDireto() {
       <Box sx={{ mt: 8, mb: 4 }}>
         <Paper elevation={3} sx={{ p: 4 }}>
           <Typography variant="h4" component="h1" gutterBottom align="center">
-            🔐 Login Sistema Aracannabis
+            🔐 Login AraOS — Clinical Intelligence Operating System
           </Typography>
           
           <Typography variant="body2" align="center" color="text.secondary" sx={{ mb: 3 }}>
@@ -149,7 +149,7 @@ function LoginDireto() {
             </Typography>
             <Typography variant="body2">
               <strong>Usuário:</strong> admin<br />
-              <strong>Senha:</strong> Aracannabis@2025
+              <strong>Senha:</strong> AraOS@2025
             </Typography>
           </Box>
           

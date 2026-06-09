@@ -36,7 +36,7 @@ const SecurityMeasures = () => {
       <Divider sx={{ mb: 3 }} />
       
       <Typography variant="body1" paragraph>
-        O sistema Aracannabis implementa diversas medidas de segurança e está em conformidade com a Lei Geral de Proteção de Dados (LGPD) do Brasil. Abaixo estão as principais medidas implementadas:
+        O sistema AraOS implementa diversas medidas de segurança e está em conformidade com a Lei Geral de Proteção de Dados (LGPD) do Brasil. Abaixo estão as principais medidas implementadas:
       </Typography>
       
       <Accordion>

@@ -87,7 +87,7 @@ class CRMValidatorService:
                     'uf': uf
                 },
                 timeout=10,
-                headers={'User-Agent': 'Aracannabis-Validator/1.0'}
+                headers={'User-Agent': 'AraOS-Validator/1.0'}
             )
             
             if response.status_code == 200:

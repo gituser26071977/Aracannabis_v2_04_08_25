@@ -1,5 +1,5 @@
 """
-Sistema multi-agente para Aracannabis usando CrewAI
+Sistema multi-agente para AraOS usando CrewAI
 
 Agentes implementados:
 1. Agente Conversacional: Interface com usuário via chat e WhatsApp
@@ -1128,7 +1128,7 @@ def enviar_email_aprovacao_profissional(profissional_id: int, senha_temporaria: 
         if not prof or not prof.email:
             return {"error": "Profissional não encontrado ou sem email"}
         
-        subject = "Cadastro Aprovado - Aracannabis"
+        subject = "Cadastro Aprovado - AraOS"
         
         html_body = f"""
         <h2>Olá Dr(a). {prof.nome},</h2>
@@ -1148,7 +1148,7 @@ def enviar_email_aprovacao_profissional(profissional_id: int, senha_temporaria: 
         <p>Em caso de dúvidas, entre em contato conosco</p>
         
         <hr style="margin: 30px 0;">
-        <p style="color: #666; font-size: 12px;">Este email foi gerado automaticamente pelo sistema Aracannabis.</p>
+        <p style="color: #666; font-size: 12px;">Este email foi gerado automaticamente pelo sistema AraOS.</p>
         """
         
         return enviar_email(
@@ -1170,7 +1170,7 @@ def enviar_email_rejeicao_profissional(profissional_id: int) -> Dict:
         if not prof or not prof.email:
             return {"error": "Profissional não encontrado ou sem email"}
         
-        subject = "Cadastro Não Aprovado - Aracannabis"
+        subject = "Cadastro Não Aprovado - AraOS"
         
         html_body = f"""
         <h2>Olá {prof.nome},</h2>
@@ -1189,10 +1189,10 @@ def enviar_email_rejeicao_profissional(profissional_id: int) -> Dict:
             <li>Entre em contato conosco para mais informações</li>
         </ul>
         
-        <p>Email: contato@aracannabis.com.br</p>
+        <p>Email: contato@arapath.com.br</p>
         
         <hr style="margin: 30px 0;">
-        <p style="color: #666; font-size: 12px;">Este email foi gerado automaticamente pelo sistema Aracannabis.</p>
+        <p style="color: #666; font-size: 12px;">Este email foi gerado automaticamente pelo sistema AraOS.</p>
         """
         
         return enviar_email(
@@ -1456,8 +1456,8 @@ def criar_supervisor(llm_config: Optional[Dict] = None) -> Agent:
 
 # ========== CREW COMPLETA ==========
 
-def criar_crew_aracannabis(llm_config: Optional[Dict] = None) -> Crew:
-    """Cria a crew completa do Aracannabis com todos os agentes"""
+def criar_crew_araos(llm_config: Optional[Dict] = None) -> Crew:
+    """Cria a crew completa do AraOS com todos os agentes"""
     if not CREWAI_AVAILABLE:
         return None
     
@@ -1571,7 +1571,7 @@ class SistemaMultiAgente:
                     "model": os.getenv('DEFAULT_LLM_MODEL', 'llama-3.3-70b-versatile'),
                     "temperature": 0.7
                 }
-                self.crew = criar_crew_aracannabis(llm_config)
+                self.crew = criar_crew_araos(llm_config)
                 logger.info("Crew de agentes criada com sucesso")
             except Exception as e:
                 logger.error(f"Erro ao criar crew: {str(e)}")
@@ -1758,7 +1758,7 @@ def gerar_cobranca_pix(cliente_nome: str, cliente_email: str, valor: float, desc
             customer_email=cliente_email,
             amount=valor,
             method="pix",
-            description=descricao or "Consulta/serviço Aracannabis",
+            description=descricao or "Consulta/serviço AraOS",
         )
         return charge
     except Exception as e:
@@ -1774,7 +1774,7 @@ def gerar_cobranca_boleto(cliente_nome: str, cliente_email: str, valor: float, d
             customer_email=cliente_email,
             amount=valor,
             method="boleto",
-            description=descricao or "Consulta/serviço Aracannabis",
+            description=descricao or "Consulta/serviço AraOS",
         )
         return charge
     except Exception as e:
@@ -1790,7 +1790,7 @@ def gerar_cobranca_cartao(cliente_nome: str, cliente_email: str, valor: float, d
             customer_email=cliente_email,
             amount=valor,
             method="card",
-            description=descricao or "Consulta/serviço Aracannabis",
+            description=descricao or "Consulta/serviço AraOS",
         )
         charge["checkout_url"] = f"https://pagamentos.exemplo/checkout/{charge['id']}"
         return charge

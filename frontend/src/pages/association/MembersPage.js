@@ -148,7 +148,7 @@ const MembersPage = () => {
                 <DialogTitle>Adicionar Membro</DialogTitle>
                 <DialogContent>
                     <Typography variant="body2" color="textSecondary" gutterBottom>
-                        Insira o CPF do paciente já cadastrado no sistema (SIAP) para vinculá-lo como membro desta associação.
+                        Insira o CPF do paciente já cadastrado no sistema AraOS para vinculá-lo como membro desta associação.
                     </Typography>
                     <TextField
                         autoFocus

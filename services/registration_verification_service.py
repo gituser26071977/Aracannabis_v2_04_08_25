@@ -33,7 +33,7 @@ class RegistrationVerificationService:
             goal="Analisar os dados de validação e decidir se o cadastro é legítimo",
             backstory="""Você é um auditor sênior especializado em conformidade médica.
             Sua função é revisar os resultados das ferramentas automáticas e dar o veredito final
-            sobre a aprovação de novos profissionais no sistema SIAP da Aracannabis.""",
+            sobre a aprovação de novos profissionais no AraOS.""",
             verbose=True,
             allow_delegation=False
         )
@@ -184,7 +184,7 @@ class RegistrationVerificationService:
             }
         }
 
-        system_prompt = """Você é um Auditor de Conformidade Médica da Aracannabis. 
+        system_prompt = """Você é um Auditor de Conformidade Médica da Arapath. 
         Analise os dados de validação técnica e decida se o profissional deve ser aprovado, 
         revisado manualmente ou rejeitado.
         

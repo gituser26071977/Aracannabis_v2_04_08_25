@@ -83,11 +83,11 @@ def _require_aap_auth():
 
 @aap_bp.route("/.well-known/agent.json", methods=["GET"])
 def agent_card():
-    """Retorna o Agent Card do SIAP."""
+    """Retorna o Agent Card do AraOS."""
     card = build_agent_card(
-        name="siap-aracannabis",
+        name="siap-araos",
         version="1.0.0",
-        description="Sistema Integrado de Acompanhamento de Pacientes (SIAP) — Aracannabis",
+        description="AraOS — Clinical Intelligence Operating System"
         url=os.getenv("SIAP_PUBLIC_URL", "https://siap.arapath.com.br"),
         capabilities=[
             {
@@ -309,7 +309,7 @@ def register_agent(agent_name):
 # ── Execução Interna de Capabilities ──
 
 def _execute_capability(capability_id: str, method: str, params: dict) -> Any:
-    """Executa uma capability local do SIAP."""
+    """Executa uma capability local do AraOS."""
     from models import Paciente, db
     from sqlalchemy import or_
 
@@ -371,7 +371,7 @@ def _notify_callback(task: dict, status: str, result: Any = None, error: str = N
         "status": status,
         "result": result,
         "error": error,
-        "agent": "siap-aracannabis",
+        "agent": "siap-araos",
     }
     try:
         client = AAPClient(callback_url, api_key=AAP_API_KEY)

@@ -176,7 +176,7 @@ const PagamentoPage = () => {
               Finalizar Pagamento
             </Typography>
             <Typography variant="body1" color="text.secondary">
-              Complete sua assinatura do sistema Aracannabis
+              Complete sua assinatura do AraOS — Clinical Intelligence Operating System
             </Typography>
           </Box>
         </Box>

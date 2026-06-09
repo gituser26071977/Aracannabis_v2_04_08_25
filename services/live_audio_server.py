@@ -33,7 +33,7 @@ async def handle_client_connection(client_ws, path):
     
     # Opções do Assistente: Configurando a Persona do Copilot Profissional
     sys_instruct = (
-        "Você é o Aracannabis Copilot, um assistente de voz especializado e médico/farmacêutico para prescritores. "
+        "Você é o AraOS Voice Copilot, um assistente de voz especializado e médico/farmacêutico para prescritores. "
         "Baseie-se fortemente nos materiais técnicos e guidelines de dosagem/titulação fornecidos em PDF. "
         "Não use formatações como Markdown (asteriscos, negritos) pois a sua resposta será diretamente falada. "
         "Responda as dúvidas e seja muito direto na resposta."
