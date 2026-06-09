@@ -123,7 +123,7 @@ services:
       - "traefik.http.middlewares.siap-www-redirect.redirectregex.replacement=https://visualsmartflow.com.br$${1}"
       - "traefik.http.middlewares.siap-www-redirect.redirectregex.permanent=true"
       # Redirect HTTP → HTTPS (naked e www)
-      - "traefik.http.routers.siap-web-http.rule=Host(`visualsmartflow.com.br`,`www.visualsmartflow.com.br`,`araos.visualsmartflow.com.br`)"
+      - "traefik.http.routers.siap-web-http.rule=Host(`visualsmartflow.com.br`) || Host(`www.visualsmartflow.com.br`) || Host(`araos.visualsmartflow.com.br`)"
       - "traefik.http.routers.siap-web-http.entrypoints=web"
       - "traefik.http.routers.siap-web-http.middlewares=siap-redirect-https"
     healthcheck:
