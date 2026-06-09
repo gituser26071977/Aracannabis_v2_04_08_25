@@ -113,13 +113,35 @@ def next_anamnese_step(current: str) -> str:
 SIAP_INTERNAL_URL = os.getenv("SIAP_INTERNAL_URL", "http://siap-backend:5002")
 INTERNAL_SERVICE_KEY = os.getenv("INTERNAL_SERVICE_KEY", "dr-anderson-internal-key")
 
-def _calcular_data_nascimento(idade: str) -> str:
+def _calcular_data_nascimento(idade_ou_data: str) -> str:
+    """Converte idade (35) ou data brasileira (15/03/1985) para formato ISO."""
+    texto = str(idade_ou_data).strip()
+    
+    # Tentar formato brasileiro DD/MM/YYYY
+    import re
+    match = re.search(r'(\d{1,2})[/-](\d{1,2})[/-](\d{4})', texto)
+    if match:
+        dia, mes, ano = match.groups()
+        return f"{ano}-{int(mes):02d}-{int(dia):02d}"
+    
+    # Tentar formato ISO YYYY-MM-DD
+    match_iso = re.search(r'(\d{4})[/-](\d{1,2})[/-](\d{1,2})', texto)
+    if match_iso:
+        ano, mes, dia = match_iso.groups()
+        return f"{ano}-{int(mes):02d}-{int(dia):02d}"
+    
+    # Fallback: interpretar como idade em anos
     try:
-        anos = int(''.join(filter(str.isdigit, str(idade))))
-        ano_nasc = datetime.now().year - anos
-        return f"{ano_nasc}-01-01"
+        digitos = ''.join(filter(str.isdigit, texto))
+        if digitos:
+            anos = int(digitos)
+            if 0 < anos < 150:  # Idade plausível
+                ano_nasc = datetime.now().year - anos
+                return f"{ano_nasc}-01-01"
     except Exception:
-        return "1990-01-01"
+        pass
+    
+    return "1990-01-01"
 
 def criar_paciente_no_siap(dados: Dict) -> Optional[int]:
     """Cria ou atualiza paciente no SIAP com dados completos de anamnese.
