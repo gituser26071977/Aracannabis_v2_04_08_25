@@ -87,7 +87,7 @@ def agent_card():
     card = build_agent_card(
         name="siap-araos",
         version="1.0.0",
-        description="AraOS — Clinical Intelligence Operating System"
+        description="AraOS — Clinical Intelligence Operating System",
         url=os.getenv("SIAP_PUBLIC_URL", "https://siap.arapath.com.br"),
         capabilities=[
             {
