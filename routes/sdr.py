@@ -5,12 +5,12 @@ from datetime import datetime, date, time, timedelta
 import os
 import requests
 import json
-import google.generativeai as genai
 
 sdr_bp = Blueprint("sdr", __name__)
 
 SIAP_API_URL = os.getenv("SIAP_API_URL", "https://api.visualsmartflow.com.br")
-EVOLUTION_API_URL = os.getenv("EVOLUTION_API_URL", "http://147.93.33.253:8080")
+# Tenta URL interna Docker primeiro, fallback para IP externo
+EVOLUTION_API_URL = os.getenv("EVOLUTION_API_URL", "http://evolution_api:8080")
 EVOLUTION_API_KEY = os.getenv(
     "EVOLUTION_API_KEY",
     "EVOL_SECRET_oj1JhPB0Zx2r0L8qYtQ4Jw8kZfT9vG2hR3mN7aCsW8pQ0uD5eK1sB9fL2rX6cQ4",
@@ -18,50 +18,89 @@ EVOLUTION_API_KEY = os.getenv(
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 PROFISSIONAL_ID_DR_ANDERSON = 2
 
+# Importa o agente Dr. Anderson (fluxo estruturado com fases)
+from services.dr_anderson_agent import dr_anderson_agent
+from services.ai_agents import ai_manager
+
 CONVERSAS = {}
 
-SYSTEM_PROMPT = """Você é LIA, assistente virtual da clínica do Dr. Anderson (especialista em Cannabis Medicinal).
+SYSTEM_PROMPT = """Você é LIA, assistente virtual inteligente da clínica do Dr. Anderson Holzwarth, especialista em Cannabis Medicinal.
 
 SUA IDENTIDADE:
-- Você é uma IA, NÃO o Dr. Anderson
-- Você trabalha PARA o Dr. Anderson
-- Seu nome é LIA
-- Sempre se apresente como assistente, não como médico
+- Seu nome é LIA (Assistente Virtual)
+- Você trabalha PARA o Dr. Anderson, NÃO é médico
+- Sempre se apresente como assistente virtual, nunca dê diagnósticos
 
-IMPORTANTE: Você está em uma conversa ativa. LEMBRE-SE:
-- Este lead já conversou com você antes nesta sessão
-- NÃO se apresente novamente a cada mensagem
-- Continue a conversa de onde parou
-- Mantenha contexto das informações já coletadas
+FLUXO DE ATENDIMENTO (obrigatório seguir):
 
-SUA FUNÇÃO PRINCIPAL:
-- Atender leads que chegam pelo WhatsApp
-- Tirar dúvidas sobre tratamento com Cannabis Medicinal
-- Qualificar o lead (condição clínica, tratamentos anteriores)
-- Identificar intenção de agendamento
-- Agendar consultas
+📌 FASE 1 — PRÉ-CONSULTA (antes do pagamento):
+Objetivo: Tirar dúvidas e confirmar interesse real em consulta.
+- Responder perguntas sobre Cannabis Medicinal
+- Explicar o processo de avaliação
+- Informar valores (R$ 350,00 a consulta)
+- CONFIRMAR se o paciente tem interesse em prosseguir
+- NÃO coletar dados de anamnese nesta fase
+- NÃO pedir documentos, exames ou histórico médico nesta fase
 
-DADOS PARA COLETAR (quando quiser agendar):
+📌 FASE 2 — PAGAMENTO:
+- Após confirmação de interesse, orientar sobre o pagamento
+- Enviar link de pagamento
+- Aguardar confirmação de pagamento
+
+📌 FASE 3 — ANAMNESE (após pagamento confirmado):
+SOMENTE após pagamento confirmado, coletar:
 - Nome completo
-- Telefone
-- Email
 - Data de nascimento
-- Condição clínica principal
-- Já fez tratamento com Cannabis? Se sim, qual?
+- Email
+- Condição clínica principal (diagnóstico)
+- Sintomas atuais
+- Medicamentos em uso (nome, dosagem, frequência)
+- Tratamentos anteriores com Cannabis (se houver)
+- Resultados de exames recentes (se houver)
+- Alergias ou contraindicações
+- Peso e altura (para cálculo de dosagem)
+
+📌 FASE 4 — PÓS-ANAMNESE:
+- Confirmar recebimento de todos os dados
+- Informar que a equipe médica analisará o caso
+- Agendar consulta com Dr. Anderson
+- Oferecer suporte para envio de documentos, laudos ou fotos
 
 INFORMAÇÕES IMPORTANTES:
-- Valor da consulta com Dr. Anderson: R$ 350,00
-- Consulta inicial é uma avaliação, não prescrição
-- O Dr. Anderson é o médico responsável, você é a assistente
-- Não prescreva sem avaliação
-- Seja empático e paciente
-- Responda de forma curta e conversational (máx 2 frases)
+- Valor da consulta: R$ 350,00
+- Duração média: 30-45 minutos
+- Modalidades: Telemedicina ou presencial
+- O Dr. Anderson é especialista em canabinóides
+- Não prescrevemos sem avaliação médica completa
+- Seja empática, paciente e direta nas respostas
 
-O lead enviou uma mensagem agora. Responda mantendo o contexto da conversa."""
+REGRAS DE OURO:
+1. NUNCA se apresente mais de uma vez na mesma conversa
+2. NUNCA dê diagnósticos ou prescrições
+3. NUNCA peça dados de anamnese antes do pagamento
+4. SEMPRE confirme o interesse do paciente antes de prosseguir
+5. Respostas curtas e naturais (máximo 3 frases)
+
+O paciente enviou uma mensagem agora. Responda mantendo o contexto da conversa e seguindo o fluxo correto."""
 
 
-def get_resposta_ia(mensagem, historico_conversa):
-    """Gera resposta usando DeepSeek (via ai_manager)"""
+def get_resposta_ia(mensagem, historico_conversa, phone: str = None, media_base64: str = None, mime_type: str = None):
+    """Gera resposta usando DrAndersonAgent (fluxo estruturado com fases)"""
+    try:
+        if phone:
+            # Usa o agente estruturado com fases (triagem → pagamento → anamnese)
+            resposta = dr_anderson_agent.process_message(
+                message=mensagem,
+                phone=phone,
+                media_base64=media_base64,
+                mime_type=mime_type
+            )
+            print(f"[SDR] Resposta Agent: {resposta[:80]}...")
+            return resposta
+    except Exception as e:
+        print(f"[SDR] Erro DrAndersonAgent: {str(e)}")
+
+    # Fallback direto para DeepSeek
     try:
         messages = [{"role": "system", "content": SYSTEM_PROMPT}]
         for msg in historico_conversa[-6:]:
@@ -70,12 +109,12 @@ def get_resposta_ia(mensagem, historico_conversa):
 
         resp = ai_manager.chat_completion(messages=messages, temperature=0.7, max_tokens=500)
         if resp and resp.get('content'):
-            print(f"[SDR] Resposta DeepSeek: {resp['content'][:80]}...")
+            print(f"[SDR] Resposta DeepSeek fallback: {resp['content'][:80]}...")
             return resp['content']
     except Exception as e:
-        print(f"[SDR] Erro DeepSeek: {str(e)}")
+        print(f"[SDR] Erro DeepSeek fallback: {str(e)}")
 
-    # Fallback para Groq
+    # Fallback final para Groq
     try:
         url = "https://api.groq.com/openai/v1/chat/completions"
         messages = [{"role": "system", "content": SYSTEM_PROMPT}]
@@ -103,7 +142,7 @@ def get_resposta_ia(mensagem, historico_conversa):
         else:
             print(f"[SDR] Erro Groq: {response.status_code} - {response.text}")
     except Exception as e:
-        print(f"[SDR] Erro IA: {str(e)}")
+        print(f"[SDR] Erro IA fallback: {str(e)}")
 
     return get_resposta_fallback(mensagem, historico_conversa)
 
@@ -167,6 +206,39 @@ def enviar_mensagem_whatsapp(numero, mensagem):
         return False
 
 
+def _extrair_media_evolucao(message: dict) -> tuple:
+    """Extrai base64 e mime_type de mensagens de mídia da Evolution API."""
+    media_base64 = None
+    mime_type = None
+    caption = ""
+
+    # Imagem
+    if "imageMessage" in message:
+        img = message.get("imageMessage", {})
+        media_base64 = img.get("base64", img.get("jpegThumbnail", ""))
+        mime_type = img.get("mimetype", "image/jpeg")
+        caption = img.get("caption", "")
+    # Áudio
+    elif "audioMessage" in message:
+        aud = message.get("audioMessage", {})
+        media_base64 = aud.get("base64", "")
+        mime_type = aud.get("mimetype", "audio/ogg; codecs=opus")
+    # Documento
+    elif "documentMessage" in message:
+        doc = message.get("documentMessage", {})
+        media_base64 = doc.get("base64", "")
+        mime_type = doc.get("mimetype", "application/pdf")
+        caption = doc.get("caption", doc.get("fileName", ""))
+    # Vídeo
+    elif "videoMessage" in message:
+        vid = message.get("videoMessage", {})
+        media_base64 = vid.get("base64", "")
+        mime_type = vid.get("mimetype", "video/mp4")
+        caption = vid.get("caption", "")
+
+    return media_base64, mime_type, caption
+
+
 @sdr_bp.route("/webhook", methods=["POST"])
 def webhook_evolution():
     """Webhook para receber mensagens da Evolution API (EuSouLIA - Dr. Anderson)"""
@@ -187,25 +259,43 @@ def webhook_evolution():
             if "@g.us" in remote_jid or "@temp" in remote_jid:
                 return jsonify({"status": "ignored", "reason": "group_message"}), 200
 
+            # Extrair texto
             text = ""
             if "conversation" in message:
                 text = message["conversation"]
             elif "extendedTextMessage" in message:
                 text = message.get("extendedTextMessage", {}).get("text", "")
 
-            if not text:
-                return jsonify({"status": "ignored", "reason": "no_text"}), 200
+            # Extrair mídia (imagem, áudio, documento)
+            media_base64, mime_type, caption = _extrair_media_evolucao(message)
+            if caption and not text:
+                text = caption
+
+            # Se não tem texto nem mídia, ignorar
+            if not text and not media_base64:
+                return jsonify({"status": "ignored", "reason": "no_content"}), 200
 
             phone = remote_jid.replace("@s.whatsapp.net", "")
 
-            print(f"[SDR Webhook] Mensagem de {phone}: {text[:50]}...")
+            print(f"[SDR Webhook] Mensagem de {phone}: text='{text[:50]}...' | media={bool(media_base64)} | mime={mime_type}")
 
             if phone not in CONVERSAS:
                 CONVERSAS[phone] = []
 
-            CONVERSAS[phone].append({"role": "user", "content": text})
+            # Montar conteúdo para histórico (inclui descrição de mídia)
+            content = text
+            if media_base64:
+                content = f"[MÍDIA: {mime_type}] {text}".strip()
 
-            resposta = get_resposta_ia(text, CONVERSAS[phone])
+            CONVERSAS[phone].append({"role": "user", "content": content})
+
+            resposta = get_resposta_ia(
+                mensagem=text,
+                historico_conversa=CONVERSAS[phone],
+                phone=phone,
+                media_base64=media_base64,
+                mime_type=mime_type
+            )
 
             CONVERSAS[phone].append({"role": "assistant", "content": resposta})
 
