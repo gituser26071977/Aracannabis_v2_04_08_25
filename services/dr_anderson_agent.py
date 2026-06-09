@@ -10,6 +10,7 @@ from services.ai_agents import ai_manager
 from services.google_calendar_service import calendar_service
 from services.ocr_service import ocr_service
 from services.audio_transcription_service import audio_transcription_service
+from services.vsf_bridge import vsf_bridge
 
 logger = logging.getLogger(__name__)
 
@@ -120,8 +121,9 @@ def _calcular_data_nascimento(idade: str) -> str:
     except Exception:
         return "1990-01-01"
 
-def criar_paciente_no_siap(dados: Dict) -> bool:
-    """Cria ou atualiza paciente no SIAP com dados completos de anamnese."""
+def criar_paciente_no_siap(dados: Dict) -> Optional[int]:
+    """Cria ou atualiza paciente no SIAP com dados completos de anamnese.
+    Retorna o paciente_id criado ou None em caso de erro."""
     try:
         url = f"{SIAP_INTERNAL_URL}/api/dr-anderson/criar-lead"
         headers = {
@@ -152,9 +154,50 @@ def criar_paciente_no_siap(dados: Dict) -> bool:
             "data_nascimento": _calcular_data_nascimento(dados.get("data_nascimento", dados.get("idade", "30"))),
         }
         resp = requests.post(url, json=payload, headers=headers, timeout=10)
-        return resp.status_code in (200, 201)
+        if resp.status_code in (200, 201):
+            data = resp.json()
+            paciente_id = data.get("paciente_id")
+            if paciente_id:
+                logger.info(f"Paciente criado no SIAP: ID={paciente_id}")
+                return paciente_id
+        logger.error(f"Erro ao criar paciente no SIAP: {resp.status_code} - {resp.text}")
+        return None
     except Exception as e:
         logger.error(f"Exceção ao criar paciente no SIAP: {e}")
+        return None
+
+
+def _sincronizar_agendamento_vsf(dados: Dict, data_hora: datetime) -> Optional[str]:
+    """Cria agendamento no Visual Smart Flow e retorna o appointment_id."""
+    try:
+        result = vsf_bridge.criar_agendamento(
+            patient_name=dados.get("nome_completo", "Paciente"),
+            patient_external_id=str(dados.get("paciente_id_siap", "")),
+            scheduled_for=data_hora,
+            exam_type="consulta",
+            professional_id="1",  # Dr. Anderson
+            exam_duration_minutes=30,
+        )
+        apt_id = str(result.get("appointment_id"))
+        logger.info(f"[VSF] Agendamento criado: {apt_id}")
+        return apt_id
+    except Exception as e:
+        logger.error(f"[VSF] Erro ao criar agendamento: {e}")
+        return None
+
+
+def _enroll_face_vsf(appointment_id: str, image_base64: str) -> bool:
+    """Cadastra face do paciente no VSF."""
+    try:
+        result = vsf_bridge.enroll_face(
+            appointment_id=appointment_id,
+            image_base64=image_base64,
+            consent=True,
+        )
+        logger.info(f"[VSF] Enrollment facial realizado: {result.get('success')}")
+        return result.get("success", False)
+    except Exception as e:
+        logger.error(f"[VSF] Erro no enrollment facial: {e}")
         return False
 
 
@@ -418,7 +461,11 @@ class DrAndersonAgent:
         # Verificar se completou a anamnese
         if state["step"] == "completo":
             # Criar paciente no SIAP com dados completos
-            criar_paciente_no_siap(dados)
+            paciente_id = criar_paciente_no_siap(dados)
+            if paciente_id:
+                dados["paciente_id_siap"] = paciente_id
+                state["dados"] = dados
+            
             state["fase"] = FASE["pos_anamnese"]
             state["leads_created"] = True
             set_state(phone, state)
@@ -427,6 +474,8 @@ class DrAndersonAgent:
             reply = (f"Perfeito, {nome.split()[0]}! ✅ Recebi todos os seus dados e já montei sua ficha completa.\n\n"
                     "O Dr. Anderson vai analisar seu caso antes da consulta. "
                     "Se tiver laudos, receitas ou exames em foto, pode enviar por aqui!\n\n"
+                    "Também posso cadastrar seu reconhecimento facial para check-in automático na clínica. "
+                    "Se quiser, é só enviar uma selfie bem iluminada. 📸\n\n"
                     "Vou verificar a agenda e te passo as opções de horário em seguida. 🌿📅")
             return reply
 
@@ -455,9 +504,23 @@ class DrAndersonAgent:
         return content
 
     def _handle_pos_anamnese(self, message: str, phone: str, media_base64, mime_type) -> str:
-        """Fase 4: Pós-anamnese. Agendar, receber documentos, responder dúvidas."""
+        """Fase 4: Pós-anamnese. Agendar, receber documentos, responder dúvidas.
+        Integração com Visual Smart Flow para check-in por visão computacional."""
         state = get_state(phone)
-        
+        dados = state.get("dados", {})
+
+        # Se enviou foto (mídia) e já tem paciente cadastrado, tentar enrollment facial
+        if media_base64 and mime_type and mime_type.startswith("image/"):
+            vsf_apt_id = state.get("vsf_appointment_id")
+            if vsf_apt_id:
+                success = _enroll_face_vsf(vsf_apt_id, media_base64)
+                if success:
+                    return "✅ Selfie recebida e cadastro facial realizado com sucesso! Ao chegar na clínica, basta passar pela recepção que nosso sistema de visão computacional vai reconhecê-lo(a) automaticamente."
+                else:
+                    return "Recebi sua foto, mas não consegui cadastrar o reconhecimento facial. Pode tentar enviar outra selfie com mais luz e olhando para a câmera? 📸"
+            else:
+                return "Recebi sua foto! Se quiser fazer o cadastro facial para check-in automático, precisamos agendar sua consulta primeiro. Me diga qual dia e horário prefere. 🌿"
+
         # Tentar agendar se houver intenção clara
         agendamento = self._extrair_agendamento_ia(message)
         if agendamento and agendamento.get("data") and agendamento.get("hora"):
@@ -465,14 +528,25 @@ class DrAndersonAgent:
                 dt_str = f"{agendamento['data']} {agendamento['hora']}"
                 dt_obj = datetime.strptime(dt_str, "%Y-%m-%d %H:%M")
                 
-                dados = state.get("dados", {})
                 paciente_nome = dados.get("nome_completo", "Paciente")
                 summary = f"Consulta: {paciente_nome}"
                 desc = f"Agendado automaticamente pela LIA via WhatsApp.\nTelefone: {phone}\nEmail: {dados.get('email', 'N/A')}\nCondição: {dados.get('condicao_principal', 'N/A')}"
                 
                 ev = calendar_service.create_event(dt_obj, dt_obj + timedelta(hours=1), summary, desc, dados.get('email'))
                 if ev:
-                    return f"Maravilha, {paciente_nome.split()[0]}! ✅ Sua consulta foi reservada para o dia {dt_obj.strftime('%d/%m/%Y')} às {dt_obj.strftime('%H:%M')}.\n\nO Dr. Anderson já está com sua ficha e vai te atender com todo cuidado. Até lá! 🌿📅"
+                    # Sincronizar com Visual Smart Flow para check-in por visão computacional
+                    vsf_msg = ""
+                    if dados.get("paciente_id_siap"):
+                        try:
+                            vsf_apt_id = _sincronizar_agendamento_vsf(dados, dt_obj)
+                            if vsf_apt_id:
+                                state["vsf_appointment_id"] = vsf_apt_id
+                                set_state(phone, state)
+                                vsf_msg = "\n\n🔮 Também cadastrei seu agendamento no sistema de check-in inteligente. Se enviar uma selfie, farei seu cadastro facial para reconhecimento automático na recepção."
+                        except Exception as vsf_err:
+                            print(f"DEBUG: [Agent] Erro VSF sync: {vsf_err}", flush=True)
+                    
+                    return f"Maravilha, {paciente_nome.split()[0]}! ✅ Sua consulta foi reservada para o dia {dt_obj.strftime('%d/%m/%Y')} às {dt_obj.strftime('%H:%M')}.{vsf_msg}\n\nO Dr. Anderson já está com sua ficha e vai te atender com todo cuidado. Até lá! 🌿📅"
             except Exception as e:
                 print(f"DEBUG: [Agent Dr. Anderson] Erro no agendamento: {e}", flush=True)
 

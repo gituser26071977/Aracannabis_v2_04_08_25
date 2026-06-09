@@ -253,6 +253,11 @@ def create_app(config_obj=None):
 
     app.register_blueprint(dr_anderson_bp, url_prefix="/api/dr-anderson")
 
+    # [NEW] Visual Smart Flow Integration
+    from routes.vsf_integration import vsf_bp
+
+    app.register_blueprint(vsf_bp, url_prefix="/api/vsf")
+
     # Patient Portal (NEW)
     from routes.patient_auth import patient_auth_bp
     from routes.patient_portal import patient_portal_bp

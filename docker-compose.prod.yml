@@ -57,6 +57,11 @@ services:
       - ANONYMIZATION_SERVICE_URL=http://siap-anonymization:8000
       - OTEL_SDK_DISABLED=true
       - CREWAI_DISABLE_TELEMETRY=true
+      # Visual Smart Flow Integration
+      - VSF_BASE_URL=https://visualsmartflow.com.br/api
+      - VSF_EMAIL=admin@arapath.com.br
+      - VSF_PASSWORD=AraPathVSF2026!Secure
+      - VSF_ORG_ID=araos-org-001
     volumes:
       - siap_uploads:/app/uploads
       - siap_logs:/app/logs
