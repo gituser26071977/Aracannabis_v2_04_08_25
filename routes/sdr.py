@@ -61,46 +61,26 @@ O lead enviou uma mensagem agora. Responda mantendo o contexto da conversa."""
 
 
 def get_resposta_ia(mensagem, historico_conversa):
-    """Gera resposta usando Google Gemini 2.5 Flash Lite"""
-    google_api_key = os.getenv("GOOGLE_API_KEY", "")
-
-    if not google_api_key:
-        return get_resposta_fallback(mensagem, historico_conversa)
-
+    """Gera resposta usando DeepSeek (via ai_manager)"""
     try:
-        genai.configure(api_key=google_api_key)
-
-        model = genai.GenerativeModel(
-            "gemini-2.5-flash-lite", system_instruction=SYSTEM_PROMPT
-        )
-
-        chat_history = []
-        for msg in historico_conversa[-6:]:
-            chat_history.append(
-                {
-                    "role": "user" if msg["role"] == "user" else "model",
-                    "parts": [{"text": msg["content"]}],
-                }
-            )
-
-        chat = model.start_chat(history=chat_history)
-
-        response = chat.send_message(mensagem)
-
-        return response.text
-
-    except Exception as e:
-        print(f"[SDR] Erro Gemini: {str(e)}")
-        return get_resposta_fallback(mensagem, historico_conversa)
-
-    try:
-        url = "https://api.groq.com/openai/v1/chat/completions"
-
         messages = [{"role": "system", "content": SYSTEM_PROMPT}]
-
         for msg in historico_conversa[-6:]:
             messages.append(msg)
+        messages.append({"role": "user", "content": mensagem})
 
+        resp = ai_manager.chat_completion(messages=messages, temperature=0.7, max_tokens=500)
+        if resp and resp.get('content'):
+            print(f"[SDR] Resposta DeepSeek: {resp['content'][:80]}...")
+            return resp['content']
+    except Exception as e:
+        print(f"[SDR] Erro DeepSeek: {str(e)}")
+
+    # Fallback para Groq
+    try:
+        url = "https://api.groq.com/openai/v1/chat/completions"
+        messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+        for msg in historico_conversa[-6:]:
+            messages.append(msg)
         messages.append({"role": "user", "content": mensagem})
 
         headers = {
@@ -122,11 +102,10 @@ def get_resposta_ia(mensagem, historico_conversa):
             return result["choices"][0]["message"]["content"]
         else:
             print(f"[SDR] Erro Groq: {response.status_code} - {response.text}")
-            return get_resposta_fallback(mensagem, historico_conversa)
-
     except Exception as e:
         print(f"[SDR] Erro IA: {str(e)}")
-        return get_resposta_fallback(mensagem, historico_conversa)
+
+    return get_resposta_fallback(mensagem, historico_conversa)
 
 
 def get_resposta_fallback(mensagem, historico_conversa):
