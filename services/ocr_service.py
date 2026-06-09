@@ -2,24 +2,28 @@ import pytesseract
 import cv2
 from PIL import Image
 import re
+import os
+import base64
+import tempfile
+import logging
 from datetime import datetime
+from io import BytesIO
+
+logger = logging.getLogger(__name__)
 
 class OCRService:
     def __init__(self):
         # Configurar Tesseract para português e inglês
         self.custom_config = r'--oem 3 --psm 6 -l por+eng'
 
-    def preprocess_image(self, image_path):
+    def preprocess_image(self, image):
         """Pré-processa a imagem para melhorar a qualidade do OCR"""
         try:
-            # Ler imagem
-            image = cv2.imread(image_path)
-
-            if image is None:
-                raise ValueError("Não foi possível ler a imagem")
-
             # Converter para escala de cinza
-            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            if len(image.shape) == 3:
+                gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            else:
+                gray = image
 
             # Aplicar filtro de redução de ruído
             denoised = cv2.medianBlur(gray, 3)
@@ -36,20 +40,23 @@ class OCRService:
         except Exception as e:
             raise ValueError(f"Erro no pré-processamento da imagem: {str(e)}")
 
-    def extract_text(self, image_path):
-        """Extrai texto da imagem usando OCR"""
+    def extract_text_from_pil(self, pil_image):
+        """Extrai texto de um PIL Image"""
         try:
-            # Pré-processar imagem
-            processed_image = self.preprocess_image(image_path)
+            # Converter PIL para numpy array (OpenCV)
+            img_array = cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2BGR)
 
-            # Converter para PIL Image para pytesseract
-            pil_image = Image.fromarray(processed_image)
+            # Pré-processar
+            processed = self.preprocess_image(img_array)
+
+            # Converter de volta para PIL
+            processed_pil = Image.fromarray(processed)
 
             # Extrair texto
-            text = pytesseract.image_to_string(pil_image, config=self.custom_config, lang='por+eng')
+            text = pytesseract.image_to_string(processed_pil, config=self.custom_config, lang='por+eng')
 
             # Obter dados de confiança
-            data = pytesseract.image_to_data(pil_image, config=self.custom_config, lang='por+eng', output_type=pytesseract.Output.DICT)
+            data = pytesseract.image_to_data(processed_pil, config=self.custom_config, lang='por+eng', output_type=pytesseract.Output.DICT)
 
             # Calcular confiança média
             confidences = [int(conf) for conf in data['conf'] if conf != '-1']
@@ -58,9 +65,35 @@ class OCRService:
             return {
                 'texto': text.strip(),
                 'confianca': round(avg_confidence, 2),
-                'dados_brutos': data
             }
 
+        except Exception as e:
+            raise ValueError(f"Erro na extração de texto: {str(e)}")
+
+    def extract_text_from_base64(self, base64_string: str) -> dict:
+        """Extrai texto de uma string base64 (imagem)."""
+        try:
+            # Limpar prefixo data:image/...;base64,
+            if ',' in base64_string:
+                base64_string = base64_string.split(',', 1)[1]
+
+            img_data = base64.b64decode(base64_string)
+            pil_image = Image.open(BytesIO(img_data))
+
+            return self.extract_text_from_pil(pil_image)
+        except Exception as e:
+            logger.error(f"Erro OCR base64: {e}")
+            return {'texto': '', 'confianca': 0, 'erro': str(e)}
+
+    def extract_text(self, image_path):
+        """Extrai texto da imagem usando OCR (caminho de arquivo)"""
+        try:
+            image = cv2.imread(image_path)
+            if image is None:
+                raise ValueError("Não foi possível ler a imagem")
+
+            pil_image = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+            return self.extract_text_from_pil(pil_image)
         except Exception as e:
             raise ValueError(f"Erro na extração de texto: {str(e)}")
 
@@ -105,7 +138,6 @@ class OCRService:
                 valor, unidade = match
                 valor = valor.replace(',', '.')
 
-                # Tentar converter para float
                 try:
                     valor_num = float(valor)
                     structured_data['valores'].append({
@@ -117,10 +149,10 @@ class OCRService:
                 except ValueError:
                     continue
 
-            # Extrair parâmetros (nomes dos exames)
+            # Extrair parâmetros
             param_patterns = [
-                r'^([A-Z][a-zA-Z\s]+?)(?:\s*\d|\s*$)',  # Linha que começa com palavra capitalizada
-                r'([A-Z][a-zA-Z\s]+?)(?=\s+\d)',  # Palavra antes de número
+                r'^([A-Z][a-zA-Z\s]+?)(?:\s*\d|\s*$)',
+                r'([A-Z][a-zA-Z\s]+?)(?=\s+\d)',
             ]
 
             for pattern in param_patterns:
@@ -154,16 +186,62 @@ class OCRService:
         return structured_data
 
     def process_exam_image(self, image_path):
-        """Processa uma imagem de exame completo: OCR + análise de dados (DESATIVADO)"""
-        logger.warning(f"OCR interceptado: Serviço desativado para {image_path}")
-        return {
-            "status": "disabled",
-            "message": "Serviço de OCR temporariamente desativado.",
-            "texto_extraido": "",
-            "confianca": 0,
-            "dados_estruturados": {},
-            "processado_em": datetime.utcnow().isoformat()
-        }
+        """Processa uma imagem de exame completo: OCR + análise de dados"""
+        try:
+            result = self.extract_text(image_path)
+            structured = self.parse_medical_data(result['texto'])
+            return {
+                "status": "success",
+                "texto_extraido": result['texto'],
+                "confianca": result['confianca'],
+                "dados_estruturados": structured,
+                "processado_em": datetime.utcnow().isoformat()
+            }
+        except Exception as e:
+            logger.error(f"Erro process_exam_image: {e}")
+            return {
+                "status": "error",
+                "message": str(e),
+                "texto_extraido": "",
+                "confianca": 0,
+                "dados_estruturados": {},
+                "processado_em": datetime.utcnow().isoformat()
+            }
+
+    def process_base64_image(self, base64_string: str):
+        """Processa uma imagem em base64: OCR + análise de dados"""
+        try:
+            result = self.extract_text_from_base64(base64_string)
+            if result.get('erro'):
+                return {
+                    "status": "error",
+                    "message": result['erro'],
+                    "texto_extraido": "",
+                    "confianca": 0,
+                    "dados_estruturados": {},
+                }
+            structured = self.parse_medical_data(result['texto'])
+            return {
+                "status": "success",
+                "texto_extraido": result['texto'],
+                "confianca": result['confianca'],
+                "dados_estruturados": structured,
+                "processado_em": datetime.utcnow().isoformat()
+            }
+        except Exception as e:
+            logger.error(f"Erro process_base64_image: {e}")
+            return {
+                "status": "error",
+                "message": str(e),
+                "texto_extraido": "",
+                "confianca": 0,
+                "dados_estruturados": {},
+                "processado_em": datetime.utcnow().isoformat()
+            }
+
+
+# Import numpy para o método extract_text_from_pil
+import numpy as np
 
 # Instância global do serviço
 ocr_service = OCRService()

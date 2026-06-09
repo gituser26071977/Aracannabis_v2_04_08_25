@@ -8,6 +8,8 @@ from typing import Dict, Any, Optional, List
 
 from services.ai_agents import ai_manager
 from services.google_calendar_service import calendar_service
+from services.ocr_service import ocr_service
+from services.audio_transcription_service import audio_transcription_service
 
 logger = logging.getLogger(__name__)
 
@@ -18,17 +20,38 @@ logger = logging.getLogger(__name__)
 REDIS_HOST = os.getenv("REDIS_HOST", "siap-redis")
 r = redis.Redis(host=REDIS_HOST, port=6379, db=0, decode_responses=True)
 
-# Expiração do estado (24 horas)
-STATE_EXPIRY = 86400
+# Expiração do estado (7 dias para acompanhar todo o fluxo)
+STATE_EXPIRY = 7 * 86400
 
-# Passos estruturados de coleta de dados (SDR)
-SDR_STEPS = [
-    "condicao_saude",     # 1. Qual condição de saúde deseja tratar?
-    "historico_cannabis", # 2. Já usou ou usa cannabis medicinal?
-    "idade",              # 3. Qual a sua idade?
-    "nome",               # 4. Qual é o seu nome completo?
-    "email",              # 5. E o seu email?
-    "completo",           # Fim: dados suficientes para criar a ficha
+# ──────────────────────────────────────────────
+# FASES DO FLUXO
+# ──────────────────────────────────────────────
+# FASE 1 — TRIAGEM: tirar dúvidas, confirmar interesse, NÃO coletar anamnese
+# FASE 2 — PAGAMENTO: aguardar confirmação de pagamento
+# FASE 3 — ANAMNESE: coletar dados médicos completos
+# FASE 4 — PÓS-ANAMNESE: confirmar, agendar, receber documentos
+
+FASE = {
+    "triagem": "triagem",
+    "pagamento": "pagamento",
+    "anamnese": "anamnese",
+    "pos_anamnese": "pos_anamnese",
+}
+
+# Passos de anamnese (FASE 3) — coletados SOMENTE após pagamento
+ANAMNESE_STEPS = [
+    "nome_completo",      # 1. Nome completo
+    "data_nascimento",    # 2. Data de nascimento
+    "email",              # 3. Email
+    "condicao_principal", # 4. Condição clínica principal
+    "sintomas_atuais",    # 5. Sintomas que sente no momento
+    "medicamentos_uso",   # 6. Medicamentos em uso (nome, dosagem, frequência)
+    "historico_cannabis", # 7. Já usou cannabis medicinal?
+    "tratamentos_previos",# 8. Outros tratamentos já realizados
+    "exames_recentes",    # 9. Resultados de exames recentes
+    "alergias",           # 10. Alergias ou reações adversas
+    "peso_altura",        # 11. Peso e altura (para dosagem)
+    "completo",           # Fim: anamnese completa
 ]
 
 def get_state(phone: str) -> Dict:
@@ -37,14 +60,22 @@ def get_state(phone: str) -> Dict:
     if state_json:
         state = json.loads(state_json)
         # Garantir que campos novos existam
-        if "history" not in state: state["history"] = []
+        if "history" not in state:
+            state["history"] = []
+        if "fase" not in state:
+            state["fase"] = FASE["triagem"]
+        if "dados" not in state:
+            state["dados"] = {}
         return state
-    
-    # Estado inicial se não existir
+
+    # Estado inicial
     new_state = {
-        "step": "triagem",
+        "fase": FASE["triagem"],
+        "step": "triagem",           # step dentro da fase atual
         "dados": {},
         "greeted": False,
+        "interesse_confirmado": False,
+        "pagamento_confirmado": False,
         "leads_created": False,
         "history": [],
     }
@@ -58,23 +89,24 @@ def set_state(phone: str, state: Dict):
 def add_to_history(phone: str, role: str, content: str):
     state = get_state(phone)
     state["history"].append({"role": role, "content": content})
-    # Manter apenas as últimas 10 mensagens
-    if len(state["history"]) > 10:
-        state["history"] = state["history"][-10:]
+    # Manter apenas as últimas 15 mensagens para contexto maior
+    if len(state["history"]) > 15:
+        state["history"] = state["history"][-15:]
     set_state(phone, state)
 
-def next_step(current: str) -> str:
-    if current == "triagem":
-        return SDR_STEPS[0]
-    if current in SDR_STEPS:
-        idx = SDR_STEPS.index(current)
-        if idx + 1 < len(SDR_STEPS):
-            return SDR_STEPS[idx + 1]
+def next_anamnese_step(current: str) -> str:
+    """Retorna o próximo passo da anamnese."""
+    if current == "triagem" or current == "pagamento":
+        return ANAMNESE_STEPS[0]
+    if current in ANAMNESE_STEPS:
+        idx = ANAMNESE_STEPS.index(current)
+        if idx + 1 < len(ANAMNESE_STEPS):
+            return ANAMNESE_STEPS[idx + 1]
     return "completo"
 
 
 # ──────────────────────────────────────────────
-# Registrar Lead no SIAP via API Interna
+# Registrar Paciente no SIAP via API Interna
 # ──────────────────────────────────────────────
 
 SIAP_INTERNAL_URL = os.getenv("SIAP_INTERNAL_URL", "http://siap-backend:5002")
@@ -88,102 +120,395 @@ def _calcular_data_nascimento(idade: str) -> str:
     except Exception:
         return "1990-01-01"
 
-def criar_lead_no_siap(dados: Dict) -> bool:
+def criar_paciente_no_siap(dados: Dict) -> bool:
+    """Cria ou atualiza paciente no SIAP com dados completos de anamnese."""
     try:
         url = f"{SIAP_INTERNAL_URL}/api/dr-anderson/criar-lead"
         headers = {
             "Content-Type": "application/json",
             "X-Internal-Key": INTERNAL_SERVICE_KEY,
         }
+        
+        # Montar observações estruturadas com todos os dados da anamnese
+        obs_lines = [
+            "=== ANAMNESE COMPLETA ===",
+            f"Condição Principal: {dados.get('condicao_principal', 'Não informado')}",
+            f"Sintomas Atuais: {dados.get('sintomas_atuais', 'Não informado')}",
+            f"Medicamentos em Uso: {dados.get('medicamentos_uso', 'Não informado')}",
+            f"Histórico Cannabis: {dados.get('historico_cannabis', 'Não informado')}",
+            f"Tratamentos Prévios: {dados.get('tratamentos_previos', 'Não informado')}",
+            f"Exames Recentes: {dados.get('exames_recentes', 'Não informado')}",
+            f"Alergias: {dados.get('alergias', 'Não informado')}",
+            f"Peso/Altura: {dados.get('peso_altura', 'Não informado')}",
+            "========================",
+        ]
+        
         payload = {
-            "nome": dados.get("nome", "Paciente Dr. Anderson"),
+            "nome": dados.get("nome_completo", "Paciente Dr. Anderson"),
             "telefone": dados.get("telefone", ""),
             "email": dados.get("email", ""),
-            "diagnostico": dados.get("condicao_saude", ""),
-            "observacoes": f"Idade: {dados.get('idade')}. Histórico de cannabis: {dados.get('historico_cannabis', 'Não informado')}. Lead captado via WhatsApp.",
-            "data_nascimento": _calcular_data_nascimento(dados.get("idade", "30")),
+            "diagnostico": dados.get("condicao_principal", ""),
+            "observacoes": "\n".join(obs_lines),
+            "data_nascimento": _calcular_data_nascimento(dados.get("data_nascimento", dados.get("idade", "30"))),
         }
         resp = requests.post(url, json=payload, headers=headers, timeout=10)
         return resp.status_code in (200, 201)
     except Exception as e:
-        logger.error(f"Exceção ao criar lead no SIAP: {e}")
+        logger.error(f"Exceção ao criar paciente no SIAP: {e}")
         return False
 
 
 # ──────────────────────────────────────────────
-# Agente de IA
+# Prompts
 # ──────────────────────────────────────────────
 
 SYSTEM_PROMPT_BASE = """Você é a LIA, assistente SDR dedicada do Dr. Anderson Holzwarth, especialista em Cannabis Medicinal pela Arapath.
 
 PERFIL DO MÉDICO:
 - Dr. Anderson Holzwarth
-- Especialista em tratamentos com canabinóides.
-- Atendimento via Telemedicina e presencial.
+- CRM ativo, especialista em tratamentos com canabinóides
+- Atendimento via Telemedicina e presencial
+- Consulta inicial: R$ 350,00 | Duração: 30-45 min
 
-SUAS DIRETRIZES DE OURO:
-1. **NUNCA CUMPRIMENTE MAIS DE UMA VEZ.**
-2. **AGENDA:** Você tem acesso à disponibilidade do Google Calendar do Dr. Anderson. Se perguntarem se tem vaga para um dia específico (ex: "tem vaga para segunda?"), você deve informar o status (ex: "temos horários livres!") e dizer que está coletando os dados para o médico confirmar o horário exato.
-3. **RESPOSTAS CURTAS:** Seja direta. Não escreva parágrafos longos.
-4. **FOCO NO SDR:** Colete os dados necessários: Condição de saúde, Histórico, Idade, Nome completo e Email.
+FLUXO OBRIGATÓRIO (seguir rigorosamente):
+
+FASE 1 — TRIAGEM (antes do pagamento):
+- OBJETIVO: tirar dúvidas e confirmar interesse REAL em consulta
+- Responda perguntas sobre Cannabis Medicinal, processo, valores
+- NÃO peça nome, email, condição, histórico ou exames nesta fase
+- NÃO faça anamnese nesta fase
+- SÓ avance para pagamento quando o paciente confirmar interesse
+
+FASE 2 — PAGAMENTO:
+- Oriente sobre o pagamento (R$ 350,00)
+- Envie link de pagamento
+- Aguarde confirmação de pagamento
+- SÓ prossiga para anamnese quando confirmar pagamento
+
+FASE 3 — ANAMNESE (após pagamento confirmado):
+- Agora SIM colete dados médicos completos
+- Condição principal, sintomas, medicamentos, histórico cannabis
+- Exames, alergias, peso/altura
+- Seja gentil e explique por que precisa de cada informação
+
+FASE 4 — PÓS-ANAMNESE:
+- Confirme recebimento de todos os dados
+- Ofereça receber documentos, laudos ou fotos por WhatsApp
+- Agende consulta com Dr. Anderson
+- Explique que o médico analisará o caso antes da consulta
+
+REGRAS DE OURO:
+1. NUNCA se apresente mais de uma vez
+2. NUNCA dê diagnósticos ou prescrições
+3. NUNCA peça dados de anamnese antes do pagamento
+4. Respostas curtas e naturais (máx 3 frases por vez)
+5. Seja empática e direta
 """
+
+PROMPT_TRIAGEM = SYSTEM_PROMPT_BASE + """
+
+VOCÊ ESTÁ NA FASE DE TRIAGEM.
+- Responda dúvidas do paciente sobre Cannabis Medicinal
+- NÃO peça dados pessoais ou médicos ainda
+- Quando o paciente mostrar interesse em consulta, confirme e ofereça prosseguir com pagamento
+- Se não houver interesse, continue tirando dúvidas educadamente
+"""
+
+PROMPT_PAGAMENTO = SYSTEM_PROMPT_BASE + """
+
+VOCÊ ESTÁ NA FASE DE PAGAMENTO.
+- O paciente já confirmou interesse em consulta
+- Informe o valor (R$ 350,00) e oriente sobre o pagamento
+- Envie o link de pagamento
+- Aguarde confirmação
+- NÃO inicie anamnese até confirmar pagamento
+"""
+
+PROMPT_ANAMNESE = SYSTEM_PROMPT_BASE + """
+
+VOCÊ ESTÁ NA FASE DE ANAMNESE (pagamento confirmado).
+- Colete os dados médicos de forma gentil e estruturada
+- Explique brevemente por cada informação é importante
+- Aceite respostas parciais e continue naturalmente
+- Se o paciente não souber algo, anote "não informado" e prossiga
+- Ofereça enviar fotos de documentos, laudos ou exames
+"""
+
+PROMPT_POS_ANAMNESE = SYSTEM_PROMPT_BASE + """
+
+VOCÊ ESTÁ NA FASE PÓS-ANAMNESE.
+- Agradeça e confirme que todos os dados foram recebidos
+- Ofereça enviar documentos, laudos ou fotos adicionais
+- Informe que o Dr. Anderson analisará o caso antes da consulta
+- Agende a consulta ou passe as opções de horário
+- Seja acolhedora e transmita segurança
+"""
+
+# Mapa de perguntas para cada passo da anamnese
+PERGUNTA_ANAMNESE = {
+    "nome_completo": "Para iniciar sua ficha, qual é o seu nome completo?",
+    "data_nascimento": "Qual é a sua data de nascimento? (Ex: 15/03/1985)",
+    "email": "Qual é o seu melhor e-mail?",
+    "condicao_principal": "Qual é a condição de saúde principal que você deseja tratar com Cannabis Medicinal?",
+    "sintomas_atuais": "Quais sintomas você está sentindo no momento? (Ex: dor, insônia, ansiedade, náusea...)",
+    "medicamentos_uso": "Quais medicamentos você está tomando atualmente? Informe o nome, dosagem e frequência de cada um.",
+    "historico_cannabis": "Você já fez ou faz uso de Cannabis Medicinal? Se sim, qual produto e dosagem?",
+    "tratamentos_previos": "Já realizou outros tratamentos para essa condição? Quais e como foi a experiência?",
+    "exames_recentes": "Possui exames recentes (sangue, imagem, etc.)? Se quiser, pode enviar fotos dos laudos por aqui.",
+    "alergias": "Tem alguma alergia medicamentosa ou reação adversa conhecida?",
+    "peso_altura": "Qual é o seu peso e altura? (Importante para o cálculo de dosagem)",
+}
+
+
+# ──────────────────────────────────────────────
+# Agente de IA
+# ──────────────────────────────────────────────
 
 class DrAndersonAgent:
     def process_message(self, message: str, phone: str, media_base64: str = None, mime_type: str = None) -> str:
         state = get_state(phone)
-        print(f"DEBUG: [Agent Dr. Anderson] Estado: {state['step']} | Greeted: {state['greeted']} | Recebido: {message[:30]}", flush=True)
+        fase = state.get("fase", FASE["triagem"])
+        
+        # ── Processar mídia (imagem ou áudio) ──
+        media_description = ""
+        if media_base64 and mime_type:
+            if mime_type.startswith("image/") or mime_type.startswith("application/"):
+                # OCR em imagem/documento
+                print(f"DEBUG: [Agent] Processando imagem/documento OCR para {phone}", flush=True)
+                ocr_result = ocr_service.process_base64_image(media_base64)
+                if ocr_result["status"] == "success" and ocr_result["texto_extraido"]:
+                    media_description = f"\n[DOCUMENTO ANEXADO - OCR]: {ocr_result['texto_extraido'][:500]}"
+                    print(f"DEBUG: [Agent] OCR extraído: {ocr_result['texto_extraido'][:100]}...", flush=True)
+                else:
+                    media_description = "\n[DOCUMENTO/IMAGEM ANEXADO - OCR não conseguiu ler o texto]"
+            elif mime_type.startswith("audio/"):
+                # Transcrição de áudio
+                print(f"DEBUG: [Agent] Transcrevendo áudio para {phone}", flush=True)
+                trans_result = audio_transcription_service.transcribe_base64(media_base64, mime_type)
+                if trans_result["texto"]:
+                    media_description = f"\n[ÁUDIO TRANSCRITO]: {trans_result['texto']}"
+                    print(f"DEBUG: [Agent] Áudio transcrito: {trans_result['texto'][:100]}...", flush=True)
+                else:
+                    media_description = "\n[ÁUDIO ENVIADO - não foi possível transcrever]"
+            
+            # Anexar descrição da mídia à mensagem
+            if media_description:
+                message = message + media_description if message else media_description.strip()
+        
+        print(f"DEBUG: [Agent Dr. Anderson] Fase: {fase} | Step: {state['step']} | Msg: {message[:60]}", flush=True)
         
         # Guardar mensagem do usuário no histórico
         add_to_history(phone, "user", message)
 
-        # Se já completou, apenas responde dúvidas normais ou agradece novos documentos
-        if state.get("leads_created"):
-            reply = self._handle_post_registration(message, phone, media_base64, mime_type)
+        # ── FASE 4: PÓS-ANAMNESE ──
+        if fase == FASE["pos_anamnese"]:
+            reply = self._handle_pos_anamnese(message, phone, media_base64, mime_type)
             add_to_history(phone, "assistant", reply)
             return reply
 
-        # Detectar agendamento e transitar estado se necessário
-        if state["step"] == "triagem" and self._detectar_interesse_agendamento(message):
-            state["step"] = SDR_STEPS[0]
-            set_state(phone, state)
-
-        if state["step"] == "triagem":
-            reply = self._handle_triagem(message, phone, media_base64, mime_type)
+        # ── FASE 3: ANAMNESE ──
+        if fase == FASE["anamnese"]:
+            reply = self._handle_anamnese(message, phone, media_base64, mime_type)
             add_to_history(phone, "assistant", reply)
             return reply
 
-        # --- FLUXO DE COLETA (SDR) ---
-        dados = state["dados"]
-        dados["telefone"] = phone
-        
-        last_asked = state.get("last_asked")
-        if last_asked in SDR_STEPS:
-            dados[last_asked] = message.strip()
-            state["step"] = next_step(last_asked)
-            state["dados"] = dados
-            set_state(phone, state)
-
-        # Verificar se completou agora
-        if state["step"] == "completo":
-            criar_lead_no_siap(dados)
-            state["leads_created"] = True
-            set_state(phone, state)
-            reply = (f"Perfeito, {dados.get('nome', 'Paciente')}! Recebi seus dados e criei sua ficha. "
-                    "Vou repassar ao Dr. Anderson para que ele verifique a agenda e te ligue para confirmar o horário exato. "
-                    "Se tiver documentos ou laudos, pode mandar a foto por aqui! 🌿")
+        # ── FASE 2: PAGAMENTO ──
+        if fase == FASE["pagamento"]:
+            reply = self._handle_pagamento(message, phone, media_base64, mime_type)
             add_to_history(phone, "assistant", reply)
             return reply
 
-        # --- Gerar Resposta / Próxima Pergunta ---
-        reply = self._generate_ai_reply(message, phone, media_base64, mime_type)
+        # ── FASE 1: TRIAGEM ──
+        reply = self._handle_triagem(message, phone, media_base64, mime_type)
         add_to_history(phone, "assistant", reply)
         return reply
 
+    # ──────────────────────────────────────────────
+    # HANDLERS POR FASE
+    # ──────────────────────────────────────────────
+
+    def _handle_triagem(self, message: str, phone: str, media_base64, mime_type) -> str:
+        """Fase 1: Tirar dúvidas, confirmar interesse. NÃO coletar dados médicos."""
+        state = get_state(phone)
+        is_first = not state.get("greeted", False)
+        
+        prompt = PROMPT_TRIAGEM
+        if is_first:
+            state["greeted"] = True
+            set_state(phone, state)
+            prompt += "\n\nIMPORTANTE: Primeira mensagem. Apresente-se brevemente e pergunte como pode ajudar."
+        else:
+            prompt += "\n\nREGRAS: SEM SAUDAÇÃO. Responda diretamente."
+
+        # Detectar interesse em agendamento/consulta
+        if self._detectar_interesse_consulta(message):
+            # Transitar para fase de pagamento
+            state["fase"] = FASE["pagamento"]
+            state["interesse_confirmado"] = True
+            set_state(phone, state)
+            
+            reply = ("Que ótimo! Fico feliz que você quer dar esse passo. 💚\n\n"
+                    "A consulta inicial com o Dr. Anderson custa *R$ 350,00* e dura cerca de 30 a 45 minutos. "
+                    "Posso te enviar o link para pagamento agora. Assim que confirmar, iniciamos sua anamnese completa.\n\n"
+                    "Deseja prosseguir com o pagamento?")
+            return reply
+
+        # Keywords de agenda
+        keywords = ["vaga", "horário", "agenda", "disponib", "segunda", "terça", "quarta", "quinta", "sexta", "amanhã", "próximos", "atendimento", "consulta", "marcar", "agendar"]
+        if any(k in message.lower() for k in keywords):
+            info = self._obter_info_agenda(message)
+            prompt += f"\n\n--- DADOS REAIS DO SISTEMA AGORA ---\n{info}\REDACTED"
+
+        messages = [{"role": "system", "content": prompt}]
+        if state["history"]:
+            messages.extend(state["history"][:-1])
+        messages.append({"role": "user", "content": message})
+        
+        resp = ai_manager.chat_completion(messages=messages, temperature=0.7)
+        return resp.get("content", "Como posso ajudar você hoje?")
+
+    def _handle_pagamento(self, message: str, phone: str, media_base64, mime_type) -> str:
+        """Fase 2: Orientar pagamento. Simular confirmação para testes."""
+        state = get_state(phone)
+        
+        # Detectar confirmação de pagamento (simulação para testes)
+        # Em produção, isso viria de webhook de pagamento
+        confirm_keywords = ["paguei", "pagamento confirmado", "pago", "confirma", "efetuei", "realizei", "ok", "sim", "confirmo"]
+        if any(k in message.lower() for k in confirm_keywords):
+            state["fase"] = FASE["anamnese"]
+            state["pagamento_confirmado"] = True
+            state["step"] = ANAMNESE_STEPS[0]
+            set_state(phone, state)
+            
+            reply = ("Pagamento confirmado! 🎉\n\n"
+                    "Agora vou coletar algumas informações para montar sua ficha completa antes da consulta com o Dr. Anderson. "
+                    "Isso ajuda o médico a se preparar melhor para te atender.\n\n"
+                    f"{PERGUNTA_ANAMNESE['nome_completo']}")
+            state["last_asked"] = "nome_completo"
+            set_state(phone, state)
+            return reply
+
+        # Ainda não pagou — orientar
+        prompt = PROMPT_PAGAMENTO
+        if state.get("history"):
+            messages = [{"role": "system", "content": prompt}]
+            messages.extend(state["history"][:-1])
+            messages.append({"role": "user", "content": message})
+            resp = ai_manager.chat_completion(messages=messages, temperature=0.7)
+            return resp.get("content", "Assim que efetuar o pagamento de R$ 350,00, me avise para iniciarmos sua ficha! 💚")
+        
+        return ("Perfeito! Para prosseguir com a consulta, o valor é de *R$ 350,00*.\n\n"
+                "Assim que você efetuar o pagamento, me avise aqui mesmo que iniciarei sua ficha completa "
+                "e agendaremos seu horário com o Dr. Anderson. 💚")
+
+    def _handle_anamnese(self, message: str, phone: str, media_base64, mime_type) -> str:
+        """Fase 3: Coletar dados médicos completos estruturados."""
+        state = get_state(phone)
+        dados = state["dados"]
+        dados["telefone"] = phone
+        
+        # Registrar resposta do passo anterior
+        last_asked = state.get("last_asked")
+        if last_asked and last_asked in ANAMNESE_STEPS:
+            dados[last_asked] = message.strip()
+            state["dados"] = dados
+            state["step"] = next_anamnese_step(last_asked)
+            set_state(phone, state)
+
+        # Verificar se completou a anamnese
+        if state["step"] == "completo":
+            # Criar paciente no SIAP com dados completos
+            criar_paciente_no_siap(dados)
+            state["fase"] = FASE["pos_anamnese"]
+            state["leads_created"] = True
+            set_state(phone, state)
+            
+            nome = dados.get("nome_completo", "Paciente")
+            reply = (f"Perfeito, {nome.split()[0]}! ✅ Recebi todos os seus dados e já montei sua ficha completa.\n\n"
+                    "O Dr. Anderson vai analisar seu caso antes da consulta. "
+                    "Se tiver laudos, receitas ou exames em foto, pode enviar por aqui!\n\n"
+                    "Vou verificar a agenda e te passo as opções de horário em seguida. 🌿📅")
+            return reply
+
+        # Próxima pergunta da anamnese
+        proxima = state["step"]
+        pergunta = PERGUNTA_ANAMNESE.get(proxima, "")
+        state["last_asked"] = proxima
+        set_state(phone, state)
+
+        # Gerar resposta com contexto
+        prompt = PROMPT_ANAMNESE + f"\n\nPRÓXIMA INFORMAÇÃO A COLETAR: {pergunta}\n"
+        prompt += "Responda de forma natural, como uma conversa. Não seja robótica."
+
+        messages = [{"role": "system", "content": prompt}]
+        if state["history"]:
+            messages.extend(state["history"][:-1])
+        messages.append({"role": "user", "content": message})
+        
+        resp = ai_manager.chat_completion(messages=messages, temperature=0.7)
+        content = resp.get("content", pergunta)
+        
+        # Garantir que a pergunta atual esteja incluída
+        if pergunta and pergunta not in content:
+            content += f"\n\n{pergunta}"
+        
+        return content
+
+    def _handle_pos_anamnese(self, message: str, phone: str, media_base64, mime_type) -> str:
+        """Fase 4: Pós-anamnese. Agendar, receber documentos, responder dúvidas."""
+        state = get_state(phone)
+        
+        # Tentar agendar se houver intenção clara
+        agendamento = self._extrair_agendamento_ia(message)
+        if agendamento and agendamento.get("data") and agendamento.get("hora"):
+            try:
+                dt_str = f"{agendamento['data']} {agendamento['hora']}"
+                dt_obj = datetime.strptime(dt_str, "%Y-%m-%d %H:%M")
+                
+                dados = state.get("dados", {})
+                paciente_nome = dados.get("nome_completo", "Paciente")
+                summary = f"Consulta: {paciente_nome}"
+                desc = f"Agendado automaticamente pela LIA via WhatsApp.\nTelefone: {phone}\nEmail: {dados.get('email', 'N/A')}\nCondição: {dados.get('condicao_principal', 'N/A')}"
+                
+                ev = calendar_service.create_event(dt_obj, dt_obj + timedelta(hours=1), summary, desc, dados.get('email'))
+                if ev:
+                    return f"Maravilha, {paciente_nome.split()[0]}! ✅ Sua consulta foi reservada para o dia {dt_obj.strftime('%d/%m/%Y')} às {dt_obj.strftime('%H:%M')}.\n\nO Dr. Anderson já está com sua ficha e vai te atender com todo cuidado. Até lá! 🌿📅"
+            except Exception as e:
+                print(f"DEBUG: [Agent Dr. Anderson] Erro no agendamento: {e}", flush=True)
+
+        # Keywords de agenda
+        prompt = PROMPT_POS_ANAMNESE
+        keywords = ["vaga", "horário", "agenda", "disponib", "segunda", "terça", "quarta", "quinta", "sexta", "amanhã", "próximos", "atendimento", "consulta", "marcar", "agendar"]
+        if any(k in message.lower() for k in keywords):
+            info = self._obter_info_agenda(message)
+            prompt += f"\n\n--- DADOS REAIS DO SISTEMA AGORA ---\n{info}\REDACTED"
+
+        messages = [{"role": "system", "content": prompt}]
+        if state["history"]:
+            messages.extend(state["history"][:-1])
+        messages.append({"role": "user", "content": message})
+        
+        resp = ai_manager.chat_completion(messages=messages, temperature=0.7)
+        return resp.get("content", "Obrigada! Entraremos em contato em breve para confirmar o horário.")
+
+    # ──────────────────────────────────────────────
+    # UTILITÁRIOS
+    # ──────────────────────────────────────────────
+
+    def _detectar_interesse_consulta(self, message: str) -> bool:
+        """Detecta se o usuário quer marcar consulta ou mostrou interesse claro."""
+        interesse_keywords = [
+            "quero marcar", "quero agendar", "quero consulta", "vou marcar", "vou agendar",
+            "queria marcar", "queria agendar", "gostaria de marcar", "gostaria de agendar",
+            "como faço para marcar", "como faço para agendar", "vamos marcar", "vamos agendar",
+            "pode agendar", "pode marcar", "quero começar", "quero tratar", "quero iniciar",
+            "tenho interesse", "confirmo interesse", "quero prosseguir", "vou pagar"
+        ]
+        msg_lower = message.lower()
+        return any(k in msg_lower for k in interesse_keywords)
+
     def _extrair_agendamento_ia(self, message: str) -> dict:
-        """
-        Usa o LLM para extrair data e hora de uma mensagem de agendamento.
-        Retorna: {"data": "YYYY-MM-DD", "hora": "HH:MM"} ou None.
-        """
+        """Usa o LLM para extrair data e hora de uma mensagem de agendamento."""
         now = datetime.now()
         prompt = f"""Extraia a data e hora de agendamento desejada pelo paciente.
 Mensagem: "{message}"
@@ -195,121 +520,29 @@ Se não houver data/hora clara para agendamento, responda null.
         resp = ai_manager.chat_completion(messages=[{"role": "system", "content": prompt}], temperature=0.1)
         content = resp.get("content", "").strip()
         try:
-            import json
-            # Limpar markdown se houver
             clean_content = content.replace("```json", "").replace("```", "").strip()
             return json.loads(clean_content)
         except:
             return None
 
     def _obter_info_agenda(self, query: str) -> str:
-        """
-        Consulta o Google Calendar para verificar disponibilidade simplificada.
-        """
+        """Consulta o Google Calendar para verificar disponibilidade."""
         print(f"DEBUG: [Agent Dr. Anderson] Triggered agenda check for: {query[:30]}", flush=True)
         try:
             amanha = datetime.now() + timedelta(days=1)
             slots = calendar_service.list_free_slots(amanha)
             
             if not calendar_service.service:
-                return "SISTEMA: A agenda do Dr. Anderson é de terça a sexta, das 09h às 18h. INSTRUÇÃO: Informe que o médico confirmará o horário exato após o cadastro."
+                return "SISTEMA: Agenda do Dr. Anderson é de terça a sexta, das 09h às 18h. INSTRUÇÃO: Informe que o médico confirmará o horário exato após o cadastro."
             
             if slots:
-                return f"SISTEMA: Agenda consultada! Horários disponíveis encontrados: {', '.join(slots[:3])}. INSTRUÇÃO: Sugira esses horários ao paciente."
+                return f"SISTEMA: Horários disponíveis: {', '.join(slots[:5])}. INSTRUÇÃO: Sugira esses horários ao paciente."
             else:
-                return "SISTEMA: Agenda cheia! Informe que buscaremos um encaixe."
+                return "SISTEMA: Agenda cheia nas próximas datas. INSTRUÇÃO: Informe que buscaremos um encaixe."
         except Exception as e:
             print(f"DEBUG: [Agent Dr. Anderson] Erro na consulta da agenda: {e}", flush=True)
             return "SISTEMA: Problema ao ler agenda."
 
-    def _handle_triagem(self, message: str, phone: str, media_base64, mime_type) -> str:
-        state = get_state(phone)
-        is_first = not state.get("greeted", False)
-        prompt = SYSTEM_PROMPT_BASE
-        if is_first:
-            state["greeted"] = True
-            set_state(phone, state)
-            prompt += "\n\nIMPORTANTE: Primeira mensagem. Cumprimente e pergunte sobre agendamento."
-        else:
-            prompt += "\n\nREGRAS: SEM SAUDAÇÃO."
-
-        keywords = ["vaga", "horário", "agenda", "disponib", "segunda", "terça", "quarta", "quinta", "sexta", "amanhã", "próximos", "atendimento", "consulta", "marcar", "agendar"]
-        if any(k in message.lower() for k in keywords):
-            info = self._obter_info_agenda(message)
-            prompt += f"\n\n--- DADOS REAIS DO SISTEMA AGORA ---\n{info}\REDACTED"
-
-        messages = [{"role": "system", "content": prompt}]
-        if state["history"]: messages.extend(state["history"][:-1])
-        messages.append({"role": "user", "content": message})
-        resp = ai_manager.chat_completion(messages=messages, temperature=0.3)
-        return resp.get("content", "Deseja agendar uma consulta?")
-
-    def _handle_post_registration(self, message: str, phone: str, media_base64, mime_type) -> str:
-        state = get_state(phone)
-        prompt = SYSTEM_PROMPT_BASE + "\n\nPaciente já cadastrado. "
-        
-        # Tentar agendar se houver intenção clara
-        agendamento = self._extrair_agendamento_ia(message)
-        if agendamento and agendamento.get("data") and agendamento.get("hora"):
-            try:
-                dt_str = f"{agendamento['data']} {agendamento['hora']}"
-                dt_obj = datetime.strptime(dt_str, "%Y-%m-%d %H:%M")
-                
-                # Criar evento
-                dados = state.get("dados", {})
-                paciente_nome = dados.get("nome", "Paciente")
-                summary = f"Consulta: {paciente_nome}"
-                desc = f"Agendado automaticamente pela LIA via WhatsApp.\nTelefone: {phone}\nEmail: {dados.get('email', 'N/A')}"
-                
-                ev = calendar_service.create_event(dt_obj, dt_obj + timedelta(hours=1), summary, desc, dados.get('email'))
-                if ev:
-                    reply = f"Maravilha, {paciente_nome}! Sua consulta foi reservada no sistema para o dia {dt_obj.strftime('%d/%m/%Y')} às {dt_obj.strftime('%H:%M')}. Até lá! 🌿📅"
-                    add_to_history(phone, "assistant", reply)
-                    return reply
-            except Exception as e:
-                print(f"DEBUG: [Agent Dr. Anderson] Erro no agendamento: {e}", flush=True)
-
-        prompt += "Use os dados de agenda abaixo para responder diretamente à dúvida."
-        
-        # Injetar info de agenda com detecção mais ampla
-        keywords = ["vaga", "horário", "agenda", "disponib", "segunda", "terça", "quarta", "quinta", "sexta", "amanhã", "próximos", "atendimento", "consulta", "marcar", "agendar"]
-        if any(k in message.lower() for k in keywords):
-            info = self._obter_info_agenda(message)
-            prompt += f"\n\n--- DADOS REAIS DO SISTEMA AGORA ---\n{info}\REDACTED"
-
-        messages = [{"role": "system", "content": prompt}]
-        if state["history"]: messages.extend(state["history"][:-1])
-        messages.append({"role": "user", "content": message})
-            
-        resp = ai_manager.chat_completion(messages=messages, temperature=0.3)
-        return resp.get("content", "Obrigada! Entraremos em contato em breve para confirmar o horário.")
-
-    def _generate_ai_reply(self, message: str, phone: str, media_base64, mime_type) -> str:
-        state = get_state(phone)
-        step = state["step"]
-        
-        pergunta_map = {
-            "condicao_saude": "Qual condição de saúde ou problema clínico você pretende tratar?",
-            "historico_cannabis": "Você já fez ou faz uso de algum medicamento à base de cannabis medicinal?",
-            "idade": "Qual é a sua idade?",
-            "nome": "Qual é o seu nome completo?",
-            "email": "Qual é o seu melhor e-mail?",
-        }
-        
-        proxima_pergunta = pergunta_map.get(step, "")
-        state["last_asked"] = step
-        set_state(phone, state)
-
-        prompt = SYSTEM_PROMPT_BASE + f"\n\nFLUXO SDR: Não saude. Pergunta AGORA: \"{proxima_pergunta}\""
-        if "vaga" in message.lower() or "horário" in message.lower():
-            prompt += f"\n\nCONTEXTO AGENDA: {self._obter_info_agenda(message)}"
-
-        messages = [{"role": "system", "content": prompt}]
-        if state["history"]: messages.extend(state["history"][:-1])
-        messages.append({"role": "user", "content": message})
-
-        resp = ai_manager.chat_completion(messages=messages, temperature=0.3)
-        return resp.get("content", proxima_pergunta)
 
 # Instância global
 dr_anderson_agent = DrAndersonAgent()
