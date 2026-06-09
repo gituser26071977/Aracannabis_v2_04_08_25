@@ -73,20 +73,28 @@ class AIProviderManager:
     """Gerenciador de provedores de IA"""
     
     def __init__(self):
+        DEEPSEEK_AVAILABLE = OPENAI_AVAILABLE and bool(os.getenv('DEEPSEEK_API_KEY'))
+        
         self.providers = {
             'google': {
                 'available': GOOGLE_AVAILABLE,
                 'client': None,
                 'models': ['gemini-2.5-flash-lite'],
                 'type': 'cloud'
+            },
+            'deepseek': {
+                'available': DEEPSEEK_AVAILABLE,
+                'client': None,
+                'models': ['deepseek-chat', 'deepseek-reasoner'],
+                'type': 'cloud'
             }
         }
         
         # Padronizar no Gemini 2.5 Flash Lite
-        self.default_provider = 'google'
-        self.default_model = 'gemini-2.5-flash-lite'
-        self.default_vision_provider = 'google'
-        self.default_vision_model = 'gemini-2.5-flash-lite'
+        self.default_provider = 'deepseek'
+        self.default_model = 'deepseek-chat'
+        self.default_vision_provider = 'deepseek'
+        self.default_vision_model = 'deepseek-chat'
         self.default_multimodal_provider = 'google'
         self.default_multimodal_model = 'gemini-2.5-flash-lite'
 
@@ -94,7 +102,8 @@ class AIProviderManager:
         logger.info(f"AI Manager iniciado (Padrao: {self.default_provider}/{self.default_model})")
 
     def _initialize_clients(self):
-        """Inicializa exclusivamente o cliente Google Gemini"""
+        """Inicializa clientes de IA disponíveis"""
+        # Google Gemini
         try:
             if 'google' in self.providers and self.providers['google']['available']:
                 api_key = get_api_key('google') or os.getenv('GOOGLE_API_KEY')
@@ -104,6 +113,17 @@ class AIProviderManager:
                     logger.info("Google Gemini inicializado com sucesso.")
         except Exception as e:
             logger.error(f"Erro ao inicializar Google Gemini: {str(e)}")
+        
+        # DeepSeek (API compatível com OpenAI)
+        try:
+            if 'deepseek' in self.providers and self.providers['deepseek']['available']:
+                api_key = get_api_key('deepseek') or os.getenv('DEEPSEEK_API_KEY')
+                base_url = get_base_url('deepseek') or os.getenv('DEEPSEEK_BASE_URL', 'https://api.deepseek.com')
+                if api_key and OPENAI_AVAILABLE:
+                    self.providers['deepseek']['client'] = OpenAI(api_key=api_key, base_url=base_url)
+                    logger.info("DeepSeek inicializado com sucesso.")
+        except Exception as e:
+            logger.error(f"Erro ao inicializar DeepSeek: {str(e)}")
     
     def get_available_providers(self) -> List[str]:
         """Retorna lista de provedores disponíveis"""
