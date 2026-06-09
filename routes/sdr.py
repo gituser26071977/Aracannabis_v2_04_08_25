@@ -5,6 +5,7 @@ from datetime import datetime, date, time, timedelta
 import os
 import requests
 import json
+import base64
 
 sdr_bp = Blueprint("sdr", __name__)
 
@@ -206,11 +207,28 @@ def enviar_mensagem_whatsapp(numero, mensagem):
         return False
 
 
+def _download_media_from_url(url: str, api_key: str) -> tuple:
+    """Baixa mídia da URL da Evolution API e converte para base64."""
+    try:
+        headers = {"apikey": api_key}
+        resp = requests.get(url, headers=headers, timeout=30)
+        resp.raise_for_status()
+        media_base64 = base64.b64encode(resp.content).decode('utf-8')
+        # Detectar mime_type da resposta
+        mime_type = resp.headers.get('content-type', 'application/octet-stream')
+        return media_base64, mime_type
+    except Exception as e:
+        print(f"[SDR] Erro ao baixar mídia: {e}")
+        return None, None
+
+
 def _extrair_media_evolucao(message: dict) -> tuple:
-    """Extrai base64 e mime_type de mensagens de mídia da Evolution API."""
+    """Extrai base64 e mime_type de mensagens de mídia da Evolution API.
+    Suporta tanto base64 inline quanto download por URL."""
     media_base64 = None
     mime_type = None
     caption = ""
+    media_url = None
 
     # Imagem
     if "imageMessage" in message:
@@ -218,23 +236,32 @@ def _extrair_media_evolucao(message: dict) -> tuple:
         media_base64 = img.get("base64", img.get("jpegThumbnail", ""))
         mime_type = img.get("mimetype", "image/jpeg")
         caption = img.get("caption", "")
+        media_url = img.get("url", "")
     # Áudio
     elif "audioMessage" in message:
         aud = message.get("audioMessage", {})
         media_base64 = aud.get("base64", "")
         mime_type = aud.get("mimetype", "audio/ogg; codecs=opus")
+        media_url = aud.get("url", "")
     # Documento
     elif "documentMessage" in message:
         doc = message.get("documentMessage", {})
         media_base64 = doc.get("base64", "")
         mime_type = doc.get("mimetype", "application/pdf")
         caption = doc.get("caption", doc.get("fileName", ""))
+        media_url = doc.get("url", "")
     # Vídeo
     elif "videoMessage" in message:
         vid = message.get("videoMessage", {})
         media_base64 = vid.get("base64", "")
         mime_type = vid.get("mimetype", "video/mp4")
         caption = vid.get("caption", "")
+        media_url = vid.get("url", "")
+
+    # Se não veio base64 mas tem URL, baixar
+    if not media_base64 and media_url:
+        print(f"[SDR] Baixando mídia de URL: {media_url[:60]}...")
+        media_base64, mime_type = _download_media_from_url(media_url, EVOLUTION_API_KEY)
 
     return media_base64, mime_type, caption
 
