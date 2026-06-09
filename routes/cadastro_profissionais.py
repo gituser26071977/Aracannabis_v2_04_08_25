@@ -152,7 +152,8 @@ def processar_aprovacao(solicitacao_id):
             data_expiracao=datetime.now() + timedelta(days=7),
             status_cadastro='aprovado',
             aprovado_por='system',
-            data_aprovacao=datetime.now()
+            data_aprovacao=datetime.now(),
+            onboarding_completed=True  # Usuário já passou pelo cadastro completo
         )
         db.session.add(novo_profissional)
         db.session.flush()
