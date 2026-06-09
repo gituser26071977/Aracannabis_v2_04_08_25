@@ -370,6 +370,69 @@ def teste_mensagem():
         return jsonify({"error": "falha_ao_enviar"}), 500
 
 
+@sdr_bp.route("/webhook/simular", methods=["POST"])
+def simular_conversa():
+    """Endpoint para simular uma mensagem recebida do WhatsApp (sem enviar resposta).
+    Útil para testar o fluxo da LIA sem depender do WhatsApp conectado."""
+    data = request.get_json()
+    phone = data.get("phone", data.get("numero", "5582999999999"))
+    message = data.get("message", data.get("mensagem", ""))
+    media_base64 = data.get("media_base64")
+    mime_type = data.get("mime_type")
+
+    if not message and not media_base64:
+        return jsonify({"error": "message ou media_base64 é obrigatório"}), 400
+
+    print(f"[SIMULAÇÃO] Mensagem de {phone}: {message[:50]}...")
+
+    if phone not in CONVERSAS:
+        CONVERSAS[phone] = []
+
+    CONVERSAS[phone].append({"role": "user", "content": message or "[MÍDIA]"})
+
+    resposta = get_resposta_ia(
+        mensagem=message,
+        historico_conversa=CONVERSAS[phone],
+        phone=phone,
+        media_base64=media_base64,
+        mime_type=mime_type
+    )
+
+    CONVERSAS[phone].append({"role": "assistant", "content": resposta})
+
+    if len(CONVERSAS[phone]) > 20:
+        CONVERSAS[phone] = CONVERSAS[phone][-20:]
+
+    return jsonify({
+        "status": "simulado",
+        "phone": phone,
+        "user_message": message,
+        "lia_response": resposta,
+        "conversation_length": len(CONVERSAS[phone])
+    }), 200
+
+
+@sdr_bp.route("/webhook/simular/reset", methods=["POST"])
+def reset_simulacao():
+    """Reseta o estado de uma conversa simulada."""
+    data = request.get_json()
+    phone = data.get("phone", data.get("numero"))
+    
+    if phone:
+        CONVERSAS.pop(phone, None)
+        # Também limpa o estado no Redis do DrAndersonAgent
+        try:
+            from services.dr_anderson_agent import r
+            r.delete(f"lia_state:{phone}")
+        except Exception:
+            pass
+        return jsonify({"status": "resetado", "phone": phone}), 200
+    
+    # Resetar todas as conversas
+    CONVERSAS.clear()
+    return jsonify({"status": "todas_conversas_resetadas"}), 200
+
+
 @sdr_bp.route("/agendar", methods=["POST"])
 @jwt_required()
 def agendar_consulta_sdr():
