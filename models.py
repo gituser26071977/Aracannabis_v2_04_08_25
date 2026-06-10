@@ -258,6 +258,9 @@ class Paciente(db.Model):
         lazy=True,
         cascade="all, delete-orphan",
     )
+    anamneses = db.relationship(
+        "Anamnese", backref="paciente", lazy=True, cascade="all, delete-orphan", order_by="Anamnese.data_anamnese.desc()"
+    )
 
     def to_dict(self):
         return {
@@ -294,6 +297,65 @@ class Paciente(db.Model):
             "last_login_at": self.last_login_at.isoformat()
             if hasattr(self, "last_login_at") and self.last_login_at
             else None,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+class Anamnese(db.Model):
+    __tablename__ = "anamneses"
+
+    id = db.Column(db.Integer, primary_key=True)
+    paciente_id = db.Column(
+        db.Integer, db.ForeignKey("pacientes.id", ondelete="CASCADE"), nullable=False
+    )
+    profissional_id = db.Column(
+        db.Integer, db.ForeignKey("profissionais.id", ondelete="SET NULL"), nullable=True
+    )
+
+    # Dados coletados pela LIA (ou manualmente)
+    condicao_principal = db.Column(db.Text)
+    sintomas_atuais = db.Column(db.Text)
+    medicamentos_uso = db.Column(db.Text)
+    historico_cannabis = db.Column(db.Text)
+    tratamentos_previos = db.Column(db.Text)
+    exames_recentes = db.Column(db.Text)
+    alergias = db.Column(db.Text)
+    peso = db.Column(db.Float)
+    altura = db.Column(db.Float)
+
+    # Metadados
+    fonte = db.Column(db.String, default="lia")  # "lia", "manual", "import"
+    data_anamnese = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    telefone_origem = db.Column(db.String)
+    conversa_id = db.Column(db.String)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+    profissional = db.relationship("Profissional", backref="anamneses")
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "paciente_id": self.paciente_id,
+            "profissional_id": self.profissional_id,
+            "profissional_nome": self.profissional.nome if self.profissional else None,
+            "condicao_principal": self.condicao_principal,
+            "sintomas_atuais": self.sintomas_atuais,
+            "medicamentos_uso": self.medicamentos_uso,
+            "historico_cannabis": self.historico_cannabis,
+            "tratamentos_previos": self.tratamentos_previos,
+            "exames_recentes": self.exames_recentes,
+            "alergias": self.alergias,
+            "peso": self.peso,
+            "altura": self.altura,
+            "fonte": self.fonte,
+            "data_anamnese": self.data_anamnese.isoformat() if self.data_anamnese else None,
+            "telefone_origem": self.telefone_origem,
+            "conversa_id": self.conversa_id,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
