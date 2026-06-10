@@ -167,6 +167,7 @@ def create_app(config_obj=None):
     from routes.dynamic_tenant_webhook import tenant_webhook_bp
     from routes.config_ia_tenant import config_ia_tenant_bp
     from routes.sdr import sdr_bp
+    from routes.anamneses import anamneses_bp
 
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(profissionais_bp, url_prefix="/api")
@@ -184,6 +185,7 @@ def create_app(config_obj=None):
     app.register_blueprint(tenant_webhook_bp, url_prefix="/api/tenant")
     app.register_blueprint(config_ia_tenant_bp, url_prefix="/api/tenant-config")
     app.register_blueprint(sdr_bp, url_prefix="/api/sdr")
+    app.register_blueprint(anamneses_bp)
     app.register_blueprint(cadastro_prof_bp, url_prefix="/api/cadastro_profissionais")
     app.register_blueprint(anuncios_bp, url_prefix="/api")
 

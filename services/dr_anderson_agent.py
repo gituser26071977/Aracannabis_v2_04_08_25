@@ -189,6 +189,59 @@ def criar_paciente_no_siap(dados: Dict) -> Optional[int]:
         return None
 
 
+def _salvar_anamnese_siap(paciente_id: int, dados: Dict, phone: str) -> Optional[int]:
+    """Cria anamnese estruturada no SIAP via API interna."""
+    try:
+        url = f"{SIAP_INTERNAL_URL}/api/anamneses"
+        headers = {
+            "Content-Type": "application/json",
+            "X-Internal-Key": INTERNAL_SERVICE_KEY,
+        }
+        
+        # Extrair peso e altura do campo combinado
+        peso_altura = dados.get("peso_altura", "")
+        peso = None
+        altura = None
+        try:
+            import re
+            peso_match = re.search(r'(\d+[,.]?\d*)\s*kg', peso_altura.lower())
+            altura_match = re.search(r'(\d+[,.]?\d*)\s*m', peso_altura.lower())
+            if peso_match:
+                peso = float(peso_match.group(1).replace(',', '.'))
+            if altura_match:
+                altura = float(altura_match.group(1).replace(',', '.'))
+        except Exception:
+            pass
+        
+        payload = {
+            "paciente_id": paciente_id,
+            "condicao_principal": dados.get("condicao_principal"),
+            "sintomas_atuais": dados.get("sintomas_atuais"),
+            "medicamentos_uso": dados.get("medicamentos_uso"),
+            "historico_cannabis": dados.get("historico_cannabis"),
+            "tratamentos_previos": dados.get("tratamentos_previos"),
+            "exames_recentes": dados.get("exames_recentes"),
+            "alergias": dados.get("alergias"),
+            "peso": peso,
+            "altura": altura,
+            "fonte": "lia",
+            "telefone_origem": phone,
+            "conversa_id": dados.get("conversa_id"),
+        }
+        resp = requests.post(url, json=payload, headers=headers, timeout=10)
+        if resp.status_code in (200, 201):
+            data = resp.json()
+            anamnese_id = data.get("anamnese", {}).get("id")
+            if anamnese_id:
+                logger.info(f"Anamnese criada no SIAP: ID={anamnese_id} (paciente {paciente_id})")
+                return anamnese_id
+        logger.error(f"Erro ao criar anamnese no SIAP: {resp.status_code} - {resp.text}")
+        return None
+    except Exception as e:
+        logger.error(f"Exceção ao criar anamnese no SIAP: {e}")
+        return None
+
+
 def _criar_paciente_vsf(dados: Dict, face_image_b64: Optional[str] = None) -> Optional[str]:
     """Cria paciente no Visual Smart Flow e retorna o patient_id."""
     try:
@@ -495,6 +548,8 @@ class DrAndersonAgent:
             if paciente_id:
                 dados["paciente_id_siap"] = paciente_id
                 state["dados"] = dados
+                # Salvar anamnese estruturada no SIAP
+                _salvar_anamnese_siap(paciente_id, dados, phone)
             
             state["fase"] = FASE["pos_anamnese"]
             state["leads_created"] = True
