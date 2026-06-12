@@ -4,8 +4,13 @@ Decorators de Rotas Protegidas (Squad B — Segurança & Acesso)
 - require_active_subscription
 - require_plan(plan_identifier)
 - require_feature(feature_identifier)
+- require_role(*allowed_roles)              [Fase 3 — RBAC secretária]
+- require_permission(permission_name)         [Fase 3 — RBAC secretária]
+- require_association_member()                [Fase 3 — RBAC secretária]
 
-Tudo atrás da feature flag 'plan_enforcement'.
+Os decorators de subscription/plan/feature ficam atrás da flag 'plan_enforcement'.
+Os decorators de RBAC (role/permission/association) são sempre ativos e
+consultam `g.user_role` e `g.user_permissions` populados pelo PermissionMiddleware.
 """
 
 import logging
@@ -277,3 +282,158 @@ def require_feature(feature_identifier: str):
         return decorated_function
 
     return decorator
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# RBAC DECORATORS (Fase 3 — RBAC Secretária)
+# ═══════════════════════════════════════════════════════════════════════
+
+def _resolve_profissional_role() -> str | None:
+    """
+    Resolve a role GLOBAL do profissional atual a partir do JWT.
+    Retorna None se não autenticado.
+    """
+    try:
+        identity = get_jwt_identity()
+        if not identity:
+            return None
+        profissional = Profissional.query.get(int(identity))
+        if not profissional:
+            return None
+        return profissional.role
+    except Exception as exc:
+        logger.warning("Falha ao resolver role do profissional: %s", exc)
+        return None
+
+
+def require_role(*allowed_roles: str):
+    """
+    Bloqueia request se a role GLOBAL do profissional não está em `allowed_roles`.
+
+    Regras:
+      - 'admin' e 'superadmin' sempre passam (bypass).
+      - Aceita múltiplas roles: @require_role('admin', 'manager', 'secretary').
+      - Aceita 'qualquer' como bypass explícito (equivalente a não usar decorator).
+      - Aceita callable predicate para lógica custom: @require_role(lambda r: r in (...)).
+
+    Deve ser usado APÓS @jwt_required() (ou em rota que já valide auth).
+    """
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if not allowed_roles or "qualquer" in allowed_roles:
+                return f(*args, **kwargs)
+
+            role = _resolve_profissional_role()
+
+            # Admin bypass
+            if role in ("admin", "superadmin"):
+                return f(*args, **kwargs)
+
+            # Suporte a predicate
+            for allowed in allowed_roles:
+                if callable(allowed):
+                    try:
+                        if allowed(role):
+                            return f(*args, **kwargs)
+                    except Exception:
+                        continue
+                elif allowed == role:
+                    return f(*args, **kwargs)
+
+            logger.info(
+                "Acesso negado: role=%s não está em allowed=%s para %s",
+                role, allowed_roles, f.__name__,
+            )
+            return jsonify({
+                "error": "Acesso negado",
+                "message": f"Sua role ({role or 'desconhecida'}) não tem permissão para este recurso.",
+                "required_roles": [r for r in allowed_roles if not callable(r)],
+            }), 403
+
+        return decorated_function
+
+    return decorator
+
+
+def require_permission(permission_name: str):
+    """
+    Bloqueia request se a permissão AraOS não está em `g.user_permissions`.
+
+    `g.user_permissions` é populado pelo PermissionMiddleware (before_request)
+    combinando Profissional.role + UsuarioAssociacao.role.
+
+    Regras:
+      - Admin global sempre passa (todas as permissões).
+      - 'permission_name' deve ser uma string do tipo 'resource.action' registrada
+        em Permission (araos.platform.identity.permissions). Validação runtime via
+        PermissionRegistry.is_valid (best-effort; warning se não registrada).
+    """
+    # Validação best-effort da permissão
+    try:
+        from araos.platform.identity.permissions import PermissionRegistry
+        if not PermissionRegistry.is_valid(permission_name):
+            logger.warning(
+                "require_permission: '%s' não está registrada no PermissionRegistry "
+                "(pode ser wildcard ou typo).", permission_name,
+            )
+    except Exception:
+        pass
+
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            # Admin bypass
+            role = _resolve_profissional_role()
+            if role in ("admin", "superadmin"):
+                return f(*args, **kwargs)
+
+            user_perms = getattr(g, "user_permissions", None) or frozenset()
+
+            # Verifica permissão direta
+            if permission_name in user_perms:
+                return f(*args, **kwargs)
+
+            # Verifica wildcards (ex: 'patient.*' cobre 'patient.read')
+            resource = permission_name.split(".", 1)[0] if "." in permission_name else None
+            if resource and f"{resource}.*" in user_perms:
+                return f(*args, **kwargs)
+
+            logger.info(
+                "Acesso negado: permissão '%s' ausente para %s",
+                permission_name, f.__name__,
+            )
+            return jsonify({
+                "error": "Acesso negado",
+                "message": f"Você não tem a permissão necessária ({permission_name}) para este recurso.",
+                "required_permission": permission_name,
+            }), 403
+
+        return decorated_function
+
+    return decorator
+
+
+def require_association_member(f):
+    """
+    Bloqueia request se o usuário não está vinculado a uma associação ativa.
+
+    Use em rotas multi-tenant que operam dentro do escopo de uma clínica.
+    Bypassa para admin/superadmin (eles podem operar sem associação).
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        role = _resolve_profissional_role()
+        if role in ("admin", "superadmin"):
+            return f(*args, **kwargs)
+
+        current_assoc = getattr(g, "current_association", None)
+        if not current_assoc:
+            return jsonify({
+                "error": "Associação necessária",
+                "message": "Você precisa estar vinculado a uma instituição para acessar este recurso.",
+            }), 403
+
+        return f(*args, **kwargs)
+
+    return decorated_function

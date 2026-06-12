@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, Consulta, Paciente, LogAtividade
+from routes.auth_decorators import require_role
 from datetime import datetime, timedelta
 import os
 import smtplib
@@ -66,6 +67,7 @@ def listar_consultas():
 
 @consultas_bp.route('/', methods=['POST'])
 @jwt_required()
+@require_role('admin', 'profissional', 'manager', 'secretary', 'auxiliar', 'superadmin')  # secretary pode agendar
 def agendar_consulta():
     """Agendar nova consulta"""
     current_user_id = get_jwt_identity()
@@ -131,6 +133,7 @@ def agendar_consulta():
 
 @consultas_bp.route('/<int:consulta_id>', methods=['PUT'])
 @jwt_required()
+@require_role('admin', 'profissional', 'manager', 'secretary', 'auxiliar', 'superadmin')  # secretary pode reagendar
 def atualizar_consulta(consulta_id):
     """Atualizar consulta existente"""
     current_user_id = get_jwt_identity()
@@ -198,6 +201,7 @@ def atualizar_consulta(consulta_id):
 
 @consultas_bp.route('/<int:consulta_id>', methods=['DELETE'])
 @jwt_required()
+@require_role('admin', 'profissional', 'manager', 'secretary', 'auxiliar', 'superadmin')  # secretary pode cancelar
 def cancelar_consulta(consulta_id):
     """Cancelar consulta"""
     current_user_id = get_jwt_identity()

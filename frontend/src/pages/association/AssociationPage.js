@@ -2,14 +2,30 @@ import React, { useState, useEffect } from 'react';
 import {
     Container, Typography, Paper, Button, Box, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, Dialog, DialogTitle, DialogContent,
-    DialogActions, TextField, Alert, IconButton, Tooltip, CircularProgress
+    DialogActions, TextField, Alert, IconButton, Tooltip, CircularProgress,
+    Tabs, Tab, Chip, MenuItem, Select, FormControl, InputLabel
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import BusinessIcon from '@mui/icons-material/Business';
+import SendIcon from '@mui/icons-material/Send';
+import BlockIcon from '@mui/icons-material/Block';
 import { useNavigate } from 'react-router-dom';
 import associationService from '../../services/associationService';
 import api from '../../services/api';
+
+const STAFF_ROLE_LABELS = {
+    secretary: { label: 'Secretária', color: 'secondary' },
+    manager: { label: 'Gestor(a)', color: 'warning' },
+    admin: { label: 'Admin', color: 'error' },
+};
+
+const INVITE_STATUS_LABELS = {
+    pending: { label: 'Pendente', color: 'info' },
+    accepted: { label: 'Aceito', color: 'success' },
+    revoked: { label: 'Revogado', color: 'default' },
+    expired: { label: 'Expirado', color: 'default' },
+};
 
 const AssociationPage = () => {
     const [associations, setAssociations] = useState([]);
@@ -18,6 +34,24 @@ const AssociationPage = () => {
     const [lookupLoading, setLookupLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+
+    // Estado do dialog de convite
+    const [inviteOpen, setInviteOpen] = useState(false);
+    const [inviteLoading, setInviteLoading] = useState(false);
+    const [selectedAssociation, setSelectedAssociation] = useState(null);
+    const [inviteForm, setInviteForm] = useState({
+        nome: '', email: '', telefone: '',
+        invite_type: 'professional',
+        role: 'secretary',
+    });
+    const [inviteLink, setInviteLink] = useState('');
+    const [inviteTab, setInviteTab] = useState(0);
+
+    // Estado do dialog de listagem de convites
+    const [invitesListOpen, setInvitesListOpen] = useState(false);
+    const [invites, setInvites] = useState([]);
+    const [invitesLoading, setInvitesLoading] = useState(false);
+
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -121,6 +155,99 @@ const AssociationPage = () => {
         }
     };
 
+    // === Convite ===
+    const openInviteDialog = (association) => {
+        setSelectedAssociation(association);
+        setInviteForm({
+            nome: '', email: '', telefone: '',
+            invite_type: 'professional',
+            role: 'secretary',
+        });
+        setInviteLink('');
+        setError('');
+        setInviteTab(0);
+        setInviteOpen(true);
+    };
+
+    const openInvitesListDialog = (association) => {
+        setSelectedAssociation(association);
+        setInvitesListOpen(true);
+        fetchInvites(association.id);
+    };
+
+    const fetchInvites = async (associationId) => {
+        setInvitesLoading(true);
+        try {
+            const data = await associationService.listInvites(associationId);
+            setInvites(data.convites || []);
+        } catch (err) {
+            setError('Erro ao listar convites.');
+            console.error(err);
+        } finally {
+            setInvitesLoading(false);
+        }
+    };
+
+    const handleInviteSubmit = async () => {
+        if (!inviteForm.email && !inviteForm.telefone) {
+            setError('Informe email ou telefone para gerar o convite.');
+            return;
+        }
+
+        setInviteLoading(true);
+        setError('');
+        try {
+            let response;
+            if (inviteForm.invite_type === 'staff') {
+                response = await associationService.inviteStaff(selectedAssociation.id, {
+                    nome: inviteForm.nome,
+                    email: inviteForm.email,
+                    telefone: inviteForm.telefone,
+                    role: inviteForm.role,
+                });
+            } else {
+                response = await associationService.inviteProfessional(selectedAssociation.id, {
+                    nome: inviteForm.nome,
+                    email: inviteForm.email,
+                    telefone: inviteForm.telefone,
+                });
+            }
+            setInviteLink(response.invite_link);
+            setSuccess(response.email_sent ? 'Convite gerado e enviado por email.' : 'Convite gerado. Compartilhe o link abaixo.');
+            setTimeout(() => setSuccess(''), 4000);
+            if (selectedAssociation) fetchInvites(selectedAssociation.id);
+        } catch (err) {
+            setError(err.response?.data?.error || 'Erro ao gerar convite.');
+            console.error(err);
+        } finally {
+            setInviteLoading(false);
+        }
+    };
+
+    const handleRevokeInvite = async (inviteId) => {
+        if (!window.confirm('Revogar este convite? O link deixará de funcionar.')) return;
+        try {
+            await associationService.revokeInvite(inviteId);
+            setSuccess('Convite revogado.');
+            setTimeout(() => setSuccess(''), 3000);
+            if (selectedAssociation) fetchInvites(selectedAssociation.id);
+        } catch (err) {
+            setError(err.response?.data?.error || 'Erro ao revogar.');
+            console.error(err);
+        }
+    };
+
+    const handleResendInvite = async (inviteId) => {
+        try {
+            const res = await associationService.resendInvite(inviteId);
+            setSuccess(res.message || 'Email reenviado.');
+            setTimeout(() => setSuccess(''), 3000);
+        } catch (err) {
+            setError(err.response?.data?.error || 'Erro ao reenviar.');
+            console.error(err);
+        }
+    };
+
     return (
         <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
@@ -181,6 +308,12 @@ const AssociationPage = () => {
                                     <Button size="small" onClick={() => navigate(`/association/${assoc.id}/dispensation`)}>
                                         Dispensar
                                     </Button>
+                                    <Button size="small" onClick={() => openInviteDialog(assoc)}>
+                                        Convidar
+                                    </Button>
+                                    <Button size="small" onClick={() => openInvitesListDialog(assoc)}>
+                                        Ver Convites
+                                    </Button>
                                 </TableCell>
                             </TableRow>
                         ))}
@@ -195,6 +328,7 @@ const AssociationPage = () => {
                 </Table>
             </TableContainer>
 
+            {/* Dialog: Nova Associação */}
             <Dialog open={open} onClose={() => setOpen(false)}>
                 <DialogTitle>Nova Associação</DialogTitle>
                 <DialogContent>
@@ -264,6 +398,201 @@ const AssociationPage = () => {
                     <Button onClick={handleCreate} color="primary">
                         Salvar
                     </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Dialog: Convidar (Profissional OU Staff) */}
+            <Dialog open={inviteOpen} onClose={() => setInviteOpen(false)} maxWidth="sm" fullWidth>
+                <DialogTitle>
+                    Convidar {inviteForm.invite_type === 'staff' ? 'Membro da Equipe' : 'Profissional'}
+                </DialogTitle>
+                <DialogContent>
+                    <Tabs
+                        value={inviteTab}
+                        onChange={(_, v) => {
+                            setInviteTab(v);
+                            setInviteForm({
+                                ...inviteForm,
+                                invite_type: v === 0 ? 'professional' : 'staff',
+                            });
+                            setInviteLink('');
+                        }}
+                        sx={{ mb: 2 }}
+                    >
+                        <Tab label="Profissional de Saúde" />
+                        <Tab label="Equipe (Secretária/Gestor)" />
+                    </Tabs>
+
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        {inviteForm.invite_type === 'staff'
+                            ? 'A pessoa receberá um link para criar a conta já vinculada à equipe administrativa da clínica. Não exige CRM/conselho de classe.'
+                            : `O profissional receberá um link privado para solicitar cadastro já vinculado a ${selectedAssociation?.nome}.`}
+                    </Typography>
+
+                    <FormControl fullWidth sx={{ mb: 2 }} size="small">
+                        <InputLabel>Função</InputLabel>
+                        <Select
+                            value={inviteForm.invite_type === 'staff' ? inviteForm.role : 'member'}
+                            label="Função"
+                            disabled={inviteForm.invite_type !== 'staff'}
+                            onChange={(e) => setInviteForm({ ...inviteForm, role: e.target.value })}
+                        >
+                            {inviteForm.invite_type === 'staff' ? (
+                                [
+                                    <MenuItem key="secretary" value="secretary">👩‍💼 Secretária</MenuItem>,
+                                    <MenuItem key="manager" value="manager">🏥 Gestor(a) da Clínica</MenuItem>,
+                                    <MenuItem key="admin" value="admin">👑 Administrador(a)</MenuItem>,
+                                ]
+                            ) : (
+                                <MenuItem value="member">🩺 Membro da Equipe Clínica</MenuItem>
+                            )}
+                        </Select>
+                    </FormControl>
+
+                    <TextField
+                        margin="dense"
+                        name="nome"
+                        label="Nome"
+                        type="text"
+                        fullWidth
+                        value={inviteForm.nome}
+                        onChange={(e) => setInviteForm({ ...inviteForm, nome: e.target.value })}
+                    />
+                    <TextField
+                        margin="dense"
+                        name="email"
+                        label="Email"
+                        type="email"
+                        fullWidth
+                        value={inviteForm.email}
+                        onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
+                    />
+                    <TextField
+                        margin="dense"
+                        name="telefone"
+                        label="WhatsApp/Telefone"
+                        type="text"
+                        fullWidth
+                        value={inviteForm.telefone}
+                        onChange={(e) => setInviteForm({ ...inviteForm, telefone: e.target.value })}
+                        helperText="Se não houver email, o sistema gera o link para envio manual por WhatsApp."
+                    />
+                    {inviteLink && (
+                        <TextField
+                            margin="dense"
+                            label="Link do convite"
+                            type="text"
+                            fullWidth
+                            value={inviteLink}
+                            InputProps={{ readOnly: true }}
+                            sx={{ mt: 2 }}
+                        />
+                    )}
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setInviteOpen(false)} color="secondary">
+                        Fechar
+                    </Button>
+                    {inviteLink && (
+                        <Button onClick={() => navigator.clipboard?.writeText(inviteLink)}>
+                            Copiar Link
+                        </Button>
+                    )}
+                    <Button onClick={handleInviteSubmit} color="primary" disabled={inviteLoading}>
+                        {inviteLoading ? <CircularProgress size={20} /> : 'Gerar Convite'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Dialog: Lista de Convites */}
+            <Dialog
+                open={invitesListOpen}
+                onClose={() => setInvitesListOpen(false)}
+                maxWidth="md"
+                fullWidth
+            >
+                <DialogTitle>
+                    Convites — {selectedAssociation?.nome}
+                </DialogTitle>
+                <DialogContent>
+                    {invitesLoading ? (
+                        <Box display="flex" justifyContent="center" p={3}>
+                            <CircularProgress />
+                        </Box>
+                    ) : invites.length === 0 ? (
+                        <Typography color="text.secondary" sx={{ p: 2 }}>
+                            Nenhum convite emitido.
+                        </Typography>
+                    ) : (
+                        <TableContainer component={Paper} variant="outlined">
+                            <Table size="small">
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell>Nome</TableCell>
+                                        <TableCell>Email</TableCell>
+                                        <TableCell>Tipo</TableCell>
+                                        <TableCell>Função</TableCell>
+                                        <TableCell>Status</TableCell>
+                                        <TableCell>Expira em</TableCell>
+                                        <TableCell align="center">Ações</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {invites.map((c) => (
+                                        <TableRow key={c.id}>
+                                            <TableCell>{c.nome || '—'}</TableCell>
+                                            <TableCell>{c.email || c.telefone || '—'}</TableCell>
+                                            <TableCell>
+                                                <Chip
+                                                    size="small"
+                                                    label={c.invite_type === 'staff' ? 'Equipe' : 'Profissional'}
+                                                    color={c.invite_type === 'staff' ? 'secondary' : 'primary'}
+                                                />
+                                            </TableCell>
+                                            <TableCell>
+                                                {c.invite_type === 'staff' && STAFF_ROLE_LABELS[c.role] ? (
+                                                    <Chip size="small" label={STAFF_ROLE_LABELS[c.role].label} color={STAFF_ROLE_LABELS[c.role].color} />
+                                                ) : (
+                                                    <Chip size="small" label="Membro" />
+                                                )}
+                                            </TableCell>
+                                            <TableCell>
+                                                <Chip
+                                                    size="small"
+                                                    label={INVITE_STATUS_LABELS[c.status]?.label || c.status}
+                                                    color={INVITE_STATUS_LABELS[c.status]?.color || 'default'}
+                                                />
+                                            </TableCell>
+                                            <TableCell>
+                                                {c.expires_at ? new Date(c.expires_at).toLocaleDateString('pt-BR') : '—'}
+                                            </TableCell>
+                                            <TableCell align="center">
+                                                {c.status === 'pending' && (
+                                                    <>
+                                                        {c.email && (
+                                                            <Tooltip title="Reenviar email">
+                                                                <IconButton size="small" onClick={() => handleResendInvite(c.id)}>
+                                                                    <SendIcon fontSize="small" />
+                                                                </IconButton>
+                                                            </Tooltip>
+                                                        )}
+                                                        <Tooltip title="Revogar">
+                                                            <IconButton size="small" color="error" onClick={() => handleRevokeInvite(c.id)}>
+                                                                <BlockIcon fontSize="small" />
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                    </>
+                                                )}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                    )}
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setInvitesListOpen(false)} color="primary">Fechar</Button>
                 </DialogActions>
             </Dialog>
         </Container>

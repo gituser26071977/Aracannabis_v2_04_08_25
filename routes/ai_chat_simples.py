@@ -1,6 +1,8 @@
 """
 Rota de chat simplificada que funciona melhor com modelos locais pequenos
 Não depende de function calling - busca dados diretamente
+
+SEGURANÇA: Implementa validação de acesso a pacientes (multi-tenant).
 """
 
 from flask import Blueprint, request, jsonify
@@ -8,8 +10,12 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 import logging
 import base64
 import os
+from typing import Dict, Optional
+
+from routes.auth_decorators import require_role
+
 import google.generativeai as genai
-from models import db, Paciente, Evolucao, Dosagem, Sintoma
+from models import db, Paciente, Evolucao, Dosagem, Sintoma, CompartilhamentoPaciente, Profissional
 from services.ai_agents import ai_manager
 from services.ai_config_storage import get_api_key
 from security_config import sanitize_input
@@ -17,35 +23,88 @@ from security_config import sanitize_input
 ai_chat_simples_bp = Blueprint('ai_chat_simples', __name__)
 logger = logging.getLogger(__name__)
 
-def buscar_contexto_paciente(paciente_id):
-    """Busca todos os dados do paciente para incluir no contexto"""
+
+def _validar_acesso_paciente(paciente_id: int, profissional_id: int) -> bool:
+    """
+    Valida se o profissional tem acesso ao paciente.
+    Um profissional pode acessar pacientes que:
+    1. São de sua responsabilidade (profissional_responsavel_id)
+    2. Foram compartilhados com ele (compartilhamentos_pacientes)
+    3. São de sua associação (para admins)
+    
+    Returns:
+        True se tem acesso, False caso contrário
+    """
+    paciente = Paciente.query.get(paciente_id)
+    if not paciente:
+        logger.warning(f"Paciente {paciente_id} não encontrado")
+        return False
+    
+    profissional = Profissional.query.get(profissional_id)
+    if not profissional:
+        logger.warning(f"Profissional {profissional_id} não encontrado")
+        return False
+    
+    # Admin e superadmin têm acesso total
+    if profissional.role in ('admin', 'superadmin'):
+        logger.info(f"Admin {profissional_id} acessando paciente {paciente_id}")
+        return True
+    
+    # Verificar se é o profissional responsável
+    if paciente.profissional_responsavel_id == profissional_id:
+        logger.info(f"Profissional {profissional_id} é responsável pelo paciente {paciente_id}")
+        return True
+    
+    # Verificar se tem compartilhamento ativo
+    compartilhamento = CompartilhamentoPaciente.query.filter_by(
+        paciente_id=paciente_id,
+        profissional_id=profissional_id,
+        ativo=True
+    ).first()
+    
+    if compartilhamento:
+        logger.info(f"Profissional {profissional_id} tem compartilhamento do paciente {paciente_id}")
+        return True
+    
+    logger.warning(f"Acesso negado: Profissional {profissional_id} tentou acessar paciente {paciente_id}")
+    return False
+
+
+def buscar_contexto_paciente(paciente_id: int, profissional_id: int) -> Optional[Dict]:
+    """Busca todos os dados do paciente para incluir no contexto.
+    SOMENTE retorna dados se o profissional tiver acesso ao paciente.
+    
+    Args:
+        paciente_id: ID do paciente a ser buscado
+        profissional_id: ID do profissional que solicita os dados
+        
+    Returns:
+        Dict com dados do paciente ou None se não tiver acesso
+    """
+    # PRIMEIRO: Validar acesso ao paciente
+    if not _validar_acesso_paciente(paciente_id, profissional_id):
+        return None
+    
+    # Buscar paciente
+    paciente = Paciente.query.get(paciente_id)
+    if not paciente:
+        return None
+
     try:
-        from sqlalchemy import select
-        
-        # Usar select() com execution_options para bypass seguro do tenant filter
-        stmt = select(Paciente).where(Paciente.id == paciente_id).execution_options(skip_tenant=True)
-        paciente = db.session.execute(stmt).scalar_one_or_none()
-        
-        if not paciente:
-            return None
-
-        # Buscar últimas evoluções com bypass
-        ev_stmt = select(Evolucao).where(Evolucao.paciente_id == paciente_id)\
+        # Buscar últimas evoluções
+        evolucoes = Evolucao.query.filter_by(paciente_id=paciente_id)\
             .order_by(Evolucao.data_evolucao.desc())\
-            .limit(5).execution_options(skip_tenant=True)
-        evolucoes = db.session.execute(ev_stmt).scalars().all()
+            .limit(5).all()
 
-        # Buscar últimas dosagens com bypass
-        dos_stmt = select(Dosagem).where(Dosagem.paciente_id == paciente_id)\
+        # Buscar últimas dosagens
+        dosagens = Dosagem.query.filter_by(paciente_id=paciente_id)\
              .order_by(Dosagem.data.desc())\
-             .limit(10).execution_options(skip_tenant=True)
-        dosagens = db.session.execute(dos_stmt).scalars().all()
+             .limit(10).all()
 
-        # Buscar últimos sintomas com bypass
-        sint_stmt = select(Sintoma).where(Sintoma.paciente_id == paciente_id)\
+        # Buscar últimos sintomas
+        sintomas = Sintoma.query.filter_by(paciente_id=paciente_id)\
              .order_by(Sintoma.data.desc())\
-             .limit(15).execution_options(skip_tenant=True)
-        sintomas = db.session.execute(sint_stmt).scalars().all()
+             .limit(15).all()
 
         contexto = {
             "paciente": {
@@ -81,18 +140,23 @@ def buscar_contexto_paciente(paciente_id):
             ]
         }
 
+        logger.info(f"Contexto do paciente {paciente_id} retornado para profissional {profissional_id}")
         return contexto
 
     except Exception as e:
         logger.error(f"Erro ao buscar contexto do paciente: {str(e)}")
         return None
 
+
 @ai_chat_simples_bp.route('/chat-simples', methods=['POST'])
 @jwt_required()
+@require_role('admin', 'profissional', 'manager', 'superadmin')  # bloqueia secretary
 def chat_simples():
     """
     Chat simplificado que funciona melhor com modelos locais menores
     Não usa function calling - passa todos os dados no contexto
+    
+    SEGURANÇA: Verifica acesso ao paciente antes de retornar dados.
     """
     try:
         current_user_id = int(get_jwt_identity())
@@ -105,14 +169,21 @@ def chat_simples():
         if not mensagem:
             return jsonify({'error': 'Mensagem é obrigatória'}), 400
 
-        # Se tiver paciente_id, buscar contexto completo
+        # Se tiver paciente_id, buscar contexto completo COM VALIDAÇÃO DE ACESSO
         contexto_texto = ""
         if paciente_id:
-            contexto = buscar_contexto_paciente(paciente_id)
+            contexto = buscar_contexto_paciente(paciente_id, current_user_id)
+            
+            # Se contexto é None, significa que não tem acesso
+            if contexto is None:
+                logger.warning(f"Chat simples: Acesso negado ao paciente {paciente_id} para usuário {current_user_id}")
+                return jsonify({
+                    'error': 'Paciente não encontrado ou você não tem permissão para acessar seus dados',
+                    'codigo': 'ACESSO_NEGADO'
+                }), 403
 
-            if contexto:
-                paciente = contexto['paciente']
-                contexto_texto = f"""
+            paciente = contexto['paciente']
+            contexto_texto = f"""
 DADOS DO PACIENTE:
 Nome: {paciente['nome']}
 Condição Médica: {paciente['condicao_medica']}
@@ -121,25 +192,24 @@ Em tratamento: {'Sim' if paciente['em_tratamento'] else 'Não'}
 
 EVOLUÇÕES CLÍNICAS RECENTES ({len(contexto['evolucoes_recentes'])}):
 """
-                for i, ev in enumerate(contexto['evolucoes_recentes'], 1):
-                    contexto_texto += f"\n{i}. [{ev['data']}] {ev['nota']}"
+            for i, ev in enumerate(contexto['evolucoes_recentes'], 1):
+                contexto_texto += f"\n{i}. [{ev['data']}] {ev['nota']}"
 
-                contexto_texto += f"\n\nDOSAGENS RECENTES ({len(contexto['dosagens_recentes'])}):"
-                for i, dos in enumerate(contexto['dosagens_recentes'], 1):
-                    gotas_info = f"{dos['gotas']} gotas" if dos.get('gotas') else ""
-                    freq_info = f"{dos['frequencia_diaria']}x/dia" if dos.get('frequencia_diaria') else ""
-                    cbd_info = f"CBD: {dos['cbd']}%" if dos.get('cbd') else ""
-                    thc_info = f"THC: {dos['thc']}%" if dos.get('thc') else ""
-                    info_parts = [p for p in [gotas_info, freq_info, cbd_info, thc_info] if p]
-                    info_str = " - " + ", ".join(info_parts) if info_parts else ""
-                    contexto_texto += f"\n{i}. [{dos['data']}] {dos['dosagem']}{info_str}"
+            contexto_texto += f"\n\nDOSAGENS RECENTES ({len(contexto['dosagens_recentes'])}):"
+            for i, dos in enumerate(contexto['dosagens_recentes'], 1):
+                gotas_info = f"{dos['gotas']} gotas" if dos.get('gotas') else ""
+                freq_info = f"{dos['frequencia_diaria']}x/dia" if dos.get('frequencia_diaria') else ""
+                cbd_info = f"CBD: {dos['cbd']}%" if dos.get('cbd') else ""
+                thc_info = f"THC: {dos['thc']}%" if dos.get('thc') else ""
+                info_parts = [p for p in [gotas_info, freq_info, cbd_info, thc_info] if p]
+                info_str = " - " + ", ".join(info_parts) if info_parts else ""
+                contexto_texto += f"\n{i}. [{dos['data']}] {dos['dosagem']}{info_str}"
 
-                contexto_texto += f"\n\nSINTOMAS RECENTES ({len(contexto['sintomas_recentes'])}):"
-                for i, sint in enumerate(contexto['sintomas_recentes'], 1):
-                    contexto_texto += f"\n{i}. [{sint['data']}] {sint['sintoma']} (Intensidade: {sint['intensidade']}/10)"
-            else:
-                contexto_texto = f"\nPaciente ID {paciente_id} não encontrado ou sem acesso permitido."
-                logger.warning(f"Paciente ID {paciente_id} não encontrado no chat simples")
+            contexto_texto += f"\n\nSINTOMAS RECENTES ({len(contexto['sintomas_recentes'])}):"
+            for i, sint in enumerate(contexto['sintomas_recentes'], 1):
+                contexto_texto += f"\n{i}. [{sint['data']}] {sint['sintoma']} (Intensidade: {sint['intensidade']}/10)"
+        else:
+            contexto_texto = "\n[Nenhum dado de paciente disponível - sem acesso ou paciente não existe]"
 
         # Montar prompt para a IA
         system_prompt = """Você é um assistente médico especializado em cannabis medicinal.
@@ -184,6 +254,7 @@ IMPORTANTE: Base suas respostas EXCLUSIVAMENTE nos dados fornecidos. Não invent
         logger.error(f"Erro no chat simples: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+
 @ai_chat_simples_bp.route('/stt', methods=['POST'])
 @jwt_required()
 def speech_to_text():
@@ -226,6 +297,7 @@ def speech_to_text():
         logger.error(f"Erro STT: {str(e)}")
         return jsonify({'error': f"Falha ao transcrever: {str(e)}"}), 500
 
+
 @ai_chat_simples_bp.route('/tts', methods=['POST'])
 @jwt_required()
 def text_to_speech():
@@ -253,7 +325,6 @@ def text_to_speech():
         )
         
         # Converter para base64 para uso fácil no frontend sem arquivos no disco
-        import base64
         audio_data = response.content
         audio_b64 = base64.b64encode(audio_data).decode('utf-8')
         
@@ -264,6 +335,7 @@ def text_to_speech():
     except Exception as e:
         logger.error(f"Erro TTS: {str(e)}")
         return jsonify({'error': f"Falha na síntese de voz: {str(e)}"}), 500
+
 
 @ai_chat_simples_bp.route('/chat-simples/test', methods=['GET'])
 @jwt_required()
