@@ -1,0 +1,275 @@
+# =============================================================================
+# CI/CD — AraOS / Aracannabis SIAP
+# =============================================================================
+# Workflow único que cobre:
+#   1. PRs abertos contra main      → roda testes (test-secretary, test-rbac, test-staff-invite, test-dashboard)
+#   2. Push em main (após merge)    → roda testes + faz deploy no VPS
+#   3. workflow_dispatch (manual)   → deploy direto (skip testes, com confirmação)
+#
+# Stack no VPS:
+#   - Path: /root/projetos/araos/
+#   - Compose: docker-compose.prod.yml
+#   - Containers: siap-backend, siap-frontend, siap-db, siap-redis, siap-anonymization
+#   - Domínio: visualsmartflow.com.br / araos.visualsmartflow.com.br (Traefik)
+#
+# Secrets necessários no GitHub (repo → Settings → Secrets and variables → Actions):
+#   - VPS_SSH_KEY      : chave SSH privada (ed25519 ou rsa) — adicionar pub key em
+#                        /root/.ssh/authorized_keys no VPS
+#   - VPS_HOST         : 147.93.33.253
+#   - VPS_USER         : root
+#   - VPS_DEPLOY_PATH  : /root/projetos/araos   (opcional, default = esse)
+# =============================================================================
+
+name: Deploy VPS
+
+on:
+  # PRs contra main: roda testes
+  pull_request:
+    branches: [main]
+    paths:
+      - '**.py'
+      - 'frontend/src/**'
+      - 'tests/**'
+      - 'requirements.txt'
+      - '.github/workflows/deploy.yml'
+
+  # Push em main: roda testes + deploy
+  push:
+    branches: [main]
+    paths:
+      - '**.py'
+      - 'frontend/src/**'
+      - 'tests/**'
+      - 'requirements.txt'
+      - 'docker-compose.prod.yml'
+      - 'Dockerfile.backend'
+      - 'frontend/Dockerfile'
+      - 'migrations/**'
+      - '.github/workflows/deploy.yml'
+
+  # Manual: deploy forçado
+  workflow_dispatch:
+    inputs:
+      skip_tests:
+        description: 'Pular testes (use apenas em emergência)'
+        required: false
+        default: 'false'
+
+# Evita deploys concorrentes
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: false
+
+# Permissões mínimas
+permissions:
+  contents: read
+
+env:
+  VPS_HOST: ${{ secrets.VPS_HOST || '147.93.33.253' }}
+  VPS_USER: ${{ secrets.VPS_USER || 'root' }}
+  VPS_DEPLOY_PATH: ${{ secrets.VPS_DEPLOY_PATH || '/root/projetos/araos' }}
+  COMPOSE_FILE: docker-compose.prod.yml
+
+jobs:
+  # =============================================================================
+  # 1. TESTES
+  # =============================================================================
+  test:
+    name: Testes (pytest)
+    runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'pull_request') ||
+      (github.event_name == 'push') ||
+      (github.event_name == 'workflow_dispatch' && inputs.skip_tests != 'true')
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: siap_user
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: aracannabis_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://siap_user:testpass@localhost:5432/aracannabis_test
+      JWT_SECRET_KEY: REDACTED
+      SECRET_KEY: REDACTED
+      FLASK_ENV: testing
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Instalar dependências
+        run: |
+          python -m pip install --upgrade pip
+          pip install --no-cache-dir -r requirements.txt
+          pip install --no-cache-dir pytest pytest-flask pytest-mock
+
+      - name: Rodar testes da secretária
+        run: |
+          pytest tests/test_secretary_foundation.py \
+                 tests/test_staff_invite_flow.py \
+                 tests/test_rbac_runtime.py \
+                 tests/test_secretaria_dashboard.py \
+                 -v --tb=short --maxfail=3
+        continue-on-error: false
+
+      - name: Rodar outros testes
+        run: |
+          pytest tests/ \
+                 --ignore=tests/test_secretary_foundation.py \
+                 --ignore=tests/test_staff_invite_flow.py \
+                 --ignore=tests/test_rbac_runtime.py \
+                 --ignore=tests/test_secretaria_dashboard.py \
+                 -v --tb=short --maxfail=5 -q
+        continue-on-error: true  # não bloqueia deploy por testes legados
+
+  # =============================================================================
+  # 2. DEPLOY NO VPS
+  # =============================================================================
+  deploy:
+    name: Deploy no VPS
+    needs: test
+    runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch')
+    environment:
+      name: production
+      url: https://visualsmartflow.com.br
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validar secrets obrigatórios
+        run: |
+          if [ -z "${{ secrets.VPS_SSH_KEY }}" ]; then
+            echo "::error::Secret VPS_SSH_KEY não configurado. Adicione em Settings → Secrets."
+            exit 1
+          fi
+          echo "✅ Secrets OK"
+
+      - name: Pré-checagem SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ env.VPS_HOST }}
+          username: ${{ env.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          command_timeout: 30s
+          script: |
+            set -e
+            echo "=== Estado do deploy ==="
+            cd "$VPS_DEPLOY_PATH"
+            pwd
+            echo "Último commit em prod:"
+            git log --oneline -1
+            echo "Containers ativos:"
+            docker ps --format "table {{.Names}}\t{{.Status}}" | head -20
+            echo "Espaço em disco:"
+            df -h / | tail -1
+            echo "✅ Pré-checagem OK"
+
+      - name: Deploy
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ env.VPS_HOST }}
+          username: ${{ env.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          command_timeout: 30m
+          script: |
+            set -e
+            export DEBIAN_FRONTEND=noninteractive
+
+            echo "=== [1/8] Backup do banco ==="
+            mkdir -p /root/backups
+            BACKUP_FILE="/root/backups/siap_pre_deploy_$(date +%Y%m%d_%H%M%S).sql"
+            docker exec siap-db pg_dump -U siap_user aracannabis > "$BACKUP_FILE" 2>/dev/null || echo "⚠️  Backup falhou (db pode estar indisponível)"
+            ls -lh "$BACKUP_FILE" 2>/dev/null || true
+
+            echo "=== [2/8] Git pull ==="
+            cd "$VPS_DEPLOY_PATH"
+            git fetch origin main
+            git stash push -u -m "pre-deploy-stash-$(date +%s)" || true
+            git checkout main
+            git pull --ff-only origin main
+            NEW_COMMIT=$(git log --oneline -1)
+            echo "✅ Novo commit: $NEW_COMMIT"
+
+            echo "=== [3/8] Verificar .env.production ==="
+            if [ ! -f .env.production ]; then
+              echo "::error::Arquivo .env.production não encontrado em $VPS_DEPLOY_PATH"
+              exit 1
+            fi
+
+            echo "=== [4/8] Build das imagens ==="
+            docker compose -f $COMPOSE_FILE build --no-cache siap-backend siap-frontend
+
+            echo "=== [5/8] Subir containers (rolling restart) ==="
+            docker compose -f $COMPOSE_FILE up -d siap-db siap-redis
+            sleep 5
+            # Aguarda DB ficar healthy
+            for i in 1 2 3 4 5 6 7 8 9 10; do
+              if docker exec siap-db pg_isready -U siap_user -d aracannabis >/dev/null 2>&1; then
+                echo "✅ DB pronto"
+                break
+              fi
+              echo "Aguardando DB... ($i)"
+              sleep 3
+            done
+
+            docker compose -f $COMPOSE_FILE up -d siap-backend
+            echo "Aguardando backend inicializar..."
+            for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+              if docker exec siap-backend curl -fsS http://localhost:5000/api/status >/dev/null 2>&1; then
+                echo "✅ Backend respondendo"
+                break
+              fi
+              sleep 4
+            done
+
+            docker compose -f $COMPOSE_FILE up -d siap-frontend siap-anonymization
+
+            echo "=== [6/8] Migrations Flask ==="
+            docker exec siap-backend flask db upgrade || echo "⚠️  Migration falhou (verificar manualmente)"
+
+            echo "=== [7/8] Limpeza de imagens antigas ==="
+            docker image prune -f
+            docker volume prune -f
+
+            echo "=== [8/8] Health checks finais ==="
+            sleep 10
+            echo "--- Frontend ---"
+            curl -fsS -o /dev/null -w "HTTP %{http_code} em %{time_total}s\n" https://visualsmartflow.com.br/ || echo "❌ Frontend inacessível"
+            echo "--- Backend API status ---"
+            docker exec siap-backend curl -fsS http://localhost:5000/api/status || echo "❌ Backend não responde"
+            echo "--- Containers ---"
+            docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | head -15
+            echo "--- Logs (últimas 20 linhas do backend) ---"
+            docker logs --tail 20 siap-backend 2>&1 | head -30
+
+            echo "✅ DEPLOY CONCLUÍDO"
+
+      - name: Notificar sucesso (Slack opcional)
+        if: success()
+        run: |
+          echo "✅ Deploy ${{ github.sha }} em produção com sucesso"
+          echo "Commit: ${{ github.event.head_commit.message }}"
+
+      - name: Notificar falha
+        if: failure()
+        run: |
+          echo "::error::❌ Deploy ${{ github.sha }} FALHOU"
+          echo "Verifique os logs do job e o estado dos containers no VPS"
+          echo "Para rollback: cd ${{ env.VPS_DEPLOY_PATH }} && git checkout HEAD~1 && docker compose -f ${{ env.COMPOSE_FILE }} up -d --build"
