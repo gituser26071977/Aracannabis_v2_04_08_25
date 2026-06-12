@@ -55,6 +55,17 @@ ANAMNESE_STEPS = [
     "completo",           # Fim: anamnese completa
 ]
 
+# Valor da consulta (centralizado para fácil atualização)
+VALOR_CONSULTA = "R$ 650,00"
+VALOR_CONSULTA_NUMERO = "650,00"
+
+# URL do Visual Smart Flow para cadastro de pacientes
+# Produção: https://visualsmartflow.com.br/mobile/ (PWA para cadastro biométrico)
+# API: https://visualsmartflow.com.br/api/patients/register
+VSF_CADASTRO_URL = os.getenv("VSF_CADASTRO_URL", "https://visualsmartflow.com.br/mobile/")
+VSF_API_URL = os.getenv("VSF_API_URL", "https://visualsmartflow.com.br/api")
+VSF_ENABLED = os.getenv("VSF_ENABLED", "true").lower() == "true"
+
 def get_state(phone: str) -> Dict:
     key = f"lia_state:{phone}"
     state_json = r.get(key)
@@ -288,13 +299,13 @@ def _sincronizar_agendamento_vsf(dados: Dict, data_hora: datetime) -> Optional[s
 # Prompts
 # ──────────────────────────────────────────────
 
-SYSTEM_PROMPT_BASE = """Você é a LIA, assistente SDR dedicada do Dr. Anderson Holzwarth, especialista em Cannabis Medicinal pela Arapath.
+SYSTEM_PROMPT_BASE = f"""Você é a LIA, assistente SDR dedicada do Dr. Anderson Holzwarth, especialista em Cannabis Medicinal pela Arapath.
 
 PERFIL DO MÉDICO:
 - Dr. Anderson Holzwarth
 - CRM ativo, especialista em tratamentos com canabinóides
 - Atendimento via Telemedicina e presencial
-- Consulta inicial: R$ 350,00 | Duração: 30-45 min
+- Consulta inicial: {VALOR_CONSULTA} | Duração: 30-45 min
 
 FLUXO OBRIGATÓRIO (seguir rigorosamente):
 
@@ -306,7 +317,7 @@ FASE 1 — TRIAGEM (antes do pagamento):
 - SÓ avance para pagamento quando o paciente confirmar interesse
 
 FASE 2 — PAGAMENTO:
-- Oriente sobre o pagamento (R$ 350,00)
+- Oriente sobre o pagamento ({VALOR_CONSULTA})
 - Envie link de pagamento
 - Aguarde confirmação de pagamento
 - SÓ prossiga para anamnese quando confirmar pagamento
@@ -340,11 +351,11 @@ VOCÊ ESTÁ NA FASE DE TRIAGEM.
 - Se não houver interesse, continue tirando dúvidas educadamente
 """
 
-PROMPT_PAGAMENTO = SYSTEM_PROMPT_BASE + """
+PROMPT_PAGAMENTO = SYSTEM_PROMPT_BASE + f"""
 
 VOCÊ ESTÁ NA FASE DE PAGAMENTO.
 - O paciente já confirmou interesse em consulta
-- Informe o valor (R$ 350,00) e oriente sobre o pagamento
+- Informe o valor ({VALOR_CONSULTA}) e oriente sobre o pagamento
 - Envie o link de pagamento
 - Aguarde confirmação
 - NÃO inicie anamnese até confirmar pagamento
@@ -473,8 +484,8 @@ class DrAndersonAgent:
             state["interesse_confirmado"] = True
             set_state(phone, state)
             
-            reply = ("Que ótimo! Fico feliz que você quer dar esse passo. 💚\n\n"
-                    "A consulta inicial com o Dr. Anderson custa *R$ 350,00* e dura cerca de 30 a 45 minutos. "
+            reply = (f"Que ótimo! Fico feliz que você quer dar esse passo. 💚\n\n"
+                    f"A consulta inicial com o Dr. Anderson custa *{VALOR_CONSULTA}* e dura cerca de 30 a 45 minutos. "
                     "Posso te enviar o link para pagamento agora. Assim que confirmar, iniciamos sua anamnese completa.\n\n"
                     "Deseja prosseguir com o pagamento?")
             return reply
@@ -503,10 +514,16 @@ class DrAndersonAgent:
         if any(k in message.lower() for k in confirm_keywords):
             state["fase"] = FASE["anamnese"]
             state["pagamento_confirmado"] = True
-            state["step"] = ANAMNESE_STEPS[0]
+            state["step"] = "vs_cadastro"  # Novo passo: esperar cadastro VSF
             set_state(phone, state)
             
-            reply = ("Pagamento confirmado! 🎉\n\n"
+            # Enviar link de cadastro no Visual Smart Flow
+            if VSF_ENABLED:
+                vsf_link_msg = f"\n\n🔗 *Cadastro biométrico (opcional):*\nAntes de iniciar sua ficha, você pode fazer um cadastro rápido no nosso sistema de reconhecimento facial para check-in automático na clínica:\n\n👉 {VSF_CADASTRO_URL}\n\nBasta clicar no link, preencher seus dados e enviar uma selfie. Assim, quando chegar na sua consulta, nossa recepção vai reconhecê-lo automaticamente! 😊\n\n*Este passo é opcional, mas agiliza seu atendimento.*"
+            else:
+                vsf_link_msg = ""
+            
+            reply = (f"Pagamento confirmado! 🎉{vsf_link_msg}\n\n"
                     "Agora vou coletar algumas informações para montar sua ficha completa antes da consulta com o Dr. Anderson. "
                     "Isso ajuda o médico a se preparar melhor para te atender.\n\n"
                     f"{PERGUNTA_ANAMNESE['nome_completo']}")
@@ -521,10 +538,10 @@ class DrAndersonAgent:
             messages.extend(state["history"][:-1])
             messages.append({"role": "user", "content": message})
             resp = ai_manager.chat_completion(messages=messages, temperature=0.7)
-            return resp.get("content", "Assim que efetuar o pagamento de R$ 350,00, me avise para iniciarmos sua ficha! 💚")
+            return resp.get("content", f"Assim que efetue o pagamento de {VALOR_CONSULTA}, me avise para iniciarmos sua ficha! 💚")
         
-        return ("Perfeito! Para prosseguir com a consulta, o valor é de *R$ 350,00*.\n\n"
-                "Assim que você efetuar o pagamento, me avise aqui mesmo que iniciarei sua ficha completa "
+        return (f"Perfeito! Para prosseguir com a consulta, o valor é de *{VALOR_CONSULTA}*.\n\n"
+                "Assim que você efetue o pagamento, me avise aqui mesmo que iniciarei sua ficha completa "
                 "e agendaremos seu horário com o Dr. Anderson. 💚")
 
     def _handle_anamnese(self, message: str, phone: str, media_base64, mime_type) -> str:

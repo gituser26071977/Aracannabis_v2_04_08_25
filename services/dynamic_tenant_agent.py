@@ -20,11 +20,51 @@ class DynamicTenantAgent:
     Agente SDR Genérico para Plataforma Multi-Tenant.
     Ele carrega o System Prompt dinamicamente do banco de dados (tabela ConfiguracaoIA)
     e interage com os agendamentos nativos da plataforma SIAP (tabela Consulta).
+    
+    SEGURANÇA: Valida que o profissional_id pertence ao usuário autenticado
+    antes de processar qualquer mensagem.
     """
-    def __init__(self, profissional_id: int):
+    def __init__(self, profissional_id: int, validating_user_id: int = None):
         self.profissional_id = profissional_id
-        # Cria context local para funcionar em threads isoladas de wehbook
+        self.validating_user_id = validating_user_id or profissional_id
+        # Cria context local para funcionar em threads isoladas de webhook
         self.app = create_app()
+        
+    def _validar_profissional(self) -> bool:
+        """
+        Valida se o profissional_id do agente pode ser usado pelo validating_user_id.
+        Apenas o próprio profissional ou admins podem usar este agente.
+        
+        Returns:
+            True se válido, False caso contrário
+        """
+        from models import Profissional
+        
+        with self.app.app_context():
+            # Buscar profissional dono do agente
+            agente_profissional = Profissional.query.get(self.profissional_id)
+            if not agente_profissional:
+                logger.error(f"[Multi-Tenant Agent] Profissional {self.profissional_id} não encontrado")
+                return False
+            
+            # Buscar usuário que está fazendo a requisição
+            requesting_user = Profissional.query.get(self.validating_user_id)
+            if not requesting_user:
+                logger.error(f"[Multi-Tenant Agent] Usuário {self.validating_user_id} não encontrado")
+                return False
+            
+            # Admin e superadmin podem usar qualquer agente
+            if requesting_user.role in ('admin', 'superadmin'):
+                logger.info(f"[Multi-Tenant Agent] Admin {self.validating_user_id} usando agente do profissional {self.profissional_id}")
+                return True
+            
+            # Apenas o próprio profissional pode usar seu agente
+            if self.profissional_id == self.validating_user_id:
+                logger.info(f"[Multi-Tenant Agent] Profissional {self.validating_user_id} usando seu próprio agente")
+                return True
+            
+            logger.warning(f"[Multi-Tenant Agent] Acesso negado: usuário {self.validating_user_id} tentou usar agente do profissional {self.profissional_id}")
+            return False
 
     def get_state(self, phone: str) -> Dict:
         key = f"ia_state:tenant_{self.profissional_id}:{phone}"
@@ -47,11 +87,29 @@ class DynamicTenantAgent:
         r.set(key, json.dumps(state), ex=STATE_EXPIRY)
 
     def process_message(self, message: str, phone: str, media_base64: str = None, mime_type: str = None) -> str:
+        """
+        Processa mensagem do WhatsApp com validação de acesso.
+        
+        Args:
+            message: Texto da mensagem
+            phone: Telefone do paciente
+            media_base64: Mídia opcional (imagem)
+            mime_type: Tipo da mídia
+            
+        Returns:
+            Resposta do agente ou mensagem de erro
+        """
+        # PRIMEIRO: Validar acesso
+        if not self._validar_profissional():
+            logger.warning(f"[Multi-Tenant Agent] Acesso negado para profissional_id={self.profissional_id}, validating_user_id={self.validating_user_id}")
+            return "Desculpe, você não tem permissão para usar este assistente virtual."
+        
         with self.app.app_context():
             config = ConfiguracaoIA.query.filter_by(profissional_id=self.profissional_id).first()
             profissional = Profissional.query.get(self.profissional_id)
             
             if not config or not config.ativo:
+                logger.info(f"[Multi-Tenant Agent] Agente do profissional {self.profissional_id} está desativado")
                 return "Desculpe, o Assistente de Inteligência Artificial desta clínica está desativado no momento."
 
             state = self.get_state(phone)
@@ -69,6 +127,7 @@ class DynamicTenantAgent:
             ).all()
             
             horarios_ocupados = [c.data_hora.strftime("%d/%m/%Y %H:%M") for c in consultas_existentes]
+            logger.info(f"[Multi-Tenant Agent] Profissional {self.profissional_id}: {len(horarios_ocupados)} horários ocupados")
 
             system_prompt = f"""
 Você é {config.nome_assistente}, assistente virtual de atendimento de {profissional.nome}.

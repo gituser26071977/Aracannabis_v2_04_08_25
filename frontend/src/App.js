@@ -45,6 +45,12 @@ import SecurityPage from './pages/SecurityPage';
 import ConsultasPage from './pages/ConsultasPage';
 import SimpleLogin from './components/SimpleLogin';
 import CadastroProfissionaisPage from './pages/CadastroProfissionaisPage';
+import AcceptStaffInvitePage from './pages/AcceptStaffInvitePage';
+import SecretariaDashboardPage from './pages/SecretariaDashboardPage';
+import SecretariaPacientesPage from './pages/SecretariaPacientesPage';
+import SecretariaAgendaPage from './pages/SecretariaAgendaPage';
+import SecretariaDispensacoesPage from './pages/SecretariaDispensacoesPage';
+import RequireRole from './components/RequireRole';
 import PagamentoPage from './pages/PagamentoPage';
 import PlanosPage from './pages/PlanosPage';
 import LandingPage from './pages/LandingPage';
@@ -94,6 +100,13 @@ function ProtectedRoute({ children }) {
 
   if (!currentUser) {
     return <Navigate to="/login" replace />;
+  }
+
+  // FASE 3 — STAFF (secretária/auxiliar/manager) é redirecionada para o painel dedicado
+  // quando tenta acessar /dashboard (que é o dashboard clínico).
+  if (location.pathname === '/dashboard' &&
+      ['secretary', 'auxiliar'].includes(currentUser.role)) {
+    return <Navigate to="/secretaria/dashboard" replace />;
   }
 
   // Bloqueio suave: se trial expirou, redirecionar para trial-ending (exceto se já estiver lá)
@@ -637,6 +650,38 @@ function AppContent() {
           <Route path="/pagamento" element={<PagamentoPage />} />
           <Route path="/planos" element={<PlanosPage />} />
           <Route path="/cadastro-profissionais" element={<CadastroProfissionaisPage />} />
+          <Route path="/convite-staff" element={<AcceptStaffInvitePage />} />
+          <Route path="/convite-staff/:token" element={<AcceptStaffInvitePage />} />
+
+          {/* FASE 4 — Painel da Secretária / Equipe */}
+          <Route path="/secretaria/dashboard" element={
+            <ProtectedRoute>
+              <RequireRole roles={['secretary', 'auxiliar', 'admin', 'manager', 'superadmin']}>
+                <SecretariaDashboardPage />
+              </RequireRole>
+            </ProtectedRoute>
+          } />
+          <Route path="/secretaria/pacientes" element={
+            <ProtectedRoute>
+              <RequireRole roles={['secretary', 'auxiliar', 'admin', 'manager', 'superadmin']}>
+                <SecretariaPacientesPage />
+              </RequireRole>
+            </ProtectedRoute>
+          } />
+          <Route path="/secretaria/agenda" element={
+            <ProtectedRoute>
+              <RequireRole roles={['secretary', 'auxiliar', 'admin', 'manager', 'superadmin']}>
+                <SecretariaAgendaPage />
+              </RequireRole>
+            </ProtectedRoute>
+          } />
+          <Route path="/secretaria/dispensacoes" element={
+            <ProtectedRoute>
+              <RequireRole roles={['secretary', 'auxiliar', 'admin', 'manager', 'superadmin']}>
+                <SecretariaDispensacoesPage />
+              </RequireRole>
+            </ProtectedRoute>
+          } />
           <Route path="/verificar-email" element={<VerifyEmailPage />} />
           <Route path="/onboarding" element={
             <ProtectedRoute>

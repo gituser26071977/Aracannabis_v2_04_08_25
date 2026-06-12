@@ -43,6 +43,111 @@ const associationService = {
         }
     },
 
+    /**
+     * Convida um PROFISSIONAL para a instituição.
+     */
+    inviteProfessional: async (associationId, data) => {
+        try {
+            const response = await api.post(
+                `/association/associations/${associationId}/professional-invites`,
+                { ...data, invite_type: 'professional' },
+                { headers: getAssociationHeader() }
+            );
+            return response.data;
+        } catch (error) {
+            console.error('Error inviting professional:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Convida STAFF (secretária/gestor) para a instituição.
+     * Aceita `role`: 'secretary' | 'manager' | 'admin'
+     * Sem exigir CRM/conselho de classe.
+     */
+    inviteStaff: async (associationId, data) => {
+        try {
+            const response = await api.post(
+                `/association/associations/${associationId}/professional-invites`,
+                { ...data, invite_type: 'staff' },
+                { headers: getAssociationHeader() }
+            );
+            return response.data;
+        } catch (error) {
+            console.error('Error inviting staff:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Lista convites da instituição (profissionais e staff).
+     * Filtros opcionais: { status, invite_type, email }
+     */
+    listInvites: async (associationId, filters = {}) => {
+        try {
+            const params = new URLSearchParams();
+            if (filters.status) params.append('status', filters.status);
+            if (filters.invite_type) params.append('invite_type', filters.invite_type);
+            if (filters.email) params.append('email', filters.email);
+
+            const qs = params.toString();
+            const url = `/association/associations/${associationId}/professional-invites${qs ? `?${qs}` : ''}`;
+            const response = await api.get(url, { headers: getAssociationHeader() });
+            return response.data;
+        } catch (error) {
+            console.error('Error listing invites:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Revoga um convite pendente (idempotente).
+     */
+    revokeInvite: async (inviteId) => {
+        try {
+            const response = await api.post(
+                `/association/professional-invites/${inviteId}/revoke`,
+                {},
+                { headers: getAssociationHeader() }
+            );
+            return response.data;
+        } catch (error) {
+            console.error('Error revoking invite:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Reenvia o email de um convite (se ainda válido).
+     */
+    resendInvite: async (inviteId) => {
+        try {
+            const response = await api.post(
+                `/association/professional-invites/${inviteId}/resend`,
+                {},
+                { headers: getAssociationHeader() }
+            );
+            return response.data;
+        } catch (error) {
+            console.error('Error resending invite:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Lookup público de convite pelo token (sem JWT).
+     * Usado pela página /convite-staff/:token para pré-preencher o formulário.
+     */
+    getInviteByToken: async (token) => {
+        try {
+            const response = await api.get(`/association/professional-invites/${token}`);
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching invite by token:', error);
+            throw error;
+        }
+    },
+
     // --- Member Management ---
     getMembers: async (associationId) => {
         try {

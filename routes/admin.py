@@ -352,8 +352,13 @@ def atualizar_role_usuario(usuario_id):
             return jsonify({'error': 'Campo role é obrigatório'}), 400
         
         role = data['role']
-        if role not in ['admin', 'profissional', 'auxiliar']:
-            return jsonify({'error': 'Role inválida. Valores permitidos: admin, profissional, auxiliar'}), 400
+        # Allow-list expandida em e1f2a3b4c5d6 — inclui secretary/manager (staff de clínica)
+        # 'auxiliar' mantido como alias deprecated para usuários legados.
+        from models import ProfissionalRole
+        if not ProfissionalRole.is_valid(role) or role == ProfissionalRole.SUPERADMIN:
+            return jsonify({
+                'error': f'Role inválida. Valores permitidos: {sorted(ProfissionalRole.ALL_VALID - {ProfissionalRole.SUPERADMIN})}',
+            }), 400
         
         # Não permitir alterar o próprio role
         current_user_id = int(get_jwt_identity())

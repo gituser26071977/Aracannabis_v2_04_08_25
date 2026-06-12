@@ -4,19 +4,94 @@ from datetime import datetime
 db = SQLAlchemy()
 
 
+class ProfissionalRole:
+    """
+    Catálogo canônico de roles aceitas em `Profissional.role`.
+
+    Adicionado em e1f2a3b4c5d6 — suporte a staff (secretary/manager).
+    Mantido 'auxiliar' como alias deprecated por 1 release (compatibilidade
+    com seed demo e usuários legados). Será removido em release futuro.
+
+    Source of truth para:
+      - Validação de role em endpoints admin/cadastro
+      - Filtros RBAC em middleware
+      - Renderização de badge no menu (frontend)
+    """
+
+    ADMIN = "admin"
+    PROFISSIONAL = "profissional"
+    SECRETARY = "secretary"
+    MANAGER = "manager"
+    AUXILIAR = "auxiliar"            # DEPRECATED — usar 'secretary'
+    SUPERADMIN = "superadmin"        # usado por tenant_middleware (não persistido)
+
+    # Mapeamento de aliases legados -> role canônica
+    _LEGACY_ALIASES = {
+        "auxiliar": SECRETARY,
+    }
+
+    # Roles aceitas em input (admin endpoints, cadastro, etc)
+    ALL_VALID = frozenset({ADMIN, PROFISSIONAL, SECRETARY, MANAGER, AUXILIAR, SUPERADMIN})
+
+    # Roles que representam staff (sem prerrogativas clínicas)
+    STAFF_ROLES = frozenset({SECRETARY, AUXILIAR, MANAGER})
+
+    # Roles com prerrogativas clínicas (prescrição, evolução)
+    CLINICAL_ROLES = frozenset({PROFISSIONAL})
+
+    # Roles com acesso administrativo (configuração de plataforma, gestão de clínica)
+    ADMIN_ROLES = frozenset({ADMIN, SUPERADMIN, MANAGER})
+
+    @classmethod
+    def is_valid(cls, role: str) -> bool:
+        return role in cls.ALL_VALID
+
+    @classmethod
+    def is_staff(cls, role: str) -> bool:
+        """True para roles de staff (secretary, manager, auxiliar legacy)."""
+        return role in cls.STAFF_ROLES
+
+    @classmethod
+    def is_clinical(cls, role: str) -> bool:
+        return role in cls.CLINICAL_ROLES
+
+    @classmethod
+    def is_admin_role(cls, role: str) -> bool:
+        return role in cls.ADMIN_ROLES
+
+    @classmethod
+    def normalize(cls, role: str) -> str:
+        """Resolve alias legacy (ex: 'auxiliar' -> 'secretary') quando aplicável."""
+        if not role:
+            return cls.PROFISSIONAL
+        return cls._LEGACY_ALIASES.get(role, role)
+
+    @classmethod
+    def display_label(cls, role: str) -> str:
+        """Rótulo user-facing para badge/UI."""
+        return {
+            cls.ADMIN: "Admin",
+            cls.PROFISSIONAL: "Profissional",
+            cls.SECRETARY: "Secretária",
+            cls.MANAGER: "Gestor",
+            cls.AUXILIAR: "Secretária (legado)",
+            cls.SUPERADMIN: "Super Admin",
+        }.get(role, role or "Profissional")
+
+
 class Profissional(db.Model):
     __tablename__ = "profissionais"
 
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String, nullable=False)
-    crm = db.Column(db.String, nullable=False)
-    uf_crm = db.Column(db.String, nullable=False)
+    crm = db.Column(db.String, nullable=True)        # Nullable: staff não tem CRM
+    uf_crm = db.Column(db.String, nullable=True)     # Nullable: staff não tem UF de CRM
     usuario = db.Column(db.String, unique=True, nullable=False)
     senha = db.Column(db.String, nullable=False)
     email = db.Column(db.String, unique=True)
     role = db.Column(
-        db.String, default="profissional", nullable=False
-    )  # 'admin', 'profissional', 'auxiliar'
+        db.String, default="profissional", nullable=False, index=True
+    )  # 'admin' | 'profissional' | 'secretary' | 'manager' | 'auxiliar' (deprecated)
     data_expiracao = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -1107,6 +1182,7 @@ class SolicitacoesCadastro(db.Model):
     associacao_id = db.Column(
         db.Integer, db.ForeignKey("associacoes.id"), nullable=True
     )  # ID da associacao se 'existente'
+    convite_token = db.Column(db.String(128), nullable=True)
     status = db.Column(db.String, default="pendente", nullable=False)
     data_solicitacao = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     data_aprovacao = db.Column(db.DateTime)
@@ -1136,6 +1212,7 @@ class SolicitacoesCadastro(db.Model):
             "instituicao": self.instituicao,
             "tipo_vinculo": self.tipo_vinculo,
             "associacao_id": self.associacao_id,
+            "convite_token": self.convite_token,
             "status": self.status,
             "data_solicitacao": self.data_solicitacao.isoformat(),
             "data_aprovacao": self.data_aprovacao.isoformat()

@@ -93,6 +93,22 @@ const NavigationMenu = ({ open, onClose }) => {
         { text: '🏢 Dashboard Associação', icon: <BusinessIcon />, path: '/association', auth: true },
     ];
 
+    // === FASE 3 — Menu dedicado para STAFF (secretária/gestor/auxiliar) ===
+    // Restringe a visualização a itens de operação administrativa —
+    // sem prescrição, sem IA, sem configurações clínicas.
+    const isStaffRole = (role) =>
+        ['secretary', 'manager', 'auxiliar'].includes(role);
+
+    const secretariaItems = [
+        { text: '🏠 Início Secretária', icon: <SpeedIcon />, path: '/secretaria/dashboard', auth: true, roles: ['secretary', 'auxiliar', 'admin', 'manager'] },
+        { text: '📅 Agenda do Dia', icon: <EventIcon />, path: '/secretaria/agenda', auth: true, roles: ['secretary', 'auxiliar', 'admin', 'manager'] },
+        { text: '👤 Pacientes do Dia', icon: <PersonIcon />, path: '/secretaria/pacientes', auth: true, roles: ['secretary', 'auxiliar', 'admin', 'manager'] },
+        { text: '📦 Dispensações', icon: <BusinessIcon />, path: '/secretaria/dispensacoes', auth: true, roles: ['secretary', 'auxiliar', 'admin', 'manager'] },
+        { text: '👤 Pacientes', icon: <PersonIcon />, path: '/pacientes', auth: true, roles: ['secretary', 'auxiliar', 'admin', 'manager'] },
+        { text: '📅 Consultas', icon: <EventIcon />, path: '/consultas', auth: true, roles: ['secretary', 'auxiliar', 'admin', 'manager', 'profissional'] },
+        { text: '🏢 Gestão da Clínica', icon: <BusinessIcon />, path: '/association', auth: true, roles: ['secretary', 'auxiliar', 'admin', 'manager'] },
+    ];
+
     const adminItems = [
         { text: '🔐 Admin Geral', icon: <SecurityIcon />, path: '/admin', auth: true, adminOnly: true },
         { text: '🔧 Config IA', icon: <SettingsIcon />, path: '/ai-config', auth: true, adminOnly: true },
@@ -112,26 +128,35 @@ const NavigationMenu = ({ open, onClose }) => {
     if (!currentUser) {
         sections.push({ title: '🌐 NAVEGAÇÃO', items: publicItems });
     } else {
-        // AraOS Section
-        const siapSectionItems = [...commonItems, ...siapItems];
-        sections.push({ title: '📋 PRONTUÁRIO', items: siapSectionItems });
+        // === STAFF (secretária/auxiliar/manager) ===
+        // Mostra APENAS itens administrativos — sem prescrição, sem IA clínica.
+        if (isStaffRole(currentUser.role)) {
+            sections.push({
+                title: '👩‍💼 PAINEL DA EQUIPE',
+                items: secretariaItems,
+            });
+        } else {
+            // AraOS Section (médico / profissional)
+            const siapSectionItems = [...commonItems, ...siapItems];
+            sections.push({ title: '📋 PRONTUÁRIO', items: siapSectionItems });
 
-        // SGAC Section (for admin or when in SGAC module)
-        let sgacSectionItems = [];
-        if (currentUser.role === 'admin') {
-            sgacSectionItems = [...sgacItems];
-        } else if (activeModule === 'SGAC') {
-            sgacSectionItems = [...sgacItems];
-        }
+            // SGAC Section (for admin or when in SGAC module)
+            let sgacSectionItems = [];
+            if (currentUser.role === 'admin') {
+                sgacSectionItems = [...sgacItems];
+            } else if (activeModule === 'SGAC') {
+                sgacSectionItems = [...sgacItems];
+            }
 
-        // Add clinic management if not already present
-        const hasClinic = sgacSectionItems.some(i => i.path === '/association');
-        if (!hasClinic) {
-            sgacSectionItems.push({ text: '🏥 Gestão da Clínica', icon: <BusinessIcon />, path: '/association', auth: true });
-        }
+            // Add clinic management if not already present
+            const hasClinic = sgacSectionItems.some(i => i.path === '/association');
+            if (!hasClinic) {
+                sgacSectionItems.push({ text: '🏥 Gestão da Clínica', icon: <BusinessIcon />, path: '/association', auth: true });
+            }
 
-        if (sgacSectionItems.length > 0) {
-            sections.push({ title: '🏢 ASSOCIAÇÃO', items: sgacSectionItems });
+            if (sgacSectionItems.length > 0) {
+                sections.push({ title: '🏢 ASSOCIAÇÃO', items: sgacSectionItems });
+            }
         }
 
         // Admin Section
@@ -250,7 +275,18 @@ const NavigationMenu = ({ open, onClose }) => {
                                         letterSpacing: '0.05em',
                                     }}
                                 >
-                                    {currentUser.role === 'admin' ? '👑 Admin' : '👨‍⚕️ Profissional'}
+                                    {(() => {
+                                        switch (currentUser.role) {
+                                            case 'admin': return '👑 Admin';
+                                            case 'superadmin': return '👑 Superadmin';
+                                            case 'manager': return '🏥 Gestor(a)';
+                                            case 'secretary': return '👩‍💼 Secretária';
+                                            case 'auxiliar': return '👩‍💼 Secretária (legado)';
+                                            case 'profissional': return '👨‍⚕️ Profissional';
+                                            case 'patient': return '🧑 Paciente';
+                                            default: return currentUser.role;
+                                        }
+                                    })()}
                                 </Box>
                             </Box>
                         </Box>
@@ -282,6 +318,8 @@ const NavigationMenu = ({ open, onClose }) => {
                                         if (item.auth && !currentUser) return false;
                                         if (currentUser && item.hideWhenLoggedIn) return false;
                                         if (item.adminOnly && (!currentUser || currentUser.role !== 'admin')) return false;
+                                        // FASE 3 — filtro por roles (se item declara `roles`)
+                                        if (item.roles && currentUser && !item.roles.includes(currentUser.role)) return false;
                                         return true;
                                     })
                                     .map((item) => (
