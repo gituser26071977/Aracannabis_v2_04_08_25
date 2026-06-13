@@ -32,26 +32,21 @@ const AssociationPage = () => {
     const [open, setOpen] = useState(false);
     const [formData, setFormData] = useState({ nome: '', cnpj: '', endereco: '', cep: '' });
     const [lookupLoading, setLookupLoading] = useState(false);
-    const [error, setError] = useState('');
-    const [success, setSuccess] = useState('');
-
-    // Estado do dialog de convite
     const [inviteOpen, setInviteOpen] = useState(false);
     const [inviteLoading, setInviteLoading] = useState(false);
     const [selectedAssociation, setSelectedAssociation] = useState(null);
     const [inviteForm, setInviteForm] = useState({
         nome: '', email: '', telefone: '',
-        invite_type: 'professional',
-        role: 'secretary',
+        invite_type: 'professional',  // 'professional' | 'staff'
+        role: 'secretary',            // staff: secretary | manager | admin
     });
     const [inviteLink, setInviteLink] = useState('');
-    const [inviteTab, setInviteTab] = useState(0);
-
-    // Estado do dialog de listagem de convites
-    const [invitesListOpen, setInvitesListOpen] = useState(false);
     const [invites, setInvites] = useState([]);
     const [invitesLoading, setInvitesLoading] = useState(false);
-
+    const [invitesTab, setInvitesTab] = useState(0);
+    const [invitesListOpen, setInvitesListOpen] = useState(false);
+    const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -155,7 +150,6 @@ const AssociationPage = () => {
         }
     };
 
-    // === Convite ===
     const openInviteDialog = (association) => {
         setSelectedAssociation(association);
         setInviteForm({
@@ -165,7 +159,6 @@ const AssociationPage = () => {
         });
         setInviteLink('');
         setError('');
-        setInviteTab(0);
         setInviteOpen(true);
     };
 
@@ -215,7 +208,10 @@ const AssociationPage = () => {
             setInviteLink(response.invite_link);
             setSuccess(response.email_sent ? 'Convite gerado e enviado por email.' : 'Convite gerado. Compartilhe o link abaixo.');
             setTimeout(() => setSuccess(''), 4000);
-            if (selectedAssociation) fetchInvites(selectedAssociation.id);
+            // Refresh da lista de convites
+            if (selectedAssociation) {
+                fetchInvites(selectedAssociation.id);
+            }
         } catch (err) {
             setError(err.response?.data?.error || 'Erro ao gerar convite.');
             console.error(err);
@@ -328,7 +324,6 @@ const AssociationPage = () => {
                 </Table>
             </TableContainer>
 
-            {/* Dialog: Nova Associação */}
             <Dialog open={open} onClose={() => setOpen(false)}>
                 <DialogTitle>Nova Associação</DialogTitle>
                 <DialogContent>
@@ -401,16 +396,15 @@ const AssociationPage = () => {
                 </DialogActions>
             </Dialog>
 
-            {/* Dialog: Convidar (Profissional OU Staff) */}
             <Dialog open={inviteOpen} onClose={() => setInviteOpen(false)} maxWidth="sm" fullWidth>
                 <DialogTitle>
                     Convidar {inviteForm.invite_type === 'staff' ? 'Membro da Equipe' : 'Profissional'}
                 </DialogTitle>
                 <DialogContent>
                     <Tabs
-                        value={inviteTab}
+                        value={invitesTab}
                         onChange={(_, v) => {
-                            setInviteTab(v);
+                            setInvitesTab(v);
                             setInviteForm({
                                 ...inviteForm,
                                 invite_type: v === 0 ? 'professional' : 'staff',
@@ -504,7 +498,6 @@ const AssociationPage = () => {
                 </DialogActions>
             </Dialog>
 
-            {/* Dialog: Lista de Convites */}
             <Dialog
                 open={invitesListOpen}
                 onClose={() => setInvitesListOpen(false)}
