@@ -12,8 +12,6 @@ import base64
 import os
 from typing import Dict, Optional
 
-from routes.auth_decorators import require_role
-
 import google.generativeai as genai
 from models import db, Paciente, Evolucao, Dosagem, Sintoma, CompartilhamentoPaciente, Profissional
 from services.ai_agents import ai_manager
@@ -150,7 +148,6 @@ def buscar_contexto_paciente(paciente_id: int, profissional_id: int) -> Optional
 
 @ai_chat_simples_bp.route('/chat-simples', methods=['POST'])
 @jwt_required()
-@require_role('admin', 'profissional', 'manager', 'superadmin')  # bloqueia secretary
 def chat_simples():
     """
     Chat simplificado que funciona melhor com modelos locais menores

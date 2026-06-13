@@ -43,16 +43,11 @@ const associationService = {
         }
     },
 
-    /**
-     * Convida um PROFISSIONAL para a instituição.
-     */
     inviteProfessional: async (associationId, data) => {
         try {
-            const response = await api.post(
-                `/association/associations/${associationId}/professional-invites`,
-                { ...data, invite_type: 'professional' },
-                { headers: getAssociationHeader() }
-            );
+            const response = await api.post(`/association/associations/${associationId}/professional-invites`, data, {
+                headers: getAssociationHeader()
+            });
             return response.data;
         } catch (error) {
             console.error('Error inviting professional:', error);
