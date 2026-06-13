@@ -230,3 +230,96 @@ class EmailService:
         html_body += "<p>Atenciosamente,<br>Equipe AraOS</p>"
         
         return self.send_email(email, subject, html_body)
+
+    def send_professional_invite_email(self, email, nome, instituicao_nome, invite_link, data_expiracao):
+        subject = f"Convite para integrar {instituicao_nome} no AraOS"
+
+        try:
+            if isinstance(data_expiracao, str):
+                exp_date = datetime.fromisoformat(data_expiracao.replace('Z', '+00:00'))
+            else:
+                exp_date = data_expiracao
+            data_formatada = exp_date.strftime('%d/%m/%Y %H:%M')
+        except Exception:
+            data_formatada = "em 7 dias"
+
+        saudacao = f"Olá {nome}," if nome else "Olá,"
+        html_body = f"<p>{saudacao}</p>"
+        html_body += f"<p>Você recebeu um convite para integrar a equipe de <strong>{instituicao_nome}</strong> no AraOS.</p>"
+        html_body += f"<p><strong>Link de cadastro:</strong> <a href=\"{invite_link}\">Aceitar convite e solicitar cadastro</a></p>"
+        html_body += f"<p>Este convite expira em: <strong>{data_formatada}</strong>.</p>"
+        html_body += "<p>Se você não reconhece este convite, ignore este email.</p>"
+        html_body += "<p>Atenciosamente,<br>Equipe AraOS</p>"
+
+        return self.send_email(email, subject, html_body)
+
+    def send_staff_invite_email(self, email, nome, instituicao_nome, invite_link, data_expiracao, role_label='secretary'):
+        """
+        Envia email de convite para STAFF (secretária/gestor) de uma instituição.
+
+        Diferenças do convite profissional:
+          - Subject refere-se explicitamente a "Equipe Administrativa"
+          - Copy é mais simples (sem falar de CRM/conselho de classe)
+          - Inclui label da função para o convidado saber o que será
+        """
+        # Mapear role para label user-facing
+        role_labels = {
+            'secretary': 'Secretária',
+            'manager': 'Gestor(a) da Clínica',
+            'admin': 'Administrador(a) da Clínica',
+            'member': 'Membro da Equipe',
+        }
+        role_display = role_labels.get(role_label, role_label)
+
+        subject = f"Convite para a equipe de {instituicao_nome} no AraOS"
+
+        try:
+            if isinstance(data_expiracao, str):
+                exp_date = datetime.fromisoformat(data_expiracao.replace('Z', '+00:00'))
+            else:
+                exp_date = data_expiracao
+            data_formatada = exp_date.strftime('%d/%m/%Y %H:%M')
+        except Exception:
+            data_formatada = "em 7 dias"
+
+        saudacao = f"Olá {nome}," if nome else "Olá,"
+        html_body = f"<p>{saudacao}</p>"
+        html_body += f"<p>Você foi convidado(a) para integrar a equipe administrativa de <strong>{instituicao_nome}</strong> no AraOS como <strong>{role_display}</strong>.</p>"
+        html_body += f"<p><strong>Link de aceite do convite:</strong> <a href=\"{invite_link}\">Aceitar convite e criar conta</a></p>"
+        html_body += f"<p>Este convite expira em: <strong>{data_formatada}</strong>.</p>"
+        html_body += "<p><em>Observação: para aceitar, você precisará definir uma senha de acesso. Suas credenciais de login serão enviadas em um email separado após o aceite.</em></p>"
+        html_body += "<p>Se você não reconhece este convite, ignore este email.</p>"
+        html_body += "<p>Atenciosamente,<br>Equipe AraOS</p>"
+
+        return self.send_email(email, subject, html_body)
+
+    def send_staff_welcome_email(self, email, nome, usuario, senha_temporaria, instituicao_nome, data_expiracao):
+        """
+        Envia email de BOAS-VINDAS ao staff após aceite do convite.
+        Inclui credenciais temporárias (usuário + senha).
+        """
+        subject = f"🎉 Bem-vindo(a) à equipe de {instituicao_nome} - AraOS"
+
+        try:
+            if isinstance(data_expiracao, str):
+                exp_date = datetime.fromisoformat(data_expiracao.replace('Z', '+00:00'))
+            else:
+                exp_date = data_expiracao
+            data_formatada = exp_date.strftime('%d/%m/%Y %H:%M')
+        except Exception:
+            data_formatada = "em 7 dias"
+
+        saudacao = f"Olá {nome}," if nome else "Olá,"
+        html_body = f"<p>{saudacao}</p>"
+        html_body += f"<p>Sua conta de acesso ao AraOS foi criada e você já faz parte da equipe de <strong>{instituicao_nome}</strong>.</p>"
+        html_body += "<p>Suas credenciais de acesso temporárias:</p>"
+        html_body += "<ul>"
+        html_body += f"<li><strong>Usuário:</strong> {usuario}</li>"
+        html_body += f"<li><strong>Senha temporária:</strong> {senha_temporaria}</li>"
+        html_body += f"<li><strong>Validade:</strong> {data_formatada}</li>"
+        html_body += "</ul>"
+        html_body += "<p>Por favor, altere sua senha após o primeiro login.</p>"
+        html_body += f"<p>Acesse em: <a href=\"http://localhost:3000/login\">AraOS Login</a></p>"
+        html_body += "<p>Atenciosamente,<br>Equipe AraOS</p>"
+
+        return self.send_email(email, subject, html_body)

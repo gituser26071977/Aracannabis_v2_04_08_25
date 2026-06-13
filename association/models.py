@@ -25,9 +25,98 @@ class Associacao(db.Model):
             'nome': self.nome,
             'cnpj': self.cnpj,
             'email': self.email,
+            'endereco': self.endereco,
+            'telefone': self.telefone,
             'ativo': self.ativo,
             'created_at': self.created_at.isoformat()
         }
+
+
+class ConviteProfissionalInstituicao(db.Model):
+    __tablename__ = 'convites_profissionais_instituicoes'
+
+    # Tipos de convite (Fase 2 — RBAC secretária)
+    INVITE_TYPE_PROFESSIONAL = 'professional'
+    INVITE_TYPE_STAFF = 'staff'
+    INVITE_TYPES = (INVITE_TYPE_PROFESSIONAL, INVITE_TYPE_STAFF)
+
+    # Roles aceitas por tipo de convite
+    # - professional: 'member' (default) — futuro 'admin' para owner de clínica
+    # - staff: 'secretary', 'manager', 'admin'
+    ROLES_BY_TYPE = {
+        INVITE_TYPE_PROFESSIONAL: ('member',),
+        INVITE_TYPE_STAFF: ('secretary', 'manager', 'admin', 'member'),
+    }
+
+    id = db.Column(db.Integer, primary_key=True)
+    associacao_id = db.Column(db.Integer, db.ForeignKey('associacoes.id', ondelete='CASCADE'), nullable=False)
+    convidado_por_id = db.Column(db.Integer, db.ForeignKey('profissionais.id', ondelete='SET NULL'), nullable=True)
+    nome = db.Column(db.String, nullable=True)
+    email = db.Column(db.String, nullable=True, index=True)
+    telefone = db.Column(db.String, nullable=True)
+    role = db.Column(db.String, default='member', nullable=False)
+    invite_type = db.Column(
+        db.String(20),
+        nullable=False,
+        default=INVITE_TYPE_PROFESSIONAL,
+        server_default=INVITE_TYPE_PROFESSIONAL,
+    )
+    token = db.Column(db.String(128), unique=True, nullable=False, index=True)
+    status = db.Column(db.String, default='pending', nullable=False)
+    expires_at = db.Column(db.DateTime, nullable=False)
+    accepted_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Auditoria de revogação (Fase 2)
+    revoked_at = db.Column(db.DateTime, nullable=True)
+    revoked_by_id = db.Column(db.Integer, db.ForeignKey('profissionais.id', ondelete='SET NULL'), nullable=True)
+
+    # Link ao user criado no aceite (Fase 2)
+    accepted_by_user_id = db.Column(db.Integer, db.ForeignKey('profissionais.id', ondelete='SET NULL'), nullable=True)
+
+    associacao = db.relationship('Associacao', backref='convites_profissionais')
+    convidado_por = db.relationship('Profissional', foreign_keys=[convidado_por_id])
+    revoked_by = db.relationship('Profissional', foreign_keys=[revoked_by_id])
+    accepted_by_user = db.relationship('Profissional', foreign_keys=[accepted_by_user_id])
+
+    def is_valid(self):
+        """Convite está válido para aceite: pending + não expirado + não revogado."""
+        return (
+            self.status == 'pending'
+            and self.expires_at > datetime.utcnow()
+            and self.revoked_at is None
+        )
+
+    def revoke(self, by_user_id: int):
+        """Revoga o convite (idempotente)."""
+        if self.status == 'pending' and self.revoked_at is None:
+            self.status = 'revoked'
+            self.revoked_at = datetime.utcnow()
+            self.revoked_by_id = by_user_id
+
+    def to_dict(self, include_token=False):
+        data = {
+            'id': self.id,
+            'associacao_id': self.associacao_id,
+            'associacao_nome': self.associacao.nome if self.associacao else None,
+            'convidado_por_id': self.convidado_por_id,
+            'convidado_por_nome': self.convidado_por.nome if self.convidado_por else None,
+            'nome': self.nome,
+            'email': self.email,
+            'telefone': self.telefone,
+            'role': self.role,
+            'invite_type': self.invite_type,
+            'status': self.status,
+            'expires_at': self.expires_at.isoformat() if self.expires_at else None,
+            'accepted_at': self.accepted_at.isoformat() if self.accepted_at else None,
+            'accepted_by_user_id': self.accepted_by_user_id,
+            'revoked_at': self.revoked_at.isoformat() if self.revoked_at else None,
+            'revoked_by_id': self.revoked_by_id,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+        if include_token:
+            data['token'] = self.token
+        return data
 
 class Membro(db.Model):
     __tablename__ = 'membros_associacao'

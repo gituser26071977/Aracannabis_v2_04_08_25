@@ -141,22 +141,101 @@ def normalizar_cpf(cpf: str) -> str:
 def normalizar_cnpj(cnpj: str) -> str:
     """
     Normaliza um CNPJ, retornando apenas os números.
-    
+
     Args:
         cnpj: String contendo o CNPJ (com ou sem formatação)
-        
+
     Returns:
         String contendo apenas os 14 dígitos do CNPJ
-        
+
     Raises:
         ValueError: Se o CNPJ for inválido
     """
     if not cnpj:
         raise ValueError("CNPJ não pode ser vazio")
-    
+
     cnpj = _remove_non_digits(cnpj)
-    
+
     if len(cnpj) != 14:
         raise ValueError(f"CNPJ deve ter 14 dígitos, encontrado {len(cnpj)}")
-    
+
     return cnpj
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# STAFF VALIDATORS (Fase 2 — RBAC Secretária)
+# ═══════════════════════════════════════════════════════════════════════
+
+# Roles permitidas em UsuarioAssociacao.role
+ROLES_INSTITUCIONAIS_VALIDAS = frozenset({"admin", "member", "secretary", "manager"})
+
+# Roles globais válidas para staff (Profissional.role) — re-export para evitar import circular
+def _get_staff_roles():
+    from models import ProfissionalRole
+    return ProfissionalRole.STAFF_ROLES
+
+
+def validar_role_institucional(role: str) -> bool:
+    """
+    Valida que a role é uma das aceitas para UsuarioAssociacao.
+
+    Aceitas: admin, member, secretary, manager.
+    """
+    if not role:
+        return False
+    return role in ROLES_INSTITUCIONAIS_VALIDAS
+
+
+def validar_role_staff(role: str) -> bool:
+    """
+    Valida que a role global é uma das aceitas para Profissional staff.
+
+    Aceitas: secretary, manager, admin (e auxiliar deprecated).
+    Bloqueia: profissional (deve usar cadastro de profissional com CRM).
+    """
+    if not role:
+        return False
+    staff_roles = _get_staff_roles()
+    # 'admin' e 'superadmin' também são permitidos para staff elevated
+    return role in staff_roles or role in ("admin",)
+
+
+def validar_crm_opcional(crm: str, uf_crm: str, role: str) -> tuple[bool, str | None]:
+    """
+    Valida CRM de forma contextual ao role.
+
+    Regras:
+      - Staff (secretary/manager/auxiliar): CRM e UF_CRM opcionais (None/vazio permitidos)
+      - Profissional: CRM e UF_CRM obrigatórios (formato >=4 chars + UF 2 chars)
+      - Admin: CRM opcional (admin não prescreve)
+
+    Returns:
+        (is_valid, error_message_or_None)
+    """
+    from models import ProfissionalRole
+
+    role_normalized = ProfissionalRole.normalize(role or "")
+
+    # Staff: CRM opcional
+    if ProfissionalRole.is_staff(role_normalized) and role_normalized != ProfissionalRole.ADMIN:
+        if crm and (len(crm) < 4 or len(crm) > 20):
+            return False, "CRM inválido (deve ter entre 4 e 20 caracteres ou ser vazio)"
+        if uf_crm and len(uf_crm) != 2:
+            return False, "UF do CRM inválida (deve ter 2 caracteres ou ser vazia)"
+        return True, None
+
+    # Admin: CRM opcional
+    if role_normalized == ProfissionalRole.ADMIN:
+        if crm and (len(crm) < 4 or len(crm) > 20):
+            return False, "CRM inválido"
+        if uf_crm and len(uf_crm) != 2:
+            return False, "UF do CRM inválida"
+        return True, None
+
+    # Profissional: CRM obrigatório
+    if not crm or len(crm) < 4 or len(crm) > 20:
+        return False, "CRM é obrigatório para profissionais (mínimo 4 caracteres)"
+    if not uf_crm or len(uf_crm) != 2:
+        return False, "UF do CRM é obrigatória (2 caracteres)"
+
+    return True, None

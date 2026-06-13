@@ -272,6 +272,10 @@ def create_app(config_obj=None):
 
     app.register_blueprint(association_bp, url_prefix="/api/association")
 
+    # FASE 4 — Secretaria / Equipe Administrativa
+    from routes.secretaria import secretaria_bp
+    app.register_blueprint(secretaria_bp)
+
     # [NEW] AI Clinical Pipeline
     from routes.ai_clinical import ai_clinical_bp
     from routes.hc_report import hc_report_bp
@@ -279,10 +283,33 @@ def create_app(config_obj=None):
     app.register_blueprint(ai_clinical_bp, url_prefix="/api/ai-clinical")
     app.register_blueprint(hc_report_bp, url_prefix="/api/hc-report")
 
+    # [NEW] Agentes SDR - Dashboard de criação e gerenciamento de agentes
+    from routes.agentes_sdr import agentes_bp
+    app.register_blueprint(agentes_bp, url_prefix="/api/agentes")
+
+    # [NEW] Planos e Assinaturas (Básico, Premium, Enterprise)
+    from routes.planos_routes import planos_bp
+    app.register_blueprint(planos_bp)
+
+    # [NEW] Nutrologia Module
+    from routes.nutrologia import nutrologia_bp
+    app.register_blueprint(nutrologia_bp)
+
+    # Kanban
+    from routes.kanban import kanban_bp
+    app.register_blueprint(kanban_bp, url_prefix='/api/kanban')
+
     # [NEW] Tenant Middleware
     from middleware.tenant_middleware import register_tenant_middleware
 
     register_tenant_middleware(app)
+
+    # [NEW] Permission Middleware (Squad B — RBAC Secretária Fase 1)
+    # Popula g.user_permissions combinando Profissional.role + UsuarioAssociacao.role
+    # via AraOS RoleRegistry. Idempotente e always-on (sem feature flag).
+    from middleware.permission_middleware import register_permission_middleware
+
+    register_permission_middleware(app)
 
     # [NEW] Subscription Middleware (Squad B)
     from middleware.subscription_middleware import register_subscription_middleware

@@ -45,8 +45,10 @@ import SecurityPage from './pages/SecurityPage';
 import ConsultasPage from './pages/ConsultasPage';
 import SimpleLogin from './components/SimpleLogin';
 import CadastroProfissionaisPage from './pages/CadastroProfissionaisPage';
+import AcceptStaffInvitePage from './pages/AcceptStaffInvitePage';
 import PagamentoPage from './pages/PagamentoPage';
 import PlanosPage from './pages/PlanosPage';
+import NutrologiaDashboard from './pages/NutrologiaDashboard';
 import LandingPage from './pages/LandingPage';
 import AdminPage from './pages/AdminPage';
 
@@ -67,7 +69,10 @@ import StockPage from './pages/association/StockPage';
 import DispensationPage from './pages/association/DispensationPage';
 import ConfiguracaoPrescricaoPage from './pages/ConfiguracaoPrescricaoPage';
 import ConfiguracaoIAPage from './pages/ConfiguracaoIAPage';
+import AgentesSDRPage from './pages/AgentesSDR/AgentesSDRPage';
 import CatalogoPage from './pages/CatalogoPage';
+import EstoquePage from './pages/EstoquePage';
+import KanbanPage from './pages/KanbanPage';
 import OnboardingPage from './pages/OnboardingPage';
 import TrialEndingPage from './pages/TrialEndingPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
@@ -637,6 +642,8 @@ function AppContent() {
           <Route path="/pagamento" element={<PagamentoPage />} />
           <Route path="/planos" element={<PlanosPage />} />
           <Route path="/cadastro-profissionais" element={<CadastroProfissionaisPage />} />
+          <Route path="/convite-staff" element={<AcceptStaffInvitePage />} />
+          <Route path="/convite-staff/:token" element={<AcceptStaffInvitePage />} />
           <Route path="/verificar-email" element={<VerifyEmailPage />} />
           <Route path="/onboarding" element={
             <ProtectedRoute>
@@ -755,6 +762,38 @@ function AppContent() {
             element={
               <ProtectedRoute>
                 <CatalogoPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/agentes-sdr"
+            element={
+              <ProtectedRoute>
+                <AgentesSDRPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/nutrologia"
+            element={
+              <ProtectedRoute>
+                <NutrologiaDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/estoque"
+            element={
+              <ProtectedRoute>
+                <EstoquePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/kanban"
+            element={
+              <ProtectedRoute>
+                <KanbanPage />
               </ProtectedRoute>
             }
           />

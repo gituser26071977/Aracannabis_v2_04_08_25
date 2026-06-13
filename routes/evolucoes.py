@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, Evolucao, Paciente, Profissional, LogAtividade, Exame
 from datetime import datetime
+from routes.auth_decorators import require_role
 # Removido import json e process_evolution_input daqui, pois a lógica de IA será chamada de forma diferente
 # Agora importamos as db_tools e o processador de IA de forma separada
 # from services.ai_agents import process_evolution_input, process_audio_file, process_video_file # IA para análise de texto - TEMPORARIAMENTE DESABILITADO
@@ -78,6 +79,7 @@ def listar_evolucoes(paciente_id):
 
 @evolucoes_bp.route('/paciente/<int:paciente_id>', methods=['POST'])
 @jwt_required()
+@require_role('admin', 'profissional', 'manager', 'superadmin')  # bloqueia secretary
 def registrar_evolucao(paciente_id):
     current_user_id = get_jwt_identity()
     profissional_id = int(current_user_id)
@@ -233,6 +235,7 @@ def obter_evolucao(evolucao_id):
 
 @evolucoes_bp.route('/<int:evolucao_id>', methods=['PUT'])
 @jwt_required()
+@require_role('admin', 'profissional', 'manager', 'superadmin')  # bloqueia secretary
 def atualizar_evolucao(evolucao_id):
     current_user_id = get_jwt_identity()
     profissional_id = int(current_user_id)
@@ -277,6 +280,7 @@ def atualizar_evolucao(evolucao_id):
 
 @evolucoes_bp.route('/<int:evolucao_id>', methods=['DELETE'])
 @jwt_required()
+@require_role('admin', 'profissional', 'manager', 'superadmin')  # bloqueia secretary
 def excluir_evolucao(evolucao_id):
     current_user_id = get_jwt_identity()
     profissional_id = int(current_user_id)
