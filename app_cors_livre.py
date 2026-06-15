@@ -283,22 +283,6 @@ def create_app(config_obj=None):
     app.register_blueprint(ai_clinical_bp, url_prefix="/api/ai-clinical")
     app.register_blueprint(hc_report_bp, url_prefix="/api/hc-report")
 
-    # [NEW] Agentes SDR - Dashboard de criação e gerenciamento de agentes
-    from routes.agentes_sdr import agentes_bp
-    app.register_blueprint(agentes_bp, url_prefix="/api/agentes")
-
-    # [NEW] Planos e Assinaturas (Básico, Premium, Enterprise)
-    from routes.planos_routes import planos_bp
-    app.register_blueprint(planos_bp)
-
-    # [NEW] Nutrologia Module
-    from routes.nutrologia import nutrologia_bp
-    app.register_blueprint(nutrologia_bp)
-
-    # Kanban
-    from routes.kanban import kanban_bp
-    app.register_blueprint(kanban_bp, url_prefix='/api/kanban')
-
     # [NEW] Tenant Middleware
     from middleware.tenant_middleware import register_tenant_middleware
 
