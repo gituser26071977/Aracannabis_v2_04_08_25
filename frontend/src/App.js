@@ -61,6 +61,7 @@ import DefinePasswordPage from './pages/DefinePasswordPage';
 import MobileUploadPage from './pages/MobileUploadPage';
 import PaymentStatusPage from './pages/PaymentStatusPage';
 import BatchImportPage from './pages/BatchImportPage';
+import IntelligentImportPage from './pages/IntelligentImportPage';
 import AssociationPage from './pages/association/AssociationPage';
 import MembersPage from './pages/association/MembersPage';
 import StockPage from './pages/association/StockPage';
@@ -764,6 +765,7 @@ function AppContent() {
           <Route path="/association/members" element={<ProtectedRoute><MembersPage /></ProtectedRoute>} />
           <Route path="/association/stock" element={<ProtectedRoute><StockPage /></ProtectedRoute>} />
           <Route path="/association/dispensation" element={<ProtectedRoute><DispensationPage /></ProtectedRoute>} />
+          <Route path="/intelligent-import" element={<ProtectedRoute><IntelligentImportPage /></ProtectedRoute>} />
 
           {/* Patient Portal Routes (PUBLIC) */}
           <Route path="/patient/login" element={<PatientLogin />} />
