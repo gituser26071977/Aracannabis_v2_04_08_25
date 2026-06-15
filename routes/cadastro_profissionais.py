@@ -1,10 +1,20 @@
 """
 Rotas para cadastro de profissionais
-"""
 
+Suporta múltiplos conselhos de classe (feat/intelligent-import fase I2):
+  CRM, CRP, COREN, CRN, CREFITO, NONE (staff sem conselho).
+Detecção automática via `conselho_tipo` no payload; default 'CRM' para
+compatibilidade com dados legados.
+"""
 from flask import Blueprint, request, jsonify, current_app
 from werkzeug.security import generate_password_hash
 from models import db, Profissional, SolicitacoesCadastro
+from services.conselho_validator import (
+    validar_conselho,
+    normalizar_tipo_conselho,
+    CONSELHO_NONE,
+    CONSELHO_LABELS,
+)
 import re
 import secrets
 import string
@@ -16,14 +26,16 @@ email_service = EmailService()
 
 cadastro_profissionais_bp = Blueprint('cadastro_profissionais', __name__)
 
-def validar_crm(crm, uf):
-    """Validar formato do Registro Profissional (CRM, COREN, CRP, etc)"""
-    return crm and uf and len(crm) >= 4 and len(uf) == 2
 
 def validar_email(email):
     """Validar formato do email"""
     pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
     return re.match(pattern, email) is not None
+
+
+def _is_staff_request(tipo_norm: str) -> bool:
+    """Staff (secretária/gestor) não exige conselho de classe."""
+    return tipo_norm == CONSELHO_NONE
 
 def gerar_senha_temporaria():
     """Gerar senha temporária segura"""
@@ -32,35 +44,58 @@ def gerar_senha_temporaria():
 
 @cadastro_profissionais_bp.route('/solicitar-cadastro', methods=['POST'])
 def solicitar_cadastro():
-    """Solicitar cadastro de novo profissional"""
+    """Solicitar cadastro de novo profissional (ou staff, se conselho_tipo='NONE')."""
     try:
         data = request.get_json()
-        required_fields = ['nome', 'email', 'crm', 'uf_crm']
-        if not all(field in data and data[field] for field in required_fields):
-            return jsonify({'success': False, 'error': 'Todos os campos obrigatórios devem ser preenchidos.'}), 400
+        nome = (data.get('nome') or '').strip()
+        email = (data.get('email') or '').strip().lower()
 
-        nome = data['nome'].strip()
-        email = data['email'].strip().lower()
-        crm = data['crm'].strip()
-        uf_crm = data['uf_crm'].strip().upper()
-
+        if not nome or not email:
+            return jsonify({'success': False, 'error': 'Nome e email são obrigatórios.'}), 400
         if len(nome) < 2:
             return jsonify({'success': False, 'error': 'Nome deve ter pelo menos 2 caracteres'}), 400
         if not validar_email(email):
             return jsonify({'success': False, 'error': 'Email inválido'}), 400
-        if not validar_crm(crm, uf_crm):
-            return jsonify({'success': False, 'error': 'Registro ou UF inválidos'}), 400
+
+        # Detecta tipo de conselho (CRM/CRP/COREN/CRN/CREFITO/NONE)
+        tipo_bruto = data.get('conselho_tipo', 'CRM')
+        tipo_norm = normalizar_tipo_conselho(tipo_bruto)
+        crm = (data.get('crm') or '').strip()
+        uf_crm = (data.get('uf_crm') or '').strip().upper()
+
+        # Validação unificada via conselho_validator (regex por tipo + UF para COREN)
+        resultado = validar_conselho(
+            numero=crm,
+            uf=uf_crm,
+            tipo=tipo_bruto,
+        )
+        if not resultado['valido']:
+            erros = '; '.join(resultado['erros'])
+            return jsonify({
+                'success': False,
+                'error': f"{erros} (conselho: {tipo_norm})",
+                'conselho_tipo': tipo_norm,
+                'profissao': resultado.get('profissao'),
+            }), 400
 
         if SolicitacoesCadastro.query.filter_by(email=email).first():
             return jsonify({'success': False, 'error': 'Email já cadastrado'}), 409
-        if SolicitacoesCadastro.query.filter_by(crm=crm, uf_crm=uf_crm).first() or Profissional.query.filter_by(crm=crm, uf_crm=uf_crm).first():
-            return jsonify({'success': False, 'error': 'Registro já cadastrado'}), 409
+
+        # Staff (conselho_tipo='NONE') não tem CRM/UF — não checar duplicidade por registro
+        is_staff = _is_staff_request(tipo_norm)
+        if not is_staff and (crm or uf_crm):
+            if (SolicitacoesCadastro.query.filter_by(crm=crm, uf_crm=uf_crm).first()
+                    or Profissional.query.filter_by(crm=crm, uf_crm=uf_crm).first()):
+                return jsonify({'success': False, 'error': 'Registro já cadastrado'}), 409
 
         nova_solicitacao = SolicitacoesCadastro(
-            nome=nome, email=email, crm=crm, uf_crm=uf_crm,
-            telefone=data.get('telefone', '').strip(),
-            especialidade=data.get('especialidade', '').strip(),
-            instituicao=data.get('instituicao', '').strip(),
+            nome=nome, email=email,
+            crm=crm or None,
+            uf_crm=uf_crm or None,
+            conselho_tipo=tipo_norm,
+            telefone=(data.get('telefone') or '').strip(),
+            especialidade=(data.get('especialidade') or '').strip(),
+            instituicao=(data.get('instituicao') or '').strip(),
             # Novos campos para escolha de vínculo
             tipo_vinculo=data.get('tipo_vinculo', 'pessoal'), # 'pessoal' ou 'existente'
             associacao_id=data.get('associacao_id') if data.get('associacao_id') != '' else None # ID da associacao se tipo_vinculo='existente'
@@ -141,14 +176,23 @@ def processar_aprovacao(solicitacao_id):
             contador += 1
 
         # Criar profissional
+        # conselho_tipo determina role: NONE → staff, demais → profissional
+        conselho_tipo = normalizar_tipo_conselho(
+            getattr(solicitacao, 'conselho_tipo', None) or 'CRM'
+        )
+        role_inicial = (
+            'secretary' if conselho_tipo == CONSELHO_NONE else 'profissional'
+        )
+
         novo_profissional = Profissional(
             nome=solicitacao.nome,
             crm=solicitacao.crm,
             uf_crm=solicitacao.uf_crm,
+            conselho_tipo=conselho_tipo,
             usuario=usuario,
             email=solicitacao.email,
             senha=generate_password_hash(senha_temporaria),
-            role='profissional',
+            role=role_inicial,
             data_expiracao=datetime.now() + timedelta(days=7),
             status_cadastro='aprovado',
             aprovado_por='system',

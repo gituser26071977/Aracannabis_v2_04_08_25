@@ -11,6 +11,9 @@ class Profissional(db.Model):
     nome = db.Column(db.String, nullable=False)
     crm = db.Column(db.String, nullable=False)
     uf_crm = db.Column(db.String, nullable=False)
+    conselho_tipo = db.Column(
+        db.String(20), nullable=True, default="CRM"
+    )  # 'CRM' | 'CRP' | 'COREN' | 'CRN' | 'CREFITO' | 'NONE' (staff sem conselho)
     usuario = db.Column(db.String, unique=True, nullable=False)
     senha = db.Column(db.String, nullable=False)
     email = db.Column(db.String, unique=True)
@@ -50,6 +53,7 @@ class Profissional(db.Model):
             "nome": self.nome,
             "crm": self.crm,
             "uf_crm": self.uf_crm,
+            "conselho_tipo": self.conselho_tipo,
             "usuario": self.usuario,
             "email": self.email,
             "role": self.role,
@@ -1100,6 +1104,9 @@ class SolicitacoesCadastro(db.Model):
     email = db.Column(db.String, unique=True, nullable=False)
     crm = db.Column(db.String, nullable=False)
     uf_crm = db.Column(db.String, nullable=False)
+    conselho_tipo = db.Column(
+        db.String(20), nullable=True, default="CRM"
+    )  # 'CRM' | 'CRP' | 'COREN' | 'CRN' | 'CREFITO' | 'NONE'
     telefone = db.Column(db.String)
     especialidade = db.Column(db.String)
     instituicao = db.Column(db.String)
@@ -1131,6 +1138,7 @@ class SolicitacoesCadastro(db.Model):
             "email": self.email,
             "crm": self.crm,
             "uf_crm": self.uf_crm,
+            "conselho_tipo": self.conselho_tipo,
             "telefone": self.telefone,
             "especialidade": self.especialidade,
             "instituicao": self.instituicao,
