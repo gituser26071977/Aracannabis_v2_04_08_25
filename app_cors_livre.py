@@ -272,6 +272,11 @@ def create_app(config_obj=None):
 
     app.register_blueprint(association_bp, url_prefix="/api/association")
 
+    # [NEW] Intelligent Import (multi-tenant staff + schedule import)
+    from routes.intelligent_import import intelligent_import_bp
+
+    app.register_blueprint(intelligent_import_bp, url_prefix="/api")
+
     # [NEW] AI Clinical Pipeline
     from routes.ai_clinical import ai_clinical_bp
     from routes.hc_report import hc_report_bp

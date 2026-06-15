@@ -1709,3 +1709,45 @@ class Disponibilidade(db.Model):
             "duracao_consulta_minutos": self.duracao_consulta_minutos,
             "ativo": self.ativo,
         }
+
+
+class Consultorio(db.Model):
+    """Consultório/sala de uma clínica (tenant-scoped via associacao_id).
+
+    Parte da feature feat/intelligent-import: criado quando o gestor importa
+    uma lista de consultórios via IntelligentImportService.
+    """
+    __tablename__ = "consultorios"
+
+    id = db.Column(db.Integer, primary_key=True)
+    associacao_id = db.Column(
+        db.Integer,
+        db.ForeignKey("associacoes.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    nome = db.Column(db.String(120), nullable=False)
+    andar = db.Column(db.String(40))
+    ala = db.Column(db.String(40))
+    capacidade = db.Column(db.Integer, default=1)
+    recursos = db.Column(db.Text)  # ex.: "macas=2,balança,computador"
+    ativo = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint("associacao_id", "nome", name="uq_consultorio_assoc_nome"),
+    )
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "associacao_id": self.associacao_id,
+            "nome": self.nome,
+            "andar": self.andar,
+            "ala": self.ala,
+            "capacidade": self.capacidade,
+            "recursos": self.recursos,
+            "ativo": self.ativo,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
