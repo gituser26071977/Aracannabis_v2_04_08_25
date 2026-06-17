@@ -79,7 +79,7 @@ const NavigationMenu = ({ open, onClose }) => {
     ];
 
     const siapItems = [
-        { text: '📊 Dashboard Médico', icon: <SpeedIcon />, path: '/dashboard', auth: true },
+        { text: '📊 Painel de Controle', icon: <SpeedIcon />, path: '/dashboard', auth: true },
         { text: '👤 Pacientes', icon: <PersonIcon />, path: '/pacientes', auth: true },
         { text: '📅 Consultas', icon: <EventIcon />, path: '/consultas', auth: true },
         { text: '📝 Configurar Receituário', icon: <LocalHospitalIcon />, path: '/configuracao-prescricao', auth: true },
@@ -112,8 +112,9 @@ const NavigationMenu = ({ open, onClose }) => {
     if (!currentUser) {
         sections.push({ title: '🌐 NAVEGAÇÃO', items: publicItems });
     } else {
-        // AraOS Section
-        const siapSectionItems = [...commonItems, ...siapItems];
+        // AraOS Section — remove [...commonItems, ...] (era redundante: ambos → /dashboard).
+        // Mantemos apenas siapItems, cujo 1º item agora é "Painel de Controle".
+        const siapSectionItems = [...siapItems];
         sections.push({ title: '📋 PRONTUÁRIO', items: siapSectionItems });
 
         // SGAC Section (for admin or when in SGAC module)
