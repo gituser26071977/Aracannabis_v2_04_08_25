@@ -33,7 +33,7 @@ def get_dashboard_stats():
     em_tratamento_count = base_query.filter_by(em_tratamento=True).count()
     em_tratamento_pct = (em_tratamento_count / total_pacientes) * 100
 
-    # 3. Dose Estável > 3 Meses
+    # 3. Medicação com Dose Estável > 3 meses
     # Lógica: Pacientes em tratamento cuja última dosagem foi registrada há mais de 90 dias
     # Isso assume que se não houve nova dosagem, a dose se manteve.
     data_limite_estabilidade = datetime.utcnow() - timedelta(days=90)

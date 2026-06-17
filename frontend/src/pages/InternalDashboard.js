@@ -265,7 +265,7 @@ const InternalDashboard = () => {
                 </Grid>
                 <Grid item xs={12} sm={6} md={3}>
                     <StatCard
-                        title="Dose Estável > 3 Meses"
+                        title="Medicação com Dose Estável > 3 meses"
                         value={`${stats?.dose_estavel_pct || 0}%`}
                         subtitle="Estabilidade Clínica"
                         emoji="⏱️"
