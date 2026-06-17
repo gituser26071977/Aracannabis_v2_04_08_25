@@ -34,7 +34,6 @@ const emojiMap = {
     'Importar Documentos': '📥',
     'Chat IA (LIA)': '🤖',
     'Configurar IA SDR': '⚙️',
-    'Dashboard Associação': '🏢',
     'Gestão da Clínica': '🏥',
     'Admin Geral': '🔐',
     'Config IA': '🔧',
@@ -89,8 +88,12 @@ const NavigationMenu = ({ open, onClose }) => {
         { text: '📦 Catálogo → Importar por IA', icon: <LocalHospitalIcon />, path: '/catalogo', auth: true },
     ];
 
-    const sgacItems = [
-        { text: '🏢 Dashboard Associação', icon: <BusinessIcon />, path: '/association', auth: true },
+    // Itens do módulo "Gestão da Clínica" (ex-"Associação" / SGAC).
+    // O médico/gestor cadastra a clínica e dispara convites via /association.
+    // Os endpoints de convite (criar/listar/cancelar/reenviar/aceitar) vivem em
+    // routes/secretaria.py e são consumidos por AssociationPage.js.
+    const gestaoClinicaItems = [
+        { text: '🏥 Gestão da Clínica', icon: <BusinessIcon />, path: '/association', auth: true },
     ];
 
     const adminItems = [
@@ -117,22 +120,11 @@ const NavigationMenu = ({ open, onClose }) => {
         const siapSectionItems = [...siapItems];
         sections.push({ title: '📋 PRONTUÁRIO', items: siapSectionItems });
 
-        // SGAC Section (for admin or when in SGAC module)
-        let sgacSectionItems = [];
-        if (currentUser.role === 'admin') {
-            sgacSectionItems = [...sgacItems];
-        } else if (activeModule === 'SGAC') {
-            sgacSectionItems = [...sgacItems];
-        }
-
-        // Add clinic management if not already present
-        const hasClinic = sgacSectionItems.some(i => i.path === '/association');
-        if (!hasClinic) {
-            sgacSectionItems.push({ text: '🏥 Gestão da Clínica', icon: <BusinessIcon />, path: '/association', auth: true });
-        }
-
-        if (sgacSectionItems.length > 0) {
-            sections.push({ title: '🏢 ASSOCIAÇÃO', items: sgacSectionItems });
+        // Gestão da Clínica — visível para qualquer usuário autenticado.
+        // O /association hospeda o cadastro da clínica E o diálogo de convite
+        // (criar/listar/cancelar/reenviar). Endpoints em routes/secretaria.py.
+        if (currentUser) {
+            sections.push({ title: '🏥 GESTÃO DA CLÍNICA', items: [...gestaoClinicaItems] });
         }
 
         // Admin Section
