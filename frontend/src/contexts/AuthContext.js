@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import { authService } from '../services/api';
+import { authService, billingService } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 
 // Criar o contexto de autenticação
@@ -13,9 +13,17 @@ export const useAuth = () => {
 // Provedor do contexto de autenticação
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
+  const [userPlan, setUserPlan] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+
+  // Helper: checa se user tem acesso à Gestão da Clínica
+  const hasClinicaAccess = (() => {
+    if (!currentUser) return false;
+    if (currentUser.role === 'admin' || currentUser.role === 'superadmin') return true;
+    return Boolean(userPlan?.permite_gestao_clinica);
+  })();
 
   const handlePostLoginRedirect = (user) => {
     if (!user) return;
