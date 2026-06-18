@@ -59,7 +59,7 @@ const getEmoji = (text) => {
 
 const NavigationMenu = ({ open, onClose }) => {
     const location = useLocation();
-    const { currentUser, logout } = useAuth();
+    const { currentUser, logout, hasClinicaAccess } = useAuth();
 
     const getActiveModule = (pathname) => {
         if (pathname.startsWith('/association')) return 'SGAC';
@@ -92,8 +92,14 @@ const NavigationMenu = ({ open, onClose }) => {
     // O médico/gestor cadastra a clínica e dispara convites via /association.
     // Os endpoints de convite (criar/listar/cancelar/reenviar/aceitar) vivem em
     // routes/secretaria.py e são consumidos por AssociationPage.js.
+    // Item mostra 🔒 quando o user está em plano sem acesso (basico).
     const gestaoClinicaItems = [
-        { text: '🏥 Gestão da Clínica', icon: <BusinessIcon />, path: '/association', auth: true },
+        {
+            text: hasClinicaAccess ? '🏥 Gestão da Clínica' : '🔒 Gestão da Clínica',
+            icon: <BusinessIcon />,
+            path: '/association',
+            auth: true,
+        },
     ];
 
     const adminItems = [

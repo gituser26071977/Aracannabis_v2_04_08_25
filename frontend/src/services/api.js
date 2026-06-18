@@ -10,6 +10,21 @@ const api = axios.create({
 
 console.log('API Service configurado com URL:', API_BASE_URL);
 
+// P0-08: helper para garantir token CSRF em mutações
+async function ensureCsrfToken() {
+  let token = localStorage.getItem('csrf_token');
+  if (!token) {
+    try {
+      const r = await api.get('/csrf-token');
+      token = r.data?.csrf_token;
+      if (token) localStorage.setItem('csrf_token', token);
+    } catch (e) {
+      // Se falhar (rede/offline), segue sem; backend bloqueará se necessário
+    }
+  }
+  return token;
+}
+
 // Interceptor para adicionar o token de autenticação e CSRF em todas as requisições
 api.interceptors.request.use(
   (config) => {
@@ -25,11 +40,17 @@ api.interceptors.request.use(
       config.headers['X-Association-ID'] = selectedAssocId;
     }
 
-    // Adicionar token CSRF para métodos não seguros
-    // const csrfToken = localStorage.getItem('csrf_token');
-    // if (csrfToken && ['post', 'put', 'delete', 'patch'].includes(config.method)) {
-    //   config.headers['X-CSRF-Token'] = csrfToken;
-    // }
+    // P0-08: enviar CSRF em métodos mutáveis
+    const method = (config.method || 'get').toLowerCase();
+    if (['post', 'put', 'delete', 'patch'].includes(method)) {
+      const csrfToken = localStorage.getItem('csrf_token');
+      if (csrfToken) {
+        config.headers['X-CSRF-Token'] = csrfToken;
+      } else {
+        // Dispara busca assíncrona; primeira chamada pode falhar (login não exige)
+        ensureCsrfToken();
+      }
+    }
 
     return config;
   },
@@ -41,13 +62,17 @@ api.interceptors.request.use(
 // Interceptor para tratar erros de resposta
 api.interceptors.response.use(
   (response) => {
-    // Armazenar token CSRF se estiver presente na resposta
-    // if (response.data && response.data.csrf_token) {
-    //   localStorage.setItem('csrf_token', response.data.csrf_token);
-    // }
+    // P0-08: captura token CSRF se backend enviar
+    if (response.data && response.data.csrf_token) {
+      localStorage.setItem('csrf_token', response.data.csrf_token);
+    }
     return response;
   },
   (error) => {
+    // P0-08: se backend enviar csrf_token junto a 4xx, captura
+    if (error.response?.data?.csrf_token) {
+      localStorage.setItem('csrf_token', error.response.data.csrf_token);
+    }
     // Tratar erros de autenticação (401)
     if (error.response && error.response.status === 401) {
       // Se não for uma requisição de login, fazer logout
@@ -66,26 +91,25 @@ api.interceptors.response.use(
 export const authService = {
   login: async (usuario, senha) => {
     try {
-      // console.log('AUTH_SERVICE_LOGIN: Tentando obter token CSRF...'); // NOVO LOG
-      // const csrfResponse = await api.get('/csrf-token');
-      // console.log('AUTH_SERVICE_LOGIN: Token CSRF obtido:', csrfResponse.data); // NOVO LOG
-      // localStorage.setItem('csrf_token', csrfResponse.data.csrf_token);
-
-      console.log('AUTH_SERVICE_LOGIN: Tentando fazer login...'); // NOVO LOG
-      // Fazer login com o token CSRF
+      console.log('AUTH_SERVICE_LOGIN: Tentando fazer login...');
       const payload = usuario && usuario.includes('@')
         ? { email: usuario, senha }
         : { usuario, senha };
       const response = await api.post('/auth/login', payload);
-      console.log('AUTH_SERVICE_LOGIN: Resposta do login:', response.data); // NOVO LOG
+      console.log('AUTH_SERVICE_LOGIN: Resposta do login:', response.data);
       localStorage.setItem('token', response.data.access_token);
       localStorage.setItem('refresh_token', response.data.refresh_token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
 
-      // Armazenar o token CSRF da resposta de login
-      // if (response.data.csrf_token) {
-      //   localStorage.setItem('csrf_token', response.data.csrf_token);
-      // }
+      // P0-08: após login, obter token CSRF para uso em mutações futuras
+      try {
+        const csrfRes = await api.get('/csrf-token');
+        if (csrfRes.data?.csrf_token) {
+          localStorage.setItem('csrf_token', csrfRes.data.csrf_token);
+        }
+      } catch (e) {
+        // silencioso
+      }
 
       return response.data;
     } catch (error) {
@@ -834,6 +858,16 @@ export const billingService = {
   listarPlanos: async () => {
     try {
       const response = await api.get('/billing/plans');
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+
+  // Plano do usuário autenticado (gating de features no front)
+  getMyPlan: async () => {
+    try {
+      const response = await api.get('/planos/meu-plano');
       return response.data;
     } catch (error) {
       throw error.response ? error.response.data : { error: 'Erro de conexão' };

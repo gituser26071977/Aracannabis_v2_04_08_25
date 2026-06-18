@@ -210,6 +210,9 @@ class Paciente(db.Model):
     foto_tamanho = db.Column(db.Integer)  # Tamanho em bytes
     consentimento_lgpd = db.Column(db.Boolean, default=False)
     data_consentimento = db.Column(db.DateTime)
+    # P0-05 (Fase 1): data em que o titular revogou consentimento
+    # (separada de data_consentimento para fins de auditoria LGPD)
+    data_revogacao = db.Column(db.DateTime)
     # Novo campo para TDAH
     tdah_positivo = db.Column(db.Boolean, default=False, nullable=True)
     # Novo campo para depressão
@@ -947,6 +950,10 @@ class Plano(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String, nullable=False)
+    # Slug canônico para tier (basico | premium | enterprise).
+    # Backfill na migration: sem_ia→basico, com_ia→premium.
+    # Usado como fonte de verdade para gating de features.
+    slug = db.Column(db.String(64), unique=True, nullable=True)
     descricao = db.Column(db.Text)
     preco_mensal = db.Column(db.Float, nullable=False, default=0)
     limite_pacientes = db.Column(db.Integer, default=50)
@@ -954,6 +961,11 @@ class Plano(db.Model):
     limite_armazenamento_mb = db.Column(db.Integer, default=1024)
     cor = db.Column(db.String, default="#1976d2")  # Cor Hex para UI
     is_popular = db.Column(db.Boolean, default=False)  # Destaque na UI
+    # Feature flags por plano. Cada plano decide quais features libera.
+    # Mantemos nomes booleanos para clareza; padrão = False (não libera).
+    permite_gestao_clinica = db.Column(db.Boolean, default=False, nullable=False)
+    permite_agentes_sdr = db.Column(db.Boolean, default=False, nullable=False)
+    permite_chatbot_ia = db.Column(db.Boolean, default=False, nullable=False)
     ativo = db.Column(db.Boolean, default=True, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(
@@ -964,6 +976,7 @@ class Plano(db.Model):
         return {
             "id": self.id,
             "nome": self.nome,
+            "slug": self.slug,
             "descricao": self.descricao,
             "preco_mensal": self.preco_mensal,
             "limite_pacientes": self.limite_pacientes,
@@ -971,6 +984,9 @@ class Plano(db.Model):
             "limite_armazenamento_mb": self.limite_armazenamento_mb,
             "cor": self.cor,
             "is_popular": self.is_popular,
+            "permite_gestao_clinica": self.permite_gestao_clinica,
+            "permite_agentes_sdr": self.permite_agentes_sdr,
+            "permite_chatbot_ia": self.permite_chatbot_ia,
             "ativo": self.ativo,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,

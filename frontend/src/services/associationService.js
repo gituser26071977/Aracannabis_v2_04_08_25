@@ -43,6 +43,30 @@ const associationService = {
         }
     },
 
+    updateAssociation: async (id, data) => {
+        try {
+            const response = await api.put(`/association/associations/${id}`, data, {
+                headers: getAssociationHeader()
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error updating association:', error);
+            throw error;
+        }
+    },
+
+    deleteAssociation: async (id) => {
+        try {
+            const response = await api.delete(`/association/associations/${id}`, {
+                headers: getAssociationHeader()
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error deleting association:', error);
+            throw error;
+        }
+    },
+
     // --- Member Management ---
     getMembers: async (associationId) => {
         try {

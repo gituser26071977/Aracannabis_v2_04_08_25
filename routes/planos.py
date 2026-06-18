@@ -127,5 +127,66 @@ def seed_planos():
     db.session.add(plano_sem_ia)
     db.session.add(plano_com_ia)
     db.session.commit()
-    
+
     return jsonify({'message': 'Planos padrão criados com sucesso'}), 201
+
+
+# --- Plano do usuário autenticado (para gating de features no front) ---
+@planos_bp.route('/meu-plano', methods=['GET'])
+@jwt_required()
+def meu_plano():
+    """Retorna o plano do usuário autenticado + assinatura ativa.
+
+    Se o user não tem assinatura (trial), retorna o plano premium como
+    default (trial dá acesso a todos os recursos; bloqueio só após expirar).
+    """
+    from models import Assinatura
+    from sqlalchemy import text
+    user_id = get_jwt_identity()
+
+    # Admin/superadmin: retorna plano enterprise (acesso total)
+    user = Profissional.query.get(user_id)
+    if user and user.role in ('admin', 'superadmin'):
+        plano = Plano.query.filter_by(slug='enterprise').first() or Plano.query.first()
+        return jsonify({
+            'plano': plano.to_dict() if plano else None,
+            'assinatura': None,
+            'is_admin': True,
+            'in_trial': False,
+        }), 200
+
+    # Query manual para evitar colunas fora de sync com migrations
+    row = db.session.execute(
+        text("""
+            SELECT a.id, a.status, a.trial_ends_at, a.renovacao_em, a.plano_id
+            FROM assinaturas a
+            WHERE a.profissional_id = :uid
+            ORDER BY a.id DESC
+            LIMIT 1
+        """),
+        {"uid": int(user_id)},
+    ).first()
+
+    if not row:
+        # Sem assinatura: usuário em trial (criou conta mas não assinou)
+        # Trial dá acesso a todos os recursos
+        plano = Plano.query.filter_by(slug='premium').first() or Plano.query.first()
+        return jsonify({
+            'plano': plano.to_dict() if plano else None,
+            'assinatura': None,
+            'is_admin': False,
+            'in_trial': True,
+        }), 200
+
+    plano = Plano.query.get(row.plano_id) if row.plano_id else None
+    return jsonify({
+        'plano': plano.to_dict() if plano else None,
+        'assinatura': {
+            'id': row.id,
+            'status': row.status,
+            'trial_ends_at': row.trial_ends_at.isoformat() if row.trial_ends_at else None,
+            'renovacao_em': row.renovacao_em.isoformat() if row.renovacao_em else None,
+        },
+        'is_admin': False,
+        'in_trial': False,
+    }), 200

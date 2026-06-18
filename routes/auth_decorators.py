@@ -4,6 +4,8 @@ Decorators de Rotas Protegidas (Squad B — Segurança & Acesso)
 - require_active_subscription
 - require_plan(plan_identifier)
 - require_feature(feature_identifier)
+- require_permission(*permissions)              [NOVO - Mission 8 Secretária]
+- require_staff_role(*roles)                     [NOVO - Mission 8 Secretária]
 
 Tudo atrás da feature flag 'plan_enforcement'.
 """
@@ -15,8 +17,14 @@ from flask_jwt_extended import get_jwt_identity
 
 from models import db, Profissional, Assinatura, Paciente, Plano
 from services.feature_flag_service import FeatureFlagService
+from araos.platform.identity.permissions import RoleRegistry, Permission
 
 logger = logging.getLogger(__name__)
+
+
+# Roles que têm bypass total de checagem de permissão.
+# Admin/Superadmin sempre podem tudo; manager tem permissões amplas.
+_ROLE_BYPASS = {"admin", "superadmin"}
 
 
 def _get_current_profissional_id() -> int | None:
@@ -43,6 +51,122 @@ def _get_profissional_and_subscription(profissional_id: int):
     assinatura = Assinatura.query.filter_by(profissional_id=profissional_id).first()
     plano = assinatura.plano if assinatura else None
     return profissional, assinatura, plano
+
+
+def _resolve_user_role_names(profissional: Profissional) -> list[str]:
+    """Resolve o conjunto de nomes de role ativos para o usuário.
+
+    Combina role global (Profissional.role) com role institucional
+    (UsuarioAssociacao.role) se houver tenant context.
+    """
+    roles: list[str] = [profissional.role] if profissional.role else []
+    # Adiciona role institucional se houver tenant context ativo
+    link_role = getattr(g, "user_role", None)
+    if link_role and link_role not in roles:
+        roles.append(link_role)
+    return roles
+
+
+# ════════════════════════════════════════════════════════════════════
+# Mission 8 — Decorators Secretária / RBAC granular
+# ════════════════════════════════════════════════════════════════════
+def require_permission(*permissions: str):
+    """
+    Bloqueia request se usuário não possui nenhuma das permissões informadas.
+
+    Bypass: admin, superadmin sempre passam.
+
+    Uso:
+        @require_permission(Permission.PATIENT_READ)
+        def listar_pacientes(): ...
+
+        # Aceita múltiplas (OR — qualquer uma basta):
+        @require_permission(Permission.PRESCRIPTION_WRITE, Permission.AI_USE)
+    """
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            profissional_id = _get_current_profissional_id()
+            if not profissional_id:
+                return jsonify({"error": "Autenticação necessária."}), 401
+
+            profissional = Profissional.query.get(profissional_id)
+            if not profissional:
+                return jsonify({"error": "Profissional não encontrado."}), 404
+
+            if profissional.role in _ROLE_BYPASS:
+                return f(*args, **kwargs)
+
+            role_names = _resolve_user_role_names(profissional)
+            if not RoleRegistry.check_any_permission(role_names, list(permissions)):
+                logger.warning(
+                    "RBAC: user_id=%s role=%s tentou acessar endpoint protegido (perms=%s)",
+                    profissional_id, profissional.role, list(permissions),
+                )
+                return (
+                    jsonify(
+                        {
+                            "error": "Permissão negada",
+                            "message": "Você não tem permissão para esta operação.",
+                            "required_permissions": list(permissions),
+                        }
+                    ),
+                    403,
+                )
+            return f(*args, **kwargs)
+
+        return decorated_function
+
+    return decorator
+
+
+def require_staff_role(*allowed_roles: str):
+    """
+    Bloqueia request se a role do usuário não está na lista permitida.
+
+    Aceita role global (Profissional.role) OU role institucional
+    (g.user_role). Use para separar fluxos "secretary", "manager", "admin".
+
+    Bypass: admin/superadmin sempre passam.
+
+    Uso:
+        @require_staff_role("secretary", "admin", "manager")
+        def cancelar_consulta(): ...
+    """
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            profissional_id = _get_current_profissional_id()
+            if not profissional_id:
+                return jsonify({"error": "Autenticação necessária."}), 401
+
+            profissional = Profissional.query.get(profissional_id)
+            if not profissional:
+                return jsonify({"error": "Profissional não encontrado."}), 404
+
+            if profissional.role in _ROLE_BYPASS:
+                return f(*args, **kwargs)
+
+            user_roles = _resolve_user_role_names(profissional)
+            if not any(r in allowed_roles for r in user_roles):
+                logger.warning(
+                    "RBAC: user_id=%s roles=%s não autorizado (allowed=%s)",
+                    profissional_id, user_roles, list(allowed_roles),
+                )
+                return (
+                    jsonify(
+                        {
+                            "error": "Acesso restrito",
+                            "message": "Esta operação é exclusiva para perfis específicos.",
+                        }
+                    ),
+                    403,
+                )
+            return f(*args, **kwargs)
+
+        return decorated_function
+
+    return decorator
 
 
 def require_active_subscription(f):
@@ -277,3 +401,68 @@ def require_feature(feature_identifier: str):
         return decorated_function
 
     return decorator
+
+
+def require_clinica_management(f):
+    """
+    Decorator que bloqueia acesso se o plano do usuário não permitir
+    gestão de clínica (Plano.permite_gestao_clinica == False).
+
+    Aplica-se a endpoints de CRUD de Clínica em `association/routes.py`.
+    Bypass: admin/superadmin (via _ROLE_BYPASS) e feature flag
+    `plan_enforcement` desativada.
+
+    Retorna 403 com payload estruturado para o frontend exibir
+    banner de upgrade:
+        {
+            "error": "...",
+            "plan_required": "premium",
+            "upgrade_url": "/planos",
+            "permite_gestao_clinica": false
+        }
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not FeatureFlagService.is_enabled("plan_enforcement"):
+            return f(*args, **kwargs)
+
+        profissional_id = _get_current_profissional_id()
+        if not profissional_id:
+            return jsonify({"error": "Autenticação necessária."}), 401
+
+        profissional, assinatura, plano = _get_profissional_and_subscription(
+            profissional_id
+        )
+
+        if not profissional:
+            return jsonify({"error": "Profissional não encontrado."}), 404
+
+        # Admin/superadmin bypass (padrão dos outros decorators)
+        if profissional.role in ("admin", "superadmin"):
+            return f(*args, **kwargs)
+
+        # Verifica feature flag no plano
+        permite = bool(plano and getattr(plano, "permite_gestao_clinica", False))
+
+        if not permite:
+            logger.info(
+                "clinica_management_blocked profissional_id=%s plano=%s",
+                profissional_id,
+                plano.slug if plano else None,
+            )
+            return (
+                jsonify(
+                    {
+                        "error": "Gestão da Clínica disponível nos planos Premium e Enterprise",
+                        "message": "Faça upgrade do seu plano para acessar a Gestão da Clínica.",
+                        "plan_required": "premium",
+                        "upgrade_url": "/planos",
+                        "permite_gestao_clinica": False,
+                    }
+                ),
+                403,
+            )
+
+        return f(*args, **kwargs)
+
+    return decorated_function
