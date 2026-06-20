@@ -3,6 +3,7 @@ Configurações de segurança para o sistema AraOS.
 Este módulo contém configurações e funções relacionadas à segurança da aplicação.
 """
 
+import os
 import re
 from functools import wraps
 from flask import request, jsonify, current_app
@@ -10,6 +11,53 @@ import secrets
 import string
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+
+
+def require_secret(name, min_length=32, allow_default=False, default=None):
+    """
+    Lê uma variável de ambiente obrigatória como segredo.
+
+    Em produção (FLASK_ENV=production) aborta o startup se a variável
+    estiver ausente, vazia ou for um placeholder conhecido.
+    Em desenvolvimento aceita placeholder/default se allow_default=True.
+
+    Args:
+        name: nome da variável de ambiente
+        min_length: tamanho mínimo exigido
+        allow_default: se True, permite valor vazio/placeholder em dev
+        default: valor default se variável ausente (apenas com allow_default)
+
+    Returns:
+        str: valor do segredo
+
+    Raises:
+        RuntimeError: se inválido em produção
+    """
+    placeholders = {"", "changeme", "change_me", "change-me",
+                    "your-secret-key-here", "secret", "default"}
+    value = os.getenv(name, "")
+
+    if allow_default and not value:
+        return default or "REDACTED"
+
+    is_placeholder = (
+        not value
+        or value.lower() in placeholders
+        or value.startswith("CHANGE_ME")
+        or len(value) < min_length
+    )
+
+    if is_placeholder:
+        is_prod = os.getenv("FLASK_ENV", "development").lower() == "production"
+        if is_prod or not allow_default:
+            raise RuntimeError(
+                f"[SECURITY] {name} ausente/fraco. Defina um valor "
+                f"com pelo menos {min_length} caracteres. "
+                f"Em produção o startup é abortado."
+            )
+        return default or "REDACTED"
+
+    return value
 
 # Configurações de senha
 PASSWORD_MIN_LENGTH = 10
