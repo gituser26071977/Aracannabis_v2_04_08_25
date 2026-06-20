@@ -1,7 +1,7 @@
 """add slug and feature flags to planos
 
 Revision ID: 2026_06_17_clinica_management
-Revises: 2026_06_16_p0_13
+Revises: d3e4f5a6b7c8
 Create Date: 2026-06-17 03:00:00
 
 Adiciona colunas em `planos` para suportar gating de features por tier:
@@ -25,7 +25,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '2026_06_17_clinica_management'
-down_revision = '2026_06_16_p0_13'
+down_revision = 'd3e4f5a6b7c8'
 branch_labels = None
 depends_on = None
 
@@ -71,19 +71,32 @@ def upgrade():
     # 3. Cria índice/constraint unique em slug (depois do backfill)
     op.create_unique_constraint('uq_planos_slug', 'planos', ['slug'])
 
-    # 4. Insere plano enterprise se não existir
+    # 4. Seed dos 3 planos canônicos (basico, premium, enterprise) se faltarem
     op.execute("""
         INSERT INTO planos (nome, slug, descricao, preco_mensal,
                             limite_pacientes, limite_agentes_ia, limite_armazenamento_mb,
                             cor, is_popular, ativo,
                             permite_gestao_clinica, permite_agentes_sdr, permite_chatbot_ia,
                             created_at, updated_at)
-        SELECT 'enterprise', 'enterprise', 'Plano Enterprise — Clínicas multi-unidade, recursos avançados', 499.90,
-               99999, 50, 10240,
-               '#7B1FA2', true, true,
-               true, true, true,
-               NOW(), NOW()
-        WHERE NOT EXISTS (SELECT 1 FROM planos WHERE slug = 'enterprise')
+        SELECT * FROM (VALUES
+            ('Plano Sem IA',     'basico',
+             'Para profissionais que querem apenas prontuário digital e gestão clínica.',
+             99.0::float,  100,   0,  5120,
+             '#2196F3', false, true, false, false, false, NOW(), NOW()),
+            ('Plano Com IA',     'premium',
+             'Inclui agentes de IA (EuSouLia, chatbot médico), dashboard SDR e automações.',
+             249.0::float, 500,   10, 10240,
+             '#FF9800', true,  true, true,  true,  true,  NOW(), NOW()),
+            ('Plano Enterprise', 'enterprise',
+             'Clínicas multi-unidade: VSF, reconhecimento facial, métricas avançadas.',
+             499.9::float, 99999, 50, 10240,
+             '#7B1FA2', false, true, true,  true,  true,  NOW(), NOW())
+        ) AS novos(nome, slug, descricao, preco_mensal,
+                   limite_pacientes, limite_agentes_ia, limite_armazenamento_mb,
+                   cor, is_popular, ativo,
+                   permite_gestao_clinica, permite_agentes_sdr, permite_chatbot_ia,
+                   created_at, updated_at)
+        WHERE NOT EXISTS (SELECT 1 FROM planos WHERE slug IN ('basico', 'premium', 'enterprise'))
     """)
 
 
