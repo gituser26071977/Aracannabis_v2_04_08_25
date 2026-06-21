@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Container,
   Paper,
@@ -11,16 +11,26 @@ import {
   MenuItem,
   Card,
   CardContent,
+  CardActions,
   Stepper,
   Step,
   StepLabel,
-  CircularProgress
+  CircularProgress,
+  Chip,
+  Divider,
+  Radio,
+  RadioGroup,
+  FormControlLabel,
+  FormControl
 } from '@mui/material';
 import {
   PersonAdd as PersonAddIcon,
   Email as EmailIcon,
   CheckCircle as CheckCircleIcon,
-  Schedule as ScheduleIcon
+  Schedule as ScheduleIcon,
+  Star as StarIcon,
+  Business as BusinessIcon,
+  RocketLaunch as RocketIcon
 } from '@mui/icons-material';
 import api from '../services/api';
 
@@ -58,8 +68,44 @@ const ESPECIALIDADES = [
 const steps = [
   'Dados Pessoais',
   'Dados Profissionais',
+  'Escolha do Plano',
   'Confirmação',
   'Aguardar Aprovação'
+];
+
+// Planos sincronizados com /api/planos/. O slug é a fonte de verdade no backend.
+const PLANOS_CADASTRO = [
+  {
+    slug: 'basico',
+    nome: 'Plano Sem IA',
+    preco: 99,
+    periodo: '/mês',
+    cor: '#2196F3',
+    icone: <BusinessIcon />,
+    descricao: 'Prontuário digital, gestão de pacientes, agenda e LGPD.',
+    features: ['Até 100 pacientes', 'Sem IA', '5 GB de armazenamento', 'Suporte por e-mail'],
+  },
+  {
+    slug: 'premium',
+    nome: 'Plano Com IA',
+    preco: 249,
+    periodo: '/mês',
+    cor: '#FF9800',
+    icone: <RocketIcon />,
+    popular: true,
+    descricao: 'Tudo do Básico + agentes de IA (EuSouLia), chatbot e dashboard SDR.',
+    features: ['Até 500 pacientes', '10 agentes de IA', '10 GB de armazenamento', 'Suporte prioritário'],
+  },
+  {
+    slug: 'enterprise',
+    nome: 'Plano Enterprise',
+    preco: 499.9,
+    periodo: '/mês',
+    cor: '#7B1FA2',
+    icone: <StarIcon />,
+    descricao: 'Clínicas multi-unidade, VSF, reconhecimento facial e métricas avançadas.',
+    features: ['Pacientes ilimitados', '50 agentes de IA', '10 GB de armazenamento', 'Onboarding dedicado'],
+  },
 ];
 
 const CadastroProfissionaisPage = () => {
@@ -68,6 +114,7 @@ const CadastroProfissionaisPage = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [solicitacaoId, setSolicitacaoId] = useState(null);
+  const [planosDb, setPlanosDb] = useState([]);
 
   const [formData, setFormData] = useState({
     nome: '',
@@ -78,7 +125,8 @@ const CadastroProfissionaisPage = () => {
     especialidade: '',
     instituicao: '',
     tipo_vinculo: 'pessoal', // 'pessoal' ou 'existente'
-    associacao_id: ''
+    associacao_id: '',
+    plano_slug: 'basico',   // padrão: começar com plano mais barato
   });
 
   const [associacoes, setAssociacoes] = React.useState([]);
@@ -95,6 +143,26 @@ const CadastroProfissionaisPage = () => {
       }
     };
     fetchAssociacoes();
+  }, []);
+
+  // Carrega planos reais do backend (preço, slug, features) para exibir no passo 2.
+  React.useEffect(() => {
+    let cancelado = false;
+    (async () => {
+      try {
+        const r = await api.get('/planos/');
+        if (!cancelado && Array.isArray(r.data) && r.data.length) {
+          setPlanosDb(r.data);
+          const basico = r.data.find((p) => p.slug === 'basico');
+          if (basico) {
+            setFormData((prev) => ({ ...prev, plano_slug: basico.slug }));
+          }
+        }
+      } catch (_) {
+        // silencioso: usa fallback estático PLANOS_CADASTRO
+      }
+    })();
+    return () => { cancelado = true; };
   }, []);
 
   const handleInputChange = (e) => {
@@ -138,6 +206,13 @@ const CadastroProfissionaisPage = () => {
         }
         break;
 
+      case 2: // Escolha do Plano
+        if (!formData.plano_slug) {
+          setError('Selecione um plano para continuar');
+          return false;
+        }
+        break;
+
       default:
         break;
     }
@@ -155,7 +230,10 @@ const CadastroProfissionaisPage = () => {
   };
 
   const handleSubmit = async () => {
-    if (!validateStep(1)) return;
+    // Valida todos os passos anteriores antes de enviar
+    for (let s = 0; s <= 2; s++) {
+      if (!validateStep(s)) return;
+    }
 
     setLoading(true);
     setError('');
@@ -166,7 +244,7 @@ const CadastroProfissionaisPage = () => {
       if (response.data.success) {
         setSolicitacaoId(response.data.solicitacao_id);
         setSuccess('Solicitação enviada com sucesso!');
-        setActiveStep(3);
+        setActiveStep(4); // passo 4 = "Aguardar Aprovação"
       } else {
         setError(response.data.error || 'Erro ao enviar solicitação');
       }
@@ -336,40 +414,182 @@ const CadastroProfissionaisPage = () => {
         );
 
       case 2:
-        return (
-          <Grid container spacing={3}>
-            <Grid item xs={12}>
-              <Typography variant="h6" gutterBottom>
-                Confirme seus dados
-              </Typography>
-            </Grid>
-            <Grid item xs={12}>
-              <Card variant="outlined">
-                <CardContent>
-                  <Typography variant="subtitle1" gutterBottom>
-                    <strong>Dados Pessoais:</strong>
-                  </Typography>
-                  <Typography>Nome: {formData.nome}</Typography>
-                  <Typography>Email: {formData.email}</Typography>
-                  {formData.telefone && <Typography>Telefone: {formData.telefone}</Typography>}
+        {
+          // Mescla dados do backend (preço/limites/features) com fallback estático
+          const planosParaExibir = planosDb.length
+            ? planosDb.map((p) => ({
+                slug: p.slug,
+                nome: p.nome,
+                preco: p.preco_mensal,
+                periodo: '/mês',
+                cor: p.cor,
+                popular: p.is_popular,
+                descricao: p.descricao,
+                features: [
+                  `${p.limite_pacientes >= 99999 ? 'Pacientes ilimitados' : `Até ${p.limite_pacientes} pacientes`}`,
+                  p.permite_agentes_sdr
+                    ? `${p.limite_agentes_ia} agentes de IA`
+                    : 'Sem IA',
+                  `${p.limite_armazenamento_mb / 1024} GB de armazenamento`,
+                  p.slug === 'enterprise' ? 'Onboarding dedicado' : 'Suporte por e-mail',
+                ],
+                icone: p.slug === 'enterprise'
+                  ? <StarIcon />
+                  : p.slug === 'premium'
+                  ? <RocketIcon />
+                  : <BusinessIcon />,
+              }))
+            : PLANOS_CADASTRO;
 
-                  <Typography variant="subtitle1" gutterBottom sx={{ mt: 2 }}>
-                    <strong>Dados Profissionais:</strong>
-                  </Typography>
-                  <Typography>Registro (CRM/COREN/etc): {formData.crm}/{formData.uf_crm}</Typography>
-                  <Typography>Especialidade/Profissão: {formData.especialidade}</Typography>
-                  {formData.instituicao && <Typography>Instituição: {formData.instituicao}</Typography>}
+          return (
+            <Grid container spacing={3}>
+              <Grid item xs={12}>
+                <Typography variant="h6" gutterBottom>
+                  Escolha o plano ideal para você
+                </Typography>
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  Você poderá fazer upgrade ou downgrade a qualquer momento após o cadastro.
+                </Typography>
+              </Grid>
 
-                  <Typography variant="subtitle2" sx={{ mt: 1 }}>
-                    Plano: {formData.tipo_vinculo === 'pessoal' ? 'Novo Consultório Virtual' : `Vincular a ${associacoes.find(a => a.id === formData.associacao_id)?.nome || 'Associação'}`}
-                  </Typography>
-                </CardContent>
-              </Card>
+              <Grid item xs={12}>
+                <FormControl component="fieldset" fullWidth>
+                  <RadioGroup
+                    name="plano_slug"
+                    value={formData.plano_slug}
+                    onChange={handleInputChange}
+                  >
+                    <Grid container spacing={2}>
+                      {planosParaExibir.map((plano) => (
+                        <Grid item xs={12} md={4} key={plano.slug}>
+                          <Card
+                            variant={formData.plano_slug === plano.slug ? 'elevation' : 'outlined'}
+                            elevation={formData.plano_slug === plano.slug ? 4 : 0}
+                            sx={{
+                              borderRadius: 3,
+                              height: '100%',
+                              position: 'relative',
+                              border: formData.plano_slug === plano.slug
+                                ? `2px solid ${plano.cor}`
+                                : '1px solid #e0e0e0',
+                              transition: 'all 0.2s ease',
+                              '&:hover': { transform: 'translateY(-4px)', boxShadow: 3 },
+                            }}
+                          >
+                            {plano.popular && (
+                              <Chip
+                                label="Mais Popular"
+                                color="warning"
+                                size="small"
+                                sx={{ position: 'absolute', top: 12, right: 12 }}
+                              />
+                            )}
+                            <CardContent>
+                              <Box sx={{ color: plano.cor, mb: 1 }}>{plano.icone}</Box>
+                              <Typography variant="h6" gutterBottom>
+                                {plano.nome}
+                              </Typography>
+                              <Box sx={{ display: 'flex', alignItems: 'baseline', mb: 1 }}>
+                                <Typography variant="h4" fontWeight="bold">
+                                  R$ {Number(plano.preco).toFixed(plano.preco % 1 === 0 ? 0 : 2)}
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                  {plano.periodo}
+                                </Typography>
+                              </Box>
+                              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                                {plano.descricao}
+                              </Typography>
+                              <Divider sx={{ my: 1 }} />
+                              {plano.features.map((feat, idx) => (
+                                <Box key={idx} sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                                  <CheckCircleIcon sx={{ fontSize: 16, color: plano.cor }} />
+                                  <Typography variant="body2">{feat}</Typography>
+                                </Box>
+                              ))}
+                              <FormControlLabel
+                                value={plano.slug}
+                                control={<Radio />}
+                                label="Selecionar"
+                                sx={{ mt: 2 }}
+                              />
+                            </CardContent>
+                          </Card>
+                        </Grid>
+                      ))}
+                    </Grid>
+                  </RadioGroup>
+                </FormControl>
+              </Grid>
             </Grid>
-          </Grid>
-        );
+          );
+        }
 
       case 3:
+        {
+          const planoEscolhido = (planosDb.length
+            ? planosDb.find((p) => p.slug === formData.plano_slug)
+            : PLANOS_CADASTRO.find((p) => p.slug === formData.plano_slug));
+          return (
+            <Grid container spacing={3}>
+              <Grid item xs={12}>
+                <Typography variant="h6" gutterBottom>
+                  Confirme seus dados
+                </Typography>
+              </Grid>
+              <Grid item xs={12}>
+                <Card variant="outlined">
+                  <CardContent>
+                    <Typography variant="subtitle1" gutterBottom>
+                      <strong>Dados Pessoais:</strong>
+                    </Typography>
+                    <Typography>Nome: {formData.nome}</Typography>
+                    <Typography>Email: {formData.email}</Typography>
+                    {formData.telefone && <Typography>Telefone: {formData.telefone}</Typography>}
+
+                    <Typography variant="subtitle1" gutterBottom sx={{ mt: 2 }}>
+                      <strong>Dados Profissionais:</strong>
+                    </Typography>
+                    <Typography>Registro (CRM/COREN/etc): {formData.crm}/{formData.uf_crm}</Typography>
+                    <Typography>Especialidade/Profissão: {formData.especialidade}</Typography>
+                    {formData.instituicao && <Typography>Instituição: {formData.instituicao}</Typography>}
+
+                    <Typography variant="subtitle2" sx={{ mt: 1 }}>
+                      Vínculo: {formData.tipo_vinculo === 'pessoal'
+                        ? 'Novo Consultório Virtual'
+                        : `Vincular a ${associacoes.find(a => a.id === formData.associacao_id)?.nome || 'Associação'}`}
+                    </Typography>
+
+                    <Divider sx={{ my: 2 }} />
+                    <Typography variant="subtitle1" gutterBottom>
+                      <strong>Plano Escolhido:</strong>
+                    </Typography>
+                    {planoEscolhido ? (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Chip
+                          label={planoEscolhido.nome}
+                          sx={{
+                            bgcolor: planoEscolhido.cor,
+                            color: 'white',
+                            fontWeight: 'bold',
+                          }}
+                          size="small"
+                        />
+                        <Typography variant="body2">
+                          R$ {Number(planoEscolhido.preco).toFixed(planoEscolhido.preco % 1 === 0 ? 0 : 2)}/mês
+                        </Typography>
+                      </Box>
+                    ) : (
+                      <Typography variant="body2" color="text.secondary">—</Typography>
+                    )}
+                  </CardContent>
+                </Card>
+              </Grid>
+            </Grid>
+          );
+        }
+
+      case 4:
         return (
           <Grid container spacing={3}>
             <Grid item xs={12} sx={{ textAlign: 'center' }}>
@@ -408,7 +628,10 @@ const CadastroProfissionaisPage = () => {
                       crm: '',
                       uf_crm: '',
                       especialidade: '',
-                      instituicao: ''
+                      instituicao: '',
+                      tipo_vinculo: 'pessoal',
+                      associacao_id: '',
+                      plano_slug: 'basico',
                     });
                     setSolicitacaoId(null);
                     setSuccess('');
@@ -463,7 +686,7 @@ const CadastroProfissionaisPage = () => {
 
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
           <Button
-            disabled={activeStep === 0 || activeStep === 3}
+            disabled={activeStep === 0 || activeStep === 4}
             onClick={handleBack}
           >
             Voltar
@@ -490,7 +713,7 @@ const CadastroProfissionaisPage = () => {
           </Box>
         </Box>
 
-        {activeStep < 3 && (
+        {activeStep < 4 && (
           <Alert severity="info" sx={{ mt: 4 }}>
             <Typography variant="subtitle2" gutterBottom>
               Informações importantes:
