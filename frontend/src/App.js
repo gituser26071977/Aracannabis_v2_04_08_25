@@ -72,6 +72,7 @@ import CatalogoPage from './pages/CatalogoPage';
 import OnboardingPage from './pages/OnboardingPage';
 import TrialEndingPage from './pages/TrialEndingPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
+import ModulosPage from './pages/ModulosPage';
 import TrialBanner from './components/TrialBanner';
 
 import NavigationMenu from './components/NavigationMenu';
@@ -766,6 +767,16 @@ function AppContent() {
           <Route path="/association/stock" element={<ProtectedRoute><StockPage /></ProtectedRoute>} />
           <Route path="/association/dispensation" element={<ProtectedRoute><DispensationPage /></ProtectedRoute>} />
           <Route path="/intelligent-import" element={<ProtectedRoute><IntelligentImportPage /></ProtectedRoute>} />
+
+          {/* Specialty Modules */}
+          <Route
+            path="/modulos"
+            element={
+              <ProtectedRoute>
+                <ModulosPage />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Patient Portal Routes (PUBLIC) */}
           <Route path="/patient/login" element={<PatientLogin />} />

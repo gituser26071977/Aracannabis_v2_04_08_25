@@ -21,6 +21,7 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import BusinessIcon from '@mui/icons-material/Business';
 import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
 import VerifiedIcon from '@mui/icons-material/Verified';
+import ExtensionIcon from '@mui/icons-material/Extension';
 
 // ============================================
 // EMOJIS POR ITEM DE MENU
@@ -42,6 +43,7 @@ const emojiMap = {
     'Assine Agora': '💎',
     'Cadastro Profissional': '👨‍⚕️',
     'Segurança': '🛡️',
+    'Módulos de Especialidade': '🧩',
     'Sair': '🚪',
     'Login': '🔑',
 };
@@ -86,6 +88,7 @@ const NavigationMenu = ({ open, onClose }) => {
         { text: '🤖 Chat IA (LIA)', icon: <ChatIcon />, path: '/assistente-ia', auth: true },
         { text: '⚙️ Configurar IA SDR', icon: <SettingsIcon />, path: '/configuracao-ia', auth: true },
         { text: '📦 Catálogo → Importar por IA', icon: <LocalHospitalIcon />, path: '/catalogo', auth: true },
+        { text: '🧩 Módulos de Especialidade', icon: <ExtensionIcon />, path: '/modulos', auth: true },
     ];
 
     // Itens do módulo "Gestão da Clínica" (ex-"Associação" / SGAC).
