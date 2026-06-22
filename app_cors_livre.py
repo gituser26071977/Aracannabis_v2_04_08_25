@@ -284,6 +284,11 @@ def create_app(config_obj=None):
     app.register_blueprint(ai_clinical_bp, url_prefix="/api/ai-clinical")
     app.register_blueprint(hc_report_bp, url_prefix="/api/hc-report")
 
+    # [NEW] Módulos de Especialidade (Fase 4 pre-deploy)
+    from routes.modulos import modulos_bp, meus_modulos_bp
+    app.register_blueprint(modulos_bp)
+    app.register_blueprint(meus_modulos_bp)
+
     # [NEW] Tenant Middleware
     from middleware.tenant_middleware import register_tenant_middleware
 
@@ -305,6 +310,8 @@ def create_app(config_obj=None):
         try:
             # Importar models_extra para garantir que todas as tabelas sejam criadas
             import models_extra
+            # Importar modelos de Módulos de Especialidade (Fase 4 pre-deploy)
+            import models_modulos  # noqa: F401
             from services.voice.models.voice_models import (
                 VoiceSessionModel, VoiceTranscriptModel,
                 VoiceEntityModel, VoiceActionModel, VoiceAuditLogModel
