@@ -37,7 +37,7 @@ import {
   Restaurant as RestaurantIcon,
   Psychology as PsychologyIcon,
   Favorite as FavoriteIcon,
-  Eco as EcoIcon,
+  EnergySavingsLeaf as LeafIcon,
   Extension as ExtensionIcon,
   CheckCircle as CheckCircleIcon,
   HourglassBottom as HourglassIcon,
@@ -49,7 +49,7 @@ import modulosService from '../services/modulosService';
 
 // Mapeamento slug → componente de ícone MUI
 const ICONES = {
-  'eco': EcoIcon,
+  'eco': LeafIcon,
   'restaurant': RestaurantIcon,
   'psychology': PsychologyIcon,
   'favorite': FavoriteIcon,
