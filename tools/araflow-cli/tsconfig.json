@@ -1,0 +1,26 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "types": ["node", "jest"],
+    "declaration": true,
+    "declarationMap": true,
+    "composite": false,
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@core/timer-engine": ["../../mobile/src/core/timer-engine/index.ts"],
+      "@core/breath-engine": ["../../mobile/src/core/breath-engine/index.ts"],
+      "@core/protocol-compiler": ["../../mobile/src/core/protocol-compiler/index.ts"],
+      "@araflow/shared-contracts": ["../../shared-contracts/src/index.ts"],
+      "@araflow/shared-contracts/*": ["../../shared-contracts/src/*"],
+      "@shared/*": ["../../mobile/src/shared/*"]
+    }
+  },
+  "include": ["src/**/*.ts", "__tests__/**/*.ts", "src/**/*.json", "__tests__/**/*.json"],
+  "exclude": ["node_modules", "dist", "coverage"]
+}

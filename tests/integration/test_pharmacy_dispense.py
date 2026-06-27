@@ -15,6 +15,13 @@ def ensure_admin(session):
         pass
 
 
+def ensure_admin(session):
+    # Backdoor removido em P0-A (2026-06-22): rota /api/auth/create-admin foi eliminada
+    # porque expunha criação de admin sem autenticação com senha hardcoded.
+    # Admin deve ser criado via CLI segura, seed ou painel interno com @jwt_required.
+    pass
+
+
 def login(session):
     r = session.post(f"{BASE_URL}/auth/login", json={"usuario": ADMIN_USER, "senha": ADMIN_PASS}, timeout=5)
     r.raise_for_status()

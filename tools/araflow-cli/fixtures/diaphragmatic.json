@@ -1,0 +1,27 @@
+{
+  "$schema": "https://araflow.app/schemas/protocol/v1.json",
+  "id": "01ARZ3NDEKTSV4RRFFQ69G5FA3",
+  "version": "1.0.0",
+  "title": "Diaphragmatic Breathing",
+  "subtitle": "Belly breath foundation",
+  "description": "Slow deep belly breathing. 6s inhale, 2s hold, 8s exhale. Six cycles.",
+  "breath": {
+    "cycles": 6,
+    "restBetweenCyclesMs": 500,
+    "phases": [
+      { "type": "inhale", "durationMs": 6000, "curve": "ease-in-out" },
+      { "type": "hold-in", "durationMs": 2000, "curve": "linear" },
+      { "type": "exhale", "durationMs": 8000, "curve": "ease-in-out" }
+    ]
+  },
+  "metadata": {
+    "author": "AraFlow Clinical",
+    "language": "en",
+    "references": ["https://www.healthline.com/health/diaphragmatic-breathing"],
+    "evidenceLevel": "A",
+    "contraindications": [],
+    "category": "foundation",
+    "tags": ["beginner", "grounding", "vagus"],
+    "approvedAt": "2026-02-01T09:00:00.000Z"
+  }
+}

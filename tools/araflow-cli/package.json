@@ -1,0 +1,81 @@
+{
+  "name": "@araflow/cli",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AraFlow Core Integration Harness — CLI to validate, compile, simulate, run, lint, benchmark, and explain protocols using the four frozen Core engines.",
+  "bin": {
+    "araflow": "./dist/cli.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint --max-warnings 0 \"src/**/*.ts\" \"__tests__/**/*.ts\"",
+    "lint:fix": "eslint --fix \"src/**/*.ts\" \"__tests__/**/*.ts\"",
+    "format": "prettier --write \"src/**/*.{ts,json,md}\" \"__tests__/**/*.{ts,json,md}\" \"fixtures/*.json\"",
+    "format:check": "prettier --check \"src/**/*.{ts,json,md}\" \"__tests__/**/*.{ts,json,md}\" \"fixtures/*.json\"",
+    "test": "jest",
+    "test:ci": "jest --ci --coverage --maxWorkers=2",
+    "coverage": "jest --coverage",
+    "audit": "npm audit --audit-level=high",
+    "clean": "rm -rf dist coverage"
+  },
+  "dependencies": {
+    "@araflow/shared-contracts": "1.0.0",
+    "chalk": "^4.1.2",
+    "commander": "^12.1.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.12",
+    "@types/node": "^20.11.0",
+    "@typescript-eslint/eslint-plugin": "^7.7.0",
+    "@typescript-eslint/parser": "^7.7.0",
+    "eslint": "^8.57.0",
+    "jest": "^29.7.0",
+    "prettier": "^3.2.5",
+    "ts-jest": "^29.1.2",
+    "typescript": "^5.4.5"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "testMatch": [
+      "<rootDir>/__tests__/**/*.test.ts"
+    ],
+    "moduleNameMapper": {
+      "^@core/timer-engine$": "<rootDir>/../../mobile/src/core/timer-engine/index.ts",
+      "^@core/breath-engine$": "<rootDir>/../../mobile/src/core/breath-engine/index.ts",
+      "^@core/protocol-compiler$": "<rootDir>/../../mobile/src/core/protocol-compiler/index.ts",
+      "^@araflow/shared-contracts$": "<rootDir>/../../shared-contracts/src/index.ts",
+      "^@araflow/shared-contracts/(.*)$": "<rootDir>/../../shared-contracts/src/$1",
+      "^@shared/errors$": "<rootDir>/../../mobile/src/shared/errors/AppError.ts",
+      "^@shared/(.*)$": "<rootDir>/../../mobile/src/shared/$1"
+    },
+    "collectCoverageFrom": [
+      "src/**/*.ts",
+      "!src/**/*.d.ts",
+      "!src/cli.ts",
+      "!src/index.ts",
+      "!src/program.ts"
+    ],
+    "coverageDirectory": "coverage",
+    "coverageReporters": [
+      "text",
+      "lcov",
+      "json-summary",
+      "html"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 80,
+        "functions": 85,
+        "lines": 95,
+        "statements": 95
+      }
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://araflow.app/schemas/protocol/v1.json",
+  "id": "01ARZ3NDEKTSV4RRFFQ69G5FA2",
+  "version": "1.0.0",
+  "title": "4-7-8 Relaxation",
+  "subtitle": "Classic Dr. Weil relaxation breath",
+  "description": "Inhale 4s, hold 7s, exhale 8s. Four cycles with 1s rest between cycles.",
+  "breath": {
+    "cycles": 4,
+    "restBetweenCyclesMs": 1000,
+    "phases": [
+      { "type": "inhale", "durationMs": 4000, "curve": "ease-in-out" },
+      { "type": "hold-in", "durationMs": 7000, "curve": "linear" },
+      { "type": "exhale", "durationMs": 8000, "curve": "ease-in-out" }
+    ]
+  },
+  "metadata": {
+    "author": "Dr. Andrew Weil",
+    "language": "en",
+    "references": [
+      "https://www.drweil.com/health-wellness/balance/relaxation/breathing-techniques/"
+    ],
+    "evidenceLevel": "B",
+    "contraindications": ["severe respiratory conditions", "pregnancy (consult OB)"],
+    "category": "relaxation",
+    "tags": ["sleep", "calm", "anxiety"],
+    "approvedAt": "2026-01-10T08:00:00.000Z"
+  }
+}

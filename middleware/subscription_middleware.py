@@ -22,7 +22,6 @@ PUBLIC_PATHS = [
     "/api/status",
     "/api/auth/login",
     "/api/auth/register",
-    "/api/auth/create-admin",
     "/api/auth/request-password-setup",
     "/api/auth/define-password",
     "/api/csrf-token",

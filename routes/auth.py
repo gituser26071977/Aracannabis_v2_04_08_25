@@ -23,38 +23,6 @@ logger = logging.getLogger(__name__)
 auth_bp = Blueprint('auth', __name__)
 profissionais_bp = Blueprint('profissionais', __name__)
 
-@auth_bp.route('/create-admin', methods=['GET'])
-def create_admin():
-    """Cria um usuário administrador padrão"""
-    admin = Profissional.query.filter_by(usuario='admin').first()
-    if admin:
-        return jsonify({'message': 'Usuário admin já existe!', 'usuario': 'admin'}), 200
-    
-    senha_segura = "AraOS@2025"
-    hashed_password = generate_password_hash(senha_segura, method='pbkdf2:sha256:100000')
-    
-    admin = Profissional(
-        nome='Administrador',
-        crm='ADMIN001',
-        uf_crm='XX',  # Dummy value for admin
-        usuario='admin',
-        senha=hashed_password,
-        role='admin',
-        created_at=datetime.datetime.utcnow()
-    )
-    
-    try:
-        db.session.add(admin)
-        db.session.commit()
-        return jsonify({
-            'message': 'Usuário admin criado com sucesso!',
-            'usuario': 'admin',
-            'senha': '***SENHA OCULTA*** - Verificar logs do servidor'
-        }), 201
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': f'Erro ao criar usuário admin: {str(e)}'}), 500
-
 @auth_bp.route('/register', methods=['POST'])
 def register():
     data = request.get_json()
