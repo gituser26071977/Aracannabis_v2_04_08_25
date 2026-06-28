@@ -75,3 +75,55 @@ yarn-error.log
 yarn-error.log*
 *.zip
 qrcode_eusoulia.png
+
+# AraFlow monorepo (Sprint 0)
+mobile/.expo/
+mobile/android/build/
+mobile/android/app/build/
+mobile/android/.gradle/
+mobile/android/local.properties
+mobile/android/.idea/
+mobile/ios/build/
+mobile/ios/Pods/
+mobile/ios/Podfile.lock
+mobile/ios/*.xcworkspace/xcuserdata
+mobile/ios/*.xcodeproj/xcuserdata
+mobile/ios/*.xcodeproj/project.xcworkspace/xcuserdata
+mobile/.bundle/
+mobile/vendor/
+mobile/coverage/
+backend/coverage/
+shared-contracts/dist/
+shared-contracts/build/
+*.tsbuildinfo
+.eslintcache
+.parcel-cache/
+.turbo/
+.cache/
+
+# M32 — Repository stabilization
+# Local artifacts and runtime directories
+instance/
+venv_local/
+htmlcov*/
+coverage/
+
+# Load test reports (Locust)
+reports/
+
+# Avulsas sem contexto
+AGENDA.png
+eusoulia.png
+
+# Node modules de tooling
+tools/*/node_modules/
+tools/*/dist/
+tools/*/build/
+
+# Generated files
+**/generated/
+**/*.generated.ts
+**/*.generated.tsx
+
+# Husky
+.husky/_/
