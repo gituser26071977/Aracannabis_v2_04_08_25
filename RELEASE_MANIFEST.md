@@ -1,41 +1,68 @@
 # RELEASE_MANIFEST.md — AraOS SIAP v1.0.0-rc.1
 
-**Data:** 2026-06-27
+**Data:** 2026-06-28
 **Release Candidate:** `v1.0.0-rc.1`
-**Origem:** M32 — Repository Stabilization
+**Origem:** M33 — RC1 Assembly
 **Modo:** Manifest (somente leitura; não é release físico)
 
 ---
 
-## 1. Commit esperado
+## 1. Commit do RC1
 
-**Tag Git:** `v1.0.0-rc.1`
-**Branch de release:** `main`
-**Working tree:** 269 entradas (94 modified + 175 untracked) — **NÃO commitadas**
+**Tag Git:** `v1.0.0-rc.1` (pendente de criação)
+**Branch de release:** `fix/p0-stabilization-2026-06` (HEAD atual)
+**Base anterior:** `2222183 feat(araflow): core integration harness (sprint 3.5)`
 
-### Commits pendentes (sequência proposta em M31)
+### Hash do commit RC1
 
-| # | Hash esperado | Mensagem | Risco |
-|---|---------------|----------|-------|
-| 1 | _pendente_ | `chore(migration): add data_revogacao column migration (B-001)` | Baixo |
-| 2 | _pendente_ | `fix(pacientes): P0 validation + duplicate CPF check (BUG-ALT-03/04/05/06/07)` | Médio |
-| 3 | _pendente_ | `fix(exames): accept JSON content-type in criar_exame (BUG-ALT-01)` | Baixo |
-| 4 | _pendente_ | `fix(evolucoes): data range + texto limite (BUG-ALT-04/08)` | Baixo |
-| 5 | _pendente_ | `feat(security): require_secret() + assert_required_secrets_on_startup` | **Alto** |
-| 6 | _pendente_ | `feat(deploy): deploy_guard + /api/schema-version endpoint + 12 tests` | **Alto** |
-| 7 | _pendente_ | `chore(infra): backup/restore/rollback/smoke/healthcheck scripts + CD workflows` | Baixo |
-| 8 | _pendente_ | `chore(gitignore): add patterns for reports/, instance/, htmlcov*/, avulsas` | Baixo |
-| 9 | _pendente_ | `chore(docs): add docs/INDEX.md and RELEASE_MANIFEST.md` | Baixo |
+```
+REDACTED
+```
 
-> Commits 5 e 6 (security + deploy_guard) **exigem** migration B-001 já aplicada em produção antes do deploy.
+### Quantidade de commits novos
+
+**21 commits** desde a base `2222183` (todos com Conventional Commits).
+
+### Lista completa (mais recente primeiro)
+
+| # | Hash | Tipo | Escopo | Mensagem resumida |
+|---|------|------|--------|-------------------|
+| 1 | `7c0e6e1` | chore | docs | add araflow docs and remaining artifacts |
+| 2 | `70e55d5` | chore | docs | add operational docs and adrs |
+| 3 | `2bb94f5` | chore | docs | add repository organization docs for rc1 |
+| 4 | `b88e193` | feat | monorepo | add araflow sprint 0 subprojects |
+| 5 | `a18b690` | chore | configs | add monorepo tooling configs |
+| 6 | `2694868` | feat | frontend | pages, contexts and services from m23 to m25 |
+| 7 | `4bc853e` | feat | frontend | consolidate component updates from m23 to m25 |
+| 8 | `355675d` | feat | frontend | add hooks directory and theme infrastructure |
+| 9 | `d877664` | feat | frontend | add error pages (403, 404, 500, 401) |
+| 10 | `fc236b4` | feat | frontend | add reusable ui components |
+| 11 | `d55a4e9` | chore | gitignore,envs | harden gitignore and update envs examples |
+| 12 | `a4e3c86` | chore | infra | backup, restore, rollback, smoke and cd workflows |
+| 13 | `6273b63` | feat | deploy | deploy_guard, /api/schema-version and 12 tests (m28) |
+| 14 | `9295e1c` | feat | security | require_secret and assert_required_secrets_on_startup |
+| 15 | `aeb9da6` | feat | tenant | tenant middleware and webhook auth hardening |
+| 16 | `adf83f9` | feat | routes | clinica management, modulos, hc report and ai |
+| 17 | `05fe9ee` | fix | routes | p0 hardening in auth, mercadopago, webhooks and others |
+| 18 | `e4ef818` | fix | evolucoes | data range and texto limite (bug-alt-04/08) |
+| 19 | `67ca2b2` | fix | exames | accept json content-type in criar_exame (bug-alt-01) |
+| 20 | `dec877b` | fix | pacientes | p0 validation and duplicate cpf (bug-alt-03..07) |
+| 21 | `ce67388` | chore | migration | add data_revogacao column migration (b-001) |
+
+### Estatísticas dos 21 commits
+
+- **Arquivos modificados:** 321
+- **Linhas adicionadas:** ~25.000
+- **Linhas removidas:** ~13.000
+- **Working tree:** ✅ **LIMPO** (verificado em `git status`)
 
 ---
 
 ## 2. Migrations
 
-**Total:** 15 migrations
+**Total:** 15 migrations (1 nova em M33)
 **Root:** `0331305d2b3c` (Set/2025)
-**Head:** `REDACTED` (Jun/2026)
+**Head:** `REDACTED` (Jun/2026, NOVO)
 **Heads:** **1** (chain único, sem necessidade de merge)
 **Órfãs:** **0**
 **Duplicadas:** **0**
@@ -157,13 +184,27 @@ Comportamento esperado (M22):
 
 ---
 
-## 7. Smoke
+## 7. Testes incluídos
 
-### Suite
+**Total:** 68 testes rastreados em `tests/`
+
+### Suite organizada
+
+| Tipo | Local | Quantidade |
+|------|-------|-----------|
+| Unit (raiz) | `tests/test_*.py` | 38 arquivos |
+| Unit (deploy_guard) | `tests/test_deploy_guard.py` | 1 arquivo (12 testes) |
+| Integration | `tests/integration/` | 1 arquivo |
+| Security | `tests/security/` | 3 arquivos (P0 remediation + rate limit) |
+| Smoke | `tests/smoke/` | 1 arquivo (webhook security) |
+| E2E Playwright | `tests/e2e/test_*.py` | 13 arquivos (login → ia_chat) |
+| Load (Locust) | `tests/load/locustfile.py` + `scenarios/` | 1 + 3 cenários |
+
+### Smoke específico
 
 | Tipo | Local | Total |
 |------|-------|-------|
-| Smoke completo | `tests/smoke/test_webhook_security.py` | 1 arquivo |
+| Smoke webhook | `tests/smoke/test_webhook_security.py` | 1 arquivo |
 | E2E Playwright | `tests/e2e/test_01_login.py` ... `test_13_ia_chat.py` | 13 arquivos |
 | Carga Locust | `tests/load/locustfile.py` + `scenarios/` | 3 cenários |
 
@@ -218,6 +259,30 @@ locust -f tests/load/locustfile.py --headless \
 
 ## 9. Artefatos
 
+### Documentação incluída
+
+**Total:** 172 docs rastreados em `docs/` + 1 root (`RELEASE_MANIFEST.md`).
+
+| Categoria | Quantidade | Caminho |
+|-----------|-----------|---------|
+| AraFlow (produto) | 39 | `docs/AraFlow/` |
+| Audit Reports | 3 | `docs/AUDITORIA_*.md` |
+| Release & Certificação | 11 | `docs/{GO_LIVE,RELEASE,PRODUCTION_*}.md` |
+| Operacional (runbooks) | 12 | `docs/{DEPLOY,ROLLBACK,DISASTER_*}.md` |
+| Segurança | 6 | `docs/{SECURITY,WEBHOOK_SECURITY,P0_*}.md` |
+| LGPD / Compliance | 4 | `docs/{LGPD,AUDITORIA_LGPD,security_lgpd}.md` |
+| Capacidade / Performance | 7 | `docs/{PERFORMANCE,LIGHTHOUSE,AUDITORIA_CAPACIDADE}.md` |
+| Billing | 1 | `docs/BILLING_*.md` |
+| Bugs / Issues | 10 | `docs/{BUG,DEAD,UI_INCONSISTENCIES,FRONTEND_*,FASE5_*}.md` |
+| UX / Jornada | 5 | `docs/{USER_JOURNEY,UX_*,EVIDENCE_MATRIX,FUNCTIONAL_*}.md` |
+| Validação | 7 | `docs/{BETA_READINESS,PLAYWRIGHT,STAGING_*,OPERATIONAL_*,RUNBOOK_*}.md` |
+| Arquitetura / Especificação | 11 | `docs/{AI_CLINICAL,API_CONVENTIONS,ARAOS_*,ESPECIFICACAO_*}.md` |
+| Sprints / Releases | 9 | `docs/WEEK*.md` |
+| Sistemas implementados | 8 | `docs/SISTEMA_*.md` |
+| ADRs (incluindo template) | 9 | `docs/adr/` |
+| Histórico / Missoes | ~25 | `docs/{CAMPO,MELHORIAS,SOLUÇÃO,VERSÃO,INSTRUÇÕES,*}.md` |
+| Indice e Manifests | 3 | `docs/INDEX.md`, `docs/RELEASE_*.md`, `docs/REPOSITORY_*.md` |
+
 ### Versionados (no repositório)
 
 | Categoria | Localização |
@@ -225,10 +290,11 @@ locust -f tests/load/locustfile.py --headless \
 | Backend | `app_cors_livre.py`, `config.py`, `routes/`, `services/`, `middleware/`, `models.py`, `models_extra.py`, `models_modulos.py`, `tenant_lib.py`, `security_config.py` |
 | Frontend | `frontend/src/` (components, pages, services, contexts, hooks, theme) |
 | Migrations | `migrations/versions/` (15 arquivos) |
-| Testes | `tests/` (38 root + 4 subdirs) |
+| Testes | `tests/` (38 root + 4 subdirs organizados) |
 | Infra | `Dockerfile*`, `docker-compose*.yml`, `.github/workflows/`, `scripts/`, `entrypoint_siap.sh` |
-| Documentação | `docs/` (119 arquivos + AraFlow/) |
-| Configs de tooling | `.editorconfig`, `.eslintrc.cjs`, `.prettierrc.json`, `.lintstagedrc.json`, `commitlint.config.cjs`, `.nvmrc`, `.npmrc` |
+| Documentação | `docs/` (172 arquivos + AraFlow/) |
+| Monorepo AraFlow | `mobile/`, `monitoring/`, `shared-contracts/`, `tools/araflow-cli/`, `backend/` |
+| Configs de tooling | `.editorconfig`, `.eslintrc.cjs`, `.prettierrc.json`, `.lintstagedrc.json`, `commitlint.config.cjs`, `.nvmrc`, `.npmrc`, `.husky/` |
 
 ### NÃO versionados (proposta M32)
 
