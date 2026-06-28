@@ -1,0 +1,135 @@
+version: '3.8'
+
+# ================================================================
+# AraOS — STAGING
+# Espelho do docker-compose.prod.yml com:
+#   - portas/dir distintos
+#   - secrets PRÓPRIOS (NÃO reutilizar prod)
+#   - subdomínio staging.visualsmartflow.com.br
+#   - gunicorn com --workers 1 (apenas validação)
+#   - logs em volume dedicado
+# ================================================================
+
+services:
+
+  siap-db-staging:
+    image: postgres:16-alpine
+    container_name: siap-db-staging
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-aracannabis_staging}
+      POSTGRES_USER: ${POSTGRES_USER:-siap_staging}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5441:5432"   # porta livre, distinta de prod (5440)
+    volumes:
+      - siap_postgres_data_staging:/var/lib/postgresql/data
+    networks:
+      - siap-staging-internal
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-siap_staging} -d ${POSTGRES_DB:-aracannabis_staging}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  siap-redis-staging:
+    image: redis:7-alpine
+    container_name: siap-redis-staging
+    restart: unless-stopped
+    networks:
+      - siap-staging-internal
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  siap-backend-staging:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: siap-backend-staging
+    restart: unless-stopped
+    env_file:
+      - .env.staging
+    environment:
+      - ENVIRONMENT=staging
+      - FLASK_ENV=staging
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-siap_staging}:${POSTGRES_PASSWORD}@siap-db-staging:5432/${POSTGRES_DB:-aracannabis_staging}
+      - FRONTEND_BASE_URL=https://staging.visualsmartflow.com.br
+      - CORS_ORIGINS=https://staging.visualsmartflow.com.br,https://www.staging.visualsmartflow.com.br
+      - REDIS_URL=redis://siap-redis-staging:6379/0
+      - OTEL_SDK_DISABLED=true
+      - CREWAI_DISABLE_TELEMETRY=true
+    volumes:
+      - siap_uploads_staging:/app/uploads
+      - siap_logs_staging:/app/logs
+    depends_on:
+      siap-db-staging:
+        condition: service_healthy
+      siap-redis-staging:
+        condition: service_healthy
+    networks:
+      - siap-staging-internal
+      - web
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=web"
+      - "traefik.http.routers.siap-api-staging.rule=Host(`api.staging.visualsmartflow.com.br`)"
+      - "traefik.http.routers.siap-api-staging.entrypoints=websecure"
+      - "traefik.http.routers.siap-api-staging.tls=true"
+      - "traefik.http.routers.siap-api-staging.tls.certresolver=letsencrypt"
+      - "traefik.http.services.siap-api-staging.loadbalancer.server.port=5002"
+      - "traefik.http.routers.siap-api-staging-http.rule=Host(`api.staging.visualsmartflow.com.br`)"
+      - "traefik.http.routers.siap-api-staging-http.entrypoints=web"
+      - "traefik.http.routers.siap-api-staging-http.middlewares=siap-redirect-https"
+    command: [ "gunicorn", "--bind", "0.0.0.0:5002", "--timeout", "300", "--workers", "1", "--threads", "2", "app_cors_livre:create_app()" ]
+    healthcheck:
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5002/api/status" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  siap-frontend-staging:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        REACT_APP_API_URL: https://api.staging.visualsmartflow.com.br
+        REACT_APP_WS_URL: wss://api.staging.visualsmartflow.com.br/ws
+    container_name: siap-frontend-staging
+    restart: unless-stopped
+    networks:
+      - siap-staging-internal
+      - web
+    depends_on:
+      - siap-backend-staging
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=web"
+      - "traefik.http.routers.siap-web-staging.rule=Host(`staging.visualsmartflow.com.br`) || Host(`www.staging.visualsmartflow.com.br`)"
+      - "traefik.http.routers.siap-web-staging.entrypoints=websecure"
+      - "traefik.http.routers.siap-web-staging.tls=true"
+      - "traefik.http.routers.siap-web-staging.tls.certresolver=letsencrypt"
+      - "traefik.http.services.siap-web-staging.loadbalancer.server.port=3000"
+      - "traefik.http.routers.siap-web-staging-http.rule=Host(`staging.visualsmartflow.com.br`) || Host(`www.staging.visualsmartflow.com.br`)"
+      - "traefik.http.routers.siap-web-staging-http.entrypoints=web"
+      - "traefik.http.routers.siap-web-staging-http.middlewares=siap-redirect-https"
+    healthcheck:
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  siap_postgres_data_staging:
+  siap_uploads_staging:
+  siap_logs_staging:
+
+networks:
+  siap-staging-internal:
+    driver: bridge
+  web:
+    external: true

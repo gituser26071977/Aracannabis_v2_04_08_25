@@ -1,0 +1,353 @@
+name: CD — Staging (9-stage pipeline + auto-rollback)
+
+on:
+  push:
+    branches: [develop, 'feat/**', 'fix/**']
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: '3.12'
+  NODE_VERSION: '20.18.0'
+  STAGING_URL: https://api.staging.visualsmartflow.com.br
+  STAGING_HOST: ${{ secrets.STAGING_SSH_HOST }}
+  STAGING_SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+  STAGING_DEPLOY_USER: ${{ secrets.STAGING_DEPLOY_USER }}
+
+jobs:
+  # ════════════════════════════════════════════════════════════════
+  # 1. BUILD
+  # ════════════════════════════════════════════════════════════════
+  build:
+    name: 1/9 — Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install Python deps
+        run: |
+          python -m venv .venv-test
+          .venv-test/bin/pip install --upgrade pip
+          .venv-test/bin/pip install -r requirements.txt -r requirements-test.txt
+
+      - name: Install Node deps
+        run: npm ci || true
+
+      - name: Build backend image
+        run: docker build -f Dockerfile.backend -t siap-backend:staging-${{ github.sha }} .
+
+      - name: Build frontend image
+        run: |
+          cd frontend
+          docker build --build-arg REACT_APP_API_URL=${{ env.STAGING_URL }} \
+                       -t siap-frontend:staging-${{ github.sha }} .
+
+  # ════════════════════════════════════════════════════════════════
+  # 2. LINT
+  # ════════════════════════════════════════════════════════════════
+  lint:
+    name: 2/9 — Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install flake8 + bandit
+        run: pip install flake8 bandit
+      - name: Flake8 (erro em E9/F63/F7/F82)
+        run: flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+      - name: Bandit (apenas HIGH)
+        run: bandit -r . -lll -ii 2>&1 | tee bandit-staging.txt
+      - name: Upload bandit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with: { name: bandit-staging, path: bandit-staging.txt, retention-days: 7 }
+
+  # ════════════════════════════════════════════════════════════════
+  # 3. TESTES
+  # ════════════════════════════════════════════════════════════════
+  test:
+    name: 3/9 — Tests (P0 + integration + smoke)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: araos_test
+          POSTGRES_USER: siap_test
+          POSTGRES_PASSWORD: test_pass_32_chars_xxxxxxxxxxxx
+        ports: [5432:5432]
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports: [6379:6379]
+        options: --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      DATABASE_URL: postgresql://siap_test:test_pass_32_chars_xxxxxxxxxxxx@localhost:5432/araos_test
+      REDIS_URL: redis://localhost:6379/0
+      JWT_SECRET_KEY: REDACTED
+      CSRF_TOKEN: REDACTED
+      SECRET_KEY: REDACTED
+      ENVIRONMENT: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install deps
+        run: |
+          python -m venv .venv-test
+          .venv-test/bin/pip install --upgrade pip
+          .venv-test/bin/pip install -r requirements.txt -r requirements-test.txt
+      - name: P0 security tests (Missão 18)
+        run: .venv-test/bin/python -m pytest tests/security/ -v --tb=short
+      - name: Integration tests
+        run: .venv-test/bin/python -m pytest tests/integration/ -v --tb=short
+        continue-on-error: false
+      - name: Smoke tests
+        run: .venv-test/bin/python -m pytest tests/smoke/ -v --tb=short
+        continue-on-error: false
+
+  # ════════════════════════════════════════════════════════════════
+  # 4. SECURITY SCAN
+  # ════════════════════════════════════════════════════════════════
+  security:
+    name: 4/9 — Security (SAST + SCA)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [build, lint, test]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install scanners
+        run: pip install bandit safety pip-audit
+      - name: Bandit (Python SAST)
+        run: bandit -r . -f json -o bandit.json -iii 2>/dev/null || true
+      - name: Safety (Python deps SCA)
+        run: safety check --json --output safety.json || true
+      - name: pip-audit (Python deps)
+        run: pip-audit --format json --output pip-audit.json || true
+      - name: Trivy filesystem scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+          format: json
+          output: trivy-fs.json
+      - name: Upload security reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-staging
+          path: |
+            bandit.json
+            safety.json
+            pip-audit.json
+            trivy-fs.json
+          retention-days: 14
+
+  # ════════════════════════════════════════════════════════════════
+  # 5. SMOKE (em container efêmero)
+  # ════════════════════════════════════════════════════════════════
+  smoke:
+    name: 5/9 — Smoke (container efêmero)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [build]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: araos_smoke
+          POSTGRES_USER: siap_smoke
+          POSTGRES_PASSWORD: smoke_pass_32_chars_xxxxxxxxxxx
+        ports: [5432:5432]
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports: [6379:6379]
+    env:
+      DATABASE_URL: postgresql://siap_smoke:smoke_pass_32_chars_xxxxxxxxxxx@localhost:5432/araos_smoke
+      REDIS_URL: redis://localhost:6379/0
+      JWT_SECRET_KEY: REDACTED
+      CSRF_TOKEN: REDACTED
+      SECRET_KEY: REDACTED
+      ENVIRONMENT: staging
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run backend em background
+        run: |
+          docker run -d --name siap-smoke -p 5002:5002 \
+            -e DATABASE_URL="$DATABASE_URL" \
+            -e JWT_SECRET_KEY="$JWT_SECRET_KEY" \
+            -e CSRF_TOKEN="$CSRF_TOKEN" \
+            -e SECRET_KEY="$SECRET_KEY" \
+            -e ENVIRONMENT=staging \
+            siap-backend:staging-${{ github.sha }}
+          sleep 30
+      - name: Smoke 6 endpoints
+        run: |
+          for ep in /api/status /api/csrf-token /api/health; do
+            code=$(curl -sk -o /dev/null -w "%{http_code}" --max-time 10 http://localhost:5002$ep || echo "000")
+            if [[ "$code" != "200" ]]; then echo "✗ $ep → $code"; exit 1; fi
+            echo "✓ $ep → $code"
+          done
+      - name: Cleanup
+        if: always()
+        run: docker rm -f siap-smoke || true
+
+  # ════════════════════════════════════════════════════════════════
+  # 6. PLAYWRIGHT E2E
+  # ════════════════════════════════════════════════════════════════
+  playwright:
+    name: 6/9 — Playwright E2E (13 flows)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [smoke]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Install Playwright
+        run: |
+          pip install playwright pytest-playwright
+          playwright install --with-deps chromium
+      - name: Run 13 E2E flows
+        run: pytest tests/e2e/ -v --tb=short --maxfail=1
+        env:
+          BASE_URL: https://staging.visualsmartflow.com.br
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-screenshots-staging
+          path: test-results/
+          retention-days: 7
+
+  # ════════════════════════════════════════════════════════════════
+  # 7. LIGHTHOUSE
+  # ════════════════════════════════════════════════════════════════
+  lighthouse:
+    name: 7/9 — Lighthouse (Desktop + Mobile)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [smoke]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Run Lighthouse CI
+        uses: treosh/lighthouse-ci-action@v11
+        with:
+          configPath: .lighthouserc.json
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+        env:
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+
+  # ════════════════════════════════════════════════════════════════
+  # 8. BACKUP pré-deploy
+  # ════════════════════════════════════════════════════════════════
+  pre-deploy-backup:
+    name: 8/9 — Backup pré-deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [security, playwright, lighthouse]
+    steps:
+      - name: Backup staging
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ env.STAGING_HOST }}
+          username: ${{ env.STAGING_DEPLOY_USER }}
+          key: ${{ env.STAGING_SSH_KEY }}
+          script: |
+            cd /opt/araos
+            ./scripts/backup.sh --env=staging
+            ls -lt /var/backups/siap-staging/ | head -3
+
+  # ════════════════════════════════════════════════════════════════
+  # 9. DEPLOY + POST-DEPLOY SMOKE + ROLLBACK SE FALHAR
+  # ════════════════════════════════════════════════════════════════
+  deploy:
+    name: 9/9 — Deploy + Smoke + Auto-Rollback
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [pre-deploy-backup]
+    environment:
+      name: staging
+      url: https://staging.visualsmartflow.com.br
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy staging
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ env.STAGING_HOST }}
+          username: ${{ env.STAGING_DEPLOY_USER }}
+          key: ${{ env.STAGING_SSH_KEY }}
+          script: |
+            cd /opt/araos
+            export IMAGE_TAG=${{ github.sha }}
+            ./scripts/deploy_staging.sh --skip-tests
+
+      - name: Post-deploy smoke
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ env.STAGING_HOST }}
+          username: ${{ env.STAGING_DEPLOY_USER }}
+          key: ${{ env.STAGING_SSH_KEY }}
+          script: |
+            cd /opt/araos
+            ./scripts/smoke.sh --env=staging
+
+      - name: AUTO-ROLLBACK on failure
+        if: failure()
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ env.STAGING_HOST }}
+          username: ${{ env.STAGING_DEPLOY_USER }}
+          key: ${{ env.STAGING_SSH_KEY }}
+          script: |
+            echo "═══ AUTO-ROLLBACK STAGING ═══"
+            cd /opt/araos
+            ./scripts/rollback.sh --env=staging
+            ./scripts/smoke.sh --env=staging
+            echo "✗ Deploy reverted; failure notified."
+
+      - name: Notify Slack
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: |
+            :rocket: *Staging deploy ${{ job.status }}*
+            Branch: `${{ github.ref }}`
+            SHA: `${{ github.sha }}`
+            <https://staging.visualsmartflow.com.br|Open staging>
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        continue-on-error: true

@@ -1,0 +1,270 @@
+name: CD — Production (9-stage pipeline + auto-rollback)
+
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g. 1.0.0)'
+        required: true
+
+env:
+  PYTHON_VERSION: '3.12'
+  NODE_VERSION: '20.18.0'
+  PROD_URL: https://api.visualsmartflow.com.br
+  PROD_HOST: ${{ secrets.PROD_SSH_HOST }}
+  PROD_SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
+  PROD_DEPLOY_USER: ${{ secrets.PROD_DEPLOY_USER }}
+
+jobs:
+  # 1. BUILD
+  build:
+    name: 1/9 — Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Build images
+        run: |
+          docker build -f Dockerfile.backend -t siap-backend:prod-${{ github.sha }} .
+          cd frontend && docker build --build-arg REACT_APP_API_URL=${{ env.PROD_URL }} \
+            -t siap-frontend:prod-${{ github.sha }} . && cd ..
+
+  # 2. LINT
+  lint:
+    name: 2/9 — Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install flake8 bandit
+      - run: flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+      - run: bandit -r . -lll -iii
+
+  # 3. TESTES
+  test:
+    name: 3/9 — Tests (full)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: araos_test
+          POSTGRES_USER: siap_test
+          POSTGRES_PASSWORD: test_pass_32_chars_xxxxxxxxxxxx
+        ports: [5432:5432]
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports: [6379:6379]
+        options: --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      DATABASE_URL: postgresql://siap_test:test_pass_32_chars_xxxxxxxxxxxx@localhost:5432/araos_test
+      REDIS_URL: redis://localhost:6379/0
+      JWT_SECRET_KEY: REDACTED
+      CSRF_TOKEN: REDACTED
+      SECRET_KEY: REDACTED
+      ENVIRONMENT: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: |
+          python -m venv .venv-test
+          .venv-test/bin/pip install --upgrade pip
+          .venv-test/bin/pip install -r requirements.txt -r requirements-test.txt
+      - name: P0 + integration + smoke
+        run: |
+          .venv-test/bin/python -m pytest tests/security/ tests/integration/ tests/smoke/ -v --tb=short
+
+  # 4. SECURITY
+  security:
+    name: 4/9 — Security (SAST + SCA + image scan)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [build, lint, test]
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install bandit safety pip-audit
+      - run: bandit -r . -f json -o bandit.json -iii
+      - run: safety check --json --output safety.json
+      - run: pip-audit --format json --output pip-audit.json
+      - name: Trivy image scan (backend)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: siap-backend:prod-${{ github.sha }}
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+      - name: Trivy image scan (frontend)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: siap-frontend:prod-${{ github.sha }}
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+
+  # 5. SMOKE
+  smoke:
+    name: 5/9 — Smoke (container efêmero)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [build]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: araos_smoke
+          POSTGRES_USER: siap_smoke
+          POSTGRES_PASSWORD: smoke_pass_32_chars_xxxxxxxxxxx
+        ports: [5432:5432]
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports: [6379:6379]
+    env:
+      DATABASE_URL: postgresql://siap_smoke:smoke_pass_32_chars_xxxxxxxxxxx@localhost:5432/araos_smoke
+      REDIS_URL: redis://localhost:6379/0
+      JWT_SECRET_KEY: REDACTED
+      CSRF_TOKEN: REDACTED
+      SECRET_KEY: REDACTED
+      ENVIRONMENT: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: Container efêmero
+        run: |
+          docker run -d --name siap-smoke -p 5002:5002 \
+            -e DATABASE_URL -e JWT_SECRET_KEY -e CSRF_TOKEN -e SECRET_KEY -e ENVIRONMENT=production \
+            siap-backend:prod-${{ github.sha }}
+          sleep 30
+          for ep in /api/status /api/csrf-token /api/health; do
+            code=$(curl -sk -o /dev/null -w "%{http_code}" --max-time 10 http://localhost:5002$ep)
+            [[ "$code" == "200" ]] || { echo "✗ $ep → $code"; exit 1; }
+            echo "✓ $ep → $code"
+          done
+          docker rm -f siap-smoke
+
+  # 6. PLAYWRIGHT
+  playwright:
+    name: 6/9 — Playwright E2E (13 flows + screenshots)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [smoke]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: pip install playwright pytest-playwright && playwright install --with-deps chromium
+      - run: pytest tests/e2e/ -v --tb=short --maxfail=1
+        env: { BASE_URL: https://staging.visualsmartflow.com.br }   # usa staging, não prod
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: playwright-prod, path: test-results/, retention-days: 14 }
+
+  # 7. LIGHTHOUSE
+  lighthouse:
+    name: 7/9 — Lighthouse (4 categorias × 2 viewports)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [smoke]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: treosh/lighthouse-ci-action@v11
+        with:
+          configPath: .lighthouserc.json
+          uploadArtifacts: true
+        env:
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+
+  # 8. BACKUP
+  pre-deploy-backup:
+    name: 8/9 — Backup pré-deploy (full)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [security, playwright, lighthouse]
+    steps:
+      - uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ env.PROD_HOST }}
+          username: ${{ env.PROD_DEPLOY_USER }}
+          key: ${{ env.PROD_SSH_KEY }}
+          script: |
+            cd /opt/araos
+            ./scripts/backup.sh --env=production
+            echo "Backup count: $(ls /var/backups/siap/ | wc -l)"
+            echo "Latest:"
+            ls -lt /var/backups/siap/db_*.sql.gz 2>/dev/null | head -3
+
+  # 9. DEPLOY + SMOKE + AUTO-ROLLBACK
+  deploy:
+    name: 9/9 — Deploy + Smoke + Auto-Rollback
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [pre-deploy-backup]
+    environment:
+      name: production
+      url: https://visualsmartflow.com.br
+    steps:
+      - name: Deploy produção
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ env.PROD_HOST }}
+          username: ${{ env.PROD_DEPLOY_USER }}
+          key: ${{ env.PROD_SSH_KEY }}
+          script: |
+            cd /opt/araos
+            export IMAGE_TAG=${{ github.sha }}
+            ./scripts/deploy_prod.sh ${{ github.ref_name }}
+
+      - name: Post-deploy smoke
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ env.PROD_HOST }}
+          username: ${{ env.PROD_DEPLOY_USER }}
+          key: ${{ env.PROD_SSH_KEY }}
+          script: ./scripts/smoke.sh --env=production
+
+      - name: AUTO-ROLLBACK on failure
+        if: failure()
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ env.PROD_HOST }}
+          username: ${{ env.PROD_DEPLOY_USER }}
+          key: ${{ env.PROD_SSH_KEY }}
+          script: |
+            echo "═══ AUTO-ROLLBACK PRODUÇÃO ═══"
+            cd /opt/araos
+            ./scripts/rollback.sh --env=production
+            ./scripts/smoke.sh --env=production
+            echo "🚨 PRODUÇÃO REVERTIDA — verificar Sentry"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            bandit.json
+            safety.json
+            pip-audit.json
+
+      - name: Notify Slack
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: |
+            :rocket: *PRODUCTION release ${{ job.status }}*
+            Tag: `${{ github.ref_name }}`
+            SHA: `${{ github.sha }}`
+            Actor: ${{ github.actor }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        continue-on-error: true

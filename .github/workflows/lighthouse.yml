@@ -1,0 +1,44 @@
+name: Lighthouse CI — Desktop + Mobile
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      base_url:
+        description: 'URL base para auditoria'
+        required: false
+        default: 'https://staging.visualsmartflow.com.br'
+
+jobs:
+  lighthouse-desktop:
+    name: Desktop (Perf, A11y, BP, SEO)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Lighthouse Desktop
+        uses: treosh/lighthouse-ci-action@v11
+        with:
+          configPath: .lighthouserc.json
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+        env:
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+
+  lighthouse-mobile:
+    name: Mobile (Perf, A11y, BP, SEO)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sobrescreve preset para mobile
+        run: |
+          sed -i 's/"preset": "desktop"/"preset": "perf"/' .lighthouserc.json
+      - name: Run Lighthouse Mobile
+        uses: treosh/lighthouse-ci-action@v11
+        with:
+          configPath: .lighthouserc.json
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+        env:
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
