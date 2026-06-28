@@ -1,4 +1,5 @@
-from flask import Blueprint, request, jsonify, current_app, send_from_directory
+from flask import Blueprint, request, jsonify, current_app, send_from_directory, g
+from flask_jwt_extended import jwt_required
 from models import db, Exame, ExameImagem, ExameLabResultado, OCRResultado, Paciente
 from werkzeug.utils import secure_filename
 from datetime import datetime
@@ -14,8 +15,17 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in current_app.config['ALLOWED_EXTENSIONS']
 
 @exames_bp.route('/exames', methods=['POST'])
+@jwt_required()
 def criar_exame():
-    data = request.form
+    # BUG-ALT-01 (M24): aceitar tanto JSON quanto multipart/form-data
+    if request.content_type and 'multipart/form-data' in request.content_type:
+        data = request.form
+    else:
+        json_data = request.get_json(silent=True) or {}
+        # Para compat com clientes JSON, mapear para estrutura de form
+        from werkzeug.datastructures import ImmutableMultiDict
+        data = ImmutableMultiDict({k: (str(v) if v is not None else '') for k, v in json_data.items()})
+
     paciente_id = data.get('paciente_id')
     profissional_id = data.get('profissional_id')
     data_exame_str = data.get('data_exame')
@@ -141,28 +151,49 @@ def criar_exame():
     return jsonify(response), 201
 
 @exames_bp.route('/pacientes/<int:paciente_id>/exames', methods=['GET'])
+@jwt_required()
 def listar_exames_paciente(paciente_id):
+    # Tenant validation: paciente.associacao_id deve casar com g.current_association
+    paciente = Paciente.query.get(paciente_id)
+    if not paciente:
+        return jsonify({"error": "Paciente não encontrado"}), 404
+    if hasattr(g, 'current_association') and g.current_association and paciente.associacao_id != g.current_association.id:
+        return jsonify({"error": "Acesso negado"}), 403
     exames = Exame.query.filter_by(paciente_id=paciente_id).all()
     return jsonify([exame.to_dict() for exame in exames])
 
 @exames_bp.route('/exames/<int:exame_id>', methods=['GET'])
+@jwt_required()
 def obter_exame(exame_id):
     exame = Exame.query.get_or_404(exame_id)
+    if hasattr(g, 'current_association') and g.current_association and exame.associacao_id != g.current_association.id:
+        return jsonify({"error": "Acesso negado"}), 403
     return jsonify(exame.to_dict())
 
 @exames_bp.route('/exames/<int:exame_id>/imagens', methods=['GET'])
+@jwt_required()
 def listar_imagens_exame(exame_id):
+    exame = Exame.query.get_or_404(exame_id)
+    if hasattr(g, 'current_association') and g.current_association and exame.associacao_id != g.current_association.id:
+        return jsonify({"error": "Acesso negado"}), 403
     imagens = ExameImagem.query.filter_by(exame_id=exame_id).all()
     return jsonify([img.to_dict() for img in imagens])
 
 @exames_bp.route('/exames/<int:exame_id>/resultados', methods=['GET'])
+@jwt_required()
 def listar_resultados_exame(exame_id):
+    exame = Exame.query.get_or_404(exame_id)
+    if hasattr(g, 'current_association') and g.current_association and exame.associacao_id != g.current_association.id:
+        return jsonify({"error": "Acesso negado"}), 403
     resultados = ExameLabResultado.query.filter_by(exame_id=exame_id).all()
     return jsonify([res.to_dict() for res in resultados])
 
 @exames_bp.route('/exames/<int:exame_id>', methods=['PUT'])
+@jwt_required()
 def atualizar_exame(exame_id):
     exame = Exame.query.get_or_404(exame_id)
+    if hasattr(g, 'current_association') and g.current_association and exame.associacao_id != g.current_association.id:
+        return jsonify({"error": "Acesso negado"}), 403
     data = request.json
     
     if 'data_exame' in data:
@@ -178,8 +209,11 @@ def atualizar_exame(exame_id):
     return jsonify(exame.to_dict())
 
 @exames_bp.route('/exames/<int:exame_id>', methods=['DELETE'])
+@jwt_required()
 def excluir_exame(exame_id):
     exame = Exame.query.get_or_404(exame_id)
+    if hasattr(g, 'current_association') and g.current_association and exame.associacao_id != g.current_association.id:
+        return jsonify({"error": "Acesso negado"}), 403
     
     # Delete associated images
     imagens = ExameImagem.query.filter_by(exame_id=exame_id).all()
@@ -199,13 +233,21 @@ def excluir_exame(exame_id):
     return jsonify({"message": "Exame e todos os dados associados excluídos com sucesso"}), 200
 
 @exames_bp.route('/imagens/<int:imagem_id>', methods=['GET'])
+@jwt_required()
 def obter_imagem(imagem_id):
     imagem = ExameImagem.query.get_or_404(imagem_id)
+    exame = Exame.query.get(imagem.exame_id)
+    if exame and hasattr(g, 'current_association') and g.current_association and exame.associacao_id != g.current_association.id:
+        return jsonify({"error": "Acesso negado"}), 403
     return jsonify(imagem.to_dict())
 
 @exames_bp.route('/imagens/<int:imagem_id>', methods=['DELETE'])
+@jwt_required()
 def excluir_imagem(imagem_id):
     imagem = ExameImagem.query.get_or_404(imagem_id)
+    exame = Exame.query.get(imagem.exame_id)
+    if exame and hasattr(g, 'current_association') and g.current_association and exame.associacao_id != g.current_association.id:
+        return jsonify({"error": "Acesso negado"}), 403
     filepath = os.path.join(current_app.config['UPLOAD_FOLDER_EXAMES'], imagem.arquivo_caminho)
     if os.path.exists(filepath):
         os.remove(filepath)
@@ -214,8 +256,12 @@ def excluir_imagem(imagem_id):
     return jsonify({"message": "Imagem excluída com sucesso"}), 200
 
 @exames_bp.route('/resultados/<int:resultado_id>', methods=['PUT'])
+@jwt_required()
 def atualizar_resultado(resultado_id):
     resultado = ExameLabResultado.query.get_or_404(resultado_id)
+    exame = Exame.query.get(resultado.exame_id)
+    if exame and hasattr(g, 'current_association') and g.current_association and exame.associacao_id != g.current_association.id:
+        return jsonify({"error": "Acesso negado"}), 403
     data = request.json
     resultado.teste_nome = data.get('teste_nome', resultado.teste_nome)
     resultado.valor = data.get('valor', resultado.valor)
@@ -225,21 +271,92 @@ def atualizar_resultado(resultado_id):
     return jsonify(resultado.to_dict())
 
 @exames_bp.route('/resultados/<int:resultado_id>', methods=['DELETE'])
+@jwt_required()
 def excluir_resultado(resultado_id):
     resultado = ExameLabResultado.query.get_or_404(resultado_id)
+    exame = Exame.query.get(resultado.exame_id)
+    if exame and hasattr(g, 'current_association') and g.current_association and exame.associacao_id != g.current_association.id:
+        return jsonify({"error": "Acesso negado"}), 403
     db.session.delete(resultado)
     db.session.commit()
     return jsonify({"message": "Resultado excluído com sucesso"}), 200
 
-# Rota para servir arquivos de exames
-@exames_bp.route('/exames/arquivos/<filename>')
+# P0-02 (Missão 18): servir arquivo de exame agora exige:
+#   - @jwt_required (autenticação obrigatória)
+#   - Validação de filename (sem '..', '/', '\\', absoluto, só UUID_<nome>)
+#   - Validação de tenant via banco (Exame.associacao_id == g.current_association.id)
+#   - Bloqueio de symlink/path traversal via realpath() + startswith()
+from sqlalchemy import select as _select
+import re as _re
+
+_EXAME_FILE_RE = _re.compile(r'^[a-f0-9]{32}_[A-Za-z0-9._-]+$')
+
+
+def _validate_exame_filename(filename):
+    if not filename or not isinstance(filename, str):
+        return False
+    if '/' in filename or '\\' in filename or '..' in filename:
+        return False
+    if filename.startswith(('/', '\\')):
+        return False
+    if not _EXAME_FILE_RE.match(filename):
+        return False
+    return secure_filename(filename) == filename
+
+
+@exames_bp.route('/exames/arquivos/<string:filename>')
+@jwt_required()
 def servir_arquivo_exame(filename):
-    try:
-        # Get the full path to the uploads directory
-        uploads_dir = os.path.join(current_app.root_path, current_app.config['UPLOAD_FOLDER_EXAMES'])
-        return send_from_directory(uploads_dir, filename)
-    except FileNotFoundError:
+    """
+    Servir arquivo de exame de forma segura (P0-02).
+
+    Pré-condições:
+      1. JWT válido (qualquer profissional autenticado).
+      2. Filename bate no padrão UUID_{nome}.
+      3. Existe ExameImagem com esse arquivo_caminho E o Exame correspondente
+         pertence ao tenant do JWT (g.current_association.id).
+      4. Arquivo real está dentro de UPLOAD_FOLDER_EXAMES (anti symlink).
+    """
+    if not _validate_exame_filename(filename):
+        current_app.logger.warning(
+            "exames.servir_arquivo_exame: filename inválido: %r", filename,
+        )
+        return jsonify({"error": "Filename inválido"}), 400
+
+    uploads_dir = os.path.realpath(
+        os.path.join(current_app.root_path, current_app.config['UPLOAD_FOLDER_EXAMES'])
+    )
+    file_path = os.path.realpath(os.path.join(uploads_dir, filename))
+    if not file_path.startswith(uploads_dir + os.sep):
+        current_app.logger.warning(
+            "exames.servir_arquivo_exame: tentativa de path traversal: %r", filename,
+        )
+        return jsonify({"error": "Acesso negado"}), 403
+
+    current_assoc = getattr(g, 'current_association', None)
+    current_assoc_id = current_assoc.id if current_assoc else None
+    if current_assoc_id is None:
+        return jsonify({"error": "Tenant não resolvido"}), 403
+
+    # Cruzar com banco: o filename deve pertencer a um Exame do tenant.
+    stmt = _select(ExameImagem).where(ExameImagem.arquivo_caminho == filename)
+    img = db.session.execute(stmt).scalar_one_or_none()
+    if img is None:
         return jsonify({"error": "Arquivo não encontrado"}), 404
+
+    exame = db.session.get(Exame, img.exame_id)
+    if exame is None or exame.associacao_id != current_assoc_id:
+        current_app.logger.warning(
+            "exames.servir_arquivo_exame: tenant mismatch filename=%r user=%s assoc=%s file_assoc=%s",
+            filename, get_jwt_identity(), current_assoc_id,
+            exame.associacao_id if exame else None,
+        )
+        return jsonify({"error": "Acesso negado"}), 403
+
+    if not os.path.isfile(file_path):
+        return jsonify({"error": "Arquivo não encontrado"}), 404
+
+    return send_from_directory(uploads_dir, filename)
 
 # Rota para gerar dados de gráfico para exames numéricos
 @exames_bp.route('/pacientes/<int:paciente_id>/exames/chart/<titulo>', methods=['GET'])
@@ -296,9 +413,16 @@ def gerar_dados_grafico_exame(paciente_id, titulo):
 
 # Rota para listar exames numéricos disponíveis para gráfico
 @exames_bp.route('/pacientes/<int:paciente_id>/exames/chartable', methods=['GET'])
+@jwt_required()
 def listar_exames_chartable(paciente_id):
     """Listar títulos de exames numéricos disponíveis para gráfico"""
     try:
+        # Tenant validation via paciente
+        paciente = Paciente.query.get(paciente_id)
+        if not paciente:
+            return jsonify({"error": "Paciente não encontrado"}), 404
+        if hasattr(g, 'current_association') and g.current_association and paciente.associacao_id != g.current_association.id:
+            return jsonify({"error": "Acesso negado"}), 403
         # Buscar exames numéricos únicos por título
         exames = db.session.query(Exame.titulo, Exame.unidade).filter_by(
             paciente_id=paciente_id,
@@ -331,8 +455,11 @@ def listar_exames_chartable(paciente_id):
 
 # Rota para processar OCR em imagens de exames
 @exames_bp.route('/exames/<int:exame_id>/ocr', methods=['POST'])
+@jwt_required()
 def processar_ocr_exame(exame_id):
     exame = Exame.query.get_or_404(exame_id)
+    if hasattr(g, 'current_association') and g.current_association and exame.associacao_id != g.current_association.id:
+        return jsonify({"error": "Acesso negado"}), 403
 
     if exame.tipo_exame != 'arquivo':
         return jsonify({"error": "OCR só pode ser aplicado em exames do tipo arquivo"}), 400
@@ -447,6 +574,7 @@ def processar_ocr_exame(exame_id):
 
 # Rota para obter nomes de exames únicos para autocomplete
 @exames_bp.route('/exames/nomes-unicos', methods=['GET'])
+@jwt_required()
 def obter_nomes_exames_unicos():
     """Retorna lista de nomes únicos de exames para autocomplete"""
     try:
