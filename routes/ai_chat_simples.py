@@ -17,12 +17,31 @@ from security_config import sanitize_input
 ai_chat_simples_bp = Blueprint('ai_chat_simples', __name__)
 logger = logging.getLogger(__name__)
 
-def buscar_contexto_paciente(paciente_id):
+def buscar_contexto_paciente(paciente_id, profissional_id):
     """Busca todos os dados do paciente para incluir no contexto"""
     try:
         from sqlalchemy import select
         
-        # Usar select() com execution_options para bypass seguro do tenant filter
+        # P0-09 (Missão 18): validar acesso do profissional ANTES de consultar
+        # sem filtro de tenant. O profissional pode atuar em multi-associação;
+        # mas cada paciente só pode ser acessado se ele for responsável ou
+        # tiver compartilhamento ativo.
+        try:
+            from routes.pacientes import verificar_acesso_paciente
+            tem_acesso, _, _ = verificar_acesso_paciente(profissional_id, paciente_id)
+            if not tem_acesso:
+                logger.warning(
+                    "ai_chat.buscar_contexto: acesso negado user=%s paciente=%s",
+                    profissional_id, paciente_id,
+                )
+                return None
+        except Exception as _e:
+            logger.error("ai_chat.buscar_contexto: erro de validação: %s", _e)
+            return None
+
+        # skip_tenant=True JUSTIFICADO: o profissional pode estar em
+        # multi-associação e o paciente pode estar em outra associação
+        # (compartilhamento). A autorização acima é obrigatória.
         stmt = select(Paciente).where(Paciente.id == paciente_id).execution_options(skip_tenant=True)
         paciente = db.session.execute(stmt).scalar_one_or_none()
         
@@ -108,7 +127,7 @@ def chat_simples():
         # Se tiver paciente_id, buscar contexto completo
         contexto_texto = ""
         if paciente_id:
-            contexto = buscar_contexto_paciente(paciente_id)
+            contexto = buscar_contexto_paciente(paciente_id, current_user_id)
 
             if contexto:
                 paciente = contexto['paciente']

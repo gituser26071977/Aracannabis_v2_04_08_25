@@ -3,6 +3,8 @@ import logging
 import os
 from services.dr_anderson_agent import dr_anderson_agent
 from services.whatsapp_service import WhatsAppService
+from services.webhook_auth import internal_key_required, register_webhook_event
+from security_config import limiter
 
 logger = logging.getLogger(__name__)
 
@@ -12,23 +14,19 @@ dr_anderson_bp = Blueprint('dr_anderson_webhook', __name__)
 dr_anderson_instance = os.environ.get('DR_ANDERSON_WHATSAPP_INSTANCE', 'dr_anderson')
 whatsapp = WhatsAppService(instance_name=dr_anderson_instance)
 
-INTERNAL_SERVICE_KEY = os.environ.get('INTERNAL_SERVICE_KEY', 'dr-anderson-internal-key')
-
 
 # ──────────────────────────────────────────────
 # Endpoint interno: Criação de Lead/Paciente
 # ──────────────────────────────────────────────
 
 @dr_anderson_bp.route('/criar-lead', methods=['POST'])
+@limiter.exempt  # FASE 5A — endpoint interno autenticado por X-Internal-Key
+@internal_key_required(env_var="INTERNAL_SERVICE_KEY")
 def criar_lead():
     """
     Endpoint interno para o Agente criar automaticamente a ficha do paciente no SIAP.
     Autenticado por chave de serviço interna (X-Internal-Key).
     """
-    key = request.headers.get('X-Internal-Key', '')
-    if key != INTERNAL_SERVICE_KEY:
-        return jsonify({"error": "Não autorizado"}), 403
-
     data = request.get_json()
     if not data:
         return jsonify({"error": "Body JSON obrigatório"}), 400
@@ -67,6 +65,11 @@ def criar_lead():
             observacoes_completas += f"\n\nHistórico Cannabis: {historico_cannabis}"
         observacoes_completas += "\n\n[Lead captado automaticamente via WhatsApp - Agente LIA Dr. Anderson]"
 
+        # TODO P1-LGPD: revisar criacao automatica de consentimento.
+        # O consentimento_lgpd=True abaixo e setado sem aceite real do titular.
+        # Em P1, este endpoint deve exigir aceite explicito via portal do titular
+        # (art. 8o LGPD) e criar o paciente com consentimento_lgpd=False ate
+        # que o titular aceite.
         novo_paciente = Paciente(
             profissional_responsavel_id=dr_anderson.id,
             nome=nome,
@@ -106,16 +109,44 @@ def criar_lead():
 # ──────────────────────────────────────────────
 
 @dr_anderson_bp.route('/webhook', methods=['POST'])
+@limiter.exempt  # FASE 5A — webhook já validado por X-Internal-Token (FASE 4.5)
+@internal_key_required(
+    env_var="DR_ANDERSON_WEBHOOK_SECRET",
+    header_name="X-Internal-Token",
+)
 def evolution_webhook():
     """
     Recebe eventos da Evolution API.
     Configure na Evolution API apontando para /api/dr-anderson/webhook
+
+    FASE 4.5 — Autenticação por X-Internal-Token estatico via compare_digest.
+    Evolution API nao calcula HMAC nativamente; operador deve configurar
+    webhook.headers={"X-Internal-Token": "<DR_ANDERSON_WEBHOOK_SECRET>"} no painel.
     """
     data = request.json
 
     event = data.get('event')
     if event != 'messages.upsert':
         return jsonify({"status": "ignored", "reason": "not_upsert"}), 200
+
+    # FASE 4.1 — Anti-replay atomico via INSERT + UNIQUE(provider, provider_event_id).
+    message_data_pre = data.get('data', {})
+    if isinstance(message_data_pre, list) and message_data_pre:
+        message_data_pre = message_data_pre[0]
+    key_pre = (message_data_pre or {}).get('key', {}) if isinstance(message_data_pre, dict) else {}
+    event_id = f"evolution_dr_anderson:{key_pre.get('id', '')}"
+    is_replay, log_id = register_webhook_event(
+        provider="evolution_dr_anderson",
+        event_id=event_id,
+        event_type="messages.upsert",
+        payload=data,
+    )
+    if is_replay:
+        logger.info(
+            f"[evolution_dr_anderson_webhook] replay detectado event_id={event_id} "
+            f"log_id={log_id}"
+        )
+        return jsonify({"status": "ok", "idempotent": True}), 200
 
     message_data = data.get('data', {})
     if isinstance(message_data, list):

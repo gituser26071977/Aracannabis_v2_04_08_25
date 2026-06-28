@@ -15,6 +15,11 @@ from services.conselho_validator import (
     CONSELHO_NONE,
     CONSELHO_LABELS,
 )
+from security_config import (
+    limiter,
+    SENSITIVE_ENDPOINTS_RATE_LIMIT,
+    LOGIN_RATE_LIMIT,
+)
 import re
 import secrets
 import string
@@ -43,6 +48,7 @@ def gerar_senha_temporaria():
     return ''.join(secrets.choice(alphabet) for _ in range(12))
 
 @cadastro_profissionais_bp.route('/solicitar-cadastro', methods=['POST'])
+@limiter.limit(SENSITIVE_ENDPOINTS_RATE_LIMIT)
 def solicitar_cadastro():
     """Solicitar cadastro de novo profissional (ou staff, se conselho_tipo='NONE')."""
     try:
@@ -285,11 +291,13 @@ def listar_solicitacoes():
         return jsonify({'success': False, 'error': 'Erro interno.'}), 500
 
 @cadastro_profissionais_bp.route('/aprovar-solicitacao/<int:solicitacao_id>', methods=['POST'])
+@limiter.limit(SENSITIVE_ENDPOINTS_RATE_LIMIT)
 def aprovar_solicitacao(solicitacao_id):
     result, status_code = processar_aprovacao(solicitacao_id)
     return jsonify(result), status_code
 
 @cadastro_profissionais_bp.route('/rejeitar-solicitacao/<int:solicitacao_id>', methods=['POST'])
+@limiter.limit(SENSITIVE_ENDPOINTS_RATE_LIMIT)
 def rejeitar_solicitacao(solicitacao_id):
     try:
         solicitacao = SolicitacoesCadastro.query.get(solicitacao_id)

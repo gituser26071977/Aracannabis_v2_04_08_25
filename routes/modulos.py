@@ -12,8 +12,9 @@ Endpoints:
 """
 from datetime import datetime, timedelta
 import logging
+import os
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
 from models import db, Profissional
@@ -23,6 +24,8 @@ from models_modulos import (
     ModuloConsentimento,
     TRIAL_DAYS,
 )
+from services.webhook_auth import register_webhook_event, mercadopago_webhook_required
+from security_config import limiter
 
 logger = logging.getLogger(__name__)
 
@@ -349,7 +352,25 @@ def revogar_consentimento(slug: str):
 # Webhook MercadoPago (após pagamento aprovado)
 # ──────────────────────────────────────────────────────────────────
 
+def _modulos_extract_data_id(payload):
+    """
+    FASE 4.5 — Extrai data.id do payload MP (mesmo padrao de W1).
+    Usado como fallback caso MP nao envie data.id na query string.
+    """
+    if not isinstance(payload, dict):
+        return ""
+    data = payload.get('data') or {}
+    if isinstance(data, dict):
+        return str(data.get('id') or "")
+    return str(payload.get('id') or "")
+
+
 @modulos_bp.route("/webhook", methods=["POST"])
+@limiter.exempt  # FASE 5A — webhook já validado por HMAC MP (FASE 4.5)
+@mercadopago_webhook_required(
+    get_data_id=_modulos_extract_data_id,
+    env_var="MERCADOPAGO_MODULOS_WEBHOOK_SECRET",
+)
 def webhook_mercadopago():
     """Recebe notificações do MercadoPago e ativa assinatura."""
     # Lê JSON ou form
@@ -358,20 +379,47 @@ def webhook_mercadopago():
     else:
         payload = request.form.to_dict()
 
-    # Para simulação via link stub: aceitar GET também
-    if request.method == "GET":
-        payload = request.args.to_dict()
-
+    # Gate de simulacao: ALLOW_WEBHOOK_SIMULATION=1 somente em desenvolvimento
     simulate = str(payload.get("simulate", "")).lower() in ("1", "true", "yes")
-    modulo_slug = payload.get("modulo") or (
-        (payload.get("external_reference") or "").split(":")[1]
-        if ":" in (payload.get("external_reference") or "")
-        else None
+    if simulate:
+        allow_sim = os.environ.get("ALLOW_WEBHOOK_SIMULATION", "0") == "1"
+        is_prod = is_production()
+        if is_prod or not allow_sim:
+            current_app.logger.warning(
+                f"[modulos_webhook] simulate rejeitado (ip={request.remote_addr}, "
+                f"is_prod={is_prod}, allow_sim={allow_sim})"
+            )
+            return jsonify({"error": "simulate nao permitido"}), 403
+
+    # FASE 4.1 — Anti-replay atomico via INSERT + UNIQUE(provider, provider_event_id).
+    # Antes retornava 409 (risco de loop MP); agora retorna 200 idempotente.
+    modulo_slug_raw = payload.get("modulo") or ""
+    prof_id_raw_replay = payload.get("prof") or ""
+    ext_ref = payload.get("external_reference") or ""
+    event_id = f"modulos:{modulo_slug_raw}:{prof_id_raw_replay or ext_ref}"
+    is_replay, replay_log_id = register_webhook_event(
+        provider="modulos",
+        event_id=event_id,
+        event_type="mercadopago_modulos",
+        payload=payload,
     )
-    prof_id_raw = payload.get("prof") or (
-        (payload.get("external_reference") or "").split(":")[-1]
-        if (payload.get("external_reference") or "").startswith("modulo:")
-        else None
+    if is_replay:
+        current_app.logger.info(
+            f"[modulos_webhook] replay detectado event_id={event_id} "
+            f"log_id={replay_log_id}"
+        )
+        return jsonify({
+            "ok": True,
+            "idempotent": True,
+            "modulo": modulo_slug_raw,
+            "message": "duplicate event (already processed)",
+        }), 200
+
+    modulo_slug = modulo_slug_raw or (
+        ext_ref.split(":")[1] if ":" in ext_ref else None
+    )
+    prof_id_raw = prof_id_raw_replay or (
+        ext_ref.split(":")[-1] if ext_ref.startswith("modulo:") else None
     )
     try:
         prof_id = int(prof_id_raw) if prof_id_raw else None
@@ -385,8 +433,6 @@ def webhook_mercadopago():
     if not modulo:
         return jsonify({"error": "modulo nao encontrado"}), 404
 
-    # Em produção: validar assinatura do webhook via WEBHOOK_SECRET_KEY + IP allowlist.
-    # Para simulação local, aceitar direto.
     a = _get_or_create_assinatura(prof_id, modulo)
     agora = datetime.utcnow()
     a.status = "active"
