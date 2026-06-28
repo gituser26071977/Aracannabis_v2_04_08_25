@@ -17,7 +17,7 @@ const PasswordSetupRequestPage = () => {
       const resp = await authService.requestPasswordSetup(email);
       setInfo(resp.message || 'Se o email existir, enviaremos um link.');
     } catch (err) {
-      setError(err?.error || 'Nao foi possivel enviar o link.');
+      setError(err?.error || 'Não foi possível enviar o link.');
     } finally {
       setLoading(false);
     }

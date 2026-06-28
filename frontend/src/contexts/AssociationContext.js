@@ -46,7 +46,7 @@ export const AssociationProvider = ({ children }) => {
                 localStorage.setItem('selectedAssociationId', response.data[0].id);
             }
         } catch (error) {
-            console.error("Failed to fetch user associations", error);
+            if(process.env.NODE_ENV!=='production')console.error("Failed to fetch user associations", error);
             // If 401, we should probably stop trying and let the interceptor handle it, 
             // but for context loading via useEffect, we just log and stop.
         } finally {

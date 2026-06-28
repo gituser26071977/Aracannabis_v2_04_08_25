@@ -26,6 +26,7 @@ import {
   TextField,
   MenuItem,
   TablePagination,
+  Tooltip,
   CircularProgress,
   Tabs,
   Tab,
@@ -53,6 +54,8 @@ import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import { useNavigate } from 'react-router-dom';
 
+import useNotifier from '../hooks/useNotifier';
+import useConfirm from '../hooks/useConfirm';
 // --- HELPER FUNCTIONS ---
 
 function calculateDaysRemaining(endDate) {
@@ -75,7 +78,8 @@ function TrialStatusWidget({ subscription, onUpgrade }) {
 
   return (
     <Card sx={{ mb: 3, bgcolor: isExpired ? '#ffebee' : isExpiringSoon ? '#fff3e0' : '#e3f2fd' }}>
-      <CardContent>
+
+        <CardContent>
         <Box display="flex" justifyContent="space-between" alignItems="center">
           <Box>
             <Typography variant="h6" gutterBottom>
@@ -125,7 +129,7 @@ function UpgradeDialog({ open, onClose }) {
       setLoading(true);
       api.get('/planos')
         .then(res => setPlans(res.data.filter(p => p.ativo)))
-        .catch(err => console.error('Erro ao buscar planos:', err))
+        .catch(err => { if(process.env.NODE_ENV!=='production')console.error('Erro ao buscar planos:', err); })
         .finally(() => setLoading(false));
     }
   }, [open]);
@@ -137,7 +141,8 @@ function UpgradeDialog({ open, onClose }) {
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle>
+
+        <DialogTitle>
         <Typography variant="h5" fontWeight="bold">Escolha seu Plano</Typography>
         <Typography variant="body2" color="text.secondary">Selecione o plano ideal para sua prática médica</Typography>
       </DialogTitle>
@@ -218,6 +223,8 @@ function UpgradeDialog({ open, onClose }) {
 // --- SOLICITACOES MANAGER ---
 
 function SolicitacoesManager() {
+  const { notify: solNotify, NotifierElement: SolNotifier } = useNotifier();
+  const { confirm: solConfirm, ConfirmDialog: SolConfirmDialog } = useConfirm();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [rejectDialog, setRejectDialog] = useState({ open: false, request: null });
@@ -228,7 +235,7 @@ function SolicitacoesManager() {
       const res = await api.get('/cadastro-profissionais/listar-solicitacoes');
       setRequests(res.data.solicitacoes.filter(s => s.status === 'pendente'));
     } catch (err) {
-      console.error('Erro ao buscar solicitações:', err);
+      if(process.env.NODE_ENV!=='production')console.error('Erro ao buscar solicitações:', err);
     } finally {
       setLoading(false);
     }
@@ -239,12 +246,17 @@ function SolicitacoesManager() {
   }, []);
 
   const handleApprove = async (request) => {
-    if (window.confirm(`Aprovar cadastro de ${request.nome}?\n\nRegistro: ${request.crm}/${request.uf_crm}\nEmail: ${request.email}`)) {
+    const ok = await solConfirm({
+      title: 'Aprovar cadastro?',
+      message: `Aprovar ${request.nome} (${request.crm}/${request.uf_crm})?`,
+      confirmLabel: 'Aprovar',
+    });
+    if (ok) {
       try {
         await api.post(`/cadastro-profissionais/aprovar-solicitacao/${request.id}`);
         fetchRequests();
       } catch (err) {
-        alert(err.response?.data?.error || 'Erro ao aprovar solicitação');
+        solNotify(err.response?.data?.error || 'Erro ao aprovar solicitação', 'error');
       }
     }
   };
@@ -258,13 +270,15 @@ function SolicitacoesManager() {
       setRejectReason('');
       fetchRequests();
     } catch (err) {
-      alert(err.response?.data?.error || 'Erro ao rejeitar solicitação');
+      solNotify(err.response?.data?.error || 'Erro ao rejeitar solicitação', 'error');
     }
   };
 
   return (
+    <>
     <Box>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+
+        <SolNotifier />      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
         <Typography variant="h6">Solicitações Pendentes</Typography>
         <Button startIcon={<RefreshIcon />} onClick={fetchRequests}>Atualizar</Button>
       </Box>
@@ -366,12 +380,16 @@ function SolicitacoesManager() {
         </DialogActions>
       </Dialog>
     </Box>
+    <SolConfirmDialog />
+    </>
   );
 }
 
 // --- SUBCOMPONENTES ---
 
 function PlanosManager() {
+  const { notify: planNotify, NotifierElement: PlanNotifier } = useNotifier();
+  const { confirm: planConfirm, ConfirmDialog: PlanConfirmDialog } = useConfirm();
   const [planos, setPlanos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [openDialog, setOpenDialog] = useState(false);
@@ -395,7 +413,7 @@ function PlanosManager() {
       const response = await api.get('/planos/admin');
       setPlanos(response.data);
     } catch (error) {
-      console.error('Erro ao buscar planos:', error);
+      if(process.env.NODE_ENV!=='production')console.error('Erro ao buscar planos:', error);
     } finally {
       setLoading(false);
     }
@@ -452,24 +470,31 @@ function PlanosManager() {
       setOpenDialog(false);
       fetchPlanos();
     } catch (err) {
-      alert('Erro ao salvar plano: ' + (err.response?.data?.error || err.message));
+      planNotify('Erro ao salvar plano: ' + (err.response?.data?.error || err.message, 'error'));
     }
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Tem certeza que deseja desativar este plano?')) {
+    const ok = await planConfirm({
+      title: 'Desativar plano?',
+      message: 'Planos desativados não ficam visíveis para novos usuários.',
+      confirmLabel: 'Desativar',
+    });
+    if (ok) {
       try {
         await api.delete(`/planos/${id}`);
         fetchPlanos();
       } catch (err) {
-        console.error(err);
+        if(process.env.NODE_ENV!=='production')console.error(err);
       }
     }
   };
 
   return (
+    <>
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+
+        <PlanNotifier />      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
         <Typography variant="h6">Planos de Assinatura</Typography>
         <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenCreate}>
           Novo Plano
@@ -513,12 +538,16 @@ function PlanosManager() {
                     />
                   </TableCell>
                   <TableCell>
-                    <IconButton size="small" onClick={() => handleOpenEdit(plano)}>
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton size="small" color="error" onClick={() => handleDelete(plano.id)}>
-                      <DeleteIcon />
-                    </IconButton>
+                    <Tooltip title="Editar plano">
+                      <IconButton size="small" onClick={() => handleOpenEdit(plano)} aria-label="Editar plano">
+                        <EditIcon />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Excluir plano">
+                      <IconButton size="small" color="error" onClick={() => handleDelete(plano.id)} aria-label="Excluir plano">
+                        <DeleteIcon />
+                      </IconButton>
+                    </Tooltip>
                   </TableCell>
                 </TableRow>
               ))}
@@ -598,12 +627,15 @@ function PlanosManager() {
         </DialogActions>
       </Dialog>
     </Box>
+    <PlanConfirmDialog />
+    </>
   );
 }
 
 // --- USER CREATE DIALOG ---
 
 function UserCreateDialog({ open, onClose, onSuccess }) {
+  const { notify: userNotify, NotifierElement: UserNotifier } = useNotifier();
   const [formData, setFormData] = useState({
     nome: '',
     email: '',
@@ -627,15 +659,18 @@ function UserCreateDialog({ open, onClose, onSuccess }) {
       onClose();
       setFormData({ nome: '', email: '', senha: '', crm: '', uf_crm: 'SP', role: 'profissional' });
     } catch (err) {
-      alert(err.response?.data?.error || 'Erro ao criar usuário');
+      userNotify(err.response?.data?.error || 'Erro ao criar usuário', 'error');
     } finally {
       setLoading(false);
     }
   };
 
   return (
+    <>
+      <UserNotifier />
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Novo Usuário</DialogTitle>
+
+        <UserNotifier />      <DialogTitle>Novo Usuário</DialogTitle>
       <form onSubmit={handleSubmit}>
         <DialogContent>
           <Box display="flex" flexDirection="column" gap={2}>
@@ -711,6 +746,7 @@ function UserCreateDialog({ open, onClose, onSuccess }) {
         </DialogActions>
       </form>
     </Dialog>
+    </>
   );
 }
 
@@ -720,6 +756,8 @@ function UserCreateDialog({ open, onClose, onSuccess }) {
 
 function AdminPage() {
   const { currentUser } = useAuth();
+  const { notify: adminNotify, NotifierElement: AdminNotifier } = useNotifier();
+  const { confirm: adminConfirm, ConfirmDialog: AdminConfirmDialog } = useConfirm();
   const [activeTab, setActiveTab] = useState(0);
   const [openCreateUserDialog, setOpenCreateUserDialog] = useState(false);
 
@@ -760,10 +798,10 @@ function AdminPage() {
           const resSub = await api.get(`/profissionais/${currentUser.id}/assinatura`);
           setSubscription(resSub.data);
         } catch (err) {
-          console.log('No subscription found');
+          if(process.env.NODE_ENV!=='production')console.log('No subscription found');
         }
       }
-    } catch (e) { console.error(e); }
+    } catch (e) { if(process.env.NODE_ENV!=='production')console.error(e); }
   };
 
   useEffect(() => {
@@ -777,12 +815,18 @@ function AdminPage() {
   };
 
   const handleDeleteUser = async (user) => {
-    if (window.confirm(`Tem certeza que deseja remover o usuário "${user.nome}" (${user.usuario})?\n\nEsta ação não pode ser desfeita.`)) {
+    const ok = await adminConfirm({
+      title: 'Remover usuário?',
+      message: `Esta ação removerá ${user.nome} (${user.usuario}) permanentemente. Não pode ser desfeita.`,
+      confirmLabel: 'Remover',
+      destructive: true,
+    });
+    if (ok) {
       try {
         await api.delete(`/admin/usuarios/${user.id}`);
         fetchAll();
       } catch (err) {
-        alert(err.response?.data?.error || 'Erro ao remover usuário');
+        adminNotify(err.response?.data?.error || 'Erro ao remover usuário', 'error');
       }
     }
   };
@@ -790,8 +834,11 @@ function AdminPage() {
   if (currentUser?.role !== 'admin') return <Alert severity="error">Acesso Negado</Alert>;
 
   return (
+    <>
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Typography variant="h4" gutterBottom>Painel Administrativo</Typography>
+      <AdminNotifier />
+
+        <Typography variant="h4" gutterBottom>Painel Administrativo</Typography>
 
       <Paper sx={{ mb: 3 }}>
         <Tabs value={activeTab} onChange={(e, v) => setActiveTab(v)} centered>
@@ -821,9 +868,9 @@ function AdminPage() {
               </Grid>
               <Grid item xs={12} sm={6} md={3}>
                 <Card><CardContent>
-                  <Typography variant="h6">Faturamento Est</Typography>
-                  <Typography variant="h4">R$ {users.filter(u => u.status_assinatura === 'ativa').length * 99}</Typography>
-                  <Typography variant="caption">Estimativa (MVP)</Typography>
+                  <Typography variant="h6">Assinaturas Ativas</Typography>
+                  <Typography variant="h4">{users.filter(u => u.status_assinatura === 'ativa').length}</Typography>
+                  <Typography variant="caption">Total de usuários com plano ativo</Typography>
                 </CardContent></Card>
               </Grid>
               {/* Mais cards... */}
@@ -872,12 +919,16 @@ function AdminPage() {
                       )}
                     </TableCell>
                     <TableCell>
-                      <IconButton onClick={() => handleUpdateRole(u)} size="small" color="primary">
-                        <EditIcon />
-                      </IconButton>
-                      <IconButton onClick={() => handleDeleteUser(u)} size="small" color="error">
-                        <DeleteIcon />
-                      </IconButton>
+                      <Tooltip title="Editar role do usuário">
+                        <IconButton onClick={() => handleUpdateRole(u)} size="small" color="primary" aria-label="Editar role">
+                          <EditIcon />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Excluir usuário">
+                        <IconButton onClick={() => handleDeleteUser(u)} size="small" color="error" aria-label="Excluir usuário">
+                          <DeleteIcon />
+                        </IconButton>
+                      </Tooltip>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -931,6 +982,8 @@ function AdminPage() {
       {/* Upgrade Dialog */}
       <UpgradeDialog open={openUpgradeDialog} onClose={() => setOpenUpgradeDialog(false)} />
     </Container>
+    <AdminConfirmDialog />
+    </>
   );
 }
 

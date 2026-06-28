@@ -59,7 +59,7 @@ export const AuthProvider = ({ children }) => {
             setCurrentUser(response.user);
             handlePostLoginRedirect(response.user);
           } catch (profileError) {
-            console.error('Erro ao obter perfil:', profileError);
+            if(process.env.NODE_ENV!=='production')console.error('Erro ao obter perfil:', profileError);
             // Se falhar, usar dados do localStorage como fallback
             const user = authService.getUser();
             setCurrentUser(user);
@@ -73,11 +73,11 @@ export const AuthProvider = ({ children }) => {
             const plano = planResp?.plano || planResp;
             setUserPlan(plano);
           } catch (planError) {
-            console.warn('Não foi possível carregar plano do usuário:', planError);
+            if(process.env.NODE_ENV!=='production')console.warn('Não foi possível carregar plano do usuário:', planError);
           }
         }
       } catch (error) {
-        console.error('Erro ao verificar autenticação:', error);
+        if(process.env.NODE_ENV!=='production')console.error('Erro ao verificar autenticação:', error);
       } finally {
         setLoading(false);
       }
@@ -94,18 +94,18 @@ export const AuthProvider = ({ children }) => {
       const plano = planResp?.plano || planResp;
       setUserPlan(plano);
     } catch (e) {
-      console.warn('Falha ao atualizar plano:', e);
+      if(process.env.NODE_ENV!=='production')console.warn('Falha ao atualizar plano:', e);
     }
   };
 
   // Função para fazer login
   const login = async (usuario, senha) => {
-    console.log('AUTH_CONTEXT: Iniciando login...');
+    if(process.env.NODE_ENV!=='production')console.log('AUTH_CONTEXT: Iniciando login...');
     setError('');
     try {
-      console.log('AUTH_CONTEXT: Chamando authService.login...');
+      if(process.env.NODE_ENV!=='production')console.log('AUTH_CONTEXT: Chamando authService.login...');
       const data = await authService.login(usuario, senha);
-      console.log('AUTH_CONTEXT: Resposta recebida:', data);
+      if(process.env.NODE_ENV!=='production')console.log('AUTH_CONTEXT: Resposta recebida:', data);
       setCurrentUser(data.user);
 
       // Carregar plano logo após login
@@ -114,10 +114,10 @@ export const AuthProvider = ({ children }) => {
         const plano = planResp?.plano || planResp;
         setUserPlan(plano);
       } catch (planError) {
-        console.warn('Plano não carregado após login:', planError);
+        if(process.env.NODE_ENV!=='production')console.warn('Plano não carregado após login:', planError);
       }
 
-      console.log('AUTH_CONTEXT: Usuário definido, navegando para home...');
+      if(process.env.NODE_ENV!=='production')console.log('AUTH_CONTEXT: Usuário definido, navegando para home...');
 
       // Usar setTimeout para garantir que o estado seja atualizado antes da navegação
       setTimeout(() => {
@@ -142,7 +142,7 @@ export const AuthProvider = ({ children }) => {
 
       return data;
     } catch (error) {
-      console.error('AUTH_CONTEXT: Erro capturado:', error);
+      if(process.env.NODE_ENV!=='production')console.error('AUTH_CONTEXT: Erro capturado:', error);
       setError(error.error || error.message || 'Erro ao fazer login');
       throw error;
     }

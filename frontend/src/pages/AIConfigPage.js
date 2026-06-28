@@ -114,7 +114,6 @@ function AIConfigPage() {
         has_google_key: false,
         has_groq_key: false,
         has_xai_key: false,
-        has_xai_key: false,
         has_deepseek_key: false,
         has_zhipu_key: false
       };

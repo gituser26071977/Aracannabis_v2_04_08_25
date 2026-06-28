@@ -13,8 +13,13 @@ import {
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
-  Edit as EditIcon
+  Edit as EditIcon,
+  Event as EventIcon,
+  Description as DescriptionIcon,
+  NoteAdd as NoteAddIcon,
+  AddPhotoAlternate as AddPhotoIcon,
 } from '@mui/icons-material';
+import QuickActionsBar from '../components/QuickActionsBar';
 import { pacientesService } from '../services/api';
 import PatientDetails from '../components/PatientDetails';
 import SymptomsManager from '../components/SymptomsManager';
@@ -95,7 +100,7 @@ const PatientDetailPage = () => {
         setPatient(response.paciente);
         setError('');
       } catch (err) {
-        console.error('Erro ao carregar paciente:', err);
+        if(process.env.NODE_ENV!=='production')console.error('Erro ao carregar paciente:', err);
         setError('Não foi possível carregar os dados do paciente');
       } finally {
         setLoading(false);
@@ -183,6 +188,18 @@ const PatientDetailPage = () => {
         </Button>
       </Box>
 
+      {/* Quick Actions */}
+      <QuickActionsBar
+        title="Ações Rápidas"
+        compact
+        actions={[
+          { label: 'Nova Consulta', icon: <EventIcon />, onClick: () => navigate('/consultas') },
+          { label: 'Nova Prescrição', icon: <DescriptionIcon />, onClick: () => setTabValue(2) },
+          { label: 'Nova Evolução', icon: <NoteAddIcon />, onClick: () => setTabValue(1) },
+          { label: 'Adicionar Exame', icon: <AddPhotoIcon />, onClick: () => setTabValue(3) },
+        ]}
+      />
+
       {/* Abas */}
       <Paper elevation={3} sx={{ mb: 3 }}>
         <Tabs
@@ -192,17 +209,11 @@ const PatientDetailPage = () => {
           variant="scrollable"
           scrollButtons="auto"
         >
-          <Tab label="Informações" {...a11yProps(0)} />
-          <Tab label="📝 Anamnese" {...a11yProps(1)} />
-          <Tab label="Evoluções" {...a11yProps(2)} />
-          <Tab label="Sintomas" {...a11yProps(3)} />
-          <Tab label="Dosagens" {...a11yProps(4)} />
-          <Tab label="Documentos" {...a11yProps(5)} />
-          <Tab label="📊 Gráficos" {...a11yProps(6)} />
-          <Tab label="⚖️ Laudo HC" {...a11yProps(7)} />
-          <Tab label="🧬 Twin Digital" {...a11yProps(8)} />
-          <Tab label="🌿 Perfil Cannabis" {...a11yProps(9)} />
-          <Tab label="📋 Acompanhamento" {...a11yProps(10)} />
+          <Tab label="📋 Informações" {...a11yProps(0)} />
+          <Tab label="🩺 Prontuário" {...a11yProps(1)} />
+          <Tab label="💊 Tratamento" {...a11yProps(2)} />
+          <Tab label="📄 Documentos" {...a11yProps(3)} />
+          <Tab label="🤖 IA & Perfil Cannabis" {...a11yProps(4)} />
         </Tabs>
       </Paper>
 
@@ -216,43 +227,33 @@ const PatientDetailPage = () => {
       </TabPanel>
 
       <TabPanel value={tabValue} index={1}>
-        <AnamneseViewer patientId={patientId} />
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <AnamneseViewer patientId={patientId} />
+          <EvolutionManager patientId={patientId} />
+          <SymptomsManager patientId={patientId} />
+          <CombinedChartView patientId={patientId} />
+        </Box>
       </TabPanel>
 
       <TabPanel value={tabValue} index={2}>
-        <EvolutionManager patientId={patientId} />
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <DosageManager patientId={patientId} />
+          <FollowupPanel patientId={patientId} />
+        </Box>
       </TabPanel>
 
       <TabPanel value={tabValue} index={3}>
-        <SymptomsManager patientId={patientId} />
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <ExameManager patientId={patientId} />
+          <HCReportPanel patientId={patientId} />
+        </Box>
       </TabPanel>
 
       <TabPanel value={tabValue} index={4}>
-        <DosageManager patientId={patientId} />
-      </TabPanel>
-
-      <TabPanel value={tabValue} index={5}>
-        <ExameManager patientId={patientId} />
-      </TabPanel>
-
-      <TabPanel value={tabValue} index={6}>
-        <CombinedChartView patientId={patientId} />
-      </TabPanel>
-
-      <TabPanel value={tabValue} index={7}>
-        <HCReportPanel patientId={patientId} />
-      </TabPanel>
-
-      <TabPanel value={tabValue} index={8}>
-        <DigitalTwinPanel patientId={patientId} />
-      </TabPanel>
-
-      <TabPanel value={tabValue} index={9}>
-        <CannabisProfilePanel patientId={patientId} />
-      </TabPanel>
-
-      <TabPanel value={tabValue} index={10}>
-        <FollowupPanel patientId={patientId} />
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <DigitalTwinPanel patientId={patientId} />
+          <CannabisProfilePanel patientId={patientId} />
+        </Box>
       </TabPanel>
 
     </Box>

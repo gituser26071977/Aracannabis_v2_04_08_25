@@ -14,8 +14,9 @@ import {
   LinearProgress,
   Divider
 } from '@mui/material';
-import { MonetizationOn, CheckCircle, Bolt } from '@mui/icons-material';
+import { MonetizationOn, CheckCircle, Bolt, ReceiptLong } from '@mui/icons-material';
 import { billingService } from '../services/api';
+import EmptyState from '../components/EmptyState';
 
 const BillingPage = () => {
   const [planos, setPlanos] = useState([]);
@@ -54,7 +55,7 @@ const BillingPage = () => {
 
   const formatAgentes = (limite) => {
     if (limite === null || limite === undefined) {
-      return 'Nao definido';
+      return 'Não definido';
     }
     if (limite <= 0) {
       return 'Nenhum';
@@ -64,7 +65,7 @@ const BillingPage = () => {
 
   const formatArmazenamento = (limiteMb) => {
     if (limiteMb === null || limiteMb === undefined) {
-      return 'Nao definido';
+      return 'Não definido';
     }
     if (limiteMb > 0 && limiteMb % 1024 === 0) {
       return `${limiteMb / 1024} GB`;
@@ -85,7 +86,7 @@ const BillingPage = () => {
 
   const pagarFatura = async (faturaId) => {
     try {
-      setInfo('Marcando fatura como paga (mock)...');
+      setInfo('Processando pagamento...');
       await billingService.pagarFatura(faturaId);
       await carregar();
     } catch (err) {
@@ -139,7 +140,11 @@ const BillingPage = () => {
       <Divider sx={{ my: 3 }} />
       <Typography variant="h6" gutterBottom>Faturas</Typography>
       {faturas.length === 0 ? (
-        <Alert severity="info">Nenhuma fatura gerada.</Alert>
+        <EmptyState
+          icon={<ReceiptLong sx={{ fontSize: 64 }} />}
+          title="Nenhuma fatura gerada"
+          description="Quando você assinar um plano ou realizar uma cobrança, as faturas aparecerão aqui."
+        />
       ) : (
         <Stack spacing={1}>
           {faturas.map((f) => (

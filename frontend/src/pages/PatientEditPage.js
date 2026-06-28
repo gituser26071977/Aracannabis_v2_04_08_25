@@ -31,7 +31,7 @@ const PatientEditPage = () => {
         setPatient(response.paciente);
         setError('');
       } catch (err) {
-        console.error('Erro ao carregar paciente:', err);
+        if(process.env.NODE_ENV!=='production')console.error('Erro ao carregar paciente:', err);
         setError('Não foi possível carregar os dados do paciente');
       } finally {
         setLoading(false);

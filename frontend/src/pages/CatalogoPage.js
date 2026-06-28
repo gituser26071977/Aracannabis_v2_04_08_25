@@ -23,6 +23,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
 import ImportCatalogoIA from '../components/ImportCatalogoIA';
 import { buscarProdutos, listarImportLogs } from '../services/catalogoService';
+import ContextualTip from '../components/ContextualTip';
 
 const CatalogoPage = () => {
   const [products, setProducts] = useState([]);
@@ -94,6 +95,18 @@ const CatalogoPage = () => {
         <Typography variant="h4" fontWeight={700}>
           📦 Catálogo de Produtos
         </Typography>
+      </Box>
+
+      <ContextualTip
+        severity="tip"
+        storageKey="catalogo_importar_ia"
+        title="✨ Cadastro inteligente:"
+        sx={{ mb: 2 }}
+      >
+        Use <strong>"Importar por IA"</strong> para extrair produtos de bulas/PDFs/fotos automaticamente (quando habilitado para seu plano). O log de importações fica disponível ao final da página.
+      </ContextualTip>
+
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', mb: 3 }}>
         <Box sx={{ display: 'flex', gap: 2 }}>
           {featureEnabled && (
             <Button
@@ -108,7 +121,7 @@ const CatalogoPage = () => {
           <Button
             variant="contained"
             startIcon={<AddIcon />}
-            onClick={() => { /* TODO: abrir modal de cadastro manual */ }}
+            onClick={() => setShowImportModal(true)}
           >
             Novo Produto
           </Button>

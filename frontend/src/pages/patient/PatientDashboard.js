@@ -57,7 +57,7 @@ const PatientDashboard = () => {
 
             setLoading(false);
         } catch (error) {
-            console.error('Erro ao carregar dados:', error);
+            if(process.env.NODE_ENV!=='production')console.error('Erro ao carregar dados:', error);
             if (error.response?.status === 401 || error.response?.status === 403) {
                 // Token inválido ou não é paciente
                 handleLogout();
@@ -130,7 +130,7 @@ const PatientDashboard = () => {
                         Bem-vindo(a), {patient.nome}!
                     </Typography>
                     <Typography variant="body1" color="textSecondary">
-                        Aqui você pode acess ar todo seu histórico médico
+                        Aqui você pode acessar todo seu histórico médico
                     </Typography>
                 </Box>
 

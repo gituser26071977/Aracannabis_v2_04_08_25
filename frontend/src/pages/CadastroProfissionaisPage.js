@@ -139,7 +139,7 @@ const CadastroProfissionaisPage = () => {
           setAssociacoes(response.data.associacoes);
         }
       } catch (err) {
-        console.error('Erro ao buscar associações:', err);
+        if(process.env.NODE_ENV!=='production')console.error('Erro ao buscar associações:', err);
       }
     };
     fetchAssociacoes();
@@ -249,7 +249,7 @@ const CadastroProfissionaisPage = () => {
         setError(response.data.error || 'Erro ao enviar solicitação');
       }
     } catch (err) {
-      console.error('Erro ao solicitar cadastro:', err);
+      if(process.env.NODE_ENV!=='production')console.error('Erro ao solicitar cadastro:', err);
       if (err.response?.data?.error) {
         setError(err.response.data.error);
       } else {

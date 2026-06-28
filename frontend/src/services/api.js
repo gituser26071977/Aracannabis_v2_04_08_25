@@ -1,14 +1,21 @@
 import axios from 'axios';
 
 // Definir a URL base da API
-const API_BASE_URL = process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL}/api` : 'http://localhost:5002/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL
+  ? `${process.env.REACT_APP_API_URL}/api`
+  : null;
+
+if (!API_BASE_URL) {
+  // Em produção a variável REACT_APP_API_URL é obrigatória.
+  // Em dev/staging, configure .env para evitar fallback silencioso.
+  // eslint-disable-next-line no-console
+  console.warn('[api] REACT_APP_API_URL não definida — configure antes de subir o app.');
+}
 
 // Criar uma instância do axios com a URL base da API
 const api = axios.create({
   baseURL: API_BASE_URL,
 });
-
-console.log('API Service configurado com URL:', API_BASE_URL);
 
 // P0-08: helper para garantir token CSRF em mutações
 async function ensureCsrfToken() {
@@ -77,10 +84,9 @@ api.interceptors.response.use(
     if (error.response && error.response.status === 401) {
       // Se não for uma requisição de login, fazer logout
       if (!error.config.url.includes('/auth/login')) {
-        console.log('Sessão expirada. Redirecionando para login...');
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        window.location.href = '/login';
+        window.location.href = '/401';
       }
     }
     return Promise.reject(error);
@@ -91,12 +97,10 @@ api.interceptors.response.use(
 export const authService = {
   login: async (usuario, senha) => {
     try {
-      console.log('AUTH_SERVICE_LOGIN: Tentando fazer login...');
       const payload = usuario && usuario.includes('@')
         ? { email: usuario, senha }
         : { usuario, senha };
       const response = await api.post('/auth/login', payload);
-      console.log('AUTH_SERVICE_LOGIN: Resposta do login:', response.data);
       localStorage.setItem('token', response.data.access_token);
       localStorage.setItem('refresh_token', response.data.refresh_token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
@@ -113,17 +117,16 @@ export const authService = {
 
       return response.data;
     } catch (error) {
-      console.error('AUTH_SERVICE_LOGIN: Erro no processo de login:', error);
-      if (error.response) {
-        console.error('AUTH_SERVICE_LOGIN: Dados do erro da resposta:', error.response.data);
-        throw new Error(JSON.stringify(error.response.data));
-      } else if (error.request) {
-        console.error('AUTH_SERVICE_LOGIN: Nenhuma resposta recebida:', error.request);
-        throw new Error('Erro de conexão ou nenhuma resposta do servidor.');
-      } else {
-        console.error('AUTH_SERVICE_LOGIN: Erro ao configurar requisição:', error.message);
-        throw new Error('Erro ao configurar requisição.');
+      if (error.response && error.response.data) {
+        // Mensagem user-friendly: usar 'error' ou 'message' do backend, ou fallback genérico
+        const data = error.response.data;
+        const msg = data.error || data.message || 'Credenciais inválidas ou conta bloqueada.';
+        throw new Error(msg);
       }
+      if (error.request) {
+        throw new Error('Não foi possível conectar ao servidor. Verifique sua internet.');
+      }
+      throw new Error('Erro ao iniciar a sessão. Tente novamente.');
     }
   },
 
@@ -207,8 +210,6 @@ export const pacientesService = {
 
   criar: async (paciente) => {
     try {
-      console.log('Enviando dados para API:', paciente);
-
       // Verificar se é FormData (com foto) ou objeto JSON
       const isFormData = paciente instanceof FormData;
       const config = isFormData ? {
@@ -218,10 +219,8 @@ export const pacientesService = {
       } : {};
 
       const response = await api.post('/pacientes/', paciente, config);
-      console.log('Resposta da API:', response);
       return response.data;
     } catch (error) {
-      console.error('Erro completo da API:', error);
       throw error.response ? error.response.data : { error: 'Erro de conexão' };
     }
   },
@@ -1063,7 +1062,7 @@ export const crewAIService = {
           contexto
         },
         {
-          timeout: 0
+          timeout: 120000
         }
       );
       return response.data;

@@ -42,7 +42,7 @@ const AssociationPage = () => {
             setClinicas(data);
         } catch (err) {
             setError('Erro ao carregar clínicas.');
-            console.error(err);
+            if(process.env.NODE_ENV!=='production')console.error(err);
         }
     };
 
@@ -64,7 +64,7 @@ const AssociationPage = () => {
                 }));
             }
         } catch (err) {
-            console.error('Erro ao buscar CEP:', err);
+            if(process.env.NODE_ENV!=='production')console.error('Erro ao buscar CEP:', err);
         } finally {
             setLookupLoading(false);
         }
@@ -87,7 +87,7 @@ const AssociationPage = () => {
                 }));
             }
         } catch (err) {
-            console.error('Erro ao buscar CNPJ:', err);
+            if(process.env.NODE_ENV!=='production')console.error('Erro ao buscar CNPJ:', err);
         } finally {
             setLookupLoading(false);
         }
@@ -157,7 +157,7 @@ const AssociationPage = () => {
             } else {
                 setError('Erro ao salvar clínica.');
             }
-            console.error(err);
+            if(process.env.NODE_ENV!=='production')console.error(err);
         }
     };
 
@@ -175,7 +175,7 @@ const AssociationPage = () => {
             } else {
                 setError('Erro ao desativar clínica.');
             }
-            console.error(err);
+            if(process.env.NODE_ENV!=='production')console.error(err);
         }
     };
 

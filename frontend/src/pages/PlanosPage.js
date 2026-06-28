@@ -83,10 +83,8 @@ const PlanosPage = () => {
       const response = await api.get('/planos/'); // Rota pública
       setPlanosDb(response.data);
     } catch (err) {
-      console.error('Erro ao buscar planos:', err);
-      // Fallback local se API falhar, para não mostrar tela branca
-      setError('Não foi possível carregar os preços atualizados. Exibindo valores padrão.');
-      // O mock será usado se planosDb estiver vazio, mas aqui tratamos o erro
+      if(process.env.NODE_ENV!=='production')console.error('Erro ao buscar planos:', err);
+      setError('Não foi possível carregar os preços atualizados. Tente novamente em alguns instantes.');
     } finally {
       setLoading(false);
     }
@@ -134,15 +132,12 @@ const PlanosPage = () => {
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Paper elevation={3} sx={{ p: 4 }}>
         {/* Header */}
-        <Box sx={{ textAlign: 'center', mb: 6 }}>
-          <Typography variant="h3" gutterBottom sx={{ fontWeight: 'bold', color: 'primary.main' }}>
-            💰 Planos e Preços
+        <Box sx={{ textAlign: 'center', mb: 4 }}>
+          <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+            Planos e Preços
           </Typography>
-          <Typography variant="h6" color="text.secondary" paragraph>
+          <Typography variant="body2" color="text.secondary">
             Escolha o plano ideal para suas necessidades
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Sistema completo de prontuário eletrônico para cannabis medicinal
           </Typography>
         </Box>
 

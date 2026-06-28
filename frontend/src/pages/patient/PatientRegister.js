@@ -24,7 +24,9 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import PrivacyPolicy from '../../components/PrivacyPolicy';
 
+import useNotifier from '../../hooks/useNotifier';
 const PatientRegister = () => {
+  const { notify, NotifierElement } = useNotifier();
     const navigate = useNavigate();
     const [activeStep, setActiveStep] = useState(0);
     const [cpf, setCpf] = useState('');
@@ -68,7 +70,7 @@ const PatientRegister = () => {
             } else if (response.data.can_import) {
                 setPacienteNome(response.data.nome);
                 if (response.data.message) {
-                    alert(response.data.message);
+                    notify(response.data.message, 'info');
                 }
                 setActiveStep(1);
             } else if (response.data.exists && response.data.has_account) {
@@ -113,7 +115,7 @@ const PatientRegister = () => {
                 consentimento_lgpd: consentimentoLgpd
             });
 
-            alert('Conta criada com sucesso! Você será redirecionado para o login.');
+            notify('Conta criada com sucesso! Você será redirecionado para o login.', 'success');
             navigate('/patient/login');
         } catch (err) {
             setError(err.response?.data?.error || 'Erro ao criar conta');
@@ -124,7 +126,8 @@ const PatientRegister = () => {
 
     return (
         <Container maxWidth="sm" sx={{ mt: 8 }}>
-            <Paper elevation={3} sx={{ p: 4 }}>
+
+              <NotifierElement />            <Paper elevation={3} sx={{ p: 4 }}>
                 <Typography variant="h4" gutterBottom align="center">
                     Portal do Paciente
                 </Typography>

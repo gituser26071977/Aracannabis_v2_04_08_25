@@ -48,7 +48,7 @@ const ConfiguracaoPrescricaoPage = () => {
                 });
             }
         } catch (error) {
-            console.error('Erro ao carregar configurações de prescrição', error);
+            if(process.env.NODE_ENV!=='production')console.error('Erro ao carregar configurações de prescrição', error);
             setErrorMessage('Não foi possível carregar as configurações atuais.');
         } finally {
             setLoading(false);
@@ -88,7 +88,7 @@ const ConfiguracaoPrescricaoPage = () => {
             await prescricaoConfigService.salvar(formData);
             setSuccessMessage('Configurações salvas com sucesso!');
         } catch (error) {
-            console.error('Erro ao salvar configurações', error);
+            if(process.env.NODE_ENV!=='production')console.error('Erro ao salvar configurações', error);
             setErrorMessage(error.error || 'Erro ao salvar. Verifique sua conexão e tente novamente.');
         } finally {
             setSaving(false);
@@ -105,7 +105,7 @@ const ConfiguracaoPrescricaoPage = () => {
 
     return (
         <Box sx={{ p: 3, maxWidth: 900, margin: '0 auto' }}>
-            <Typography variant="h4" sx={{ mb: 3, fontWeight: 'bold', color: 'primary.main' }}>
+            <Typography variant="h4" sx={{ mb: 3, fontWeight: 700 }}>
                 Configurações de Prescrição
             </Typography>
 

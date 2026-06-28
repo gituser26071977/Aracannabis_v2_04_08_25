@@ -109,7 +109,7 @@ const OnboardingPage = () => {
           navigate('/dashboard');
         }
       } catch (err) {
-        console.error('Erro ao buscar progresso:', err);
+        if(process.env.NODE_ENV!=='production')console.error('Erro ao buscar progresso:', err);
         // Se onboarding está desabilitado (403) ou outro erro, redirecionar para dashboard
         if (err.response?.status === 403 || err.response?.status >= 500) {
           navigate('/dashboard');

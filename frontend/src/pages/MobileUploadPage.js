@@ -12,6 +12,7 @@ import {
 import { CloudUpload, CheckCircle, ErrorOutline } from '@mui/icons-material';
 import MediaCapture from '../components/MediaCapture';
 import api from '../services/api';
+import useNotifier from '../hooks/useNotifier';
 
 const MobileUploadPage = () => {
     const { token } = useParams();
@@ -24,6 +25,7 @@ const MobileUploadPage = () => {
     const [aiProcessing, setAiProcessing] = useState(false);
     const [productData, setProductData] = useState(null);
     const [savingProduct, setSavingProduct] = useState(false);
+    const { notify, NotifierElement } = useNotifier();
 
     useEffect(() => {
         // Validar token ao carregar
@@ -79,8 +81,8 @@ const MobileUploadPage = () => {
                 setStatus('completed');
             }
         } catch (err) {
-            console.error(err);
-            alert('Erro ao enviar arquivo. Tente novamente.');
+            if(process.env.NODE_ENV!=='production')console.error(err);
+            notify('Erro ao enviar arquivo. Tente novamente.', 'error');
         } finally {
             setUploading(false);
         }
@@ -93,8 +95,8 @@ const MobileUploadPage = () => {
             setProductData(response.data.produto_sugerido);
             setStatus('product_confirmation');
         } catch (err) {
-            console.error(err);
-            alert('Erro ao processar produto. Tente novamente.');
+            if(process.env.NODE_ENV!=='production')console.error(err);
+            notify('Erro ao processar produto. Tente novamente.', 'error');
         } finally {
             setAiProcessing(false);
         }
@@ -109,8 +111,8 @@ const MobileUploadPage = () => {
             setUploadSuccess(true);
             setStatus('completed');
         } catch (err) {
-            console.error(err);
-            alert('Erro ao salvar produto. Tente novamente.');
+            if(process.env.NODE_ENV!=='production')console.error(err);
+            notify('Erro ao salvar produto. Tente novamente.', 'error');
         } finally {
             setSavingProduct(false);
         }
@@ -166,7 +168,9 @@ const MobileUploadPage = () => {
     }
 
     return (
-        <Container maxWidth="sm" sx={{ py: 3, height: '100vh', display: 'flex', flexDirection: 'column' }}>
+        <>
+            <NotifierElement />
+            <Container maxWidth="sm" sx={{ py: 3, height: '100vh', display: 'flex', flexDirection: 'column' }}>
             <Box sx={{ mb: 3, textAlign: 'center' }}>
                 <Typography variant="h5" component="h1" gutterBottom fontWeight="bold">
                     {context === 'product' ? 'Cadastro de Produto' : 'Captura Mobile'}
@@ -270,6 +274,7 @@ const MobileUploadPage = () => {
                 </Paper>
             )}
         </Container>
+        </>
     );
 };
 

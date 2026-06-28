@@ -68,6 +68,7 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import api, { aiManagementService } from '../services/api';
+import useConfirm from '../hooks/useConfirm';
 
 function AIDashboard() {
   const { currentUser } = useAuth();
@@ -76,6 +77,7 @@ function AIDashboard() {
   const [aiStatus, setAiStatus] = useState(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const { confirm, ConfirmDialog } = useConfirm();
   const [tabValue, setTabValue] = useState(0);
   const [statsMy, setStatsMy] = useState({});
   const [agents, setAgents] = useState([]);
@@ -93,6 +95,10 @@ function AIDashboard() {
   const [openCrewDialog, setOpenCrewDialog] = useState(false);
   const [openLLMDialog, setOpenLLMDialog] = useState(false);
   const [openExecutionDialog, setOpenExecutionDialog] = useState(false);
+  const [editingAgentId, setEditingAgentId] = useState(null);
+  const [editingPromptId, setEditingPromptId] = useState(null);
+  const [editingCrewId, setEditingCrewId] = useState(null);
+  const [editingLLMId, setEditingLLMId] = useState(null);
   
   // Form states
   const [agentForm, setAgentForm] = useState({
@@ -166,7 +172,7 @@ function AIDashboard() {
       setStatsMy(response.data.stats_my || {});
       setAiStatus(response.data.ai_status);
     } catch (error) {
-      console.error('Erro ao buscar estatísticas de IA:', error);
+      if(process.env.NODE_ENV!=='production')console.error('Erro ao buscar estatísticas de IA:', error);
     }
   };
 
@@ -184,7 +190,7 @@ function AIDashboard() {
         )
       );
     } catch (error) {
-      console.error('Erro ao buscar agentes:', error);
+      if(process.env.NODE_ENV!=='production')console.error('Erro ao buscar agentes:', error);
     }
   };
 
@@ -193,7 +199,7 @@ function AIDashboard() {
       const response = await api.get('/ai-management/prompts');
       setPrompts(response.data.prompts);
     } catch (error) {
-      console.error('Erro ao buscar prompts:', error);
+      if(process.env.NODE_ENV!=='production')console.error('Erro ao buscar prompts:', error);
     }
   };
 
@@ -202,7 +208,7 @@ function AIDashboard() {
       const response = await api.get('/ai-management/crews');
       setCrews(response.data.crews);
     } catch (error) {
-      console.error('Erro ao buscar crews:', error);
+      if(process.env.NODE_ENV!=='production')console.error('Erro ao buscar crews:', error);
     }
   };
 
@@ -211,7 +217,7 @@ function AIDashboard() {
       const response = await api.get('/ai-management/llm-configs');
       setLlmConfigs(response.data.llm_configs);
     } catch (error) {
-      console.error('Erro ao buscar configurações de LLM:', error);
+      if(process.env.NODE_ENV!=='production')console.error('Erro ao buscar configurações de LLM:', error);
     }
   };
 
@@ -220,7 +226,7 @@ function AIDashboard() {
       const response = await api.get('/ai-management/execution-logs');
       setExecutionLogs(response.data.logs);
     } catch (error) {
-      console.error('Erro ao buscar logs de execução:', error);
+      if(process.env.NODE_ENV!=='production')console.error('Erro ao buscar logs de execução:', error);
     }
   };
 
@@ -229,7 +235,7 @@ function AIDashboard() {
       const response = await api.get('/ai-management/providers/available');
       setAvailableProviders(response.data.providers);
     } catch (error) {
-      console.error('Erro ao buscar provedores disponíveis:', error);
+      if(process.env.NODE_ENV!=='production')console.error('Erro ao buscar provedores disponíveis:', error);
     }
   };
 
@@ -240,7 +246,7 @@ function AIDashboard() {
       setSuccess('LLM aplicada com sucesso');
       await loadAgents();
     } catch (error) {
-      console.error('Erro ao aplicar LLM no agente:', error);
+      if(process.env.NODE_ENV!=='production')console.error('Erro ao aplicar LLM no agente:', error);
       setError('Não foi possível aplicar LLM ao agente');
     } finally {
       setAgentUpdating(null);
@@ -261,7 +267,7 @@ function AIDashboard() {
         loadAvailableProviders()
       ]);
     } catch (error) {
-      console.error('Erro ao carregar dados do dashboard de IA:', error);
+      if(process.env.NODE_ENV!=='production')console.error('Erro ao carregar dados do dashboard de IA:', error);
       setError('Erro ao carregar dados do painel de IA');
     } finally {
       setLoading(false);
@@ -280,9 +286,15 @@ function AIDashboard() {
 
   const handleCreateAgent = async () => {
     try {
-      await api.post('/ai-management/agents', agentForm);
-      setSuccess('Agente criado com sucesso');
+      if (editingAgentId) {
+        await api.put(`/ai-management/agents/${editingAgentId}`, agentForm);
+        setSuccess('Agente atualizado com sucesso');
+      } else {
+        await api.post('/ai-management/agents', agentForm);
+        setSuccess('Agente criado com sucesso');
+      }
       setOpenAgentDialog(false);
+      setEditingAgentId(null);
       setAgentForm({
         nome: '',
         descricao: '',
@@ -302,15 +314,42 @@ function AIDashboard() {
       loadAgents();
       loadDashboardStats();
     } catch (error) {
-      setError(`Erro ao criar agente: ${error.response?.data?.error || error.message}`);
+      setError(`Erro ao ${editingAgentId ? 'atualizar' : 'criar'} agente: ${error.response?.data?.error || error.message}`);
     }
+  };
+
+  const handleEditAgent = (agent) => {
+    setAgentForm({
+      nome: agent.nome || '',
+      descricao: agent.descricao || '',
+      role: agent.role || '',
+      goal: agent.goal || '',
+      backstory: agent.backstory || '',
+      llm_config_id: agent.llm_config_id || '',
+      allow_delegation: agent.allow_delegation ?? true,
+      max_iter: agent.max_iter || 3,
+      verbose: agent.verbose ?? true,
+      memory: agent.memory ?? true,
+      max_tokens: agent.max_tokens || 1000,
+      temperature: agent.temperature ?? 0.7,
+      tools_config: agent.tools_config || {},
+      is_active: agent.is_active ?? true
+    });
+    setEditingAgentId(agent.id);
+    setOpenAgentDialog(true);
   };
 
   const handleCreatePrompt = async () => {
     try {
-      await api.post('/ai-management/prompts', promptForm);
-      setSuccess('Prompt criado com sucesso');
+      if (editingPromptId) {
+        await api.put(`/ai-management/prompts/${editingPromptId}`, promptForm);
+        setSuccess('Prompt atualizado com sucesso');
+      } else {
+        await api.post('/ai-management/prompts', promptForm);
+        setSuccess('Prompt criado com sucesso');
+      }
       setOpenPromptDialog(false);
+      setEditingPromptId(null);
       setPromptForm({
         nome: '',
         descricao: '',
@@ -325,15 +364,37 @@ function AIDashboard() {
       loadPrompts();
       loadDashboardStats();
     } catch (error) {
-      setError(`Erro ao criar prompt: ${error.response?.data?.error || error.message}`);
+      setError(`Erro ao ${editingPromptId ? 'atualizar' : 'criar'} prompt: ${error.response?.data?.error || error.message}`);
     }
+  };
+
+  const handleEditPrompt = (prompt) => {
+    setPromptForm({
+      nome: prompt.nome || '',
+      descricao: prompt.descricao || '',
+      template: prompt.template || '',
+      variables: prompt.variables || [],
+      categoria: prompt.categoria || '',
+      agent_id: prompt.agent_id || '',
+      is_system_prompt: prompt.is_system_prompt ?? false,
+      version: prompt.version || '1.0.0',
+      is_active: prompt.is_active ?? true
+    });
+    setEditingPromptId(prompt.id);
+    setOpenPromptDialog(true);
   };
 
   const handleCreateCrew = async () => {
     try {
-      await api.post('/ai-management/crews', crewForm);
-      setSuccess('Crew criada com sucesso');
+      if (editingCrewId) {
+        await api.put(`/ai-management/crews/${editingCrewId}`, crewForm);
+        setSuccess('Crew atualizada com sucesso');
+      } else {
+        await api.post('/ai-management/crews', crewForm);
+        setSuccess('Crew criada com sucesso');
+      }
       setOpenCrewDialog(false);
+      setEditingCrewId(null);
       setCrewForm({
         nome: '',
         descricao: '',
@@ -348,15 +409,37 @@ function AIDashboard() {
       loadCrews();
       loadDashboardStats();
     } catch (error) {
-      setError(`Erro ao criar crew: ${error.response?.data?.error || error.message}`);
+      setError(`Erro ao ${editingCrewId ? 'atualizar' : 'criar'} crew: ${error.response?.data?.error || error.message}`);
     }
+  };
+
+  const handleEditCrew = (crew) => {
+    setCrewForm({
+      nome: crew.nome || '',
+      descricao: crew.descricao || '',
+      process: crew.process || 'sequential',
+      verbose: crew.verbose ?? true,
+      memory: crew.memory ?? true,
+      max_iter: crew.max_iter || 3,
+      share_crew: crew.share_crew ?? false,
+      is_active: crew.is_active ?? true,
+      agent_ids: crew.agent_ids || []
+    });
+    setEditingCrewId(crew.id);
+    setOpenCrewDialog(true);
   };
 
   const handleCreateLLMConfig = async () => {
     try {
-      await api.post('/ai-management/llm-configs', llmForm);
-      setSuccess('Configuração de LLM criada com sucesso');
+      if (editingLLMId) {
+        await api.put(`/ai-management/llm-configs/${editingLLMId}`, llmForm);
+        setSuccess('Configuração de LLM atualizada com sucesso');
+      } else {
+        await api.post('/ai-management/llm-configs', llmForm);
+        setSuccess('Configuração de LLM criada com sucesso');
+      }
       setOpenLLMDialog(false);
+      setEditingLLMId(null);
       setLlmForm({
         nome: '',
         provider: 'groq',
@@ -376,8 +459,29 @@ function AIDashboard() {
       loadLLMConfigs();
       loadDashboardStats();
     } catch (error) {
-      setError(`Erro ao criar configuração de LLM: ${error.response?.data?.error || error.message}`);
+      setError(`Erro ao ${editingLLMId ? 'atualizar' : 'criar'} configuração de LLM: ${error.response?.data?.error || error.message}`);
     }
+  };
+
+  const handleEditLLM = (config) => {
+    setLlmForm({
+      nome: config.nome || '',
+      provider: config.provider || 'groq',
+      model: config.model || 'llama-3.3-70b-versatile',
+      api_key_env_var: config.api_key_env_var || '',
+      base_url: config.base_url || '',
+      temperature: config.temperature ?? 0.7,
+      max_tokens: config.max_tokens || 1000,
+      top_p: config.top_p ?? 1.0,
+      frequency_penalty: config.frequency_penalty ?? 0.0,
+      presence_penalty: config.presence_penalty ?? 0.0,
+      timeout: config.timeout || 30,
+      max_retries: config.max_retries || 3,
+      is_default: config.is_default ?? false,
+      is_active: config.is_active ?? true
+    });
+    setEditingLLMId(config.id);
+    setOpenLLMDialog(true);
   };
 
   const handleExecuteCrew = async (crewId) => {
@@ -393,7 +497,13 @@ function AIDashboard() {
   };
 
   const handleDeleteAgent = async (agentId) => {
-    if (window.confirm('Tem certeza que deseja remover este agente?')) {
+    const ok = await confirm({
+      title: 'Remover agente?',
+      message: 'Esta ação removerá o agente permanentemente.',
+      confirmLabel: 'Remover',
+      destructive: true,
+    });
+    if (ok) {
       try {
         await api.delete(`/ai-management/agents/${agentId}`);
         setSuccess('Agente removido com sucesso');
@@ -406,7 +516,13 @@ function AIDashboard() {
   };
 
   const handleDeletePrompt = async (promptId) => {
-    if (window.confirm('Tem certeza que deseja remover este prompt?')) {
+    const ok = await confirm({
+      title: 'Remover prompt?',
+      message: 'Esta ação removerá o prompt permanentemente.',
+      confirmLabel: 'Remover',
+      destructive: true,
+    });
+    if (ok) {
       try {
         await api.delete(`/ai-management/prompts/${promptId}`);
         setSuccess('Prompt removido com sucesso');
@@ -419,7 +535,13 @@ function AIDashboard() {
   };
 
   const handleDeleteCrew = async (crewId) => {
-    if (window.confirm('Tem certeza que deseja remover esta crew?')) {
+    const ok = await confirm({
+      title: 'Remover crew?',
+      message: 'Esta ação removerá o crew e suas associações.',
+      confirmLabel: 'Remover',
+      destructive: true,
+    });
+    if (ok) {
       try {
         await api.delete(`/ai-management/crews/${crewId}`);
         setSuccess('Crew removida com sucesso');
@@ -432,7 +554,13 @@ function AIDashboard() {
   };
 
   const handleDeleteLLMConfig = async (configId) => {
-    if (window.confirm('Tem certeza que deseja remover esta configuração de LLM?')) {
+    const ok = await confirm({
+      title: 'Remover configuração de LLM?',
+      message: 'Esta ação removerá a configuração de LLM.',
+      confirmLabel: 'Remover',
+      destructive: true,
+    });
+    if (ok) {
       try {
         await api.delete(`/ai-management/llm-configs/${configId}`);
         setSuccess('Configuração de LLM removida com sucesso');
@@ -475,6 +603,7 @@ function AIDashboard() {
   }
 
   return (
+    <>
     <Container maxWidth="lg">
       <Box sx={{ my: 4 }}>
         <Typography variant="h4" gutterBottom>
@@ -522,7 +651,7 @@ function AIDashboard() {
             </CardContent>
           </Card>
         </Grid>
-            <Grid item xs={12} sm={6} md={2.4}>
+            <Grid item xs={12} sm={6} md={2}>
               <Card>
                 <CardContent>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
@@ -536,7 +665,7 @@ function AIDashboard() {
             </CardContent>
           </Card>
         </Grid>
-            <Grid item xs={12} sm={6} md={2.4}>
+            <Grid item xs={12} sm={6} md={2}>
               <Card>
                 <CardContent>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
@@ -550,7 +679,7 @@ function AIDashboard() {
             </CardContent>
           </Card>
         </Grid>
-            <Grid item xs={12} sm={6} md={2.4}>
+            <Grid item xs={12} sm={6} md={2}>
               <Card>
                 <CardContent>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
@@ -564,7 +693,7 @@ function AIDashboard() {
             </CardContent>
           </Card>
         </Grid>
-            <Grid item xs={12} sm={6} md={2.4}>
+            <Grid item xs={12} sm={6} md={2}>
               <Card>
                 <CardContent>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
@@ -816,7 +945,7 @@ function AIDashboard() {
                               </IconButton>
                             </Tooltip>
                             <Tooltip title="Editar">
-                              <IconButton size="small">
+                              <IconButton size="small" onClick={() => handleEditAgent(agent)}>
                                 <EditIcon fontSize="small" />
                               </IconButton>
                             </Tooltip>
@@ -891,12 +1020,12 @@ function AIDashboard() {
                           </TableCell>
                           <TableCell>
                             <Tooltip title="Visualizar">
-                              <IconButton size="small">
+                              <IconButton size="small" onClick={() => handleEditPrompt(prompt)}>
                                 <CodeIcon fontSize="small" />
                               </IconButton>
                             </Tooltip>
                             <Tooltip title="Editar">
-                              <IconButton size="small">
+                              <IconButton size="small" onClick={() => handleEditPrompt(prompt)}>
                                 <EditIcon fontSize="small" />
                               </IconButton>
                             </Tooltip>
@@ -985,7 +1114,7 @@ function AIDashboard() {
                               </IconButton>
                             </Tooltip>
                             <Tooltip title="Editar">
-                              <IconButton size="small">
+                              <IconButton size="small" onClick={() => handleEditCrew(crew)}>
                                 <EditIcon fontSize="small" />
                               </IconButton>
                             </Tooltip>
@@ -1059,7 +1188,7 @@ function AIDashboard() {
                           </TableCell>
                           <TableCell>
                             <Tooltip title="Editar">
-                              <IconButton size="small">
+                              <IconButton size="small" onClick={() => handleEditLLM(config)}>
                                 <EditIcon fontSize="small" />
                               </IconButton>
                             </Tooltip>
@@ -1554,19 +1683,24 @@ function AIDashboard() {
             <Grid item xs={12}>
               <TextField
                 label="Dados de Entrada (JSON)"
-                value={JSON.stringify(executionForm.input_data, null, 2)}
+                multiline
+                rows={6}
+                placeholder='Ex: {"paciente_id": "123", "sintomas": "dor crônica"}'
+                value={executionForm.input_data_raw || ''}
                 onChange={(e) => {
+                  const raw = e.target.value;
+                  setExecutionForm({
+                    ...executionForm,
+                    input_data_raw: raw
+                  });
                   try {
-                    const inputData = JSON.parse(e.target.value);
-                    setExecutionForm({ ...executionForm, input_data: inputData });
+                    const inputData = raw.trim() ? JSON.parse(raw) : {};
+                    setExecutionForm((prev) => ({ ...prev, input_data: inputData }));
                   } catch (error) {
                     // Ignora erros de parsing
                   }
                 }}
                 fullWidth
-                multiline
-                rows={6}
-                placeholder='{"dados": "exemplo"}'
               />
             </Grid>
             <Grid item xs={12}>
@@ -1590,6 +1724,7 @@ function AIDashboard() {
         </DialogActions>
       </Dialog>
     </Container>
+    </>
   );
 }
 

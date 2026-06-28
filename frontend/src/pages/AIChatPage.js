@@ -18,6 +18,7 @@ import {
 } from '@mui/material';
 import { Chat, Send, SmartToy, Mic, StopCircle, VolumeUp, PhoneInTalk, PhoneDisabled } from '@mui/icons-material';
 import { chatSimplesService, pacientesService } from '../services/api';
+import ContextualTip from '../components/ContextualTip';
 
 const CHAT_QUICK_ACTIONS = [
   {
@@ -168,7 +169,9 @@ const AIChatPage = () => {
       processorRef.current = processor;
 
       // 2. Conectar no Backend Gateway (WebSocket)
-      const ws = new WebSocket('ws://localhost:8765');
+      const wsUrl = process.env.REACT_APP_VOICE_WS_URL
+        || (window.location.protocol === 'https:' ? 'wss://api.aracannabis.local/ws/voice' : 'ws://localhost:8765');
+      const ws = new WebSocket(wsUrl);
       liveAudioWsRef.current = ws;
 
       ws.onopen = () => {
@@ -397,6 +400,15 @@ const AIChatPage = () => {
         para contextualizar ou continue sem contexto para perguntas gerais.
       </Typography>
 
+      <ContextualTip
+        severity="tip"
+        storageKey="aichat_voz_tts"
+        title="🎙️ Recursos escondidos:"
+        sx={{ mb: 2 }}
+      >
+        <strong>Copiloto de Voz</strong> (canto superior) faz chamada full-duplex com Gemini Live. O ícone 🔊 em cada resposta reproduz o áudio (TTS) — passe o mouse para descobrir.
+      </ContextualTip>
+
       {error && (
         <Alert severity="error" onClose={() => setError('')} sx={{ mb: 2 }}>
           {error}
@@ -491,8 +503,8 @@ const AIChatPage = () => {
         variant="outlined"
         sx={{
           borderRadius: 3,
-          border: '1px solid #e0e0e0',
-          bgcolor: '#f5f5f5',
+          borderColor: 'divider',
+          bgcolor: 'background.default',
           display: 'flex',
           flexDirection: 'column',
           minHeight: '70vh',
@@ -501,8 +513,9 @@ const AIChatPage = () => {
       >
         <Box
           sx={{
-            background: '#fff',
-            borderBottom: '1px solid #e0e0e0',
+            background: 'background.paper',
+            borderBottom: 1,
+            borderColor: 'divider',
             px: { xs: 2, md: 4 },
             py: 2,
             display: 'flex',
@@ -528,9 +541,9 @@ const AIChatPage = () => {
                 borderRadius: 20,
                 animation: isLiveCallActive ? 'pulseLive 2s infinite' : 'none',
                 '@keyframes pulseLive': {
-                  '0%': { boxShadow: '0 0 0 0 rgba(211, 47, 47, 0.4)' },
-                  '70%': { boxShadow: '0 0 0 8px rgba(211, 47, 47, 0)' },
-                  '100%': { boxShadow: '0 0 0 0 rgba(211, 47, 47, 0)' }
+                  '0%': { boxShadow: (theme) => `0 0 0 0 ${theme.palette.error.main}66` },
+                  '70%': { boxShadow: (theme) => `0 0 0 8px ${theme.palette.error.main}00` },
+                  '100%': { boxShadow: (theme) => `0 0 0 0 ${theme.palette.error.main}00` }
                 }
               }}
             >
@@ -547,7 +560,7 @@ const AIChatPage = () => {
           sx={{
             flex: 1,
             overflowY: 'auto',
-            background: '#f5f5f5',
+            bgcolor: 'background.default',
             py: 2,
             px: { xs: 1, md: 3 }
           }}
@@ -563,8 +576,8 @@ const AIChatPage = () => {
           >
             {messages.map((message) => {
               const isUser = message.role === 'user';
-              const bubbleColor = isUser ? '#25d366' : '#ffffff';
-              const textColor = isUser ? '#fff' : '#222';
+              const bubbleColor = isUser ? 'primary.main' : 'background.paper';
+              const textColor = isUser ? 'primary.contrastText' : 'text.primary';
               return (
                 <Box
                   key={message.id}
@@ -653,8 +666,9 @@ const AIChatPage = () => {
 
         <Box
           sx={{
-            background: '#fff',
-            borderTop: '1px solid #e0e0e0',
+            background: 'background.paper',
+            borderTop: 1,
+            borderColor: 'divider',
             px: { xs: 2, md: 4 },
             py: 2
           }}
@@ -681,21 +695,21 @@ const AIChatPage = () => {
               InputProps={{
                 sx: {
                   borderRadius: '22px',
-                  bgcolor: '#f5f5f5',
+                  bgcolor: 'action.hover',
                   '&.Mui-focused': {
-                    bgcolor: '#fff',
-                    boxShadow: '0 0 0 2px rgba(37,211,102,0.25)'
+                    bgcolor: 'background.paper',
+                    boxShadow: (theme) => `0 0 0 2px ${theme.palette.success.main}40`
                   }
                 }
               }}
               sx={{
                 '& .MuiOutlinedInput-root': {
                   borderRadius: '22px',
-                  borderColor: '#e0e0e0',
-                  bgcolor: '#f5f5f5'
+                  borderColor: 'divider',
+                  bgcolor: 'action.hover'
                 },
                 '& .MuiOutlinedInput-root.Mui-focused': {
-                  borderColor: '#25d366'
+                  borderColor: 'success.main'
                 }
               }}
             />
@@ -707,14 +721,14 @@ const AIChatPage = () => {
                   width: 48,
                   height: 48,
                   borderRadius: '50%',
-                  bgcolor: '#f44336',
-                  color: '#fff',
-                  boxShadow: '0 8px 16px rgba(244,67,54,0.35)',
+                  bgcolor: 'error.main',
+                  color: 'error.contrastText',
+                  boxShadow: (theme) => `0 8px 16px ${theme.palette.mode === 'dark' ? 'rgba(255,107,107,0.35)' : 'rgba(229,57,96,0.35)'}`,
                   animation: 'pulse 1.5s infinite',
                   '@keyframes pulse': {
-                    '0%': { boxShadow: '0 0 0 0 rgba(244,67,54,0.7)' },
-                    '70%': { boxShadow: '0 0 0 10px rgba(244,67,54,0)' },
-                    '100%': { boxShadow: '0 0 0 0 rgba(244,67,54,0)' }
+                    '0%': { boxShadow: (theme) => `0 0 0 0 ${theme.palette.mode === 'dark' ? 'rgba(255,107,107,0.7)' : 'rgba(229,57,96,0.7)'}` },
+                    '70%': { boxShadow: (theme) => `0 0 0 10px ${theme.palette.mode === 'dark' ? 'rgba(255,107,107,0)' : 'rgba(229,57,96,0)'}` },
+                    '100%': { boxShadow: (theme) => `0 0 0 0 ${theme.palette.mode === 'dark' ? 'rgba(255,107,107,0)' : 'rgba(229,57,96,0)'}` }
                   }
                 }}
               >
@@ -729,11 +743,10 @@ const AIChatPage = () => {
                   width: 48,
                   height: 48,
                   borderRadius: '50%',
-                  bgcolor: loading ? '#e0e0e0' : '#2196f3',
-                  color: '#fff',
-                  boxShadow: '0 8px 16px rgba(33,150,243,0.35)',
+                  bgcolor: loading ? 'action.disabled' : 'secondary.main',
+                  color: 'secondary.contrastText',
                   '&:hover': {
-                    bgcolor: loading ? '#e0e0e0' : '#1976d2'
+                    bgcolor: loading ? 'action.disabled' : 'secondary.dark'
                   }
                 }}
               >
@@ -749,11 +762,10 @@ const AIChatPage = () => {
                 width: 48,
                 height: 48,
                 borderRadius: '50%',
-                bgcolor: loading ? '#b1d9c1' : '#25d366',
-                color: '#fff',
-                boxShadow: '0 8px 16px rgba(37,211,102,0.35)',
+                bgcolor: loading ? 'action.disabled' : 'success.main',
+                color: 'success.contrastText',
                 '&:hover': {
-                  bgcolor: loading ? '#b1d9c1' : '#1da851'
+                  bgcolor: loading ? 'action.disabled' : 'success.dark'
                 }
               }}
             >

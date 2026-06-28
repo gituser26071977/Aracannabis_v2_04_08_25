@@ -22,7 +22,7 @@ const DispensationPage = () => {
                 const response = await associationService.getProdutos();
                 setProdutos(response);
             } catch (err) {
-                console.error('Erro ao carregar produtos:', err);
+                if(process.env.NODE_ENV!=='production')console.error('Erro ao carregar produtos:', err);
             }
         };
         fetchProdutos();
@@ -40,7 +40,7 @@ const DispensationPage = () => {
             setMembers(membersData);
         } catch (err) {
             setError('Erro ao carregar dados.');
-            console.error(err);
+            if(process.env.NODE_ENV!=='production')console.error(err);
         }
     };
 
@@ -69,7 +69,7 @@ const DispensationPage = () => {
             setTimeout(() => setSuccess(''), 3000);
         } catch (err) {
             setError(err.response?.data?.error || 'Erro ao realizar dispensação. Verifique o estoque.');
-            console.error(err);
+            if(process.env.NODE_ENV!=='production')console.error(err);
         }
     };
 

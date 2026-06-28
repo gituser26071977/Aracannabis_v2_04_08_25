@@ -767,7 +767,7 @@ const LandingPage = () => {
                 <Grid item xs={12} md={3} sx={{ textAlign: { xs: 'left', md: 'right' } }}>
                   <Button
                     component={RouterLink}
-                    to="/security"
+                    to="/seguranca"
                     variant="outlined"
                     color="primary"
                     endIcon={<ArrowForwardIcon />}

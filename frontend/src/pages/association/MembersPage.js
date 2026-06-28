@@ -39,7 +39,7 @@ const MembersPage = () => {
             setMembers(membersData);
         } catch (err) {
             setError('Erro ao carregar dados da associação ou membros.');
-            console.error(err);
+            if(process.env.NODE_ENV!=='production')console.error(err);
         }
     };
 
@@ -72,7 +72,7 @@ const MembersPage = () => {
             setTimeout(() => setSuccess(''), 3000);
         } catch (err) {
             setError('Erro ao adicionar membro. Verifique se o CPF existe no sistema de pacientes.');
-            console.error(err);
+            if(process.env.NODE_ENV!=='production')console.error(err);
         }
     };
 

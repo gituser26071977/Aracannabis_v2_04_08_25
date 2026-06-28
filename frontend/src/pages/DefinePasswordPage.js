@@ -19,16 +19,13 @@ const DefinePasswordPage = () => {
     setError('');
     setInfo('');
 
-    console.log('DEFINE_PASSWORD: Init - Token:', token, 'UserId:', userId); // DEBUG log call
-
     if (!token || !userId) {
-      console.error('DEFINE_PASSWORD: Missing parameters');
       setError('Link inválido ou incompleto. Verifique se copiou o link corretamente.');
       return;
     }
 
     if (novaSenha !== confirmacao) {
-      setError('As senhas nao conferem.');
+      setError('As senhas não conferem.');
       return;
     }
 
@@ -41,7 +38,7 @@ const DefinePasswordPage = () => {
       });
       setInfo(resp.message || 'Senha definida com sucesso.');
     } catch (err) {
-      setError(err?.error || 'Nao foi possivel definir a senha.');
+      setError(err?.error || 'Não foi possível definir a senha.');
     } finally {
       setLoading(false);
     }

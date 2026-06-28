@@ -34,7 +34,7 @@ export const aiClinicalService = {
             });
             return response.data;
         } catch (error) {
-            console.error('Erro na geração de IA Clínica:', error);
+            if(process.env.NODE_ENV!=='production')console.error('Erro na geração de IA Clínica:', error);
             throw error.response ? error.response.data : { error: 'Erro de conexão com serviço de IA' };
         }
     }

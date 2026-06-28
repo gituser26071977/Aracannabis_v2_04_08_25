@@ -61,7 +61,7 @@ const BatchImportPage = () => {
                     }
                 }
             } catch (err) {
-                console.error("Erro no polling:", err);
+                if(process.env.NODE_ENV!=='production')console.error("Erro no polling:", err);
                 clearInterval(interval);
                 setLoading(false);
                 setErrorMsg("Perda de conexão com o progresso.");
@@ -112,7 +112,7 @@ const BatchImportPage = () => {
                     }
                 }
             } catch (err) {
-                console.error(`Erro ao analisar ${file.name}`, err);
+                if(process.env.NODE_ENV!=='production')console.error(`Erro ao analisar ${file.name}`, err);
                 results.push({
                     nome: '',
                     observacoes: `Falha na análise de ${file.name}: ${err.response?.data?.error || err.message}`,
@@ -149,7 +149,7 @@ const BatchImportPage = () => {
             }
         } catch (err) {
             setErrorMsg('Erro ao conectar com servidor de importação.');
-            console.error(err);
+            if(process.env.NODE_ENV!=='production')console.error(err);
         } finally {
             setImporting(false);
         }

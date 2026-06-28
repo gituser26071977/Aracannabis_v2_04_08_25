@@ -46,7 +46,7 @@ const PagamentoPage = () => {
   const planos = {
     sem_ia: {
       nome: 'Plano Sem IA',
-      descricao: 'Prontuario completo sem recursos de IA',
+      descricao: 'Prontuário completo sem recursos de IA',
       precoBase: 99.00,
       recursos: [
         'Pacientes ilimitados',
@@ -54,21 +54,21 @@ const PagamentoPage = () => {
         'Armazenamento de 5GB',
         'Backup automático',
         'Conformidade LGPD',
-        'Atualizacoes incluidas'
+        'Atualizações incluídas'
       ]
     },
     com_ia: {
       nome: 'Plano Com IA',
-      descricao: 'Prontuario completo com recursos de IA assistiva',
+      descricao: 'Prontuário completo com recursos de IA assistiva',
       precoBase: 250.00,
       recursos: [
         'Pacientes ilimitados',
-        'Agentes de IA incluidos',
+        'Agentes de IA incluídos',
         'Armazenamento de 5GB',
         'Backup automático',
-        'Relatorios avancados',
+        'Relatórios avançados',
         'Conformidade LGPD',
-        'Atualizacoes incluidas'
+        'Atualizações incluídas'
       ]
     }
   };
@@ -146,11 +146,11 @@ const PagamentoPage = () => {
       if (redirectUrl) {
         window.location.href = redirectUrl;
       } else {
-        setError('Nao foi possivel iniciar o pagamento.');
+        setError('Não foi possível iniciar o pagamento.');
       }
 
     } catch (err) {
-      console.error('Erro no pagamento:', err);
+      if(process.env.NODE_ENV!=='production')console.error('Erro no pagamento:', err);
       setError(err?.error || 'Erro ao processar pagamento. Tente novamente.');
     } finally {
       setLoading(false);

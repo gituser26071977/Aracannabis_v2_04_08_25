@@ -46,6 +46,7 @@ import {
   VerifiedUser as LgpdIcon,
 } from '@mui/icons-material';
 import modulosService from '../services/modulosService';
+import useConfirm from '../hooks/useConfirm';
 
 // Mapeamento slug → componente de ícone MUI
 const ICONES = {
@@ -74,6 +75,7 @@ const statusChip = (a) => {
 };
 
 const ModulosPage = () => {
+  const { confirm, ConfirmDialog } = useConfirm();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [catalogo, setCatalogo] = useState([]);
@@ -140,7 +142,13 @@ const ModulosPage = () => {
   };
 
   const handleRevogar = async (slug) => {
-    if (!window.confirm(`Tem certeza que deseja revogar o consentimento LGPD e desativar o módulo "${slug}"?`)) return;
+    const ok = await confirm({
+      title: 'Revogar consentimento?',
+      message: `Esta ação desativará o módulo "${slug}" e revogará o consentimento LGPD. Você pode reativar depois.`,
+      confirmLabel: 'Revogar',
+      destructive: true,
+    });
+    if (!ok) return;
     try {
       const r = await modulosService.revogarConsentimento(slug);
       setInfo({ tipo: 'success', msg: r.message || 'Consentimento revogado.' });
@@ -175,6 +183,7 @@ const ModulosPage = () => {
   }
 
   return (
+    <>
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
         <ExtensionIcon color="primary" />
@@ -345,6 +354,8 @@ const ModulosPage = () => {
         </DialogActions>
       </Dialog>
     </Container>
+    <ConfirmDialog />
+    </>
   );
 };
 

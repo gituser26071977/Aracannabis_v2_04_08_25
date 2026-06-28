@@ -25,7 +25,7 @@ const StockPage = () => {
                 const response = await associationService.getProdutos();
                 setProdutos(response);
             } catch (err) {
-                console.error('Erro ao carregar produtos:', err);
+                if(process.env.NODE_ENV!=='production')console.error('Erro ao carregar produtos:', err);
             }
         };
         fetchProdutos();
@@ -43,7 +43,7 @@ const StockPage = () => {
             setStock(stockData);
         } catch (err) {
             setError('Erro ao carregar dados de estoque.');
-            console.error(err);
+            if(process.env.NODE_ENV!=='production')console.error(err);
         }
     };
 
@@ -72,7 +72,7 @@ const StockPage = () => {
             setTimeout(() => setSuccess(''), 3000);
         } catch (err) {
             setError('Erro ao adicionar estoque.');
-            console.error(err);
+            if(process.env.NODE_ENV!=='production')console.error(err);
         }
     };
 
@@ -150,7 +150,6 @@ const StockPage = () => {
             <Dialog open={open} onClose={() => setOpen(false)}>
                 <DialogTitle>Adicionar Estoque</DialogTitle>
                 <DialogContent>
-                    {/* TODO: Substituir por um Selector de Produtos do Backend */}
                     <FormControl fullWidth margin="dense">
                         <InputLabel id="produto-label">Produto</InputLabel>
                         <Select

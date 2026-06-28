@@ -29,6 +29,14 @@ import {
 } from 'recharts';
 import { dashboardService } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import QuickActionsBar from '../components/QuickActionsBar';
+import {
+  PersonAdd as PersonAddIcon,
+  Event as EventIcon,
+  SmartToy as SmartToyIcon,
+  AssignmentInd as AssignmentIndIcon,
+} from '@mui/icons-material';
 
 // ============================================
 // GLASS STAT CARD
@@ -163,6 +171,7 @@ const GlassPaper = ({ children, sx = {}, delay = 0 }) => {
 
 const InternalDashboard = () => {
     const theme = useTheme();
+    const navigate = useNavigate();
     const { currentUser } = useAuth();
     const [loading, setLoading] = useState(true);
     const [stats, setStats] = useState(null);
@@ -178,7 +187,7 @@ const InternalDashboard = () => {
             const data = await dashboardService.getStats();
             setStats(data);
         } catch (err) {
-            console.error('Erro ao carregar dashboard:', err);
+            if(process.env.NODE_ENV!=='production')console.error('Erro ao carregar dashboard:', err);
             setError('Falha ao carregar métricas.');
         } finally {
             setLoading(false);
@@ -205,6 +214,17 @@ const InternalDashboard = () => {
 
     return (
         <Box sx={{ flexGrow: 1, py: { xs: 1, sm: 2 } }}>
+            {/* Quick Actions */}
+            <QuickActionsBar
+                title="Acesso Rápido"
+                actions={[
+                    { label: 'Novo Paciente', description: 'Cadastrar prontuário', icon: <PersonAddIcon />, onClick: () => navigate('/pacientes') },
+                    { label: 'Nova Consulta', description: 'Agendar no calendário', icon: <EventIcon />, onClick: () => navigate('/consultas') },
+                    { label: 'Chat IA', description: 'Assistente multiagente', icon: <SmartToyIcon />, onClick: () => navigate('/ai-chat'), color: 'success.main' },
+                    { label: 'Meus Pacientes', description: 'Lista de prontuários', icon: <AssignmentIndIcon />, onClick: () => navigate('/pacientes') },
+                ]}
+            />
+
             {/* Header */}
             <Box sx={{ mb: { xs: 3, sm: 4 } }}>
                 <Typography
@@ -231,7 +251,7 @@ const InternalDashboard = () => {
 
             {/* KPIs */}
             <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: { xs: 3, sm: 4 } }}>
-                <Grid item xs={12} sm={6} md={3}>
+                <Grid item xs={12} sm={6} md={4}>
                     <StatCard
                         title="Total de Pacientes"
                         value={stats?.total_pacientes || 0}
@@ -241,29 +261,7 @@ const InternalDashboard = () => {
                         delay={0}
                     />
                 </Grid>
-                <Grid item xs={12} sm={6} md={3}>
-                    <StatCard
-                        title="Em Tratamento Ativo"
-                        value={`${stats?.em_tratamento_pct || 0}%`}
-                        subtitle="Taxa de Adesão"
-                        emoji="💊"
-                        icon={<TreatmentIcon />}
-                        color={theme.palette.secondary.main}
-                        delay={0.1}
-                    />
-                </Grid>
-                <Grid item xs={12} sm={6} md={3}>
-                    <StatCard
-                        title="Melhora Registrada"
-                        value={`${stats?.melhora_pct || 0}%`}
-                        subtitle="Evolução Positiva"
-                        emoji="📈"
-                        icon={<ImprovementIcon />}
-                        color={theme.palette.success.main}
-                        delay={0.2}
-                    />
-                </Grid>
-                <Grid item xs={12} sm={6} md={3}>
+                <Grid item xs={12} sm={6} md={4}>
                     <StatCard
                         title="Medicação com Dose Estável > 3 meses"
                         value={`${stats?.dose_estavel_pct || 0}%`}
@@ -271,7 +269,18 @@ const InternalDashboard = () => {
                         emoji="⏱️"
                         icon={<StableIcon />}
                         color={theme.palette.info.main}
-                        delay={0.3}
+                        delay={0.1}
+                    />
+                </Grid>
+                <Grid item xs={12} sm={6} md={4}>
+                    <StatCard
+                        title="Atividade Recente"
+                        value={stats?.atividade_recente || 0}
+                        subtitle="Consultas/evoluções (30d)"
+                        emoji="⚡"
+                        icon={<ImprovementIcon />}
+                        color={theme.palette.success.main}
+                        delay={0.2}
                     />
                 </Grid>
             </Grid>

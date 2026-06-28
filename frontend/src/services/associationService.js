@@ -14,7 +14,7 @@ const associationService = {
             });
             return response.data;
         } catch (error) {
-            console.error('Error fetching associations:', error);
+            if(process.env.NODE_ENV!=='production')console.error('Error fetching associations:', error);
             throw error;
         }
     },
@@ -26,7 +26,7 @@ const associationService = {
             });
             return response.data;
         } catch (error) {
-            console.error('Error creating association:', error);
+            if(process.env.NODE_ENV!=='production')console.error('Error creating association:', error);
             throw error;
         }
     },
@@ -38,7 +38,7 @@ const associationService = {
             });
             return response.data;
         } catch (error) {
-            console.error('Error fetching association details:', error);
+            if(process.env.NODE_ENV!=='production')console.error('Error fetching association details:', error);
             throw error;
         }
     },
@@ -50,7 +50,7 @@ const associationService = {
             });
             return response.data;
         } catch (error) {
-            console.error('Error updating association:', error);
+            if(process.env.NODE_ENV!=='production')console.error('Error updating association:', error);
             throw error;
         }
     },
@@ -62,7 +62,7 @@ const associationService = {
             });
             return response.data;
         } catch (error) {
-            console.error('Error deleting association:', error);
+            if(process.env.NODE_ENV!=='production')console.error('Error deleting association:', error);
             throw error;
         }
     },
@@ -75,7 +75,7 @@ const associationService = {
             });
             return response.data;
         } catch (error) {
-            console.error('Error fetching members:', error);
+            if(process.env.NODE_ENV!=='production')console.error('Error fetching members:', error);
             throw error;
         }
     },
@@ -87,7 +87,7 @@ const associationService = {
             });
             return response.data;
         } catch (error) {
-            console.error('Error adding member:', error);
+            if(process.env.NODE_ENV!=='production')console.error('Error adding member:', error);
             throw error;
         }
     },
@@ -100,7 +100,7 @@ const associationService = {
             });
             return response.data;
         } catch (error) {
-            console.error('Error fetching stock:', error);
+            if(process.env.NODE_ENV!=='production')console.error('Error fetching stock:', error);
             throw error;
         }
     },
@@ -112,7 +112,7 @@ const associationService = {
             });
             return response.data;
         } catch (error) {
-            console.error('Error adding stock:', error);
+            if(process.env.NODE_ENV!=='production')console.error('Error adding stock:', error);
             throw error;
         }
     },
@@ -125,7 +125,7 @@ const associationService = {
             });
             return response.data;
         } catch (error) {
-            console.error('Error fetching produtos:', error);
+            if(process.env.NODE_ENV!=='production')console.error('Error fetching produtos:', error);
             throw error;
         }
     },
@@ -138,7 +138,7 @@ const associationService = {
             });
             return response.data;
         } catch (error) {
-            console.error('Error dispensing item:', error);
+            if(process.env.NODE_ENV!=='production')console.error('Error dispensing item:', error);
             throw error;
         }
     }

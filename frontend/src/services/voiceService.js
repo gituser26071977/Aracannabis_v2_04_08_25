@@ -48,7 +48,7 @@ class VoiceService {
     mode = 'full',
   }) {
     if (this.ws?.readyState === WebSocket.OPEN) {
-      console.warn('[Voice] Already connected');
+      if(process.env.NODE_ENV!=='production')console.warn('[Voice] Already connected');
       return;
     }
 
@@ -67,7 +67,7 @@ class VoiceService {
       this.ws = new WebSocket(wsUrl.toString());
 
       this.ws.onopen = () => {
-        console.log('[Voice] WebSocket connected');
+        if(process.env.NODE_ENV!=='production')console.log('[Voice] WebSocket connected');
         this.reconnectAttempts = 0;
         this._setState('idle');
         resolve();
@@ -78,14 +78,14 @@ class VoiceService {
       };
 
       this.ws.onerror = (error) => {
-        console.error('[Voice] WebSocket error:', error);
+        if(process.env.NODE_ENV!=='production')console.error('[Voice] WebSocket error:', error);
         this._setState('error');
         if (this.onError) this.onError('Connection error');
         reject(error);
       };
 
       this.ws.onclose = () => {
-        console.log('[Voice] WebSocket closed');
+        if(process.env.NODE_ENV!=='production')console.log('[Voice] WebSocket closed');
         this._setState('disconnected');
         this._attemptReconnect({
           tenantId, patientId, doctorId, specialty, wakeWord, language, mode,
@@ -117,7 +117,7 @@ class VoiceService {
    */
   async startRecording() {
     if (this.state !== 'idle' && this.state !== 'listening') {
-      console.warn(`[Voice] Cannot start recording in state: ${this.state}`);
+      if(process.env.NODE_ENV!=='production')console.warn(`[Voice] Cannot start recording in state: ${this.state}`);
       return;
     }
 
@@ -149,10 +149,10 @@ class VoiceService {
 
       this._processor = processor;
       this._setState('listening');
-      console.log('[Voice] Recording started');
+      if(process.env.NODE_ENV!=='production')console.log('[Voice] Recording started');
 
     } catch (error) {
-      console.error('[Voice] Failed to start recording:', error);
+      if(process.env.NODE_ENV!=='production')console.error('[Voice] Failed to start recording:', error);
       this._setState('error');
       if (this.onError) this.onError('Microphone access denied');
     }
@@ -167,7 +167,7 @@ class VoiceService {
       this._sendCommand('stop_recording');
     }
     this._setState('idle');
-    console.log('[Voice] Recording stopped');
+    if(process.env.NODE_ENV!=='production')console.log('[Voice] Recording stopped');
   }
 
   /**
@@ -239,12 +239,12 @@ class VoiceService {
         break;
 
       case 'error':
-        console.error('[Voice] Server error:', payload.message);
+        if(process.env.NODE_ENV!=='production')console.error('[Voice] Server error:', payload.message);
         if (this.onError) this.onError(payload.message);
         break;
 
       default:
-        console.log('[Voice] Unknown message type:', type, payload);
+        if(process.env.NODE_ENV!=='production')console.log('[Voice] Unknown message type:', type, payload);
     }
   }
 
@@ -284,13 +284,13 @@ class VoiceService {
 
   _attemptReconnect(config) {
     if (this.reconnectAttempts >= VOICE_CONFIG.MAX_RECONNECT_ATTEMPTS) {
-      console.error('[Voice] Max reconnect attempts reached');
+      if(process.env.NODE_ENV!=='production')console.error('[Voice] Max reconnect attempts reached');
       if (this.onError) this.onError('Connection lost. Please refresh.');
       return;
     }
 
     this.reconnectAttempts++;
-    console.log(`[Voice] Reconnecting in ${VOICE_CONFIG.RECONNECT_INTERVAL}ms (attempt ${this.reconnectAttempts})`);
+    if(process.env.NODE_ENV!=='production')console.log(`[Voice] Reconnecting in ${VOICE_CONFIG.RECONNECT_INTERVAL}ms (attempt ${this.reconnectAttempts})`);
 
     this.reconnectTimer = setTimeout(() => {
       this.connect(config).catch(() => {
