@@ -1,15 +1,61 @@
 from flask import Blueprint, request, jsonify, send_from_directory, g
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, Paciente, LogAtividade, Profissional, CompartilhamentoPaciente
-from security_config import sanitize_input
-from datetime import datetime
+from security_config import sanitize_input, is_valid_cpf
+from datetime import datetime, date
 import os
+import re
 from werkzeug.utils import secure_filename
 
 pacientes_bp = Blueprint('pacientes', __name__)
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 UPLOAD_FOLDER = 'uploads/pacientes'
+
+# BUG-ALT-04, BUG-ALT-06, BUG-ALT-07 (M24/M25): limites e validação de cadastro de paciente
+NOME_MAX_LEN = 200
+NOME_MIN_LEN = 2
+DATA_NASC_MIN = date(1900, 1, 1)
+DATA_NASC_MAX = date.today()
+NOTA_EVOLUCAO_MAX_LEN = 10000  # BUG-ALT-08 (M24)
+
+def _validate_nome(nome):
+    """BUG-ALT-06/ALT-07: rejeitar nome vazio, só espaços e > 200 chars."""
+    if not nome or not isinstance(nome, str):
+        return False, 'Nome é obrigatório'
+    nome = nome.strip()
+    if len(nome) < NOME_MIN_LEN:
+        return False, f'Nome deve ter ao menos {NOME_MIN_LEN} caracteres'
+    if len(nome) > NOME_MAX_LEN:
+        return False, f'Nome deve ter no máximo {NOME_MAX_LEN} caracteres'
+    return True, None
+
+def _validate_data_nascimento(data_str):
+    """BUG-ALT-04: data_nascimento entre 1900-01-01 e hoje."""
+    try:
+        d = datetime.strptime(data_str, '%Y-%m-%d').date()
+    except (ValueError, TypeError):
+        return False, 'Formato de data inválido. Use YYYY-MM-DD'
+    if d < DATA_NASC_MIN:
+        return False, f'Data de nascimento não pode ser anterior a {DATA_NASC_MIN.isoformat()}'
+    if d > DATA_NASC_MAX:
+        return False, f'Data de nascimento não pode ser futura (hoje: {DATA_NASC_MAX.isoformat()})'
+    return True, None
+
+def _validate_cpf(cpf):
+    """BUG-ALT-05: rejeitar CPF com dígito verificador inválido ou alfanumérico."""
+    if cpf is None:
+        return True, None  # CPF é opcional
+    if not isinstance(cpf, str):
+        return False, 'CPF deve ser uma string'
+    digits = re.sub(r'[^0-9]', '', cpf)
+    if not digits and cpf.strip() == '':
+        return True, None  # vazio é permitido (opcional)
+    if len(digits) != 11:
+        return False, 'CPF deve conter 11 dígitos'
+    if not is_valid_cpf(digits):
+        return False, 'CPF inválido (dígito verificador não confere)'
+    return True, None
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -87,7 +133,18 @@ def verificar_acesso_paciente(profissional_id, paciente_id, nivel_necessario='le
 
 def obter_pacientes_acessiveis(profissional_id):
     """
-    Retorna query com pacientes que o profissional pode acessar
+    Retorna query com pacientes que o profissional pode acessar.
+
+    P0-09 (Missão 18): uso de skip_tenant=True DOCUMENTADO e JUSTIFICADO.
+
+    Justificativa: o profissional pode atuar em MÚLTIPLAS Associações
+    (multi-tenant por design da feature de compartilhamento de pacientes).
+    A função aplica filtros manuais:
+      1. role in {'admin', 'superadmin'} → vê tudo (skip_tenant=True)
+      2. profissional_responsavel_id == profissional_id → seus pacientes
+         mesmo em outra associação (skip_tenant=True)
+      3. pacientes compartilhados via CompartilhamentoPaciente
+         (skip_tenant=True — uniões cross-association são intencionais)
     """
     user = Profissional.query.get(profissional_id)
     
@@ -284,6 +341,33 @@ def cadastrar_paciente():
         if not all(k in data for k in ('nome', 'data_nascimento')):
             return jsonify({'error': 'Nome e Data de Nascimento são obrigatórios'}), 400
 
+        # BUG-ALT-06 (M24): rejeitar nome vazio / só espaços
+        ok, err = _validate_nome(data.get('nome'))
+        if not ok:
+            return jsonify({'error': err}), 400
+
+        # BUG-ALT-04 (M24): validar data de nascimento dentro de faixa razoável
+        ok, err = _validate_data_nascimento(data.get('data_nascimento'))
+        if not ok:
+            return jsonify({'error': err}), 400
+
+        # BUG-ALT-05 (M24): validar CPF (se enviado)
+        if 'cpf' in data and data.get('cpf'):
+            ok, err = _validate_cpf(data.get('cpf'))
+            if not ok:
+                return jsonify({'error': err}), 400
+
+            # BUG-ALT-03 (M24): rejeitar CPF duplicado para o mesmo profissional responsável
+            from sqlalchemy import func
+            existing = Paciente.query.filter(
+                func.replace(func.replace(func.replace(Paciente.cpf, '.', ''), '-', ''), ' ', '') ==
+                re.sub(r'[^0-9]', '', data['cpf']),
+                Paciente.profissional_responsavel_id == profissional_id,
+                Paciente.is_active == True  # noqa: E712
+            ).first()
+            if existing:
+                return jsonify({'error': f'Já existe paciente cadastrado com este CPF (ID {existing.id}: {existing.nome})'}), 409
+
         try:
             # Converter string de data para objeto date
             data_nascimento = datetime.strptime(data['data_nascimento'], '%Y-%m-%d').date()
@@ -430,6 +514,22 @@ def atualizar_paciente(paciente_id):
         foto_file = None
 
     data = sanitize_input(data)
+
+    # BUG-ALT-06/04/05 (M24): mesmas validações no PUT
+    if 'nome' in data:
+        ok, err = _validate_nome(data.get('nome'))
+        if not ok:
+            return jsonify({'error': err}), 400
+
+    if 'data_nascimento' in data:
+        ok, err = _validate_data_nascimento(data.get('data_nascimento'))
+        if not ok:
+            return jsonify({'error': err}), 400
+
+    if 'cpf' in data and data.get('cpf'):
+        ok, err = _validate_cpf(data.get('cpf'))
+        if not ok:
+            return jsonify({'error': err}), 400
 
     try:
         # Atualizar campos se fornecidos
