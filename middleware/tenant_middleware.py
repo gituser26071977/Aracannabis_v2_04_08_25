@@ -47,41 +47,30 @@ def register_tenant_middleware(app):
 
             user_id = int(identity)
 
-            # 1. Try to get Association ID from Header
-            assoc_id = request.headers.get('X-Association-ID')
-
-            if assoc_id:
-                # Validate if user belongs to this association
-                link = UsuarioAssociacao.query.filter_by(
-                    profissional_id=user_id,
-                    associacao_id=int(assoc_id)
-                ).first()
-
-                if link and link.status == 'active':
-                    g.current_association = link.associacao
-                    g.user_role = link.role
-                    return # Sucesso
-                else:
-                    return jsonify({'error': 'Acesso negado a esta associação'}), 403
-            
-            # 2. Se não houver header, verificar papel global do usuário
+            # P0-12 (Missão 18): tenant vem EXCLUSIVAMENTE do JWT.
+            # O header X-Association-ID NÃO é mais lido para escolher tenant.
+            # Esse vetor permitia spoof cross-tenant (atacante enviava
+            # X-Association-ID: <id_de_outra_assoc>).
+            #
+            # Ordem de resolução (somente JWT):
+            #   1. role global == 'superadmin' → g.is_superadmin = True
+            #   2. primeira UsuarioAssociacao ativa do profissional
             profissional = Profissional.query.get(user_id)
             if profissional:
                 g.user_role = profissional.role
                 if profissional.role == 'superadmin':
                     g.is_superadmin = True
                     g.current_association = None
-                    return # Superadmin pode operar sem associação específica
+                    return
 
-            # 3. Fallback para a primeira associação ativa encontrada para usuários comuns
-            link = UsuarioAssociacao.query.filter_by(profissional_id=user_id, status='active').first()
+            link = UsuarioAssociacao.query.filter_by(
+                profissional_id=user_id, status='active'
+            ).first()
             if link:
                 g.current_association = link.associacao
                 g.user_role = link.role
             else:
-                 # Usuário sem associação? Caso especial, talvez superadmin (já tratado acima) ou aguardando aprovação.
-                 g.current_association = None
-                 # We don't block here, we let the route handle if it needs association
+                g.current_association = None
                  
         except Exception:
             # app.logger.error(f"Tenant Middleware Error: {e}")

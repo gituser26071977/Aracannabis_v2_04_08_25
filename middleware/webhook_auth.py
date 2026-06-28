@@ -6,8 +6,20 @@ from flask import request, jsonify
 from functools import wraps
 import os
 import logging
+import hmac as _hmac
+from config import is_production
 
 logger = logging.getLogger(__name__)
+
+
+def _safe_compare(a: str, b: str) -> bool:
+    """Comparação constant-time (anti timing-attack). P0-11."""
+    if a is None or b is None:
+        return False
+    try:
+        return _hmac.compare_digest(str(a), str(b))
+    except Exception:
+        return False
 
 def webhook_auth_required(f):
     """
@@ -30,7 +42,7 @@ def webhook_auth_required(f):
         if not webhook_secret:
             logger.warning("WEBHOOK_SECRET_KEY não configurado! Webhook desprotegido!")
             # Em ambiente de desenvolvimento, permitir sem secret (com warning)
-            if os.environ.get('FLASK_ENV') == 'development':
+            if not is_production():
                 logger.warning("Ambiente de desenvolvimento - permitindo webhook sem autenticação")
             else:
                 return jsonify({
@@ -49,7 +61,7 @@ def webhook_auth_required(f):
             }), 401
         
         # Validar secret
-        if provided_secret != webhook_secret:
+        if not _safe_compare(provided_secret, webhook_secret):
             logger.error(f"Tentativa de acesso ao webhook com secret inválido do IP: {request.remote_addr}")
             return jsonify({
                 'error': 'Autenticação falhou',
@@ -106,7 +118,9 @@ def verify_webhook_signature(payload: dict, signature: str, secret: str) -> bool
         hashlib.sha256
     ).hexdigest()
     
-    # Comparação segura contra timing attacks
+    # Comparação segura contra timing attacks (P0-11)
+    if not signature or len(signature) > 256:
+        return False
     return hmac.compare_digest(f"sha256={expected_signature}", signature)
 
 
