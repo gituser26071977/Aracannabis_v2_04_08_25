@@ -1,0 +1,8 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./shared-contracts" },
+    { "path": "./mobile" },
+    { "path": "./backend" }
+  ]
+}

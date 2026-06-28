@@ -1,0 +1,45 @@
+{
+  "name": "araflow-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AraFlow monorepo — wellness neuroregulation mobile module for AraOS",
+  "workspaces": [
+    "mobile",
+    "backend",
+    "shared-contracts",
+    "tools/araflow-cli"
+  ],
+  "engines": {
+    "node": ">=20.0.0 <25.0.0",
+    "npm": ">=10.0.0"
+  },
+  "scripts": {
+    "lint": "npm run lint --workspaces --if-present",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
+    "test": "npm run test --workspaces --if-present",
+    "test:watch": "npm run test:watch --workspaces --if-present",
+    "coverage": "npm run coverage --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "audit": "npm audit --workspaces --audit-level=high",
+    "build": "npm run build --workspaces --if-present",
+    "clean": "rm -rf node_modules mobile/node_modules backend/node_modules shared-contracts/node_modules mobile/android/build mobile/ios/build",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "husky": "^9.0.11",
+    "lint-staged": "^15.2.2",
+    "prettier": "^3.2.5",
+    "typescript": "^5.4.5"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "eslint --max-warnings 0 --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ]
+  }
+}
