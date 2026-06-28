@@ -1,6 +1,6 @@
 """
 Webhook Handler Unificado — processa callbacks de MP, Stripe e Asaas
-com idempotência garantida.
+com idempotência garantida (FASE 4.1: registro atomico via register_webhook_event).
 """
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from models import db, Assinatura, Fatura, PagamentoRegistro
 from models_extra import WebhookLog
 from services.payment_provider_factory import PaymentProviderFactory
 from services.feature_flag_service import FeatureFlagService
+from services.webhook_auth import register_webhook_event
 
 logger = logging.getLogger(__name__)
 
@@ -35,27 +36,30 @@ class WebhookHandler:
         event_type = normalized.get("event_type", "unknown")
         provider_event_id = self._extract_event_id(provider_name, payload)
 
-        # Idempotência: verificar se já processamos
-        existing = WebhookLog.query.filter_by(
-            provider=provider_name, provider_event_id=provider_event_id
-        ).first()
-        if existing and existing.processed:
-            logger.info(f"Webhook {provider_name}/{provider_event_id} já processado. Ignorando.")
-            return {"success": True, "idempotent": True, "webhook_log_id": existing.id}
-
-        # Criar/Atualizar log
-        if not existing:
-            log = WebhookLog(
-                provider=provider_name,
-                event_type=event_type,
-                provider_event_id=provider_event_id,
-                payload=payload,
-                processed=False,
+        # FASE 4.1 — idempotência atômica via UNIQUE constraint.
+        # Substitui o padrão frágil SELECT+INSERT (race condition) por um
+        # INSERT direto: UNIQUE(provider, provider_event_id) faz a deduplicação
+        # no banco. Requests simultâneas: 2ª pega IntegrityError → replay=True.
+        is_replay, log_id = register_webhook_event(
+            provider=provider_name,
+            event_id=provider_event_id,
+            event_type=event_type,
+            payload=payload,
+        )
+        if is_replay:
+            logger.info(
+                f"Webhook {provider_name}/{provider_event_id} já registrado. "
+                f"Idempotente (log_id={log_id})."
             )
-            db.session.add(log)
-            db.session.commit()
-        else:
-            log = existing
+            return {"success": True, "idempotent": True, "webhook_log_id": log_id}
+
+        log = WebhookLog.query.get(log_id) if log_id else None
+        if log is None:
+            # Fallback defensivo: registro atomic falhou silenciosamente,
+            # buscar para obter referencia (caminho raro)
+            log = WebhookLog.query.filter_by(
+                provider=provider_name, provider_event_id=provider_event_id
+            ).first()
 
         try:
             result = self._handle_event(provider_name, normalized, payload)

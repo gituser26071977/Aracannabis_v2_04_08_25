@@ -19,7 +19,23 @@ logger = logging.getLogger(__name__)
 
 
 def _is_production() -> bool:
-    return os.environ.get("ENVIRONMENT", "development").lower() in ("production", "prod")
+    """P0-10 (Missão 18): fonte ÚNICA de verdade para detecção de produção.
+
+    Aceita apenas ENVIRONMENT=production|prod (case-insensitive).
+    FLASK_ENV=production também é aceito como alias para retrocompatibilidade,
+    mas a variável canônica é ENVIRONMENT.
+    """
+    env = os.environ.get("ENVIRONMENT", "").strip().lower()
+    if env in ("production", "prod"):
+        return True
+    # Backward-compat alias
+    flask_env = os.environ.get("FLASK_ENV", "").strip().lower()
+    return flask_env == "production"
+
+
+def is_production() -> bool:
+    """API pública usada por toda a aplicação. Use sempre esta função."""
+    return _is_production()
 
 
 # Carregar validador de segredos. Importação tardia para evitar ciclo.
