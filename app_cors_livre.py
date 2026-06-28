@@ -8,9 +8,10 @@ from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from flask_migrate import Migrate
 from models import db
-from config import get_config
+from config import get_config, is_production
 from security_config import ALLOWED_ORIGINS, init_limiter, add_security_headers
 from tenant_lib import configure_tenant_filters
+from services.webhook_auth import assert_required_secrets_on_startup
 import secrets
 
 
@@ -27,11 +28,37 @@ def create_app(config_obj=None):
     # Configurar chave secreta para sessões
     app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", secrets.token_hex(32))
 
+    # P0-A FASE 4: abortar startup em producao se secrets de webhook faltarem
+    is_prod = is_production()
+    assert_required_secrets_on_startup(
+        env_vars=[
+            "MERCADOPAGO_WEBHOOK_SECRET",
+            "MERCADOPAGO_MODULOS_WEBHOOK_SECRET",
+            "EVOLUTION_WEBHOOK_SECRET",
+            "DR_ANDERSON_WEBHOOK_SECRET",
+            "INTERNAL_SERVICE_KEY",
+        ],
+        is_production=is_prod,
+    )
+
     # Configurar token CSRF
+    # P0-06 (Missão 18): gerar placeholder, mas garantir via _ensure_csrf_token
     app.config["CSRF_TOKEN"] = secrets.token_hex(32)
+    try:
+        from security_config import _ensure_csrf_token
+        _ensure_csrf_token(app)
+    except RuntimeError as exc:
+        # Em produção ABORTA startup se CSRF_TOKEN ausente
+        if is_prod:
+            raise
+        # Em dev apenas loga warning
+        print(f"[WARN] CSRF token: {exc}")
 
     # Configurações de upload de arquivos
-    app.config["MAX_CONTENT_LENGTH"] = 500 * 1024 * 1024  # 500MB max file size
+    # P0-07 (Missão 18): MAX_CONTENT_LENGTH vem EXCLUSIVAMENTE de config.py
+    # (fonte única de verdade). Nunca redefinir aqui.
+    if "MAX_CONTENT_LENGTH" not in app.config:
+        app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # fallback 16MB
     app.config["UPLOAD_FOLDER_EXAMES"] = os.path.join(os.getcwd(), "uploads", "exames")
     app.config["ALLOWED_EXTENSIONS"] = {
         "txt",
@@ -68,13 +95,12 @@ def create_app(config_obj=None):
             "Authorization",
             "X-CSRF-Token",
             "X-Requested-With",
-            "X-Association-ID",
+            # P0-12: X-Association-ID REMOVIDO do CORS (bloqueia vetor spoof)
         ],
         expose_headers=[
             "Content-Type",
             "Authorization",
             "X-CSRF-Token",
-            "X-Association-ID",
         ],
         supports_credentials=True,
         max_age=86400,
@@ -135,6 +161,81 @@ def create_app(config_obj=None):
                 "documentation": "Swagger UI available at /api/swagger",
             }
         )
+
+    # Rota de healthcheck (MISSÃO 20 — FASE 3 monitoramento)
+    # Verifica dependências: DB, Redis, Secrets obrigatórios.
+    # Retorna 200 quando tudo OK; 503 quando algo está down.
+    @app.route("/api/health")
+    def health():
+        checks = {}
+        overall_ok = True
+
+        # 1. PostgreSQL
+        try:
+            db.session.execute(db.text("SELECT 1"))
+            checks["postgres"] = "ok"
+        except Exception as exc:
+            checks["postgres"] = f"fail: {type(exc).__name__}"
+            overall_ok = False
+
+        # 2. Redis (via flask-limiter storage se configurado)
+        try:
+            import redis as _redis
+            from config import get_config
+            cfg = get_config()
+            redis_url = getattr(cfg, "REDIS_URL", None) or "redis://localhost:6379/0"
+            r = _redis.Redis.from_url(redis_url, socket_connect_timeout=2)
+            r.ping()
+            checks["redis"] = "ok"
+        except Exception as exc:
+            checks["redis"] = f"fail: {type(exc).__name__}"
+            overall_ok = False
+
+        # 3. Secrets obrigatórios (não revela valores)
+        import os as _os
+        for secret in ("JWT_SECRET_KEY", "SECRET_KEY", "CSRF_TOKEN"):
+            v = _os.environ.get(secret) or app.config.get(secret)
+            if not v or len(str(v)) < 32:
+                checks[f"secret:{secret}"] = "fail: ausente ou <32 chars"
+                overall_ok = False
+            else:
+                checks[f"secret:{secret}"] = "ok"
+
+        # 4. Disk space (mínimo 1GB livre)
+        try:
+            import shutil
+            free_gb = shutil.disk_usage("/").free / (1024**3)
+            checks["disk_free_gb"] = round(free_gb, 2)
+            if free_gb < 1.0:
+                overall_ok = False
+        except Exception:
+            pass
+
+        body = {
+            "status": "ok" if overall_ok else "degraded",
+            "checks": checks,
+            "timestamp": _os.environ.get("_TS", "") or "",
+        }
+        # Não cachear health
+        resp = jsonify(body)
+        resp.headers["Cache-Control"] = "no-store"
+        return resp, (200 if overall_ok else 503)
+
+    # Rota de schema/version (MISSAO 28 — FASE 4)
+    # Retorna informacoes de migrations + schema para observabilidade pos-deploy.
+    # Apenas leitura. NAO autentica (uso operacional).
+    @app.route("/api/schema-version", methods=["GET"])
+    def schema_version():
+        from services.deploy_guard import get_schema_version
+        try:
+            info = get_schema_version(db)
+            # status 200 sempre — frontend decide se esta saudavel
+            return jsonify(info), 200
+        except Exception as exc:
+            return jsonify({
+                "error": "schema_version_unavailable",
+                "detail": str(exc),
+            }), 503
 
     # Registrar blueprints
     from routes.auth import auth_bp, profissionais_bp
@@ -326,6 +427,20 @@ def create_app(config_obj=None):
             init_anuncios_table()
         except Exception as e:
             print(f"⚠️ Erro ao inicializar anúncios: {e}")
+
+        # M28 FASE 2+3 — Guard de migrations + schema preflight
+        # ABORTA startup se alembic divergir de head OU se colunas criticas
+        # estiverem ausentes. Em dev/staging: somente loga.
+        from services.deploy_guard import run_all_checks
+        try:
+            run_all_checks(db, is_production=is_prod)
+            print("[deploy_guard] OK: migrations + schema em conformidade")
+        except RuntimeError as exc:
+            # Em producao isto NAO pode ser silenciado. Logar e re-raise
+            # para que o container saia com codigo != 0 e o orchestrator
+            # (docker, k8s, systemd) NAO inicie workers.
+            print(f"\n🚨 [deploy_guard] STARTUP ABORTADO:\n{exc}\n")
+            raise
 
         # 3. Inicializar feature flags padrão
         try:
