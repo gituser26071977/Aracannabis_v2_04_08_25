@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, Evolucao, Paciente, Profissional, LogAtividade, Exame
-from datetime import datetime
+from datetime import datetime, date
 # Removido import json e process_evolution_input daqui, pois a lógica de IA será chamada de forma diferente
 # Agora importamos as db_tools e o processador de IA de forma separada
 # from services.ai_agents import process_evolution_input, process_audio_file, process_video_file # IA para análise de texto - TEMPORARIAMENTE DESABILITADO
@@ -88,23 +88,32 @@ def registrar_evolucao(paciente_id):
         return jsonify({'error': 'Paciente não encontrado'}), 404
     
     data = request.get_json()
-    
+
     # Validar dados obrigatórios
     if 'nota_evolucao' not in data or not data['nota_evolucao'].strip():
         return jsonify({'error': 'Nota de evolução é obrigatória'}), 400
-    
+
+    # BUG-ALT-08 (M24): limitar tamanho da nota para evitar DOS e problemas de UI
+    NOTA_EVOLUCAO_MAX_LEN = 10000
     input_text = data['nota_evolucao'].strip()
+    if len(input_text) > NOTA_EVOLUCAO_MAX_LEN:
+        return jsonify({'error': f'Nota de evolução deve ter no máximo {NOTA_EVOLUCAO_MAX_LEN} caracteres'}), 400
+
     llm_provider = data.get('llm_provider') # Novo: ex: "ollama", "groq", "openai"
     llm_model_name = data.get('llm_model_name') # Novo: ex: "llama3:8b-instruct-q4_1", "gpt-4-turbo"
-    
+
     # Data da evolução (pode vir do payload ou ser a data atual)
     data_evolucao_str = data.get('data_evolucao')
     if not data_evolucao_str:
         data_evolucao_str = datetime.utcnow().strftime('%Y-%m-%d')
     else:
-        # Validar formato da data se fornecida
+        # Validar formato e range da data se fornecida (BUG-ALT-04 M24)
         try:
-            datetime.strptime(data_evolucao_str, '%Y-%m-%d')
+            d = datetime.strptime(data_evolucao_str, '%Y-%m-%d').date()
+            if d > date.today():
+                return jsonify({'error': 'Data de evolução não pode ser futura'}), 400
+            if d < date(2000, 1, 1):
+                return jsonify({'error': 'Data de evolução não pode ser anterior a 2000-01-01'}), 400
         except ValueError:
             return jsonify({'error': 'Formato de data_evolucao inválido. Use YYYY-MM-DD'}), 400
 
