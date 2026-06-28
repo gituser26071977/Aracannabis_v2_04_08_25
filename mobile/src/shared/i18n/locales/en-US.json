@@ -1,0 +1,49 @@
+{
+  "app": {
+    "name": "AraFlow",
+    "tagline": "Autonomic regulation through breath"
+  },
+  "placeholder": {
+    "foundationReady": "AraFlow foundation is ready. Features will ship in upcoming sprints."
+  },
+  "errors": {
+    "global": {
+      "title": "Something went wrong",
+      "body": "We hit an unexpected issue. You can try again.",
+      "code": "Error code: {{code}}",
+      "retry": "Try again"
+    },
+    "validation": {
+      "required": "This field is required",
+      "tooShort": "Minimum of {{min}} characters",
+      "tooLong": "Maximum of {{max}} characters",
+      "invalidEmail": "Invalid email",
+      "invalidNumber": "Invalid number"
+    }
+  },
+  "common": {
+    "ok": "OK",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "back": "Back",
+    "next": "Next",
+    "skip": "Skip",
+    "save": "Save",
+    "close": "Close",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "warning": "Warning"
+  },
+  "phases": {
+    "inhale": "Inhale",
+    "hold-in": "Hold",
+    "exhale": "Exhale",
+    "hold-out": "Hold"
+  },
+  "protocols": {
+    "diaphragmatic": "Diaphragmatic breathing",
+    "box_4_4_4_4": "Box breathing 4-4-4-4",
+    "physiological_sigh": "Physiological sigh"
+  }
+}

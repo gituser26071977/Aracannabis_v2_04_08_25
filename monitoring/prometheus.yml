@@ -1,0 +1,76 @@
+# ================================================================
+# AraOS — Prometheus (MISSÃO 20 FASE 3)
+# Scrape targets: API, Redis, PG, Workers, RQ, Node Exporter, Webhooks
+# ================================================================
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'araos'
+    environment: 'production'
+
+scrape_configs:
+  # ── Backend Flask (via /api/health + métricas in-process) ──
+  - job_name: 'siap-backend'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['siap-backend:5002']
+        labels: { env: production }
+      - targets: ['siap-backend-staging:5002']
+        labels: { env: staging }
+
+  # ── PostgreSQL ──
+  - job_name: 'siap-postgres'
+    static_configs:
+      - targets: ['siap-pg-exporter:9187']
+        labels: { env: production }
+
+  # ── Redis ──
+  - job_name: 'siap-redis'
+    static_configs:
+      - targets: ['siap-redis-exporter:9121']
+        labels: { env: production }
+
+  # ── Node Exporter (CPU, RAM, Disk) ──
+  - job_name: 'node'
+    static_configs:
+      - targets: ['siap-node-exporter:9100']
+        labels: { env: production }
+
+  # ── RQ Workers (via rq-exporter) ──
+  - job_name: 'rq-workers'
+    static_configs:
+      - targets: ['siap-rq-exporter:9726']
+
+  # ── Webhook queue (custom exporter ou sidecar) ──
+  - job_name: 'webhook-queue'
+    static_configs:
+      - targets: ['siap-webhook-exporter:9099']
+
+  # ── Blackbox (probepoint externo) ──
+  - job_name: 'blackbox-external'
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - https://api.visualsmartflow.com.br/api/status
+          - https://visualsmartflow.com.br/
+        labels: { env: production }
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: siap-blackbox:9115
+
+# ── Regras de alerta (referência: rules/alert.rules.yml) ──
+rule_files:
+  - 'rules/*.yml'
+
+# ── Alertmanager ──
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['siap-alertmanager:9093']

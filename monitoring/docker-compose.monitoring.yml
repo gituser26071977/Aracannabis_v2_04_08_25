@@ -1,0 +1,95 @@
+# ================================================================
+# AraOS — Monitoring Stack (MISSÃO 20 FASE 3)
+# Prometheus + Grafana + Alertmanager + Exporters
+# Uso: docker-compose -f monitoring/docker-compose.monitoring.yml up -d
+# ================================================================
+version: '3.8'
+
+services:
+
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: siap-prometheus
+    restart: unless-stopped
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./rules:/etc/prometheus/rules:ro
+      - siap_prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    networks: [siap-internal]
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: siap-alertmanager
+    restart: unless-stopped
+    volumes:
+      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    ports:
+      - "9093:9093"
+    networks: [siap-internal]
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    container_name: siap-grafana
+    restart: unless-stopped
+    volumes:
+      - siap_grafana_data:/var/lib/grafana
+      - ./grafana-provisioning:/etc/grafana/provisioning:ro
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    ports:
+      - "3001:3000"
+    networks: [siap-internal]
+    depends_on: [prometheus]
+
+  node-exporter:
+    image: prom/node-exporter:v1.7.0
+    container_name: siap-node-exporter
+    restart: unless-stopped
+    pid: host
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    networks: [siap-internal]
+
+  pg-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: siap-pg-exporter
+    restart: unless-stopped
+    environment:
+      - DATA_SOURCE_NAME=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@siap-db:5432/${POSTGRES_DB}?sslmode=disable
+    networks: [siap-internal]
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.58.0
+    container_name: siap-redis-exporter
+    restart: unless-stopped
+    environment:
+      - REDIS_ADDR=siap-redis:6379
+    networks: [siap-internal]
+
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.25.0
+    container_name: siap-blackbox
+    restart: unless-stopped
+    networks: [siap-internal]
+
+volumes:
+  siap_prometheus_data:
+  siap_grafana_data:
+
+networks:
+  siap-internal:
+    external: true

@@ -1,0 +1,46 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
+    "jsx": "react-native",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "allowJs": true,
+    "noEmit": true,
+    "isolatedModules": true,
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "useUnknownInCatchVariables": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true,
+    "baseUrl": "./",
+    "paths": {
+      "@core/*": ["src/core/*"],
+      "@features/*": ["src/features/*"],
+      "@shared/*": ["src/shared/*"],
+      "@infrastructure/*": ["src/infrastructure/*"],
+      "@contracts/*": ["../shared-contracts/src/*"],
+      "@araflow/shared-contracts": ["../shared-contracts/src/index.ts"],
+      "@araflow/shared-contracts/*": ["../shared-contracts/src/*"]
+    },
+    "types": ["jest", "react-native", "node"]
+  },
+  "include": [
+    "src/**/*",
+    "__tests__/**/*",
+    "e2e/**/*",
+    "jest.setup.ts",
+    "index.js"
+  ],
+  "exclude": ["node_modules", "android", "ios", "build", "coverage"]
+}

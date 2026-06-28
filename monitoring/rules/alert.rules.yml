@@ -1,0 +1,114 @@
+# ================================================================
+# AraOS — Prometheus Alert Rules (MISSÃO 20)
+# ================================================================
+groups:
+
+  - name: siap-availability
+    interval: 30s
+    rules:
+      - alert: SiapBackendDown
+        expr: up{job="siap-backend"} == 0
+        for: 2m
+        labels: { severity: critical }
+        annotations:
+          summary: "Backend AraOS está DOWN"
+          description: "Instância {{ $labels.instance }} não responde há 2+ minutos."
+
+      - alert: SiapPostgresDown
+        expr: pg_up == 0
+        for: 1m
+        labels: { severity: critical }
+        annotations:
+          summary: "PostgreSQL DOWN"
+          description: "Conexão com PG perdida."
+
+      - alert: SiapRedisDown
+        expr: redis_up == 0
+        for: 1m
+        labels: { severity: high }
+        annotations:
+          summary: "Redis DOWN"
+          description: "Cache e rate-limit podem estar afetados."
+
+      - alert: SiapAPI5xxSpike
+        expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.1
+        for: 5m
+        labels: { severity: high }
+        annotations:
+          summary: "Taxa de 5xx acima de 0.1/s"
+          description: "Investigar {{ $labels.instance }}."
+
+      - alert: SiapHealthDegraded
+        expr: probe_http_status_code{job="blackbox-external"} != 200
+        for: 3m
+        labels: { severity: critical }
+        annotations:
+          summary: "/api/health retornou !=200"
+          description: "{{ $labels.instance }} pode estar com dependência down."
+
+  - name: siap-capacity
+    interval: 30s
+    rules:
+      - alert: SiapHighCPU
+        expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+        for: 10m
+        labels: { severity: high }
+        annotations:
+          summary: "CPU >85% por 10min em {{ $labels.instance }}"
+
+      - alert: SiapHighMemory
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 90
+        for: 10m
+        labels: { severity: high }
+        annotations:
+          summary: "Memória >90% em {{ $labels.instance }}"
+
+      - alert: SiapDiskSpaceLow
+        expr: (1 - (node_filesystem_avail_bytes{fstype!="tmpfs"} / node_filesystem_size_bytes)) * 100 > 85
+        for: 30m
+        labels: { severity: high }
+        annotations:
+          summary: "Disco >85% em {{ $labels.instance }}"
+          description: "Risco de falha em uploads; backup fica comprometido."
+
+      - alert: SiapPGConnectionsHigh
+        expr: pg_stat_activity_count > 80
+        for: 5m
+        labels: { severity: high }
+        annotations:
+          summary: "PG connections >80"
+          description: "Pool próximo do limite (config: 5+10)."
+
+      - alert: SiapRQQueueGrowing
+        expr: rq_queue_size > 100
+        for: 10m
+        labels: { severity: medium }
+        annotations:
+          summary: "RQ queue >100 jobs"
+          description: "Workers podem estar saturados."
+
+  - name: siap-business
+    interval: 1m
+    rules:
+      - alert: SiapMercadoPagoFailures
+        expr: rate(mercadopago_webhook_failures_total[10m]) > 0.05
+        for: 10m
+        labels: { severity: high }
+        annotations:
+          summary: "Webhook MP com taxa de falha elevada"
+          description: "Possível perda de pagamentos — investigar imediatamente."
+
+      - alert: SiapEvolutionAPAFailures
+        expr: rate(evolution_webhook_failures_total[10m]) > 0.1
+        for: 10m
+        labels: { severity: medium }
+        annotations:
+          summary: "Webhook WhatsApp/Evolution com falhas"
+
+      - alert: SiapBackupStale
+        expr: time() - siap_last_backup_timestamp_seconds > 90000  # 25h
+        for: 1h
+        labels: { severity: high }
+        annotations:
+          summary: "Backup diário não executou"
+          description: "Último backup > 25h atrás."

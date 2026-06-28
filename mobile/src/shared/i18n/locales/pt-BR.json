@@ -1,0 +1,49 @@
+{
+  "app": {
+    "name": "AraFlow",
+    "tagline": "Regulação autonômica por respiração"
+  },
+  "placeholder": {
+    "foundationReady": "A fundação do AraFlow está pronta. As funcionalidades serão entregues nos próximos sprints."
+  },
+  "errors": {
+    "global": {
+      "title": "Algo deu errado",
+      "body": "Encontramos um problema inesperado. Você pode tentar novamente.",
+      "code": "Código do erro: {{code}}",
+      "retry": "Tentar novamente"
+    },
+    "validation": {
+      "required": "Este campo é obrigatório",
+      "tooShort": "Mínimo de {{min}} caracteres",
+      "tooLong": "Máximo de {{max}} caracteres",
+      "invalidEmail": "E-mail inválido",
+      "invalidNumber": "Número inválido"
+    }
+  },
+  "common": {
+    "ok": "OK",
+    "cancel": "Cancelar",
+    "confirm": "Confirmar",
+    "back": "Voltar",
+    "next": "Próximo",
+    "skip": "Pular",
+    "save": "Salvar",
+    "close": "Fechar",
+    "loading": "Carregando...",
+    "error": "Erro",
+    "success": "Sucesso",
+    "warning": "Atenção"
+  },
+  "phases": {
+    "inhale": "Inspire",
+    "hold-in": "Segure",
+    "exhale": "Expire",
+    "hold-out": "Segure"
+  },
+  "protocols": {
+    "diaphragmatic": "Respiração diafragmática",
+    "box_4_4_4_4": "Respiração quadrada 4-4-4-4",
+    "physiological_sigh": "Suspiro fisiológico"
+  }
+}
