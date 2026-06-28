@@ -77,7 +77,7 @@ const ExamChart = ({ patientId }) => {
           setSelectedExam(availableExams[0].titulo);
         }
       } catch (err) {
-        console.error('Erro ao carregar exames para gráfico:', err);
+        if(process.env.NODE_ENV!=='production')console.error('Erro ao carregar exames para gráfico:', err);
         setError('Erro ao carregar exames disponíveis');
       }
     };
@@ -116,7 +116,7 @@ const ExamChart = ({ patientId }) => {
 
         setChartData(data);
       } catch (err) {
-        console.error('Erro ao carregar dados do gráfico:', err);
+        if(process.env.NODE_ENV!=='production')console.error('Erro ao carregar dados do gráfico:', err);
         setError('Erro ao carregar dados do gráfico');
         setChartData(null);
       } finally {
@@ -394,12 +394,9 @@ const ExamChart = ({ patientId }) => {
   );
 };
 
-// Helper for alpha color - simple version as mui alpha might duplicate
+// Helper for alpha color - simple version
 function alpha(color, opacity) {
-  // Simple mock if not using mui system alpha
-  // Returns a generic rgba string assuming color is hex. 
-  // Ideally use 'import { alpha } from "@mui/material/styles"' but 'useTheme' gives us access.
-  // For simplicity, let's just use a hardcoded color overlap or try importing alpha from mui/material
+  // Returns rgba string assuming color is hex.
   return color + Math.round(opacity * 255).toString(16).padStart(2, '0');
 }
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Box,
   Button,
@@ -24,10 +24,11 @@ import {
   IconButton
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
-import { PhotoCamera, Delete } from '@mui/icons-material';
+import { PhotoCamera, Delete, Save as SaveIcon } from '@mui/icons-material';
 import { pacientesService, lgpdService } from '../services/api';
 import LGPDBanner from './LGPDBanner';
 import PrivacyPolicy from './PrivacyPolicy';
+import QuickChipSelect from './QuickChipSelect';
 
 const PatientForm = ({ onSave, initialData = null }) => {
   const [formData, setFormData] = useState({
@@ -92,7 +93,7 @@ const PatientForm = ({ onSave, initialData = null }) => {
     setLoading(true);
     setError('');
 
-    console.log('Enviando dados do formulário:', formData);
+    if(process.env.NODE_ENV!=='production')console.log('Enviando dados do formulário:', formData);
 
     try {
       let result;
@@ -113,15 +114,15 @@ const PatientForm = ({ onSave, initialData = null }) => {
 
       if (initialData?.id) {
         // Atualizar paciente existente
-        console.log('Atualizando paciente existente com ID:', initialData.id);
+        if(process.env.NODE_ENV!=='production')console.log('Atualizando paciente existente com ID:', initialData.id);
         result = await pacientesService.atualizar(initialData.id, dadosEnvio);
       } else {
         // Criar novo paciente
-        console.log('Criando novo paciente');
+        if(process.env.NODE_ENV!=='production')console.log('Criando novo paciente');
         result = await pacientesService.criar(dadosEnvio);
       }
 
-      console.log('Resposta do servidor:', result);
+      if(process.env.NODE_ENV!=='production')console.log('Resposta do servidor:', result);
 
       // Registrar consentimento LGPD se for um novo paciente ou se o consentimento foi alterado
       if (formData.consentimento_lgpd &&
@@ -131,9 +132,9 @@ const PatientForm = ({ onSave, initialData = null }) => {
             result.paciente.id,
             formData.consentimento_lgpd
           );
-          console.log('Consentimento LGPD registrado com sucesso');
+          if(process.env.NODE_ENV!=='production')console.log('Consentimento LGPD registrado com sucesso');
         } catch (consentError) {
-          console.error('Erro ao registrar consentimento LGPD:', consentError);
+          if(process.env.NODE_ENV!=='production')console.error('Erro ao registrar consentimento LGPD:', consentError);
           // Não interromper o fluxo principal se houver erro no registro de consentimento
         }
       }
@@ -164,9 +165,9 @@ const PatientForm = ({ onSave, initialData = null }) => {
       }
 
     } catch (err) {
-      console.error('Erro detalhado ao salvar paciente:', err);
+      if(process.env.NODE_ENV!=='production')console.error('Erro detalhado ao salvar paciente:', err);
       if (err.response) {
-        console.error('Resposta do servidor:', err.response);
+        if(process.env.NODE_ENV!=='production')console.error('Resposta do servidor:', err.response);
       }
       setError(err.error || 'Erro ao salvar paciente');
     } finally {
@@ -177,6 +178,21 @@ const PatientForm = ({ onSave, initialData = null }) => {
   const handleCloseSnackbar = () => {
     setSuccess(false);
   };
+
+  const formRef = useRef(null);
+
+  // Atalho: Ctrl+S / Cmd+S = salvar
+  React.useEffect(() => {
+    const handler = (e) => {
+      const mod = /Mac|iPod|iPhone|iPad/.test(navigator.platform) ? e.metaKey : e.ctrlKey;
+      if (mod && e.key === 's') {
+        e.preventDefault();
+        formRef.current?.requestSubmit();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
 
   return (
     <Paper elevation={3} sx={{ p: 3 }}>
@@ -192,7 +208,7 @@ const PatientForm = ({ onSave, initialData = null }) => {
         </Alert>
       )}
 
-      <Box component="form" onSubmit={handleSubmit}>
+      <Box component="form" onSubmit={handleSubmit} ref={formRef}>
         <Grid container spacing={2}>
           <Grid item xs={12} sm={6}>
             <TextField
@@ -203,6 +219,8 @@ const PatientForm = ({ onSave, initialData = null }) => {
               fullWidth
               required
               margin="normal"
+              autoFocus
+              helperText="⌘/Ctrl + S para salvar rapidamente"
             />
           </Grid>
 
@@ -334,15 +352,15 @@ const PatientForm = ({ onSave, initialData = null }) => {
           </Grid>
 
           <Grid item xs={12}>
-            <TextField
-              name="associacao"
-              label="Associação de Pacientes"
-              value={formData.associacao}
-              onChange={handleChange}
-              fullWidth
-              margin="normal"
-              placeholder="Ex: ABRACE, Santa Cannabis (opcional)"
-            />
+            <Box sx={{ mt: 2, mb: 1 }}>
+              <QuickChipSelect
+                label="Associação de Pacientes (opcional)"
+                value={formData.associacao}
+                onChange={(v) => setFormData(prev => ({ ...prev, associacao: v }))}
+                options={['ABRACE', 'Santa Cannabis', 'Cannabis Sem Fronteiras', 'Cultive', 'ABRACannabis', 'Ama+']}
+                rememberKey="associacao"
+              />
+            </Box>
           </Grid>
 
           <Grid item xs={12}>
@@ -402,10 +420,12 @@ const PatientForm = ({ onSave, initialData = null }) => {
               variant="contained"
               color="primary"
               fullWidth
+              size="large"
               disabled={loading}
-              sx={{ mt: 2 }}
+              startIcon={<SaveIcon />}
+              sx={{ mt: 2, py: 1.5, fontWeight: 600 }}
             >
-              {loading ? 'Salvando...' : initialData ? 'Atualizar' : 'Cadastrar'}
+              {loading ? 'Salvando...' : initialData ? 'Atualizar Paciente' : 'Cadastrar Paciente'}
             </Button>
           </Grid>
         </Grid>

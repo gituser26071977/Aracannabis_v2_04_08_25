@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import useRemember from '../hooks/useRemember';
 import { 
   Paper, 
   Typography, 
@@ -19,7 +20,8 @@ import {
   DialogContentText,
   DialogTitle,
   InputAdornment,
-  Chip
+  Chip,
+  Tooltip
 } from '@mui/material';
 import { 
   Add as AddIcon, 
@@ -36,8 +38,10 @@ import { evolucoesService, sintomasService, dosagensService } from '../services/
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 
+import useNotifier from '../hooks/useNotifier';
 // Componente TabPanel para exibir o conteúdo da aba selecionada
 function TabPanel(props) {
+  const { notify, NotifierElement } = useNotifier();
   const { children, value, index, ...other } = props;
 
   return (
@@ -67,6 +71,7 @@ function a11yProps(index) {
 
 const EvolutionManager = ({ patientId }) => {
   const { currentUser } = useAuth();
+  const { notify: parentNotify, NotifierElement: ParentNotifier } = useNotifier();
   const [evolutions, setEvolutions] = useState([]);
   const [exams, setExams] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -94,14 +99,25 @@ const EvolutionManager = ({ patientId }) => {
   const [showSymptomsForm, setShowSymptomsForm] = useState(false);
   const [standardSymptoms, setStandardSymptoms] = useState([]);
   const [customSymptoms, setCustomSymptoms] = useState([]);
+  const [rememberedIntensidade, setRememberedIntensidade] = useRemember('intensidade_padrao', 5);
   const [newSymptom, setNewSymptom] = useState({
     data: new Date().toISOString().split('T')[0],
     sintoma: '',
     intensidade: 5
   });
-  
+
+  // Sincroniza intensidade padrão vinda do remember
+  useEffect(() => {
+    setNewSymptom(prev => ({ ...prev, intensidade: rememberedIntensidade }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Estados para registro rápido de dosagens
   const [showDosageForm, setShowDosageForm] = useState(false);
+  const [rememberedFreq, setRememberedFreq] = useRemember('frequencia_diaria', 1);
+  const [rememberedGotas, setRememberedGotas] = useRemember('gotas_padrao', 0);
+  const [rememberedCbd, setRememberedCbd] = useRemember('cbd_padrao', 0);
+  const [rememberedThc, setRememberedThc] = useRemember('thc_padrao', 0);
   const [newDosage, setNewDosage] = useState({
     data: new Date().toISOString().split('T')[0],
     dosagem: '',
@@ -110,6 +126,18 @@ const EvolutionManager = ({ patientId }) => {
     concentracao_cbd: 0,
     concentracao_thc: 0
   });
+
+  // Sincroniza dosagem com valores remember
+  useEffect(() => {
+    setNewDosage(prev => ({
+      ...prev,
+      frequencia_diaria: rememberedFreq,
+      gotas: rememberedGotas,
+      concentracao_cbd: rememberedCbd,
+      concentracao_thc: rememberedThc,
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   
 
   
@@ -130,7 +158,7 @@ const EvolutionManager = ({ patientId }) => {
         
         setError('');
       } catch (err) {
-        console.error('Erro ao carregar dados de evoluções:', err);
+        if(process.env.NODE_ENV!=='production')console.error('Erro ao carregar dados de evoluções:', err);
         setError('Não foi possível carregar as evoluções');
       } finally {
         setLoading(false);
@@ -194,29 +222,32 @@ const EvolutionManager = ({ patientId }) => {
   
   const handleSymptomSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!newSymptom.sintoma) {
       setError('Selecione um sintoma');
       return;
     }
-    
+
     try {
       await sintomasService.criar({
         paciente_id: patientId,
         ...newSymptom
       });
-      
-      // Resetar formulário
+
+      // Persistir intensidade como novo padrão (aprende com o médico)
+      setRememberedIntensidade(newSymptom.intensidade);
+
+      // Resetar formulário mantendo intensidade aprendida
       setNewSymptom({
         data: new Date().toISOString().split('T')[0],
         sintoma: '',
-        intensidade: 5
+        intensidade: rememberedIntensidade
       });
-      
+
       setError('');
-      alert('Sintoma registrado com sucesso!');
+      parentNotify('Sintoma registrado com sucesso!', 'success');
     } catch (err) {
-      console.error('Erro ao registrar sintoma:', err);
+      if(process.env.NODE_ENV!=='production')console.error('Erro ao registrar sintoma:', err);
       setError('Não foi possível registrar o sintoma');
     }
   };
@@ -240,32 +271,38 @@ const EvolutionManager = ({ patientId }) => {
   
   const handleDosageSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!newDosage.dosagem.trim()) {
       setError('Informe a descrição da dosagem');
       return;
     }
-    
+
     try {
       await dosagensService.criar({
         paciente_id: patientId,
         ...newDosage
       });
-      
-      // Resetar formulário
+
+      // Persistir valores como novos padrões (aprende com o médico)
+      setRememberedFreq(newDosage.frequencia_diaria);
+      setRememberedGotas(newDosage.gotas);
+      setRememberedCbd(newDosage.concentracao_cbd);
+      setRememberedThc(newDosage.concentracao_thc);
+
+      // Resetar mantendo os valores aprendidos
       setNewDosage({
         data: new Date().toISOString().split('T')[0],
         dosagem: '',
-        gotas: 0,
-        frequencia_diaria: 1,
-        concentracao_cbd: 0,
-        concentracao_thc: 0
+        gotas: rememberedGotas,
+        frequencia_diaria: rememberedFreq,
+        concentracao_cbd: rememberedCbd,
+        concentracao_thc: rememberedThc,
       });
-      
+
       setError('');
-      alert('Dosagem registrada com sucesso!');
+      parentNotify('Dosagem registrada com sucesso!', 'success');
     } catch (err) {
-      console.error('Erro ao registrar dosagem:', err);
+      if(process.env.NODE_ENV!=='production')console.error('Erro ao registrar dosagem:', err);
       setError('Não foi possível registrar a dosagem');
     }
   };
@@ -301,7 +338,7 @@ const EvolutionManager = ({ patientId }) => {
         
         setError('');
       } catch (err) {
-        console.error('Erro ao atualizar evolução:', err);
+        if(process.env.NODE_ENV!=='production')console.error('Erro ao atualizar evolução:', err);
         setError('Não foi possível atualizar a evolução');
       }
     } else {
@@ -328,7 +365,7 @@ const EvolutionManager = ({ patientId }) => {
         
         setError('');
       } catch (err) {
-        console.error('Erro ao registrar evolução:', err);
+        if(process.env.NODE_ENV!=='production')console.error('Erro ao registrar evolução:', err);
         setError('Não foi possível registrar a evolução');
       }
     }
@@ -367,7 +404,7 @@ const EvolutionManager = ({ patientId }) => {
       setEvolutions(evolutions.filter(e => e.id !== evolutionToDelete.id));
       handleCloseDeleteDialog();
     } catch (err) {
-      console.error('Erro ao excluir evolução:', err);
+      if(process.env.NODE_ENV!=='production')console.error('Erro ao excluir evolução:', err);
       setError('Não foi possível excluir a evolução');
     }
   };
@@ -385,7 +422,11 @@ const EvolutionManager = ({ patientId }) => {
 
   return (
     <Box sx={{ width: '100%' }}>
-      <Typography variant="h6" gutterBottom>
+      <ParentNotifier />
+
+
+          <NotifierElement />
+        <NotifierElement />      <Typography variant="h6" gutterBottom>
         Evoluções e Exames
       </Typography>
       
@@ -424,7 +465,9 @@ const EvolutionManager = ({ patientId }) => {
                         onClick={handleClearSearch}
                         edge="end"
                       >
-                        <ClearIcon />
+                        <Tooltip title="Limpar busca">
+                          <ClearIcon />
+                        </Tooltip>
                       </IconButton>
                     </InputAdornment>
                   )
@@ -474,6 +517,14 @@ const EvolutionManager = ({ patientId }) => {
                       required
                       multiline
                       rows={4}
+                      autoFocus
+                      helperText="⌘/Ctrl + Enter para salvar rapidamente"
+                      onKeyDown={(e) => {
+                        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                          e.preventDefault();
+                          handleSubmit(e);
+                        }
+                      }}
                       helperText="Digite informações sobre sintomas, dosagens e observações do paciente."
                     />
                   </Grid>
@@ -781,22 +832,26 @@ const EvolutionManager = ({ patientId }) => {
                       {/* Mostrar ações apenas para evoluções do usuário atual */}
                       {item.type === 'evolution' && currentUser && currentUser.id === item.profissional_id && (
                         <CardActions sx={{ justifyContent: 'flex-end' }}>
-                          <IconButton 
-                            size="small" 
-                            color="primary"
-                            onClick={() => handleStartEdit(item)}
-                            title="Editar"
-                          >
-                            <EditIcon />
-                          </IconButton>
-                          <IconButton 
-                            size="small" 
-                            color="error"
-                            onClick={() => handleOpenDeleteDialog(item)}
-                            title="Excluir"
-                          >
-                            <DeleteIcon />
-                          </IconButton>
+                          <Tooltip title="Editar evolução">
+                            <IconButton
+                              size="small"
+                              color="primary"
+                              onClick={() => handleStartEdit(item)}
+                              aria-label="Editar evolução"
+                            >
+                              <EditIcon />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Excluir evolução">
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => handleOpenDeleteDialog(item)}
+                              aria-label="Excluir evolução"
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          </Tooltip>
                         </CardActions>
                       )}
                     </Card>
@@ -823,7 +878,7 @@ const EvolutionManager = ({ patientId }) => {
             <Button onClick={handleCloseDeleteDialog} color="primary">
               Cancelar
             </Button>
-            <Button onClick={handleDeleteEvolution} color="error" autoFocus>
+            <Button onClick={handleDeleteEvolution} color="error">
               Excluir
             </Button>
           </DialogActions>

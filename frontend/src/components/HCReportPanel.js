@@ -50,7 +50,7 @@ const HCReportPanel = ({ patientId }) => {
                 });
             }
         } catch (err) {
-            console.error('Erro ao gerar laudo:', err);
+            if(process.env.NODE_ENV!=='production')console.error('Erro ao gerar laudo:', err);
             setError(err.response?.data?.error || 'Erro ao gerar o laudo. Verifique se há dados clínicos suficientes.');
         } finally {
             setLoading(false);

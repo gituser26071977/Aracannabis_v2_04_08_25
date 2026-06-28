@@ -1,59 +1,33 @@
 import React, { useState } from 'react';
-import { Button, TextField, Paper, Typography, Box, Alert } from '@mui/material';
+import { Button, TextField, Paper, Typography, Box, Alert, Link as MuiLink } from '@mui/material';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
+/**
+ * SimpleLogin — rota de teste de diagnóstico (apenas em dev/staging).
+ *
+ * Em produção esta rota não está acessível pelo menu principal; fica disponível
+ * apenas para QA / debugging manual via /test-login.
+ *
+ * MISSÃO 12 — UI Credibility Hardening: removidas credenciais hardcoded
+ * e URLs localhost; usa o AuthContext (mesmo fluxo do /login).
+ */
 function SimpleLogin() {
   const [usuario, setUsuario] = useState('');
   const [senha, setSenha] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const { login } = useAuth();
 
-  const testLogin = async () => {
-    console.log('SIMPLE_LOGIN: Botão clicado!');
-    setMessage('Botão clicado - iniciando teste...');
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     setLoading(true);
-
+    setMessage('');
     try {
-      console.log('SIMPLE_LOGIN: Fazendo requisição CSRF...');
-      setMessage('Obtendo token CSRF...');
-      
-      const csrfResponse = await fetch('http://localhost:5000/api/csrf-token');
-      console.log('SIMPLE_LOGIN: Resposta CSRF:', csrfResponse.status);
-      
-      if (!csrfResponse.ok) {
-        throw new Error(`Erro CSRF: ${csrfResponse.status}`);
-      }
-      
-      const csrfData = await csrfResponse.json();
-      console.log('SIMPLE_LOGIN: Token CSRF obtido:', csrfData);
-      setMessage('Token CSRF obtido, fazendo login...');
-
-      const loginResponse = await fetch('http://localhost:5000/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-Token': csrfData.csrf_token
-        },
-        body: JSON.stringify({
-          usuario: usuario || 'admin',
-          senha: senha || 'AraOS@2025'
-        })
-      });
-
-      console.log('SIMPLE_LOGIN: Resposta login:', loginResponse.status);
-      
-      if (loginResponse.ok) {
-        const loginData = await loginResponse.json();
-        console.log('SIMPLE_LOGIN: Login bem-sucedido:', loginData);
-        setMessage('Login bem-sucedido! Token: ' + loginData.access_token.substring(0, 20) + '...');
-      } else {
-        const errorData = await loginResponse.text();
-        console.error('SIMPLE_LOGIN: Erro no login:', errorData);
-        setMessage('Erro no login: ' + errorData);
-      }
-
-    } catch (error) {
-      console.error('SIMPLE_LOGIN: Erro capturado:', error);
-      setMessage('Erro: ' + error.message);
+      await login(usuario, senha);
+      setMessage('Login realizado. Redirecionando...');
+    } catch (err) {
+      setMessage(err?.error || err?.message || 'Falha ao autenticar. Verifique suas credenciais.');
     } finally {
       setLoading(false);
     }
@@ -62,50 +36,52 @@ function SimpleLogin() {
   return (
     <Paper elevation={3} sx={{ p: 4, my: 4, maxWidth: 500, mx: 'auto' }}>
       <Typography variant="h4" component="h1" gutterBottom align="center">
-        Teste de Login Simples
+        Teste de Login
       </Typography>
-      
+      <Typography variant="body2" align="center" color="text.secondary" sx={{ mb: 3 }}>
+        Rota de diagnóstico. Use a tela de{' '}
+        <MuiLink component={Link} to="/login">login principal</MuiLink> se for um usuário regular.
+      </Typography>
+
       {message && (
         <Alert severity="info" sx={{ mb: 2 }}>
           {message}
         </Alert>
       )}
-      
-      <TextField
-        label="Usuário"
-        variant="outlined"
-        fullWidth
-        margin="normal"
-        value={usuario}
-        onChange={(e) => setUsuario(e.target.value)}
-        placeholder="admin"
-      />
-      <TextField
-        label="Senha"
-        type="password"
-        variant="outlined"
-        fullWidth
-        margin="normal"
-        value={senha}
-        onChange={(e) => setSenha(e.target.value)}
-        placeholder="AraOS@2025"
-      />
-      
-      <Button
-        onClick={testLogin}
-        variant="contained"
-        color="primary"
-        fullWidth
-        sx={{ mt: 2 }}
-        disabled={loading}
-      >
-        {loading ? 'Testando...' : 'Testar Login'}
-      </Button>
-      
-      <Box sx={{ mt: 2, textAlign: 'center' }}>
-        <Typography variant="body2">
-          Este é um teste direto da API sem usar o contexto React
-        </Typography>
+
+      <Box component="form" onSubmit={handleSubmit}>
+        <TextField
+          label="Usuário"
+          variant="outlined"
+          fullWidth
+          margin="normal"
+          value={usuario}
+          onChange={(e) => setUsuario(e.target.value)}
+          autoComplete="username"
+          required
+        />
+        <TextField
+          label="Senha"
+          type="password"
+          variant="outlined"
+          fullWidth
+          margin="normal"
+          value={senha}
+          onChange={(e) => setSenha(e.target.value)}
+          autoComplete="current-password"
+          required
+        />
+
+        <Button
+          type="submit"
+          variant="contained"
+          color="primary"
+          fullWidth
+          sx={{ mt: 2 }}
+          disabled={loading}
+        >
+          {loading ? 'Autenticando...' : 'Entrar'}
+        </Button>
       </Box>
     </Paper>
   );

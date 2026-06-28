@@ -44,13 +44,13 @@ import {
 import voiceService from '../../services/voiceService';
 
 const STATE_CONFIG = {
-  disconnected: { color: '#9e9e9e', label: 'Desconectado', icon: MicOffIcon },
-  connecting: { color: '#ff9800', label: 'Conectando...', icon: MicIcon },
-  idle: { color: '#4caf50', label: 'Pronto', icon: MicIcon },
-  listening: { color: '#2196f3', label: 'Ouvindo...', icon: WaveIcon },
-  processing: { color: '#ff9800', label: 'Processando...', icon: MicIcon },
-  responding: { color: '#00bcd4', label: 'Respondendo...', icon: WaveIcon },
-  error: { color: '#f44336', label: 'Erro', icon: WarningIcon },
+  disconnected: { colorKey: 'text.disabled', label: 'Desconectado', icon: MicOffIcon },
+  connecting: { colorKey: 'warning.main', label: 'Conectando...', icon: MicIcon },
+  idle: { colorKey: 'success.main', label: 'Pronto', icon: MicIcon },
+  listening: { colorKey: 'info.main', label: 'Ouvindo...', icon: WaveIcon },
+  processing: { colorKey: 'warning.main', label: 'Processando...', icon: MicIcon },
+  responding: { colorKey: 'info.main', label: 'Respondendo...', icon: WaveIcon },
+  error: { colorKey: 'error.main', label: 'Erro', icon: WarningIcon },
 };
 
 const SPEAKER_COLORS = {
@@ -173,14 +173,14 @@ export default function VoiceWidget({
           '&:hover': { bgcolor: state === 'listening' ? '#1976d2' : '#388e3c' },
           animation: state === 'listening' ? 'pulse 1.5s infinite' : 'none',
           '@keyframes pulse': {
-            '0%': { boxShadow: '0 0 0 0 rgba(33, 150, 243, 0.4)' },
-            '70%': { boxShadow: '0 0 0 20px rgba(33, 150, 243, 0)' },
-            '100%': { boxShadow: '0 0 0 0 rgba(33, 150, 243, 0)' },
+            '0%': { boxShadow: (theme) => `0 0 0 0 ${theme.palette.info.main}66` },
+            '70%': { boxShadow: (theme) => `0 0 0 20px ${theme.palette.info.main}00` },
+            '100%': { boxShadow: (theme) => `0 0 0 0 ${theme.palette.info.main}00` },
           },
           zIndex: 1300,
         }}
       >
-        <StateIcon sx={{ fontSize: 28, color: '#fff' }} />
+        <StateIcon sx={{ fontSize: 28, color: 'primary.contrastText' }} />
       </Fab>
     );
   }
@@ -206,8 +206,8 @@ export default function VoiceWidget({
         <Box
           sx={{
             p: 2,
-            bgcolor: stateConfig.color,
-            color: '#fff',
+            bgcolor: stateConfig.colorKey,
+            color: 'primary.contrastText',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -222,8 +222,8 @@ export default function VoiceWidget({
               size="small"
               label={stateConfig.label}
               sx={{
-                bgcolor: 'rgba(255,255,255,0.25)',
-                color: '#fff',
+                bgcolor: (t) => t.palette.mode === 'dark' ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.25)',
+                color: 'primary.contrastText',
                 fontWeight: 'bold',
                 fontSize: '0.7rem',
               }}
@@ -231,12 +231,12 @@ export default function VoiceWidget({
           </Box>
           <Box>
             <Tooltip title="Configurações">
-              <IconButton size="small" sx={{ color: '#fff' }}>
+              <IconButton size="small" sx={{ color: 'primary.contrastText' }}>
                 <SettingsIcon fontSize="small" />
               </IconButton>
             </Tooltip>
             <Tooltip title="Fechar">
-              <IconButton size="small" sx={{ color: '#fff' }} onClick={handleClose}>
+              <IconButton size="small" sx={{ color: 'primary.contrastText' }} onClick={handleClose}>
                 <CloseIcon fontSize="small" />
               </IconButton>
             </Tooltip>
@@ -258,7 +258,7 @@ export default function VoiceWidget({
             p: 2,
             minHeight: 200,
             maxHeight: 400,
-            bgcolor: '#fafafa',
+            bgcolor: 'background.default',
           }}
         >
           {transcript.length === 0 && !currentSegment && (
@@ -322,7 +322,7 @@ export default function VoiceWidget({
 
             {/* Segmento parcial (em transcrição) */}
             {currentSegment && (
-              <ListItem sx={{ opacity: 0.6, bgcolor: '#e3f2fd', borderRadius: 2, mb: 1 }}>
+              <ListItem sx={{ opacity: 0.6, bgcolor: 'action.hover', borderRadius: 2, mb: 1 }}>
                 <ListItemText
                   secondary={
                     <Typography variant="body2" sx={{ fontStyle: 'italic' }}>
@@ -345,7 +345,7 @@ export default function VoiceWidget({
             justifyContent: 'center',
             alignItems: 'center',
             gap: 2,
-            bgcolor: '#fff',
+            bgcolor: 'background.paper',
           }}
         >
           <Fab
@@ -383,7 +383,7 @@ export default function VoiceWidget({
                     sx={{
                       width: 4,
                       height: 16 + Math.random() * 20,
-                      bgcolor: '#2196f3',
+                      bgcolor: 'info.main',
                       borderRadius: 2,
                       animation: `wave 0.5s ease-in-out ${i * 0.1}s infinite alternate`,
                       '@keyframes wave': {

@@ -26,15 +26,17 @@ import {
   Person as PersonIcon
 } from '@mui/icons-material';
 import { pacientesService } from '../services/api';
+import useConfirm from '../hooks/useConfirm';
 
-const CompartilhamentoPaciente = ({ 
-  open, 
-  onClose, 
-  pacienteId, 
+const CompartilhamentoPaciente = ({
+  open,
+  onClose,
+  pacienteId,
   pacienteNome,
   ehResponsavel,
-  onCompartilhamentoAtualizado 
+  onCompartilhamentoAtualizado,
 }) => {
+  const { confirm, ConfirmDialog } = useConfirm();
   const [profissionais, setProfissionais] = useState([]);
   const [compartilhamentos, setCompartilhamentos] = useState([]);
   const [profissionalSelecionado, setProfissionalSelecionado] = useState('');
@@ -96,9 +98,13 @@ const CompartilhamentoPaciente = ({
   };
 
   const handleRemoverCompartilhamento = async (compartilhamentoId) => {
-    if (!window.confirm('Tem certeza que deseja remover este compartilhamento?')) {
-      return;
-    }
+    const ok = await confirm({
+      title: 'Remover compartilhamento?',
+      message: 'O profissional não terá mais acesso ao prontuário deste paciente.',
+      confirmLabel: 'Remover',
+      destructive: true,
+    });
+    if (!ok) return;
 
     setLoading(true);
     setError('');
@@ -149,26 +155,30 @@ const CompartilhamentoPaciente = ({
 
   if (!ehResponsavel) {
     return (
-      <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-        <DialogTitle>
-          <Box display="flex" alignItems="center" gap={1}>
-            <ShareIcon />
-            Compartilhamento de Paciente
-          </Box>
-        </DialogTitle>
-        <DialogContent>
-          <Alert severity="info">
-            Apenas o profissional responsável pode gerenciar compartilhamentos.
-          </Alert>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={onClose}>Fechar</Button>
-        </DialogActions>
-      </Dialog>
+      <>
+        <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+          <DialogTitle>
+            <Box display="flex" alignItems="center" gap={1}>
+              <ShareIcon />
+              Compartilhamento de Paciente
+            </Box>
+          </DialogTitle>
+          <DialogContent>
+            <Alert severity="info">
+              Apenas o profissional responsável pode gerenciar compartilhamentos.
+            </Alert>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={onClose}>Fechar</Button>
+          </DialogActions>
+        </Dialog>
+        <ConfirmDialog />
+      </>
     );
   }
 
   return (
+    <>
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle>
         <Box display="flex" alignItems="center" gap={1}>
@@ -324,6 +334,8 @@ const CompartilhamentoPaciente = ({
         <Button onClick={onClose}>Fechar</Button>
       </DialogActions>
     </Dialog>
+    <ConfirmDialog />
+    </>
   );
 };
 

@@ -4,8 +4,9 @@ import {
     TableContainer, TableHead, TableRow, IconButton, Dialog,
     DialogTitle, DialogContent, DialogContentText, DialogActions,
     TextField, CircularProgress, Alert, Grid, Tabs, Tab,
-    Card, CardContent, Divider
+    Card, CardContent, Divider, Tooltip
 } from '@mui/material';
+import ContextualTip from './ContextualTip';
 import { Print, PictureAsPdf, Add, Description, AutoAwesome, CheckCircle } from '@mui/icons-material';
 import api from '../services/api';
 
@@ -34,7 +35,7 @@ const PrescriptionPanel = ({ patientId }) => {
             const response = await api.get(`/prescricoes/paciente/${patientId}`);
             setPrescricoes(response.data);
         } catch (error) {
-            console.error("Erro ao carregar prescrições", error);
+            if(process.env.NODE_ENV!=='production')console.error("Erro ao carregar prescrições", error);
         } finally {
             setLoading(false);
         }
@@ -50,7 +51,7 @@ const PrescriptionPanel = ({ patientId }) => {
                 setExamesDaIA(response.data.exames);
             }
         } catch (err) {
-            console.error(err);
+            if(process.env.NODE_ENV!=='production')console.error(err);
             setMessage({ type: 'error', text: 'Falha na comunicação com a IA.' });
         } finally {
             setProcessandoIA(false);
@@ -91,7 +92,7 @@ const PrescriptionPanel = ({ patientId }) => {
                 window.open(`${api.defaults.baseURL}/prescricoes/${response.data.data.id}/download`, '_blank');
             }
         } catch (error) {
-            console.error(error);
+            if(process.env.NODE_ENV!=='production')console.error(error);
             setMessage({ type: 'error', text: 'Erro ao gerar prescrição.' });
         } finally {
             setGenerating(false);
@@ -125,6 +126,17 @@ const PrescriptionPanel = ({ patientId }) => {
                 <Alert severity={message.type} sx={{ mb: 2 }}>{message.text}</Alert>
             )}
 
+            {!loading && (
+                <ContextualTip
+                    severity="tip"
+                    storageKey="prescricao_ia_ditado"
+                    title="💡 Dica IA:"
+                    sx={{ mb: 2 }}
+                >
+                    Dentro de "Nova Prescrição" você pode ditar a consulta em texto livre e a IA extrai medicamentos + exames automaticamente (modo Consultor).
+                </ContextualTip>
+            )}
+
             {loading ? (
                 <CircularProgress />
             ) : prescricoes.length === 0 ? (
@@ -147,12 +159,16 @@ const PrescriptionPanel = ({ patientId }) => {
                                     <TableCell>{new Date(p.data_emissao).toLocaleDateString()} {new Date(p.data_emissao).toLocaleTimeString()}</TableCell>
                                     <TableCell>{p.observacoes || '-'}</TableCell>
                                     <TableCell align="center">
-                                        <IconButton color="primary" onClick={() => handleDownload(p.id)} title="Baixar PDF">
-                                            <PictureAsPdf />
-                                        </IconButton>
-                                        <IconButton color="secondary" onClick={() => handleDownload(p.id)} title="Imprimir">
-                                            <Print />
-                                        </IconButton>
+                                        <Tooltip title="Baixar PDF da prescrição">
+                                            <IconButton color="primary" onClick={() => handleDownload(p.id)} aria-label="Baixar PDF">
+                                                <PictureAsPdf />
+                                            </IconButton>
+                                        </Tooltip>
+                                        <Tooltip title="Imprimir prescrição">
+                                            <IconButton color="secondary" onClick={() => handleDownload(p.id)} aria-label="Imprimir prescrição">
+                                                <Print />
+                                            </IconButton>
+                                        </Tooltip>
                                     </TableCell>
                                 </TableRow>
                             ))}
@@ -238,7 +254,7 @@ const PrescriptionPanel = ({ patientId }) => {
                                 <Box mt={3} mb={2}>
                                     <Typography variant="subtitle1" fontWeight="bold" color="primary">Exames Complementares Detectados:</Typography>
                                     <Divider sx={{ mb: 2 }} />
-                                    <Card sx={{ bgcolor: '#f5f5f5', border: '1px dashed #bdbdbd' }}>
+                                    <Card sx={{ bgcolor: 'action.hover', border: '1px dashed', borderColor: 'divider' }}>
                                         <CardContent>
                                             <Grid container spacing={1}>
                                                 {examesDaIA.map((exame, idx) => (

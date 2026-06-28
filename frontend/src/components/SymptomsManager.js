@@ -56,6 +56,8 @@ import {
 import 'chartjs-adapter-date-fns';
 import { ptBR } from 'date-fns/locale';
 
+import useNotifier from '../hooks/useNotifier';
+import useConfirm from '../hooks/useConfirm';
 // Registrar componentes do Chart.js
 ChartJS.register(
   CategoryScale,
@@ -69,6 +71,8 @@ ChartJS.register(
 );
 
 const SymptomsManager = ({ patientId }) => {
+  const { confirm, ConfirmDialog } = useConfirm();
+  const { notify, NotifierElement } = useNotifier();
   const [symptoms, setSymptoms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -130,7 +134,7 @@ const SymptomsManager = ({ patientId }) => {
         await carregarUltimoTestePHQ9();
         setError('');
       } catch (err) {
-        console.error('Erro ao carregar dados de sintomas:', err);
+        if(process.env.NODE_ENV!=='production')console.error('Erro ao carregar dados de sintomas:', err);
         setError('Não foi possível carregar os sintomas');
       } finally {
         setLoading(false);
@@ -159,13 +163,19 @@ const SymptomsManager = ({ patientId }) => {
       const phq9Data = await phq9Service.listar(patientId);
       setPhq9Tests(phq9Data.testes || []);
     } catch (error) {
-      console.error("Erro ao carregar histórico de testes:", error);
+      if(process.env.NODE_ENV!=='production')console.error("Erro ao carregar histórico de testes:", error);
     }
   };
 
   // Delete Test Handler
   const handleDeleteTest = async (type, id) => {
-    if (!window.confirm('Tem certeza que deseja excluir este teste? Essa ação não pode ser desfeita.')) return;
+    const ok = await confirm({
+      title: 'Excluir teste?',
+      message: 'Esta ação não pode ser desfeita.',
+      confirmLabel: 'Excluir',
+      destructive: true,
+    });
+    if (!ok) return;
 
     try {
       if (type === 'gad7') {
@@ -178,7 +188,7 @@ const SymptomsManager = ({ patientId }) => {
       // Reload chart to reflect changes
       await loadChartData();
     } catch (error) {
-      console.error("Erro ao excluir teste:", error);
+      if(process.env.NODE_ENV!=='production')console.error("Erro ao excluir teste:", error);
       setError("Erro ao excluir o teste.");
     }
   };
@@ -190,7 +200,7 @@ const SymptomsManager = ({ patientId }) => {
       setUltimoTestePHQ9(response.data.teste);
     } catch (err) {
       // Se não encontrar teste, não é erro
-      console.log('Nenhum teste PHQ-9 encontrado para este paciente');
+      if(process.env.NODE_ENV!=='production')console.log('Nenhum teste PHQ-9 encontrado para este paciente');
     }
   };
 
@@ -202,7 +212,7 @@ const SymptomsManager = ({ patientId }) => {
       const data = await sintomasService.obterDadosGrafico(patientId, periodo);
       setChartData(data.dados_grafico);
     } catch (err) {
-      console.error('Erro ao carregar dados do gráfico:', err);
+      if(process.env.NODE_ENV!=='production')console.error('Erro ao carregar dados do gráfico:', err);
       // Não mostrar erro se não houver dados suficientes
       setChartData(null);
     } finally {
@@ -294,9 +304,9 @@ const SymptomsManager = ({ patientId }) => {
           data_realizacao: newSymptom.data
         };
         await gad7Service.criarTeste(patientId, payload);
-        console.log('Teste GAD-7 salvo com sucesso!');
+        if(process.env.NODE_ENV!=='production')console.log('Teste GAD-7 salvo com sucesso!');
       } catch (error) {
-        console.error('Erro ao salvar teste GAD-7:', error);
+        if(process.env.NODE_ENV!=='production')console.error('Erro ao salvar teste GAD-7:', error);
         setError('Erro ao salvar os resultados detalhados do teste GAD-7, mas a intensidade do sintoma foi atualizada.');
       }
     }
@@ -325,7 +335,7 @@ const SymptomsManager = ({ patientId }) => {
       // Mostrar mensagem de sucesso
       setError('');
     } catch (err) {
-      console.error('Erro ao adicionar sintoma personalizado:', err);
+      if(process.env.NODE_ENV!=='production')console.error('Erro ao adicionar sintoma personalizado:', err);
       setError(err.error || 'Não foi possível adicionar o sintoma personalizado');
     }
   };
@@ -344,7 +354,7 @@ const SymptomsManager = ({ patientId }) => {
 
       setError('');
     } catch (err) {
-      console.error('Erro ao remover sintoma personalizado:', err);
+      if(process.env.NODE_ENV!=='production')console.error('Erro ao remover sintoma personalizado:', err);
       setError('Não foi possível remover o sintoma personalizado');
     }
   };
@@ -400,7 +410,7 @@ const SymptomsManager = ({ patientId }) => {
 
       setError('');
     } catch (err) {
-      console.error('Erro ao registrar sintoma:', err);
+      if(process.env.NODE_ENV!=='production')console.error('Erro ao registrar sintoma:', err);
       setError('Não foi possível registrar o sintoma');
     }
   };
@@ -430,7 +440,7 @@ const SymptomsManager = ({ patientId }) => {
 
       handleCloseDeleteDialog();
     } catch (err) {
-      console.error('Erro ao excluir sintoma:', err);
+      if(process.env.NODE_ENV!=='production')console.error('Erro ao excluir sintoma:', err);
       setError('Não foi possível excluir o sintoma');
     }
   };
@@ -478,7 +488,7 @@ const SymptomsManager = ({ patientId }) => {
         year: 'numeric'
       });
     } catch (error) {
-      console.error('Erro ao formatar data:', error, dateValue);
+      if(process.env.NODE_ENV!=='production')console.error('Erro ao formatar data:', error, dateValue);
       return 'Data inválida';
     }
   };
@@ -624,9 +634,9 @@ const SymptomsManager = ({ patientId }) => {
 
         // Mostrar informações detalhadas do ponto clicado
         if (point.original_value !== undefined && point.max_value) {
-          alert(`Teste: ${dataset.label}\nData: ${dataFormatada}\nPontuação: ${point.original_value}/${point.max_value} pontos`);
+          notify(`Teste: ${dataset.label}\nData: ${dataFormatada}\nPontuação: ${point.original_value}/${point.max_value} pontos`, 'info');
         } else {
-          alert(`Sintoma: ${dataset.label}\nData: ${dataFormatada}\nIntensidade: ${point.y}/10`);
+          notify(`Sintoma: ${dataset.label}\nData: ${dataFormatada}\nIntensidade: ${point.y}/10`, 'info');
         }
       }
     },
@@ -693,8 +703,10 @@ const SymptomsManager = ({ patientId }) => {
   };
 
   return (
+    <>
     <Paper elevation={3} sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+
+        <NotifierElement />      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h6">
           Gerenciamento de Sintomas
         </Typography>
@@ -921,13 +933,15 @@ const SymptomsManager = ({ patientId }) => {
                       <TableCell>{symptom.sintoma}</TableCell>
                       <TableCell>{symptom.intensidade}</TableCell>
                       <TableCell align="center">
-                        <IconButton
-                          color="error"
-                          onClick={() => handleOpenDeleteDialog(symptom)}
-                          title="Excluir"
-                        >
-                          <DeleteIcon />
-                        </IconButton>
+                        <Tooltip title="Excluir sintoma">
+                          <IconButton
+                            color="error"
+                            onClick={() => handleOpenDeleteDialog(symptom)}
+                            aria-label="Excluir sintoma"
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        </Tooltip>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -954,7 +968,7 @@ const SymptomsManager = ({ patientId }) => {
               <Button onClick={handleCloseDeleteDialog} color="primary">
                 Cancelar
               </Button>
-              <Button onClick={handleDeleteSymptom} color="error" autoFocus>
+              <Button onClick={handleDeleteSymptom} color="error">
                 Excluir
               </Button>
             </DialogActions>
@@ -995,14 +1009,16 @@ const SymptomsManager = ({ patientId }) => {
                             <TableCell>{teste.resultados.pontuacao_total}/21</TableCell>
                             <TableCell>{teste.resultados.nivel_ansiedade.replace('_', ' ')}</TableCell>
                             <TableCell align="right">
-                              <IconButton
-                                size="small"
-                                color="error"
-                                onClick={() => handleDeleteTest('gad7', teste.id)}
-                                title="Excluir Teste"
-                              >
-                                <DeleteIcon fontSize="small" />
-                              </IconButton>
+                              <Tooltip title="Excluir teste GAD-7">
+                                <IconButton
+                                  size="small"
+                                  color="error"
+                                  onClick={() => handleDeleteTest('gad7', teste.id)}
+                                  aria-label="Excluir teste GAD-7"
+                                >
+                                  <DeleteIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -1036,14 +1052,16 @@ const SymptomsManager = ({ patientId }) => {
                             <TableCell>{teste.resultados.pontuacao_total}/27</TableCell>
                             <TableCell>{teste.resultados.nivel_depressao.replace('_', ' ')}</TableCell>
                             <TableCell align="right">
-                              <IconButton
-                                size="small"
-                                color="error"
-                                onClick={() => handleDeleteTest('phq9', teste.id)}
-                                title="Excluir Teste"
-                              >
-                                <DeleteIcon fontSize="small" />
-                              </IconButton>
+                              <Tooltip title="Excluir teste PHQ-9">
+                                <IconButton
+                                  size="small"
+                                  color="error"
+                                  onClick={() => handleDeleteTest('phq9', teste.id)}
+                                  aria-label="Excluir teste PHQ-9"
+                                >
+                                  <DeleteIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -1152,6 +1170,8 @@ const SymptomsManager = ({ patientId }) => {
       </Dialog>
 
     </Paper >
+    <ConfirmDialog />
+    </>
   );
 };
 

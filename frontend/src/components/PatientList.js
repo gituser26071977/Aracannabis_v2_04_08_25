@@ -41,26 +41,25 @@ import {
   AccountCircle as ResponsavelIcon,
   Group as CompartilhadoIcon
 } from '@mui/icons-material';
-import { Avatar } from '@mui/material';
+import { Avatar, Fab } from '@mui/material';
 import { pacientesService } from '../services/api';
 import CompartilhamentoPaciente from './CompartilhamentoPaciente';
 import { useAuth } from '../contexts/AuthContext';
+import EmptyState from './EmptyState';
+import useConfirm from '../hooks/useConfirm';
 
 const PatientList = ({ onEdit, onAdd, refreshTrigger }) => {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
+  const { confirm, ConfirmDialog } = useConfirm();
   const [patients, setPatients] = useState([]);
   const [filteredPatients, setFilteredPatients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [patientToDelete, setPatientToDelete] = useState(null);
   const [compartilhamentoDialogOpen, setCompartilhamentoDialogOpen] = useState(false);
   const [pacienteParaCompartilhar, setPacienteParaCompartilhar] = useState(null);
-  const [deletionStep, setDeletionStep] = useState(0);
-  const [confirmText, setConfirmText] = useState('');
   const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
 
   // Calcular idade a partir da data de nascimento
@@ -86,26 +85,6 @@ const PatientList = ({ onEdit, onAdd, refreshTrigger }) => {
     return null;
   };
 
-  // Carregar pacientes
-  useEffect(() => {
-    const fetchPatients = async () => {
-      setLoading(true);
-      try {
-        const data = await pacientesService.listar();
-        setPatients(data.pacientes || []);
-        setFilteredPatients(data.pacientes || []);
-        setError('');
-      } catch (err) {
-        console.error('Erro ao carregar pacientes:', err);
-        setError('Não foi possível carregar a lista de pacientes');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchPatients();
-  }, [refreshTrigger]);
-
   // Filtros
   const [filterPeriodo, setFilterPeriodo] = useState('');
   const [filterAssociacao, setFilterAssociacao] = useState('');
@@ -126,7 +105,7 @@ const PatientList = ({ onEdit, onAdd, refreshTrigger }) => {
         setFilteredPatients(data.pacientes || []); // Agora o backend filtra
         setError('');
       } catch (err) {
-        console.error('Erro ao carregar pacientes:', err);
+        if(process.env.NODE_ENV!=='production')console.error('Erro ao carregar pacientes:', err);
         setError('Não foi possível carregar a lista de pacientes');
       } finally {
         setLoading(false);
@@ -164,27 +143,21 @@ const PatientList = ({ onEdit, onAdd, refreshTrigger }) => {
     setPage(0);
   };
 
-  // Diálogo de confirmação de exclusão
-  const handleOpenDeleteDialog = (patient) => {
-    setPatientToDelete(patient);
-    setDeleteDialogOpen(true);
-  };
-
-  const handleCloseDeleteDialog = () => {
-    setDeleteDialogOpen(false);
-    setPatientToDelete(null);
-  };
-
-  // Excluir paciente
-  const handleDeletePatient = async () => {
-    if (!patientToDelete) return;
+  // Excluir paciente (com confirmação via useConfirm)
+  const handleDeletePatient = async (patient) => {
+    const ok = await confirm({
+      title: `Excluir ${patient.nome}?`,
+      message: 'Esta ação não pode ser desfeita. Todos os dados do prontuário, consultas e histórico serão removidos permanentemente.',
+      confirmLabel: 'Excluir permanentemente',
+      destructive: true,
+    });
+    if (!ok) return;
 
     try {
-      await pacientesService.excluir(patientToDelete.id);
-      setPatients(patients.filter(p => p.id !== patientToDelete.id));
-      handleCloseDeleteDialog();
+      await pacientesService.excluir(patient.id);
+      setPatients(patients.filter(p => p.id !== patient.id));
     } catch (err) {
-      console.error('Erro ao excluir paciente:', err);
+      if(process.env.NODE_ENV!=='production')console.error('Erro ao excluir paciente:', err);
       setError('Não foi possível excluir o paciente');
     }
   };
@@ -208,7 +181,7 @@ const PatientList = ({ onEdit, onAdd, refreshTrigger }) => {
         setPatients(data.pacientes || []);
         setFilteredPatients(data.pacientes || []);
       } catch (err) {
-        console.error('Erro ao recarregar pacientes:', err);
+        if(process.env.NODE_ENV!=='production')console.error('Erro ao recarregar pacientes:', err);
       }
     };
     fetchPatients();
@@ -217,29 +190,28 @@ const PatientList = ({ onEdit, onAdd, refreshTrigger }) => {
 
   // Calcular estatísticas dos pacientes
   const patientsInTreatment = patients.filter(patient => patient.em_tratamento).length;
-  const totalPatients = patients.length;
 
   return (
-    <Paper elevation={3} sx={{ p: 2 }}>
+    <Paper elevation={3} sx={{ p: 2, position: 'relative' }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h6" sx={{ fontSize: '1.375rem' }}>Pacientes</Typography>
-        <Button
-          variant="contained"
-          color="primary"
-          startIcon={<AddIcon />}
-          onClick={() => {
-            const exp = currentUser?.data_expiracao ? new Date(currentUser.data_expiracao) : null;
-            if (currentUser?.role !== 'admin' && exp && exp < new Date()) {
-              setUpgradeDialogOpen(true);
-            } else {
-              onAdd();
-            }
-          }}
-          sx={{ fontSize: '1.1rem', padding: '8px 16px' }}
-        >
-          Novo Paciente
-        </Button>
+        <Typography variant="h6">Pacientes</Typography>
       </Box>
+
+      <Fab
+        color="primary"
+        aria-label="Novo paciente"
+        onClick={() => {
+          const exp = currentUser?.data_expiracao ? new Date(currentUser.data_expiracao) : null;
+          if (currentUser?.role !== 'admin' && exp && exp < new Date()) {
+            setUpgradeDialogOpen(true);
+          } else {
+            onAdd();
+          }
+        }}
+        sx={{ position: 'absolute', top: 16, right: 16 }}
+      >
+        <AddIcon />
+      </Fab>
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
@@ -249,85 +221,45 @@ const PatientList = ({ onEdit, onAdd, refreshTrigger }) => {
 
       {/* Contador de pacientes e campo de busca */}
       {!loading && patients.length > 0 && (
-        <>
-          {/* Estatísticas dos pacientes */}
-          <Grid container spacing={2} sx={{ mb: 2 }}>
-            <Grid item xs={12} sm={6} md={3}>
-              <Chip
-                icon={<PeopleIcon />}
-                label={`Total: ${totalPatients} pacientes`}
-                color="primary"
-                variant="outlined"
-                sx={{ width: '100%', justifyContent: 'flex-start', fontSize: '1.1rem' }}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <Chip
-                icon={<PeopleIcon />}
-                label={`Em tratamento: ${patientsInTreatment}`}
-                color="success"
-                variant="outlined"
-                sx={{ width: '100%', justifyContent: 'flex-start', fontSize: '1.2rem' }}
-              />
-            </Grid>
-          </Grid>
-
-          {/* Filtros Avançados */}
-          <Grid container spacing={2} sx={{ mb: 2 }}>
-            <Grid item xs={12} sm={4}>
-              <FormControl fullWidth>
-                <InputLabel>Período de Cadastro</InputLabel>
-                <Select
-                  value={filterPeriodo}
-                  label="Período de Cadastro"
-                  onChange={(e) => setFilterPeriodo(e.target.value)}
-                >
-                  <MenuItem value="">Todos os períodos</MenuItem>
-                  <MenuItem value="hoje">Hoje</MenuItem>
-                  <MenuItem value="ontem">Ontem</MenuItem>
-                  <MenuItem value="7dias">Últimos 7 dias</MenuItem>
-                  <MenuItem value="30dias">Últimos 30 dias</MenuItem>
-                  <MenuItem value="mes_atual">Mês Atual</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={4}>
-              <TextField
-                fullWidth
-                label="Filtrar por Associação"
-                value={filterAssociacao}
-                onChange={(e) => setFilterAssociacao(e.target.value)}
-                placeholder="Ex: ABRACE, Santa Cannabis..."
-              />
-            </Grid>
-          </Grid>
-
-          {/* Campo de busca */}
-          <Box sx={{ mb: 2 }}>
-            <TextField
-              fullWidth
-              variant="outlined"
-              placeholder="Buscar por nome..."
-              value={searchTerm}
-              onChange={handleSearchChange}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon fontSize="large" />
-                  </InputAdornment>
-                ),
-                endAdornment: searchTerm && (
-                  <InputAdornment position="end">
-                    <IconButton onClick={handleClearSearch} edge="end" size="large">
-                      <ClearIcon fontSize="large" />
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              }}
-              sx={{ '& .MuiInputBase-root': { fontSize: '1.32rem' } }}
-            />
-          </Box>
-        </>
+        <Box sx={{ mb: 2, display: 'flex', gap: 1.5, alignItems: 'center' }}>
+          <TextField
+            size="small"
+            sx={{ flexGrow: 1 }}
+            variant="outlined"
+            placeholder="Buscar por nome ou associação..."
+            value={searchTerm}
+            onChange={handleSearchChange}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon fontSize="small" />
+                </InputAdornment>
+              ),
+              endAdornment: searchTerm && (
+                <InputAdornment position="end">
+                  <IconButton onClick={handleClearSearch} edge="end" size="small">
+                    <ClearIcon fontSize="small" />
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
+          />
+          <FormControl size="small" sx={{ minWidth: 160 }}>
+            <Select
+              value={filterPeriodo}
+              displayEmpty
+              onChange={(e) => setFilterPeriodo(e.target.value)}
+              inputProps={{ 'aria-label': 'Período de cadastro' }}
+            >
+              <MenuItem value="">Todos os períodos</MenuItem>
+              <MenuItem value="hoje">Hoje</MenuItem>
+              <MenuItem value="ontem">Ontem</MenuItem>
+              <MenuItem value="7dias">Últimos 7 dias</MenuItem>
+              <MenuItem value="30dias">Últimos 30 dias</MenuItem>
+              <MenuItem value="mes_atual">Mês Atual</MenuItem>
+            </Select>
+          </FormControl>
+        </Box>
       )}
 
       {loading ? (
@@ -335,26 +267,38 @@ const PatientList = ({ onEdit, onAdd, refreshTrigger }) => {
           <CircularProgress />
         </Box>
       ) : patients.length === 0 ? (
-        <Alert severity="info">
-          Nenhum paciente cadastrado. Clique em "Novo Paciente" para adicionar.
-        </Alert>
+        <EmptyState
+          icon={<PeopleIcon sx={{ fontSize: 72 }} />}
+          title="Nenhum paciente cadastrado"
+          description="Comece adicionando seu primeiro paciente para gerenciar consultas, prescrições e prontuários."
+          actionLabel="Cadastrar paciente"
+          onAction={() => navigate('/pacientes/novo')}
+        />
       ) : filteredPatients.length === 0 ? (
-        <Alert severity="info">
-          Nenhum paciente encontrado com os critérios de busca.
-        </Alert>
+        <EmptyState
+          icon={<SearchIcon sx={{ fontSize: 72 }} />}
+          title="Nenhum resultado encontrado"
+          description="Nenhum paciente corresponde aos critérios de busca atuais. Tente ajustar os filtros."
+          actionLabel="Limpar busca"
+          onAction={() => {
+            setSearchTerm('');
+            setFilterPeriodo('');
+            setFilterAssociacao('');
+          }}
+        />
       ) : (
         <>
           <TableContainer>
             <Table>
               <TableHead>
                 <TableRow>
-                  <TableCell sx={{ fontSize: '1.1rem' }}>Nome</TableCell>
-                  <TableCell sx={{ fontSize: '1.1rem' }}>Idade</TableCell>
-                  <TableCell sx={{ fontSize: '1.1rem' }}>Diagnóstico</TableCell>
-                  <TableCell sx={{ fontSize: '1.1rem' }}>Associação</TableCell>
-                  <TableCell align="center" sx={{ fontSize: '1.1rem' }}>Status</TableCell>
-                  <TableCell align="center" sx={{ fontSize: '1.1rem' }}>Acesso</TableCell>
-                  <TableCell align="center" sx={{ fontSize: '1.1rem' }}>Ações</TableCell>
+                  <TableCell>Nome</TableCell>
+                  <TableCell>Idade</TableCell>
+                  <TableCell>Diagnóstico</TableCell>
+                  <TableCell>Associação</TableCell>
+                  <TableCell align="center">Status</TableCell>
+                  <TableCell align="center">Acesso</TableCell>
+                  <TableCell align="center">Ações</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -362,23 +306,23 @@ const PatientList = ({ onEdit, onAdd, refreshTrigger }) => {
                   .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                   .map((patient) => (
                     <TableRow key={patient.id}>
-                      <TableCell sx={{ fontSize: '1.1rem' }}>
+                      <TableCell>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                           <Avatar
                             src={getFotoUrl(patient)}
-                            sx={{ width: 40, height: 40 }}
+                            sx={{ width: 36, height: 36 }}
                           >
                             {!getFotoUrl(patient) && patient.nome.charAt(0).toUpperCase()}
                           </Avatar>
-                          <Typography variant="body1" sx={{ fontSize: '1.1rem' }}>
+                          <Typography variant="body2">
                             {patient.nome}
                           </Typography>
                         </Box>
                       </TableCell>
-                      <TableCell sx={{ fontSize: '1.1rem' }}>{calcularIdade(patient.data_nascimento)}</TableCell>
-                      <TableCell sx={{ fontSize: '1.1rem' }}>{patient.diagnostico}</TableCell>
-                      <TableCell sx={{ fontSize: '1.1rem' }}>{patient.associacao || '-'}</TableCell>
-                      <TableCell align="center" sx={{ fontSize: '1.1rem' }}>
+                      <TableCell>{calcularIdade(patient.data_nascimento)}</TableCell>
+                      <TableCell>{patient.diagnostico}</TableCell>
+                      <TableCell>{patient.associacao || '-'}</TableCell>
+                      <TableCell align="center">
                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'center' }}>
                           {patient.em_tratamento ? (
                             <Chip
@@ -386,15 +330,13 @@ const PatientList = ({ onEdit, onAdd, refreshTrigger }) => {
                               color="success"
                               variant="outlined"
                               size="small"
-                              sx={{ fontSize: '1.1rem' }}
                             />
                           ) : (
                             <Chip
-                              label="Não está em tratamento"
+                              label="Inativo"
                               color="default"
                               variant="outlined"
                               size="small"
-                              sx={{ fontSize: '1.1rem' }}
                             />
                           )}
                           {patient.tdah_positivo && (
@@ -403,24 +345,18 @@ const PatientList = ({ onEdit, onAdd, refreshTrigger }) => {
                               color="warning"
                               variant="filled"
                               size="small"
-                              sx={{
-                                fontSize: '0.9rem',
-                                fontWeight: 'bold',
-                                background: 'linear-gradient(45deg, #FF6B35 30%, #F7931E 90%)',
-                                color: 'white'
-                              }}
+                              sx={{ fontWeight: 'bold' }}
                             />
                           )}
                         </Box>
                       </TableCell>
-                      <TableCell align="center" sx={{ fontSize: '1.2rem' }}>
+                      <TableCell align="center">
                         {patient.eh_responsavel ? (
                           <Chip
                             icon={<ResponsavelIcon />}
                             label="Responsável"
                             color="primary"
                             size="small"
-                            sx={{ fontSize: '1.1rem' }}
                           />
                         ) : (
                           <Chip
@@ -429,7 +365,6 @@ const PatientList = ({ onEdit, onAdd, refreshTrigger }) => {
                               patient.nivel_acesso === 'escrita' ? 'Escrita' : 'Completo'}
                             color="secondary"
                             size="small"
-                            sx={{ fontSize: '1.1rem' }}
                           />
                         )}
                       </TableCell>
@@ -462,7 +397,7 @@ const PatientList = ({ onEdit, onAdd, refreshTrigger }) => {
                         )}
                         <IconButton
                           color="error"
-                          onClick={() => handleOpenDeleteDialog(patient)}
+                          onClick={() => handleDeletePatient(patient)}
                           title="Excluir"
                           size="medium"
                         >
@@ -490,67 +425,7 @@ const PatientList = ({ onEdit, onAdd, refreshTrigger }) => {
         </>
       )}
 
-      {/* Diálogo de confirmação de exclusão */}
-      <Dialog
-        open={deleteDialogOpen}
-        onClose={handleCloseDeleteDialog}
-      >
-        <DialogTitle sx={{ color: 'error.main', fontWeight: 'bold' }}>
-          {deletionStep === 0 ? 'Confirmar exclusão' : '⚠️ AÇÃO IRREVERSÍVEL ⚠️'}
-        </DialogTitle>
-        <DialogContent>
-          {deletionStep === 0 ? (
-            <DialogContentText sx={{ fontSize: '1.1rem' }}>
-              Tem certeza que deseja excluir o paciente <strong>{patientToDelete?.nome}</strong>?
-              <br /><br />
-              Isso excluirá todos os dados do prontuário, consultas e histórico.
-            </DialogContentText>
-          ) : (
-            <Box>
-              <Alert severity="error" sx={{ mb: 2 }}>
-                Esta ação <strong>NÃO PODERÁ SER DESFEITA</strong>. Todos os dados serão perdidos permanentemente.
-              </Alert>
-              <Typography variant="body1" gutterBottom>
-                Para confirmar, digite <strong>EXCLUIR</strong> no campo abaixo:
-              </Typography>
-              <TextField
-                autoFocus
-                margin="dense"
-                fullWidth
-                variant="outlined"
-                value={confirmText}
-                onChange={(e) => setConfirmText(e.target.value.toUpperCase())}
-                placeholder="EXCLUIR"
-                color="error"
-              />
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={handleCloseDeleteDialog} color="primary" variant="outlined">
-            Cancelar
-          </Button>
-          {deletionStep === 0 ? (
-            <Button
-              onClick={() => setDeletionStep(1)}
-              color="error"
-              variant="contained"
-              autoFocus
-            >
-              Continuar
-            </Button>
-          ) : (
-            <Button
-              onClick={handleDeletePatient}
-              color="error"
-              variant="contained"
-              disabled={confirmText !== 'EXCLUIR'}
-            >
-              Excluir Permanentemente
-            </Button>
-          )}
-        </DialogActions>
-      </Dialog>
+      {/* Diálogo de confirmação de exclusão via useConfirm */}
 
       {/* Diálogo de compartilhamento */}
       {pacienteParaCompartilhar && (
@@ -597,6 +472,7 @@ const PatientList = ({ onEdit, onAdd, refreshTrigger }) => {
           </Button>
         </DialogActions>
       </Dialog>
+      <ConfirmDialog />
     </Paper>
   );
 };

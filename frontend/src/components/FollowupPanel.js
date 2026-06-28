@@ -108,7 +108,7 @@ const FollowupPanel = ({ patientId }) => {
       setResponses(responsesData || []);
       setAlerts(alertsData || []);
     } catch (err) {
-      console.error('Erro ao carregar follow-up:', err);
+      if(process.env.NODE_ENV!=='production')console.error('Erro ao carregar follow-up:', err);
       setError('Erro ao carregar dados de acompanhamento');
     } finally {
       setLoading(false);

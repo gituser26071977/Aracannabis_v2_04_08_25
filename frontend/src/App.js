@@ -74,6 +74,11 @@ import TrialEndingPage from './pages/TrialEndingPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
 import ModulosPage from './pages/ModulosPage';
 import TrialBanner from './components/TrialBanner';
+import ErrorBoundary from './components/ErrorBoundary';
+import NotFoundPage from './pages/NotFoundPage';
+import UnauthorizedPage from './pages/UnauthorizedPage';
+import ForbiddenPage from './pages/ForbiddenPage';
+import ServerErrorPage from './pages/ServerErrorPage';
 
 import NavigationMenu from './components/NavigationMenu';
 import BusinessIcon from '@mui/icons-material/Business';
@@ -95,7 +100,7 @@ function ProtectedRoute({ children }) {
   const location = useLocation();
 
   if (!currentUser) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/401" replace />;
   }
 
   // Bloqueio suave: se trial expirou, redirecionar para trial-ending (exceto se já estiver lá)
@@ -115,11 +120,11 @@ function AdminRoute({ children }) {
   const { currentUser } = useAuth();
 
   if (!currentUser) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/401" replace />;
   }
 
   if (currentUser.role !== 'admin') {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/403" replace />;
   }
 
   return children;
@@ -495,6 +500,7 @@ function AppContent() {
   };
 
   return (
+    <ErrorBoundary>
     <AssociationProvider>
       {showTrialBanner && <TrialBanner />}
       {!isLoginPage && (
@@ -556,6 +562,7 @@ function AppContent() {
             <IconButton
               color="inherit"
               onClick={toggleColorMode}
+              aria-label={mode === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'}
               sx={{
                 transition: 'all 0.3s ease',
                 '&:hover': {
@@ -584,8 +591,9 @@ function AppContent() {
             {currentUser ? (
               <Button
                 color="inherit"
-                onClick={() => window.open(`${process.env.REACT_APP_API_URL || 'http://localhost:5002'}/api/status`, '_blank')}
+                onClick={() => window.open(`${process.env.REACT_APP_API_URL || ''}/api/status`, '_blank')}
                 target="_blank"
+                disabled={!process.env.REACT_APP_API_URL}
                 sx={{
                   textTransform: 'none',
                   fontWeight: 600,
@@ -783,9 +791,18 @@ function AppContent() {
           <Route path="/patient/register" element={<PatientRegister />} />
           <Route path="/patient/dashboard" element={<PatientDashboard />} />
 
+          {/* Error Pages (MISSÃO 12) */}
+          <Route path="/401" element={<UnauthorizedPage />} />
+          <Route path="/403" element={<ForbiddenPage />} />
+          <Route path="/500" element={<ServerErrorPage />} />
+
+          {/* Catch-all 404 */}
+          <Route path="*" element={<NotFoundPage />} />
+
         </Routes>
       </Container>
     </AssociationProvider>
+    </ErrorBoundary>
   );
 }
 

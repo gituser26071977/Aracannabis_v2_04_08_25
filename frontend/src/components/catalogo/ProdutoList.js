@@ -40,7 +40,9 @@ import {
 } from '@mui/icons-material';
 import { buscarProdutos, listarMarcas, listarCategorias, validarProduto, compararProdutos } from '../../services/catalogoService';
 
+import useNotifier from '../../hooks/useNotifier';
 const ProdutoList = ({ onSelectProduct, onCompareProducts, modoSelecao = false }) => {
+  const { notify, NotifierElement } = useNotifier();
   // Estados
   const [produtos, setProdutos] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -78,7 +80,7 @@ const ProdutoList = ({ onSelectProduct, onCompareProducts, modoSelecao = false }
         setMarcas(marcasRes.marcas || []);
         setCategorias(categoriasRes.categorias || []);
       } catch (err) {
-        console.error('Erro ao carregar opções:', err);
+        if(process.env.NODE_ENV!=='production')console.error('Erro ao carregar opções:', err);
       }
     };
     carregarOpcoes();
@@ -138,9 +140,9 @@ const ProdutoList = ({ onSelectProduct, onCompareProducts, modoSelecao = false }
     setValidando(produtoId);
     try {
       const resultado = await validarProduto(produtoId);
-      alert(`Validação: ${resultado.validacao?.validacao?.status || 'Concluída'}`);
+      notify(`Validação: ${resultado.validacao?.validacao?.status || 'Concluída'}`, 'success');
     } catch (err) {
-      alert('Erro na validação: ' + err.message);
+      notify('Erro na validação: ' + err.message, 'error');
     } finally {
       setValidando(null);
     }
@@ -159,14 +161,14 @@ const ProdutoList = ({ onSelectProduct, onCompareProducts, modoSelecao = false }
       if (produtosSelecionados.length < 3) {
         setProdutosSelecionados(prev => [...prev, produto]);
       } else {
-        alert('Máximo de 3 produtos para comparação');
+        notify('Máximo de 3 produtos para comparação', 'warning');
       }
     }
   };
 
   const handleComparar = async () => {
     if (produtosSelecionados.length < 2) {
-      alert('Selecione pelo menos 2 produtos para comparar');
+      notify('Selecione pelo menos 2 produtos para comparar', 'warning');
       return;
     }
 
@@ -174,7 +176,7 @@ const ProdutoList = ({ onSelectProduct, onCompareProducts, modoSelecao = false }
       const resultado = await compararProdutos(produtosSelecionados.map(p => p.id));
       setDialogComparacao(resultado);
     } catch (err) {
-      alert('Erro na comparação: ' + err.message);
+      notify('Erro na comparação: ' + err.message, 'error');
     }
   };
 
@@ -189,7 +191,8 @@ const ProdutoList = ({ onSelectProduct, onCompareProducts, modoSelecao = false }
 
   return (
     <Box>
-      {/* Filtros */}
+
+        <NotifierElement />      {/* Filtros */}
       <Accordion defaultExpanded sx={{ mb: 2 }}>
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -390,7 +393,8 @@ n          </Box>
           
           return (
             <Grid item xs={12} md={6} lg={4} key={produto.id}>
-              <Card 
+
+                <NotifierElement />              <Card 
                 variant={selecionado ? 'elevation' : 'outlined'}
                 sx={{ 
                   cursor: 'pointer',

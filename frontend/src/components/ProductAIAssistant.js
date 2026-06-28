@@ -84,7 +84,7 @@ const ProductAIAssistant = ({ onApplySuggestion, onProductCreated, onEditSuggest
         if (videoRef.current) videoRef.current.srcObject = stream;
       }, 100);
     } catch (err) {
-      console.error(err);
+      if(process.env.NODE_ENV!=='production')console.error(err);
       setError('Erro ao acessar a câmera: ' + err.message);
       setCaptureMode(null);
     }
@@ -98,7 +98,7 @@ const ProductAIAssistant = ({ onApplySuggestion, onProductCreated, onEditSuggest
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       setMediaStream(stream);
     } catch (err) {
-      console.error(err);
+      if(process.env.NODE_ENV!=='production')console.error(err);
       setError('Erro ao acessar o microfone: ' + err.message);
       setCaptureMode(null);
     }

@@ -8,7 +8,9 @@ import {
 } from '@mui/material';
 import { Add as AddIcon } from '@mui/icons-material';
 
+import useNotifier from '../hooks/useNotifier';
 const ProductForm = ({ onSubmit, onCancel, initialData = {} }) => {
+  const { notify, NotifierElement } = useNotifier();
   const [formData, setFormData] = useState({
     nome: '',
     tipo: 'oleo',
@@ -37,7 +39,7 @@ const ProductForm = ({ onSubmit, onCancel, initialData = {} }) => {
     e.preventDefault();
 
     if (!formData.nome.trim()) {
-      alert('Nome do produto é obrigatório');
+      notify('Nome do produto é obrigatório', 'warning');
       return;
     }
 
@@ -76,7 +78,8 @@ const ProductForm = ({ onSubmit, onCancel, initialData = {} }) => {
 
   return (
     <Box component="form" onSubmit={handleSubmit} sx={{ mb: 4 }}>
-      <Typography variant="subtitle1" gutterBottom>
+
+        <NotifierElement />      <Typography variant="subtitle1" gutterBottom>
         Cadastrar Novo Produto
       </Typography>
 

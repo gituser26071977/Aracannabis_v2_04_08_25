@@ -109,7 +109,7 @@ const DigitalTwinPanel = ({ patientId }) => {
         setTimeline(timelineData);
         setOutcomes(outcomesData);
       } catch (err) {
-        console.error('Erro ao carregar Digital Twin:', err);
+        if(process.env.NODE_ENV!=='production')console.error('Erro ao carregar Digital Twin:', err);
         setError('Não foi possível carregar o Digital Twin');
       } finally {
         setLoading(false);
@@ -156,7 +156,7 @@ const DigitalTwinPanel = ({ patientId }) => {
   return (
     <Box sx={{ width: '100%' }}>
       {/* Header */}
-      <Paper elevation={2} sx={{ p: 3, mb: 3, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
+      <Paper elevation={0} sx={{ p: 3, mb: 3, bgcolor: 'primary.main', color: 'primary.contrastText' }}>
         <Typography variant="h5" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <TimelineIcon /> Digital Twin — {patient.name || 'Paciente'}
         </Typography>

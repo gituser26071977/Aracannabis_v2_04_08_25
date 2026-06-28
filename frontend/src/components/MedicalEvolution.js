@@ -95,7 +95,7 @@ const MedicalEvolution = ({ pacienteId, pacienteNome }) => {
 
         setEvolucoes(mockEvolucoes);
       } catch (err) {
-        console.error('Erro ao buscar evoluções:', err);
+        if(process.env.NODE_ENV!=='production')console.error('Erro ao buscar evoluções:', err);
         setError('Não foi possível carregar as evoluções médicas.');
       } finally {
         setLoading(false);
@@ -179,7 +179,7 @@ const MedicalEvolution = ({ pacienteId, pacienteNome }) => {
 
       handleCloseDialog();
     } catch (err) {
-      console.error('Erro ao salvar evolução:', err);
+      if(process.env.NODE_ENV!=='production')console.error('Erro ao salvar evolução:', err);
       setError('Não foi possível salvar a evolução médica.');
     } finally {
       setLoading(false);
@@ -201,7 +201,7 @@ const MedicalEvolution = ({ pacienteId, pacienteNome }) => {
 
       handleCloseConfirmDelete();
     } catch (err) {
-      console.error('Erro ao excluir evolução:', err);
+      if(process.env.NODE_ENV!=='production')console.error('Erro ao excluir evolução:', err);
       setError('Não foi possível excluir a evolução médica.');
     } finally {
       setLoading(false);
@@ -243,7 +243,7 @@ ${soap.plan || '-'}
       setEvolucaoText(formattedSoap);
 
     } catch (err) {
-      console.error('Erro IA:', err);
+      if(process.env.NODE_ENV!=='production')console.error('Erro IA:', err);
       setError('Falha ao gerar resumo IA: ' + (err.error || err.message));
     } finally {
       setAiLoading(false);
@@ -258,8 +258,8 @@ ${soap.plan || '-'}
           p: 3,
           borderRadius: 2,
           mb: 4,
-          bgcolor: '#f8fbf5',
-          border: '1px solid #e0e8db',
+          bgcolor: (t) => t.palette.mode === 'dark' ? 'rgba(0,212,170,0.04)' : 'rgba(13,115,119,0.04)',
+          borderColor: 'divider',
         }}
       >
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
@@ -288,7 +288,7 @@ ${soap.plan || '-'}
             <CircularProgress />
           </Box>
         ) : evolucoes.length === 0 ? (
-          <Card sx={{ bgcolor: '#f5f5f5', borderRadius: 2, mb: 3 }}>
+          <Card sx={{ bgcolor: 'action.hover', borderRadius: 2, mb: 3 }}>
             <CardContent>
               <Typography variant="h6" color="text.secondary" align="center">
                 Nenhuma evolução médica registrada

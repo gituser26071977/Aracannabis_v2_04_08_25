@@ -38,7 +38,9 @@ import {
 } from '@mui/icons-material';
 import api from '../services/api';
 
+import useNotifier from '../hooks/useNotifier';
 const ImportExportManager = ({ patientId, patientName }) => {
+  const { notify, NotifierElement } = useNotifier();
   const [exportDialog, setExportDialog] = useState(false);
   const [importDialog, setImportDialog] = useState(false);
   const [chatDialog, setChatDialog] = useState(false);
@@ -82,8 +84,8 @@ const ImportExportManager = ({ patientId, patientName }) => {
 
       setExportDialog(false);
     } catch (error) {
-      console.error('Erro ao exportar:', error);
-      alert('Erro ao exportar dados');
+      if(process.env.NODE_ENV!=='production')console.error('Erro ao exportar:', error);
+      notify('Erro ao exportar dados', 'error');
     } finally {
       setLoading(false);
     }
@@ -96,7 +98,7 @@ const ImportExportManager = ({ patientId, patientName }) => {
 
   const handleImport = async () => {
     if (!selectedFile) {
-      alert('Selecione um arquivo para importar');
+      notify('Selecione um arquivo para importar', 'warning');
       return;
     }
 
@@ -113,7 +115,7 @@ const ImportExportManager = ({ patientId, patientName }) => {
 
       setImportResult(response.data);
     } catch (error) {
-      console.error('Erro ao importar:', error);
+      if(process.env.NODE_ENV!=='production')console.error('Erro ao importar:', error);
       setImportResult({
         error: 'Erro ao importar arquivo',
         details: error.response?.data?.error || error.message
@@ -146,7 +148,7 @@ const ImportExportManager = ({ patientId, patientName }) => {
       setChatMessages(prev => [...prev, aiMessage]);
       setCurrentQuestion('');
     } catch (error) {
-      console.error('Erro no chat:', error);
+      if(process.env.NODE_ENV!=='production')console.error('Erro no chat:', error);
       const errorMessage = {
         type: 'error',
         content: 'Erro ao processar pergunta: ' + (error.response?.data?.error || error.message)
@@ -167,7 +169,8 @@ const ImportExportManager = ({ patientId, patientName }) => {
 
   return (
     <Box>
-      <Typography variant="h6" gutterBottom>
+
+        <NotifierElement />      <Typography variant="h6" gutterBottom>
         Importação, Exportação e Chat com IA
       </Typography>
 

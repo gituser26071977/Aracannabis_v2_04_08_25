@@ -34,10 +34,10 @@ const DosageLineChart = ({ patientId }) => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        console.log(`Buscando dados gráfico para paciente ${patientId}, período ${selectedPeriod}`);
+        if(process.env.NODE_ENV!=='production')console.log(`Buscando dados gráfico para paciente ${patientId}, período ${selectedPeriod}`);
         // Carregar dados de dosagens usando o novo endpoint
         const response = await dosagensService.obterDadosGraficoNovo(patientId, selectedPeriod);
-        console.log('Resposta completa do serviço:', response);
+        if(process.env.NODE_ENV!=='production')console.log('Resposta completa do serviço:', response);
         
         // Extrair dados de canabinoides (CBD e THC)
         let dadosGrafico = [];
@@ -71,11 +71,11 @@ const DosageLineChart = ({ patientId }) => {
           dadosGrafico = Array.from(dataMap.values()).sort((a, b) => new Date(a.date) - new Date(b.date));
         }
         
-        console.log('Dados para gráfico:', dadosGrafico);
+        if(process.env.NODE_ENV!=='production')console.log('Dados para gráfico:', dadosGrafico);
         setDosagensData(dadosGrafico);
         setError('');
       } catch (err) {
-        console.error('Erro ao carregar dados para o gráfico de dosagens:', err);
+        if(process.env.NODE_ENV!=='production')console.error('Erro ao carregar dados para o gráfico de dosagens:', err);
         setError('Não foi possível carregar os dados de dosagens');
       } finally {
         setLoading(false);

@@ -108,12 +108,12 @@ const AdBanner = ({
           setAds(adsData);
         } else {
           // Fallback para dados de exemplo se a API falhar
-          console.warn('API de anúncios indisponível, usando dados de exemplo');
+          if(process.env.NODE_ENV!=='production')console.warn('API de anúncios indisponível, usando dados de exemplo');
           const shuffledAds = [...sampleAds].sort(() => Math.random() - 0.5);
           setAds(shuffledAds.slice(0, maxAds));
         }
       } catch (error) {
-        console.error('Erro ao carregar anúncios:', error);
+        if(process.env.NODE_ENV!=='production')console.error('Erro ao carregar anúncios:', error);
         // Fallback para dados de exemplo
         const shuffledAds = [...sampleAds].sort(() => Math.random() - 0.5);
         setAds(shuffledAds.slice(0, maxAds));
@@ -127,14 +127,14 @@ const AdBanner = ({
 
   const handleAdClick = (ad) => {
     // Registrar clique do anúncio
-    console.log('Anúncio clicado:', ad.title);
+    if(process.env.NODE_ENV!=='production')console.log('Anúncio clicado:', ad.title);
     
     // Enviar analytics para a API
     fetch(`/api/anuncios/${ad.id}/click`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' }
     }).catch(error => {
-      console.warn('Erro ao registrar clique:', error);
+      if(process.env.NODE_ENV!=='production')console.warn('Erro ao registrar clique:', error);
     });
     
     // Abrir link

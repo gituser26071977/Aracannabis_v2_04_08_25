@@ -24,20 +24,20 @@ const SymptomsChart = ({ patientId }) => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        console.log(`🔍 Buscando sintomas para paciente ${patientId}`);
+        if(process.env.NODE_ENV!=='production')console.log(`🔍 Buscando sintomas para paciente ${patientId}`);
         
         // Carregar sintomas do paciente
         const sintomasResponse = await sintomasService.listar(patientId);
-        console.log('📊 Resposta da API de sintomas:', sintomasResponse);
+        if(process.env.NODE_ENV!=='production')console.log('📊 Resposta da API de sintomas:', sintomasResponse);
         
         const sintomasArray = sintomasResponse?.sintomas || [];
         
         if (Array.isArray(sintomasArray) && sintomasArray.length > 0) {
-          console.log('✅ Dados recebidos:', sintomasArray.length, 'itens');
+          if(process.env.NODE_ENV!=='production')console.log('✅ Dados recebidos:', sintomasArray.length, 'itens');
           
           // Extrair nomes únicos de sintomas
           const uniqueSintomas = [...new Set(sintomasArray.map(s => s.sintoma))];
-          console.log('🏷️ Sintomas únicos encontrados:', uniqueSintomas);
+          if(process.env.NODE_ENV!=='production')console.log('🏷️ Sintomas únicos encontrados:', uniqueSintomas);
           
           setSintomasList(uniqueSintomas);
           
@@ -45,7 +45,7 @@ const SymptomsChart = ({ patientId }) => {
           const sintomaParaUsar = selectedSintoma || (uniqueSintomas.length > 0 ? uniqueSintomas[0] : '');
           if (sintomaParaUsar && !selectedSintoma) {
             setSelectedSintoma(sintomaParaUsar);
-            console.log('🎯 Primeiro sintoma selecionado:', sintomaParaUsar);
+            if(process.env.NODE_ENV!=='production')console.log('🎯 Primeiro sintoma selecionado:', sintomaParaUsar);
           }
           
           // Processar dados para o gráfico
@@ -59,16 +59,16 @@ const SymptomsChart = ({ patientId }) => {
               }))
               .sort((a, b) => new Date(a.date + 'T12:00:00') - new Date(b.date + 'T12:00:00'));
             
-            console.log('📈 Sintomas filtrados para gráfico:', sintomasFiltrados);
+            if(process.env.NODE_ENV!=='production')console.log('📈 Sintomas filtrados para gráfico:', sintomasFiltrados);
             setSintomasData(sintomasFiltrados);
           }
         } else {
-          console.warn('⚠️ Nenhum sintoma encontrado:', sintomasResponse);
+          if(process.env.NODE_ENV!=='production')console.warn('⚠️ Nenhum sintoma encontrado:', sintomasResponse);
         }
         
         setError('');
       } catch (err) {
-        console.error('❌ Erro ao carregar sintomas:', err);
+        if(process.env.NODE_ENV!=='production')console.error('❌ Erro ao carregar sintomas:', err);
         setError(`Erro ao carregar sintomas: ${err.message}`);
       } finally {
         setLoading(false);
@@ -81,7 +81,7 @@ const SymptomsChart = ({ patientId }) => {
   }, [patientId, selectedSintoma]);
 
   const handleSintomaChange = (event) => {
-    console.log('🔄 Sintoma alterado para:', event.target.value);
+    if(process.env.NODE_ENV!=='production')console.log('🔄 Sintoma alterado para:', event.target.value);
     setSelectedSintoma(event.target.value);
   };
   

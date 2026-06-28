@@ -40,7 +40,7 @@ const EnhancedCombinedChart = ({ patientId }) => {
       try {
         // Carregar dados de sintomas
         const sintomasResponse = await sintomasService.obterDadosGrafico(patientId, selectedPeriod);
-        console.log('Dados de sintomas recebidos:', sintomasResponse);
+        if(process.env.NODE_ENV!=='production')console.log('Dados de sintomas recebidos:', sintomasResponse);
         
         // Verificar a estrutura dos dados e definir sintomasData
         if (sintomasResponse.dados_grafico && Array.isArray(sintomasResponse.dados_grafico)) {
@@ -70,7 +70,7 @@ const EnhancedCombinedChart = ({ patientId }) => {
         
         // Carregar dados de dosagens
         const dosagensResponse = await dosagensService.obterDadosGrafico(patientId, selectedPeriod);
-        console.log('Dados de dosagens recebidos:', dosagensResponse);
+        if(process.env.NODE_ENV!=='production')console.log('Dados de dosagens recebidos:', dosagensResponse);
         
         if (dosagensResponse.dados_grafico && Array.isArray(dosagensResponse.dados_grafico)) {
           setDosagensData(dosagensResponse.dados_grafico);
@@ -82,7 +82,7 @@ const EnhancedCombinedChart = ({ patientId }) => {
         
         setError('');
       } catch (err) {
-        console.error('Erro ao carregar dados para o gráfico combinado:', err);
+        if(process.env.NODE_ENV!=='production')console.error('Erro ao carregar dados para o gráfico combinado:', err);
         setError(`Não foi possível carregar os dados para o gráfico: ${err.message}`);
       } finally {
         setLoading(false);
@@ -173,7 +173,7 @@ const EnhancedCombinedChart = ({ patientId }) => {
         moment(a.date).valueOf() - moment(b.date).valueOf()
       );
     } catch (error) {
-      console.error('Erro ao processar dados combinados:', error);
+      if(process.env.NODE_ENV!=='production')console.error('Erro ao processar dados combinados:', error);
       setError('Erro ao combinar dados para o gráfico');
       return [];
     }
@@ -182,7 +182,7 @@ const EnhancedCombinedChart = ({ patientId }) => {
   const combinedData = processChartData();
   
   // Debug: log dos dados processados
-  console.log('Dados processados para o gráfico:', {
+  if(process.env.NODE_ENV!=='production')console.log('Dados processados para o gráfico:', {
     selectedSintoma,
     sintomasData: sintomasData.length,
     dosagensData: dosagensData.length,

@@ -1,89 +1,40 @@
 import React, { useState } from 'react';
-import { 
-  Button, 
-  TextField, 
-  Paper, 
-  Typography, 
-  Box, 
+import {
+  Button,
+  TextField,
+  Paper,
+  Typography,
+  Box,
   Alert,
-  Container 
+  Container,
+  Link as MuiLink
 } from '@mui/material';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
+/**
+ * LoginDireto — DESCONTINUADO.
+ *
+ * Este componente era usado como rota de diagnóstico direto da API, mas foi
+ * substituído pelo AuthContext compartilhado. Removidas credenciais hardcoded
+ * e URLs localhost; agora redireciona para a tela de login principal.
+ *
+ * MISSÃO 12 — UI Credibility Hardening.
+ */
 function LoginDireto() {
-  const [usuario, setUsuario] = useState('admin');
-  const [senha, setSenha] = useState('AraOS@2025');
+  const [message] = useState('Esta tela foi descontinuada. Use o login principal abaixo.');
+  const { login } = useAuth();
+  const [usuario, setUsuario] = useState('');
+  const [senha, setSenha] = useState('');
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
-  const [messageType, setMessageType] = useState('info');
 
-  const handleLogin = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('LOGIN_DIRETO: Iniciando login...');
     setLoading(true);
-    setMessage('Entrando...');
-    setMessageType('info');
-
     try {
-      // Passo 1: Obter token CSRF
-      console.log('LOGIN_DIRETO: Obtendo token CSRF...');
-      setMessage('Obtendo token de segurança...');
-      
-      const csrfResponse = await fetch('http://localhost:5000/api/csrf-token');
-      
-      if (!csrfResponse.ok) {
-        throw new Error(`Erro ao obter token CSRF: ${csrfResponse.status}`);
-      }
-      
-      const csrfData = await csrfResponse.json();
-      console.log('LOGIN_DIRETO: Token CSRF obtido');
-
-      // Passo 2: Fazer login
-      console.log('LOGIN_DIRETO: Fazendo login...');
-      setMessage('Verificando credenciais...');
-
-      const loginResponse = await fetch('http://localhost:5000/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-Token': csrfData.csrf_token
-        },
-        body: JSON.stringify({
-          usuario: usuario,
-          senha: senha
-        })
-      });
-
-      console.log('LOGIN_DIRETO: Status da resposta:', loginResponse.status);
-
-      if (loginResponse.ok) {
-        const loginData = await loginResponse.json();
-        console.log('LOGIN_DIRETO: Login bem-sucedido!');
-        
-        // Salvar dados no localStorage
-        localStorage.setItem('token', loginData.access_token);
-        localStorage.setItem('refresh_token', loginData.refresh_token);
-        localStorage.setItem('user', JSON.stringify(loginData.user));
-        localStorage.setItem('csrf_token', loginData.csrf_token);
-        
-        setMessage(`✅ Login realizado com sucesso! Bem-vindo, ${loginData.user.nome}!`);
-        setMessageType('success');
-        
-        // Redirecionar após 2 segundos
-        setTimeout(() => {
-          window.location.href = '/';
-        }, 2000);
-        
-      } else {
-        const errorData = await loginResponse.json();
-        console.error('LOGIN_DIRETO: Erro no login:', errorData);
-        setMessage(`❌ Erro: ${errorData.error || 'Credenciais inválidas'}`);
-        setMessageType('error');
-      }
-
-    } catch (error) {
-      console.error('LOGIN_DIRETO: Erro capturado:', error);
-      setMessage(`❌ Erro de conexão: ${error.message}`);
-      setMessageType('error');
+      await login(usuario, senha);
+    } catch (err) {
+      // erro tratado pelo AuthContext
     } finally {
       setLoading(false);
     }
@@ -94,20 +45,14 @@ function LoginDireto() {
       <Box sx={{ mt: 8, mb: 4 }}>
         <Paper elevation={3} sx={{ p: 4 }}>
           <Typography variant="h4" component="h1" gutterBottom align="center">
-            🔐 Login AraOS — Clinical Intelligence Operating System
+            AraOS — Sistema de Prontuário
           </Typography>
-          
-          <Typography variant="body2" align="center" color="text.secondary" sx={{ mb: 3 }}>
-            Sistema de Prontuário com IA Avançada
-          </Typography>
-          
-          {message && (
-            <Alert severity={messageType} sx={{ mb: 3 }}>
-              {message}
-            </Alert>
-          )}
-          
-          <Box component="form" onSubmit={handleLogin}>
+
+          <Alert severity="warning" sx={{ mb: 3 }}>
+            {message}
+          </Alert>
+
+          <Box component="form" onSubmit={handleSubmit}>
             <TextField
               label="Usuário"
               variant="outlined"
@@ -115,10 +60,9 @@ function LoginDireto() {
               margin="normal"
               value={usuario}
               onChange={(e) => setUsuario(e.target.value)}
+              autoComplete="username"
               required
-              autoFocus
             />
-            
             <TextField
               label="Senha"
               type="password"
@@ -127,9 +71,9 @@ function LoginDireto() {
               margin="normal"
               value={senha}
               onChange={(e) => setSenha(e.target.value)}
+              autoComplete="current-password"
               required
             />
-            
             <Button
               type="submit"
               variant="contained"
@@ -142,22 +86,11 @@ function LoginDireto() {
               {loading ? 'Entrando...' : 'Entrar'}
             </Button>
           </Box>
-          
-          <Box sx={{ mt: 3, p: 2, bgcolor: 'grey.100', borderRadius: 1 }}>
-            <Typography variant="h6" gutterBottom>
-              🔑 Credenciais de Teste:
-            </Typography>
-            <Typography variant="body2">
-              <strong>Usuário:</strong> admin<br />
-              <strong>Senha:</strong> AraOS@2025
-            </Typography>
-          </Box>
-          
+
           <Box sx={{ mt: 2, textAlign: 'center' }}>
-            <Typography variant="caption" color="text.secondary">
-              Sistema com 38+ modelos de IA configurados<br />
-              Versão 2.1.6 - Login Direto
-            </Typography>
+            <MuiLink component={Link} to="/login" variant="body2">
+              Voltar para a tela de login
+            </MuiLink>
           </Box>
         </Paper>
       </Box>

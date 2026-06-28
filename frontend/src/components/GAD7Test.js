@@ -139,7 +139,7 @@ const GAD7Test = ({ open, onClose, onCompleted }) => {
                             </Stepper>
                         </Box>
 
-                        <Paper elevation={0} sx={{ p: 2, bgcolor: '#fafafa', borderRadius: 2 }}>
+                        <Paper elevation={0} sx={{ p: 2, bgcolor: 'background.default', borderRadius: 2 }}>
                             <FormControl component="fieldset" fullWidth>
                                 <FormLabel component="legend" sx={{
                                     fontSize: '1.2rem',
@@ -173,7 +173,7 @@ const GAD7Test = ({ open, onClose, onCompleted }) => {
                                                 border: '1px solid #e0e0e0',
                                                 borderRadius: 1,
                                                 px: 2,
-                                                '&:hover': { bgcolor: '#f0f0f0' },
+                                                '&:hover': { bgcolor: 'action.hover' },
                                                 bgcolor: answers[activeStep] === option.value ? '#e3f2fd' : 'transparent',
                                                 borderColor: answers[activeStep] === option.value ? '#2196f3' : '#e0e0e0'
                                             }}
@@ -204,7 +204,7 @@ const GAD7Test = ({ open, onClose, onCompleted }) => {
                 )}
             </DialogContent>
 
-            <DialogActions sx={{ p: 2, bgcolor: '#f5f5f5' }}>
+            <DialogActions sx={{ p: 2, bgcolor: 'action.hover' }}>
                 {score === null ? (
                     <>
                         <Button

@@ -38,7 +38,7 @@ const SugestaoPrescricao = ({ pacienteId, pacienteNome, onProdutoSelecionado }) 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [resultado, setResultado] = useState(null);
-  
+
   const [condicao, setCondicao] = useState('');
   const [sintomas, setSintomas] = useState('');
   const [preferencias, setPreferencias] = useState({
@@ -47,11 +47,11 @@ const SugestaoPrescricao = ({ pacienteId, pacienteNome, onProdutoSelecionado }) 
     via_preferida: '',
   });
 
-  const steps = ['Dados Clinicos', 'Preferencias', 'Sugestoes'];
+  const steps = ['Dados Clínicos', 'Preferências', 'Sugestões'];
 
   const handleNext = () => {
     if (activeStep === 0 && (!condicao || !sintomas)) {
-      setError('Preencha a condicao e os sintomas do paciente');
+      setError('Preencha a condição e os sintomas do paciente');
       return;
     }
     setError(null);
@@ -65,7 +65,7 @@ const SugestaoPrescricao = ({ pacienteId, pacienteNome, onProdutoSelecionado }) 
   const handleBuscarSugestoes = async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const response = await sugerirProdutos(
         pacienteId,
@@ -73,15 +73,15 @@ const SugestaoPrescricao = ({ pacienteId, pacienteNome, onProdutoSelecionado }) 
         sintomas,
         preferencias
       );
-      
+
       if (response.success) {
         setResultado(response);
         setActiveStep(2);
       } else {
-        setError(response.message || 'Erro ao obter sugestoes');
+        setError(response.message || 'Erro ao obter sugestões');
       }
     } catch (err) {
-      setError(err.message || 'Erro ao buscar sugestoes');
+      setError(err.message || 'Erro ao buscar sugestões');
     } finally {
       setLoading(false);
     }
@@ -107,17 +107,17 @@ const SugestaoPrescricao = ({ pacienteId, pacienteNome, onProdutoSelecionado }) 
             <Typography variant="h6" gutterBottom>
               Dados do Paciente: {pacienteNome}
             </Typography>
-            
+
             <TextField
               fullWidth
-              label="Condicao Medica Principal"
+              label="Condição Médica Principal"
               value={condicao}
               onChange={(e) => setCondicao(e.target.value)}
-              placeholder="Ex: Ansiedade Generalizada, Dor Cronica, Insonia..."
+              placeholder="Ex: Ansiedade Generalizada, Dor Crônica, Insônia..."
               sx={{ mb: 2 }}
               required
             />
-            
+
             <TextField
               fullWidth
               label="Sintomas Principais"
@@ -130,14 +130,14 @@ const SugestaoPrescricao = ({ pacienteId, pacienteNome, onProdutoSelecionado }) 
             />
           </Box>
         );
-        
+
       case 1:
         return (
           <Box sx={{ mt: 2 }}>
             <Typography variant="h6" gutterBottom>
-              Preferencias de Tratamento
+              Preferências de Tratamento
             </Typography>
-            
+
             <Grid container spacing={3}>
               <Grid item xs={12} md={6}>
                 <FormControlLabel
@@ -153,10 +153,10 @@ const SugestaoPrescricao = ({ pacienteId, pacienteNome, onProdutoSelecionado }) 
                   label="Evitar produtos com THC"
                 />
                 <Typography variant="caption" color="text.secondary" display="block">
-                  Recomendado para pacientes sensiveis aos efeitos psicoativos
+                  Recomendado para pacientes sensíveis aos efeitos psicoativos
                 </Typography>
               </Grid>
-              
+
               <Grid item xs={12} md={6}>
                 <FormControlLabel
                   control={
@@ -168,34 +168,34 @@ const SugestaoPrescricao = ({ pacienteId, pacienteNome, onProdutoSelecionado }) 
                       }))}
                     />
                   }
-                  label="Preferencia por produtos ricos em CBD"
+                  label="Preferência por produtos ricos em CBD"
                 />
                 <Typography variant="caption" color="text.secondary" display="block">
-                  Foca em produtos com maior concentracao de CBD
+                  Foca em produtos com maior concentração de CBD
                 </Typography>
               </Grid>
-              
+
               <Grid item xs={12}>
                 <FormControl fullWidth>
-                  <InputLabel>Via de Administracao Preferida</InputLabel>
+                  <InputLabel>Via de Administração Preferida</InputLabel>
                   <Select
                     value={preferencias.via_preferida}
                     onChange={(e) => setPreferencias(prev => ({
                       ...prev,
                       via_preferida: e.target.value
                     }))}
-                    label="Via de Administracao Preferida"
+                    label="Via de Administração Preferida"
                   >
-                    <MenuItem value="">Sem preferencia</MenuItem>
-                    <MenuItem value="Sublingual">Sublingual (Oleos)</MenuItem>
-                    <MenuItem value="Oral">Oral (Capsulas)</MenuItem>
-                    <MenuItem value="Topica">Topica (Cremes)</MenuItem>
-                    <MenuItem value="Inalatoria">Inalatoria (Vaporizadores)</MenuItem>
+                    <MenuItem value="">Sem preferência</MenuItem>
+                    <MenuItem value="Sublingual">Sublingual (Óleos)</MenuItem>
+                    <MenuItem value="Oral">Oral (Cápsulas)</MenuItem>
+                    <MenuItem value="Topica">Tópica (Cremes)</MenuItem>
+                    <MenuItem value="Inalatoria">Inalatória (Vaporizadores)</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>
             </Grid>
-            
+
             <Box sx={{ mt: 3 }}>
               <Button
                 variant="contained"
@@ -205,28 +205,28 @@ const SugestaoPrescricao = ({ pacienteId, pacienteNome, onProdutoSelecionado }) 
                 disabled={loading}
                 startIcon={loading ? <CircularProgress size={20} /> : <PharmacyIcon />}
               >
-                {loading ? 'Consultando Farmaceutico...' : 'Obter Sugestoes do Farmaceutico'}
+                {loading ? 'Consultando Farmacêutico...' : 'Obter Sugestões do Farmacêutico'}
               </Button>
             </Box>
           </Box>
         );
-        
+
       case 2:
         if (!resultado) return null;
-        
+
         return (
           <Box sx={{ mt: 2 }}>
             <Typography variant="h6" gutterBottom>
-              Sugestoes do Agente Farmaceutico
+              Sugestões do Agente Farmacêutico
             </Typography>
-            
+
             {resultado.consideracoes_gerais && (
               <Alert severity="info" sx={{ mb: 2 }}>
-                <Typography variant="subtitle2">Consideracoes Gerais:</Typography>
+                <Typography variant="subtitle2">Considerações Gerais:</Typography>
                 <Typography variant="body2">{resultado.consideracoes_gerais}</Typography>
               </Alert>
             )}
-            
+
             <Grid container spacing={2}>
               {resultado.sugestoes.map((sugestao, index) => (
                 <Grid item xs={12} key={index}>
@@ -243,32 +243,32 @@ const SugestaoPrescricao = ({ pacienteId, pacienteNome, onProdutoSelecionado }) 
                           size="small"
                         />
                       </Box>
-                      
+
                       <Typography variant="body2" sx={{ mb: 2 }}>
-                        <strong>Justificativa Clinica:</strong>
+                        <strong>Justificativa Clínica:</strong>
                         <br />
                         {sugestao.justificativa}
                       </Typography>
-                      
+
                       <Divider sx={{ my: 1 }} />
-                      
+
                       <Grid container spacing={2}>
                         <Grid item xs={12} md={6}>
                           <Typography variant="body2">
                             <strong>Posologia Sugerida:</strong>
                             <br />
-                            {sugestao.posologia_sugerida || 'Nao especificada'}
+                            {sugestao.posologia_sugerida || 'Não especificada'}
                           </Typography>
                         </Grid>
                         <Grid item xs={12} md={6}>
                           <Typography variant="body2">
-                            <strong>Precaucoes:</strong>
+                            <strong>Precauções:</strong>
                             <br />
-                            {sugestao.precaucoes || 'Nenhuma especifica'}
+                            {sugestao.precaucoes || 'Nenhuma específica'}
                           </Typography>
                         </Grid>
                       </Grid>
-                      
+
                       <Box sx={{ mt: 2 }}>
                         <Button
                           variant="contained"
@@ -277,7 +277,7 @@ const SugestaoPrescricao = ({ pacienteId, pacienteNome, onProdutoSelecionado }) 
                           startIcon={<CheckCircleIcon />}
                           onClick={() => handleSelecionarProduto(sugestao)}
                         >
-                          Selecionar para Prescricao
+                          Selecionar para Prescrição
                         </Button>
                       </Box>
                     </CardContent>
@@ -285,12 +285,12 @@ const SugestaoPrescricao = ({ pacienteId, pacienteNome, onProdutoSelecionado }) 
                 </Grid>
               ))}
             </Grid>
-            
+
             {resultado.recomendacao_farmaceutica && (
               <Paper sx={{ p: 2, mt: 2, bgcolor: 'grey.50' }}>
                 <Typography variant="subtitle2" gutterBottom>
                   <LightbulbIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-                  Recomendacao Farmaceutica
+                  Recomendação Farmacêutica
                 </Typography>
                 <Typography variant="body2">
                   {resultado.recomendacao_farmaceutica}
@@ -299,7 +299,6 @@ const SugestaoPrescricao = ({ pacienteId, pacienteNome, onProdutoSelecionado }) 
             )}
           </Box>
         );
-        
       default:
         return null;
     }
@@ -314,34 +313,32 @@ const SugestaoPrescricao = ({ pacienteId, pacienteNome, onProdutoSelecionado }) 
           </Step>
         ))}
       </Stepper>
-      
+
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
           {error}
         </Alert>
       )}
-      
-      <Paper sx={{ p: 3 }}>
-        {renderStepContent()}
-        
-        <Box sx={{ mt: 3, display: 'flex', justifyContent: 'space-between' }}>
+
+      {renderStepContent()}
+
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
+        <Button
+          disabled={activeStep === 0}
+          onClick={handleBack}
+        >
+          Voltar
+        </Button>
+        {activeStep < 1 && (
           <Button
-            disabled={activeStep === 0}
-            onClick={handleBack}
-            variant="outlined"
+            variant="contained"
+            onClick={handleNext}
+            disabled={activeStep === 0 && (!condicao || !sintomas)}
           >
-            Voltar
+            Próximo
           </Button>
-          {activeStep < 1 && (
-            <Button
-              variant="contained"
-              onClick={handleNext}
-            >
-              Proximo
-            </Button>
-          )}
-        </Box>
-      </Paper>
+        )}
+      </Box>
     </Box>
   );
 };

@@ -61,7 +61,9 @@ import ImageViewer from './ImageViewer';
 import MediaCapture from './MediaCapture';
 import MobileConnectQR from './MobileConnectQR'; // Importação do componente de QR Code
 import ExamChart from './ExamChart';
+import ContextualTip from './ContextualTip';
 import { CameraAlt, PhonelinkRing } from '@mui/icons-material';
+import useConfirm from '../hooks/useConfirm';
 
 // Registrar componentes do Chart.js
 ChartJS.register(
@@ -75,6 +77,7 @@ ChartJS.register(
 );
 
 const ExameManager = ({ patientId }) => {
+  const { confirm, ConfirmDialog } = useConfirm();
   const [exames, setExames] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -135,7 +138,7 @@ const ExameManager = ({ patientId }) => {
         setError('');
       } catch (err) {
         setError('Falha ao carregar exames');
-        console.error('Erro ao carregar exames:', err);
+        if(process.env.NODE_ENV!=='production')console.error('Erro ao carregar exames:', err);
       } finally {
         setLoading(false);
       }
@@ -150,7 +153,7 @@ const ExameManager = ({ patientId }) => {
         const response = await exameService.obterNomesExamesUnicos();
         setExamNames(response.exames || []);
       } catch (err) {
-        console.error('Erro ao carregar nomes de exames:', err);
+        if(process.env.NODE_ENV!=='production')console.error('Erro ao carregar nomes de exames:', err);
         // Não definir erro para não interferir na experiência do usuário
       }
     };
@@ -257,14 +260,20 @@ const ExameManager = ({ patientId }) => {
       setError('');
     } catch (err) {
       setError('Falha ao enviar exame');
-      console.error('Erro ao criar exame:', err);
+      if(process.env.NODE_ENV!=='production')console.error('Erro ao criar exame:', err);
     } finally {
       setLoading(false);
     }
   };
 
   const handleDelete = async (exameId) => {
-    if (window.confirm('Tem certeza que deseja excluir este exame?')) {
+    const ok = await confirm({
+      title: 'Excluir exame?',
+      message: 'Esta ação removerá o exame do prontuário.',
+      confirmLabel: 'Excluir',
+      destructive: true,
+    });
+    if (ok) {
       try {
         setLoading(true);
         await exameService.excluir(exameId);
@@ -272,7 +281,7 @@ const ExameManager = ({ patientId }) => {
         setError('');
       } catch (err) {
         setError('Falha ao excluir exame');
-        console.error('Erro ao excluir exame:', err);
+        if(process.env.NODE_ENV!=='production')console.error('Erro ao excluir exame:', err);
       } finally {
         setLoading(false);
       }
@@ -296,7 +305,7 @@ const ExameManager = ({ patientId }) => {
         }
       }
     } catch (e) {
-      console.error('Erro ao formatar data:', e);
+      if(process.env.NODE_ENV!=='production')console.error('Erro ao formatar data:', e);
     }
     return 'Data inválida';
   };
@@ -375,6 +384,7 @@ const ExameManager = ({ patientId }) => {
   };
 
   return (
+    <>
     <Paper elevation={3} sx={{ p: 3, mt: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h6">Exames do Paciente</Typography>
@@ -421,6 +431,14 @@ const ExameManager = ({ patientId }) => {
       {/* Tab 0: Checklist de Documentos */}
       {tabValue === 0 && (
         <Box sx={{ mb: 4 }}>
+          <ContextualTip
+            severity="tip"
+            storageKey="exame_autodetect"
+            title="✨ Detecção automática:"
+            sx={{ mb: 2 }}
+          >
+            Itens do checklist são preenchidos automaticamente a partir dos exames já cadastrados (Receita, ANVISA, Comprovante, Laudo, Ajuizamento, Identidade).
+          </ContextualTip>
           <Alert severity="info" icon={<Assignment />} sx={{ mb: 3 }}>
             Checklist da Ficha de Cadastro: Verifique abaixo os documentos obrigatórios para o prontuário.
           </Alert>
@@ -545,33 +563,38 @@ const ExameManager = ({ patientId }) => {
                       <TableCell>{renderExameContent(exame)}</TableCell>
                       <TableCell>{formatDate(exame.data_exame)}</TableCell>
                       <TableCell sx={{ display: 'flex', gap: 1 }}>
-                        <IconButton
-                          onClick={() => handleViewExame(exame)}
-                          color="primary"
-                          title="Visualizar"
-                        >
-                          <Visibility />
-                        </IconButton>
+                        <Tooltip title="Visualizar exame">
+                          <IconButton
+                            onClick={() => handleViewExame(exame)}
+                            color="primary"
+                            aria-label="Visualizar exame"
+                          >
+                            <Visibility />
+                          </IconButton>
+                        </Tooltip>
 
                         {exame.tipo_exame === 'arquivo' && (
                           <>
-                            <IconButton
-                              onClick={() => {
-                                const url = exameService.obterUrlImagem(exame.arquivo_caminho);
-                                window.open(url, '_blank');
-                              }}
-                              color="info"
-                              title="Baixar / Abrir"
-                            >
-                              <GetApp />
-                            </IconButton>
+                            <Tooltip title="Baixar / Abrir arquivo">
+                              <IconButton
+                                onClick={() => {
+                                  const url = exameService.obterUrlImagem(exame.arquivo_caminho);
+                                  window.open(url, '_blank');
+                                }}
+                                color="info"
+                                aria-label="Baixar arquivo"
+                              >
+                                <GetApp />
+                              </IconButton>
+                            </Tooltip>
 
-                            <IconButton
-                              onClick={() => {
-                                const url = exameService.obterUrlImagem(exame.arquivo_caminho);
-                                const printWin = window.open('', '_blank');
-                                if (printWin) {
-                                  printWin.document.write(`
+                            <Tooltip title="Imprimir exame">
+                              <IconButton
+                                onClick={() => {
+                                  const url = exameService.obterUrlImagem(exame.arquivo_caminho);
+                                  const printWin = window.open('', '_blank');
+                                  if (printWin) {
+                                    printWin.document.write(`
                                     <html>
                                       <head>
                                         <title>Imprimir Documento - ${exame.titulo}</title>
@@ -592,20 +615,23 @@ const ExameManager = ({ patientId }) => {
                                 }
                               }}
                               color="secondary"
-                              title="Imprimir"
+                              aria-label="Imprimir exame"
                             >
                               <Print />
                             </IconButton>
+                            </Tooltip>
                           </>
                         )}
 
-                        <IconButton
-                          onClick={() => handleDelete(exame.id)}
-                          color="error"
-                          title="Excluir"
-                        >
-                          <Delete />
-                        </IconButton>
+                        <Tooltip title="Excluir exame">
+                          <IconButton
+                            onClick={() => handleDelete(exame.id)}
+                            color="error"
+                            aria-label="Excluir exame"
+                          >
+                            <Delete />
+                          </IconButton>
+                        </Tooltip>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -934,6 +960,8 @@ const ExameManager = ({ patientId }) => {
         </DialogActions>
       </Dialog>
     </Paper>
+    <ConfirmDialog />
+    </>
   );
 };
 

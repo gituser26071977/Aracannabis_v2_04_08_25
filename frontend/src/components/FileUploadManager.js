@@ -75,7 +75,7 @@ const FileUploadManager = ({ patientId, onProcessComplete }) => {
       setShowResultDialog(true);
 
     } catch (err) {
-      console.error('Erro no upload:', err);
+      if(process.env.NODE_ENV!=='production')console.error('Erro no upload:', err);
       setError(err.response?.data?.error || 'Erro ao fazer upload do arquivo');
     } finally {
       setUploading(false);

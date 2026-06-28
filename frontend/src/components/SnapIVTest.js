@@ -107,9 +107,9 @@ const SnapIVTest = ({ patientId, open, onClose, onTestCompleted }) => {
 
       try {
         await evolucoesService.criar(evolucaoData);
-        console.log('Evolução criada automaticamente para resultado do SNAP-IV');
+        if(process.env.NODE_ENV!=='production')console.log('Evolução criada automaticamente para resultado do SNAP-IV');
       } catch (evolucaoError) {
-        console.error('Erro ao criar evolução automaticamente:', evolucaoError);
+        if(process.env.NODE_ENV!=='production')console.error('Erro ao criar evolução automaticamente:', evolucaoError);
         // Não falhar o teste se a evolução não puder ser criada
       }
 

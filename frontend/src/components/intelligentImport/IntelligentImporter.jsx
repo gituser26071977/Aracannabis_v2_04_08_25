@@ -56,7 +56,7 @@ const IntelligentImporter = () => {
           })));
         }
       } catch (e) {
-        console.warn('Falha ao carregar intents; usando fallback.', e);
+        if(process.env.NODE_ENV!=='production')console.warn('Falha ao carregar intents; usando fallback.', e);
       } finally {
         if (alive) setLoadingOptions(false);
       }

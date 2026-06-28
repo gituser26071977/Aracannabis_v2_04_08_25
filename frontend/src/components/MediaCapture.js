@@ -71,7 +71,7 @@ const MediaCapture = ({ onCapture, mode = 'both', onClose, triggerButton }) => {
                 if (videoRef.current) videoRef.current.srcObject = stream;
             }, 100);
         } catch (err) {
-            console.error(err);
+            if(process.env.NODE_ENV!=='production')console.error(err);
             setError('Erro ao acessar a câmera: ' + err.message);
             setActiveMode(null);
         }
@@ -86,7 +86,7 @@ const MediaCapture = ({ onCapture, mode = 'both', onClose, triggerButton }) => {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             setMediaStream(stream);
         } catch (err) {
-            console.error(err);
+            if(process.env.NODE_ENV!=='production')console.error(err);
             setError('Erro ao acessar o microfone: ' + err.message);
             setActiveMode(null);
         }

@@ -68,7 +68,7 @@ const MobileConnectQR = ({ onUploadComplete, context = 'exam' }) => {
             // Iniciar polling
             pollingInterval.current = setInterval(() => checkStatus(token), 2500);
         } catch (err) {
-            console.error(err);
+            if(process.env.NODE_ENV!=='production')console.error(err);
             setStatus('error');
         }
     };
@@ -89,7 +89,7 @@ const MobileConnectQR = ({ onUploadComplete, context = 'exam' }) => {
                         const file = new File([fileRes.data], response.data.original_filename, { type: response.data.file_type });
                         if (onUploadComplete) onUploadComplete(file);
                     } catch (downloadErr) {
-                        console.error("Erro ao baixar arquivo enviado pelo mobile", downloadErr);
+                        if(process.env.NODE_ENV!=='production')console.error("Erro ao baixar arquivo enviado pelo mobile", downloadErr);
                     }
                 }
             } else if (response.data.status === 'expired') {

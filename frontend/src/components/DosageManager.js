@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import useRemember from '../hooks/useRemember';
 import {
   Paper,
   Typography,
@@ -26,7 +27,8 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Divider
+  Divider,
+  Chip
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -63,6 +65,11 @@ const DosageManager = ({ patientId }) => {
     via_administracao: 'Oral'
   });
 
+  // Lembrar últimos valores usados pelo médico (evita redigitação)
+  const [rememberedVia, setRememberedVia] = useRemember('via_administracao_padrao', 'Oral');
+  const [rememberedGotasPorMl, setRememberedGotasPorMl] = useRemember('gotas_por_ml_padrao', 30);
+  const [rememberedTipoDose, setRememberedTipoDose] = useRemember('tipo_dose_padrao', 'fixa');
+
   // Estado para o gráfico
   const [chartData, setChartData] = useState(null);
   const [showChart, setShowChart] = useState(true);
@@ -81,6 +88,17 @@ const DosageManager = ({ patientId }) => {
   // Estado para abas
   const [tabValue, setTabValue] = useState(0);
 
+  // Pré-preencher formulário com últimos valores lembrados
+  useEffect(() => {
+    setNewDosage(prev => ({
+      ...prev,
+      via_administracao: rememberedVia,
+      gotas_por_ml: rememberedGotasPorMl,
+      tipo_dose: rememberedTipoDose,
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Carregar dosagens e produtos
   useEffect(() => {
     const fetchData = async () => {
@@ -95,7 +113,7 @@ const DosageManager = ({ patientId }) => {
         await loadChartData();
         setError('');
       } catch (err) {
-        console.error('Erro ao carregar dados:', err);
+        if(process.env.NODE_ENV!=='production')console.error('Erro ao carregar dados:', err);
         setError('Não foi possível carregar as dosagens');
       } finally {
         setLoading(false);
@@ -113,7 +131,7 @@ const DosageManager = ({ patientId }) => {
       const data = await dosagensService.obterDadosGrafico(patientId);
       setChartData(data.dados_grafico);
     } catch (err) {
-      console.error('Erro ao carregar dados do gráfico:', err);
+      if(process.env.NODE_ENV!=='production')console.error('Erro ao carregar dados do gráfico:', err);
       setChartData(null);
     } finally {
       setChartLoading(false);
@@ -211,6 +229,11 @@ const DosageManager = ({ patientId }) => {
       setDosages([response.dosagem, ...dosages]);
       await loadChartData();
 
+      // Persistir valores como novos padrões (aprende com o médico)
+      setRememberedVia(newDosage.via_administracao);
+      setRememberedGotasPorMl(newDosage.gotas_por_ml);
+      setRememberedTipoDose(newDosage.tipo_dose);
+
       setNewDosage({
         data: new Date().toISOString().split('T')[0],
         dosagem: '',
@@ -220,16 +243,16 @@ const DosageManager = ({ patientId }) => {
         concentracao_thc: 0,
         concentracao_cbg: 0,
         concentracao_cbn: 0,
-        gotas_por_ml: 30,
-        tipo_dose: 'fixa',
+        gotas_por_ml: rememberedGotasPorMl,
+        tipo_dose: rememberedTipoDose,
         esquema_doses: { manha: 0, almoco: 0, tarde: 0, noite: 0, deitar: 0 },
         instrucoes_uso: '',
-        via_administracao: 'Oral'
+        via_administracao: rememberedVia
       });
 
       setError('');
     } catch (err) {
-      console.error('Erro ao registrar:', err);
+      if(process.env.NODE_ENV!=='production')console.error('Erro ao registrar:', err);
       setError('Não foi possível registrar a dosagem');
     }
   };
@@ -308,7 +331,15 @@ const DosageManager = ({ patientId }) => {
           <TabPanel value={tabValue} index={0}>
             <Paper elevation={3} sx={{ p: 3 }}>
               <Box component="form" onSubmit={handleSubmit} sx={{ mb: 4 }}>
-                <Typography variant="subtitle1" gutterBottom>Registrar Nova Dosagem</Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                  <Typography variant="subtitle1">Registrar Nova Dosagem</Typography>
+                  <Chip
+                    size="small"
+                    label="⌘/Ctrl + Enter"
+                    variant="outlined"
+                    sx={{ ml: 'auto' }}
+                  />
+                </Box>
                 <Grid container spacing={2}>
                   <Grid item xs={12} sm={6} md={3}>
                     <TextField name="data" label="Data" type="date" value={newDosage.data} onChange={handleInputChange} fullWidth required InputLabelProps={{ shrink: true }} />

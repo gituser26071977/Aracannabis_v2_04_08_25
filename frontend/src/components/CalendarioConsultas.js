@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import useRemember from '../hooks/useRemember';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -33,7 +34,9 @@ import {
 } from '@mui/icons-material';
 import { consultasService, pacientesService } from '../services/api';
 
+import useNotifier from '../hooks/useNotifier';
 const CalendarioConsultas = () => {
+  const { notify, NotifierElement } = useNotifier();
   const [eventos, setEventos] = useState([]);
   const [pacientes, setPacientes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -43,6 +46,8 @@ const CalendarioConsultas = () => {
   const [selectedDate, setSelectedDate] = useState(null);
   
   // Estado do formulário
+  const [rememberedTipo, setRememberedTipo] = useRemember('tipo_consulta_padrao', 'presencial');
+  const [rememberedDuracao, setRememberedDuracao] = useRemember('duracao_consulta_padrao', 60);
   const [formData, setFormData] = useState({
     paciente_id: '',
     data_hora: '',
@@ -50,6 +55,16 @@ const CalendarioConsultas = () => {
     tipo_consulta: 'presencial',
     observacoes: ''
   });
+
+  // Pré-preencher com valores lembrados do médico
+  useEffect(() => {
+    setFormData(prev => ({
+      ...prev,
+      tipo_consulta: rememberedTipo,
+      duracao_minutos: rememberedDuracao,
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   
   // Carregar dados iniciais
   useEffect(() => {
@@ -65,7 +80,7 @@ const CalendarioConsultas = () => {
         
         setError('');
       } catch (err) {
-        console.error('Erro ao carregar dados:', err);
+        if(process.env.NODE_ENV!=='production')console.error('Erro ao carregar dados:', err);
         setError('Não foi possível carregar os dados do calendário');
       } finally {
         setLoading(false);
@@ -85,7 +100,7 @@ const CalendarioConsultas = () => {
       const data = await consultasService.obterCalendario(anoAtual, mesAtual);
       setEventos(data.eventos || []);
     } catch (err) {
-      console.error('Erro ao carregar consultas:', err);
+      if(process.env.NODE_ENV!=='production')console.error('Erro ao carregar consultas:', err);
       setError('Não foi possível carregar as consultas');
     }
   };
@@ -155,16 +170,20 @@ const CalendarioConsultas = () => {
         // Criar nova consulta
         await consultasService.criar(formData);
       }
-      
+
+      // Persistir tipo/duração como novos padrões (aprende com o médico)
+      setRememberedTipo(formData.tipo_consulta);
+      setRememberedDuracao(formData.duracao_minutos);
+
       // Recarregar eventos
       await carregarConsultas();
-      
+
       // Fechar diálogo
       setDialogOpen(false);
       setEditingConsulta(null);
-      
+
     } catch (err) {
-      console.error('Erro ao salvar consulta:', err);
+      if(process.env.NODE_ENV!=='production')console.error('Erro ao salvar consulta:', err);
       setError(err.error || 'Não foi possível salvar a consulta');
     }
   };
@@ -179,7 +198,7 @@ const CalendarioConsultas = () => {
       setDialogOpen(false);
       setEditingConsulta(null);
     } catch (err) {
-      console.error('Erro ao cancelar consulta:', err);
+      if(process.env.NODE_ENV!=='production')console.error('Erro ao cancelar consulta:', err);
       setError('Não foi possível cancelar a consulta');
     }
   };
@@ -188,9 +207,9 @@ const CalendarioConsultas = () => {
   const handleEnviarLembretes = async () => {
     try {
       const response = await consultasService.enviarLembretes();
-      alert(response.message);
+      notify(response.message, 'info');
     } catch (err) {
-      console.error('Erro ao enviar lembretes:', err);
+      if(process.env.NODE_ENV!=='production')console.error('Erro ao enviar lembretes:', err);
       setError('Não foi possível enviar os lembretes');
     }
   };
@@ -249,7 +268,8 @@ const CalendarioConsultas = () => {
   
   return (
     <Paper elevation={3} sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+
+        <NotifierElement />      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h6">
           📅 Calendário de Consultas
         </Typography>
