@@ -9,6 +9,7 @@ from models import db, Anamnese, Paciente, Profissional
 from sqlalchemy.exc import SQLAlchemyError
 import os
 import logging
+from services.webhook_auth import validate_internal_key
 
 logger = logging.getLogger(__name__)
 anamneses_bp = Blueprint("anamneses", __name__)
@@ -50,10 +51,11 @@ def obter_anamnese(anamnese_id):
 
 @anamneses_bp.route("/api/anamneses", methods=["POST"])
 def criar_anamnese():
-    """Cria uma nova anamnese (manual, via LIA ou import).""
+    """Cria uma nova anamnese (manual, via LIA ou import).
     Autenticação: JWT (frontend) ou X-Internal-Key (serviços internos)."""
     internal_key = request.headers.get("X-Internal-Key", "")
-    is_internal = internal_key == os.environ.get("INTERNAL_SERVICE_KEY", "dr-anderson-internal-key")
+    expected_internal_key = os.environ.get("INTERNAL_SERVICE_KEY", "")
+    is_internal = validate_internal_key(internal_key, expected_internal_key) if expected_internal_key else False
     
     profissional_id = None
     if not is_internal:

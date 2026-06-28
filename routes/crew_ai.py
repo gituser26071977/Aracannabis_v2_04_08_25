@@ -406,7 +406,7 @@ def whatsapp_webhook():
             }), 403
     else:
         # Apenas log warning em desenvolvimento
-        if os.environ.get('FLASK_ENV') != 'development':
+        if not is_production():
             logger.error("WEBHOOK_SECRET_KEY não configurado em produção!")
     
     try:

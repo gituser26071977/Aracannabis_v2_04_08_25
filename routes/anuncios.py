@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify, current_app
 from flask_cors import cross_origin
-from models import db
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from models import db, Profissional
 from datetime import datetime, timedelta
 
 anuncios_bp = Blueprint('anuncios', __name__)
@@ -246,8 +247,18 @@ def registrar_clique(anuncio_id):
 
 @anuncios_bp.route('/anuncios/stats', methods=['GET'])
 @cross_origin()
+@jwt_required()
 def estatisticas_anuncios():
-    """Retorna estatísticas dos anúncios"""
+    """Retorna estatísticas dos anúncios — restrito a admin/superadmin"""
+    # RBAC: somente admin/superadmin pode ver metricas de negocio
+    try:
+        user_id = get_jwt_identity()
+        profissional = Profissional.query.get(user_id)
+        if not profissional or getattr(profissional, 'role', None) not in ('admin', 'superadmin'):
+            return jsonify({'error': 'Acesso negado — somente administradores'}), 403
+    except Exception:
+        return jsonify({'error': 'Acesso negado'}), 403
+
     try:
         from sqlalchemy import func
 

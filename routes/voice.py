@@ -7,6 +7,7 @@ import logging
 import os
 from flask import Blueprint, jsonify, request, current_app
 from functools import wraps
+from flask_jwt_extended import jwt_required
 
 logger = logging.getLogger("araos.voice.routes")
 
@@ -82,6 +83,7 @@ def get_voice_status():
 
 
 @voice_bp.route('/sessions', methods=['GET'])
+@jwt_required()
 def list_voice_sessions():
     """
     Lista sessões de voz ativas do tenant atual.
@@ -100,6 +102,7 @@ def list_voice_sessions():
 
 
 @voice_bp.route('/sessions/<session_id>/transcript', methods=['GET'])
+@jwt_required()
 def get_session_transcript(session_id):
     """
     Retorna transcrição completa de uma sessão de voz.
@@ -114,6 +117,7 @@ def get_session_transcript(session_id):
 
 
 @voice_bp.route('/sessions/<session_id>/end', methods=['POST'])
+@jwt_required()
 def end_voice_session(session_id):
     """
     Finaliza uma sessão de voz.

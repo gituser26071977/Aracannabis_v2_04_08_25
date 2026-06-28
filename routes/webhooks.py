@@ -7,6 +7,7 @@ import logging
 
 from services.webhook_handler import webhook_handler
 from services.feature_flag_service import FeatureFlagService
+from security_config import limiter
 
 logger = logging.getLogger(__name__)
 
@@ -14,6 +15,7 @@ webhooks_bp = Blueprint('webhooks', __name__)
 
 
 @webhooks_bp.route('/<provider>', methods=['POST'])
+@limiter.exempt  # FASE 5A — webhook unificado, autenticado internamente
 def receber_webhook(provider):
     """
     Recebe webhooks de Mercado Pago, Stripe ou Asaas.

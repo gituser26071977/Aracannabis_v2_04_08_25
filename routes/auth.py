@@ -4,7 +4,10 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from models import db, Profissional, SenhaTemporaria, Assinatura
 from security_config import (
     validate_password_strength,
-    sanitize_input
+    sanitize_input,
+    limiter,
+    LOGIN_RATE_LIMIT,
+    SENSITIVE_ENDPOINTS_RATE_LIMIT,
 )
 import re
 import datetime
@@ -24,6 +27,7 @@ auth_bp = Blueprint('auth', __name__)
 profissionais_bp = Blueprint('profissionais', __name__)
 
 @auth_bp.route('/register', methods=['POST'])
+@limiter.limit(LOGIN_RATE_LIMIT)
 def register():
     data = request.get_json()
     data = sanitize_input(data)
@@ -77,25 +81,25 @@ def register():
         return jsonify({'error': f'Erro ao cadastrar: {str(e)}'}), 500
 
 @auth_bp.route('/login', methods=['POST'])
+@limiter.limit(LOGIN_RATE_LIMIT)
 def login():
-    print("DEBUG LOGIN - FUNCAO LOGIN CHAMADA", flush=True)
+    # P0-03 (Missão 18): ZERO PII em logs. Nunca logar identifier,
+    # senha (mesmo hash parcial), tamanho de senha, ou payload bruto.
     data = request.get_json() or {}
-
-    # DEBUG LOG
-    logger.info(f"LOGIN ATTEMPT - Raw data: {data}")
 
     identifier = data.get('email') or data.get('usuario')
     senha_raw = data.get('senha')
 
     if not identifier or not senha_raw:
-        logger.warning(f"LOGIN FAILED - Dados incompletos: {list(data.keys())}")
+        logger.warning("login: payload incompleto (chaves=%d)", len(data))
         return jsonify({'error': 'Dados incompletos'}), 400
 
-    # Sanitize inputs
+    # P0-04 (Missão 18): sanitize_input NUNCA deve ser aplicado em senhas.
+    # Aplicar sanitize apenas em identifier.
     identifier = sanitize_input(identifier)
-    senha = sanitize_input(senha_raw)
 
-    logger.info(f"LOGIN ATTEMPT - Identificador: {identifier}, Senha length: {len(senha)}")
+    # Log apenas métrica de presença, sem conteúdo
+    logger.info("login: tentativa recebida (identifier_has_at=%s)", '@' in identifier)
 
     if '@' in identifier:
         profissional = Profissional.query.filter_by(email=identifier).first()
@@ -103,24 +107,18 @@ def login():
         profissional = Profissional.query.filter_by(usuario=identifier).first()
 
     if not profissional:
-        logger.warning("LOGIN FAILED - Identificador não encontrado")
+        logger.warning("login: identificador nao encontrado")
         return jsonify({'error': 'Credenciais inválidas'}), 401
 
-    # DEBUG - Verificação de senha detalhada
     from werkzeug.security import check_password_hash
-    hash_no_banco = profissional.senha
-    print(f"DEBUG LOGIN - Hash no banco: {hash_no_banco[:50]}...", flush=True)
-    print(f"DEBUG LOGIN - Senha recebida (length): {len(senha)}", flush=True)
-    print(f"DEBUG LOGIN - Senha sanitizada: '{senha}'", flush=True)
-    
-    senha_valida = check_password_hash(hash_no_banco, senha)
-    print(f"DEBUG LOGIN - Resultado check_password_hash: {senha_valida}", flush=True)
-    
+    # Verificação de senha SEM logar nada do material sensível
+    senha_valida = check_password_hash(profissional.senha, senha_raw)
+
     if not senha_valida:
-        logger.warning("LOGIN FAILED - Senha incorreta para identificador informado")
+        logger.warning("login: credenciais invalidas")
         return jsonify({'error': 'Credenciais inválidas'}), 401
 
-    logger.info(f"LOGIN SUCCESS - Usuario '{profissional.usuario}' logado com sucesso")
+    logger.info("login: sucesso user_id=%s", profissional.id)
 
     # Verificar expiração (exceto admin e superadmin)
     trial_expired = False
@@ -187,6 +185,7 @@ def get_subscription(prof_id):
 
 @auth_bp.route('/change-password', methods=['POST'])
 @jwt_required()
+@limiter.limit(SENSITIVE_ENDPOINTS_RATE_LIMIT)
 def change_password():
     current_user_id = get_jwt_identity()
     data = request.get_json()
@@ -219,6 +218,7 @@ def change_password():
 
 
 @auth_bp.route('/request-password-setup', methods=['POST'])
+@limiter.limit(LOGIN_RATE_LIMIT)
 def request_password_setup():
     data = request.get_json() or {}
     email = sanitize_input(data.get('email', '')).lower().strip()
@@ -266,6 +266,7 @@ def request_password_setup():
 
 
 @auth_bp.route('/define-password', methods=['POST'])
+@limiter.limit(LOGIN_RATE_LIMIT)
 def define_password():
     data = request.get_json() or {}
     user_id = data.get('user_id')

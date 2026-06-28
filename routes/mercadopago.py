@@ -9,6 +9,8 @@ import re
 from services.mercadopago_service import mercadopago_service
 from services.webhook_handler import webhook_handler
 from services.feature_flag_service import FeatureFlagService
+from services.webhook_auth import mercadopago_webhook_required, register_webhook_event
+from security_config import limiter
 
 logger = logging.getLogger(__name__)
 
@@ -116,23 +118,52 @@ def criar_preferencia_publica():
             'error': 'Erro interno do servidor'
         }), 500
 
+def _mp_extract_data_id(payload):
+    """Extrai data.id do payload MP (suporta formato novo e antigo)."""
+    if not isinstance(payload, dict):
+        return ""
+    data = payload.get('data') or {}
+    if isinstance(data, dict):
+        return str(data.get('id') or "")
+    return str(payload.get('id') or "")
+
+
 @mercadopago_bp.route('/webhook', methods=['POST'])
+@limiter.exempt  # FASE 5A — webhook já validado por HMAC MP (FASE 4.5); não deve contar no rate limit
+@mercadopago_webhook_required(get_data_id=_mp_extract_data_id)
 def webhook():
     """
     Endpoint para receber notificações do Mercado Pago.
+    Assinatura validada via padrao oficial MP (x-signature + x-request-id + data.id).
     Se new_billing_v2 estiver ativo, delega ao webhook_handler unificado.
     """
     try:
         dados_webhook = request.get_json()
-        
+
         if not dados_webhook:
             dados_webhook = {
                 'topic': request.form.get('topic'),
                 'resource': request.form.get('resource'),
                 'id': request.form.get('id')
             }
-        
-        logger.info(f"Webhook Mercado Pago recebido: {dados_webhook}")
+
+        # FASE 4.1 — Anti-replay atômico via INSERT + UNIQUE(provider, provider_event_id).
+        # Substitui check_replay (race condition) por register_webhook_event.
+        data_id = _mp_extract_data_id(dados_webhook)
+        is_replay, log_id = register_webhook_event(
+            provider="mercadopago",
+            event_id=data_id,
+            event_type="mercadopago_webhook",
+            payload=dados_webhook,
+        )
+        if is_replay:
+            logger.info(
+                f"[mercadopago_webhook] replay detectado data_id={data_id} "
+                f"log_id={log_id}"
+            )
+            return jsonify({'status': 'ok', 'idempotent': True}), 200
+
+        logger.info(f"Webhook Mercado Pago recebido: data_id={data_id}")
 
         if FeatureFlagService.is_enabled('new_billing_v2'):
             resultado = webhook_handler.process('mercadopago', dados_webhook)
@@ -143,7 +174,7 @@ def webhook():
         else:
             # Fallback para o serviço legado
             resultado = mercadopago_service.processar_webhook(dados_webhook)
-            
+
             if resultado['success']:
                 logger.info(f"Webhook processado com sucesso: {resultado}")
                 if resultado.get('action') == 'subscription_activated':
@@ -153,7 +184,7 @@ def webhook():
             else:
                 logger.error(f"Erro ao processar webhook: {resultado['error']}")
                 return jsonify({'status': 'error'}), 400
-            
+
     except Exception as e:
         logger.error(f"Erro no webhook: {str(e)}")
         return jsonify({'status': 'error'}), 500
