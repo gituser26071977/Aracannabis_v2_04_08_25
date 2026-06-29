@@ -2,7 +2,7 @@
  * TimerLike adapter tests.
  */
 
-import { createTimerLikeAdapter } from '../../src/adapters/timer-like';
+import { createTimerLikeAdapter } from '@core/runtime';
 import type { TimerEngine } from '@core/timer-engine';
 
 const createFakeTimer = (): TimerEngine => {

@@ -1,8 +1,9 @@
 /**
- * planToBreathConfig utility tests.
+ * planToBreathConfig utility tests — re-exported from @core/runtime.
+ * These tests live here as integration coverage for the CLI re-export.
  */
 
-import { planToBreathConfig } from '../../src/util/breath-config';
+import { planToBreathConfig } from '@core/runtime';
 import type { ProtocolExecutionPlan } from '@core/protocol-compiler';
 import { Duration } from '@araflow/shared-contracts';
 

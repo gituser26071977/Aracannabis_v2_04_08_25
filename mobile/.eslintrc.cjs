@@ -1,6 +1,6 @@
 module.exports = {
   root: false,
-  extends: ['../../.eslintrc.cjs', '@react-native'],
+  extends: ['../.eslintrc.cjs', '@react-native'],
   parserOptions: {
     project: ['./tsconfig.json'],
     tsconfigRootDir: __dirname,

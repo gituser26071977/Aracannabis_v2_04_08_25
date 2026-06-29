@@ -27,14 +27,13 @@ import {
 } from '@core/protocol-compiler';
 import { createTimerEngine, type TimerEvent } from '@core/timer-engine';
 import { createBreathEngine, type BreathEvent } from '@core/breath-engine';
+import { createTimerLikeAdapter, planToBreathConfig } from '@core/runtime';
 import { CLI_COMPILER_ID, CLI_RUNTIME_ID } from '../util/engine-id';
 import { loadProtocolSource } from '../io/load-source';
 import { monotonicNowNs } from '../util/clock';
 import { formatRuntimeEventStream, type RuntimeEventLine } from '../formatters/timeline';
 import { formatSummary, type SessionSummary } from '../formatters/summary';
 import { toJson } from '../formatters/json';
-import { planToBreathConfig } from '../util/breath-config';
-import { createTimerLikeAdapter } from '../adapters/timer-like';
 
 export interface RunOptions {
   readonly filepath: string;

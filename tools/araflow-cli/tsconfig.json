@@ -16,6 +16,7 @@
       "@core/timer-engine": ["../../mobile/src/core/timer-engine/index.ts"],
       "@core/breath-engine": ["../../mobile/src/core/breath-engine/index.ts"],
       "@core/protocol-compiler": ["../../mobile/src/core/protocol-compiler/index.ts"],
+      "@core/runtime": ["../../mobile/src/core/runtime/index.ts"],
       "@araflow/shared-contracts": ["../../shared-contracts/src/index.ts"],
       "@araflow/shared-contracts/*": ["../../shared-contracts/src/*"],
       "@shared/*": ["../../mobile/src/shared/*"]

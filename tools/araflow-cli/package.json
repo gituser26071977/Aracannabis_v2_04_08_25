@@ -50,6 +50,7 @@
       "^@core/timer-engine$": "<rootDir>/../../mobile/src/core/timer-engine/index.ts",
       "^@core/breath-engine$": "<rootDir>/../../mobile/src/core/breath-engine/index.ts",
       "^@core/protocol-compiler$": "<rootDir>/../../mobile/src/core/protocol-compiler/index.ts",
+      "^@core/runtime$": "<rootDir>/../../mobile/src/core/runtime/index.ts",
       "^@araflow/shared-contracts$": "<rootDir>/../../shared-contracts/src/index.ts",
       "^@araflow/shared-contracts/(.*)$": "<rootDir>/../../shared-contracts/src/$1",
       "^@shared/errors$": "<rootDir>/../../mobile/src/shared/errors/AppError.ts",
