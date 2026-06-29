@@ -46,3 +46,4 @@ Ver `docs/adr/araflow/template.md`.
 | 021 | Core Contracts (Shared Contracts v2.5)          | Accepted               | 2026-06-27 |
 | 022 | Protocol Compiler Architecture                  | Accepted               | 2026-06-27 |
 | 023 | AraFlow Runtime — Single Public API of the Core | Accepted               | 2026-06-27 |
+| 024 | Execution Session Domain (DDD Aggregate)        | Accepted               | 2026-06-29 |
