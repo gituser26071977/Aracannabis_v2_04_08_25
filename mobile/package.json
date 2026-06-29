@@ -59,6 +59,7 @@
     "eslint": "^8.57.0",
     "eslint-import-resolver-typescript": "^3.6.1",
     "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-prettier": "5.0.0",
     "eslint-plugin-react": "^7.34.1",
     "eslint-plugin-react-hooks": "^4.6.2",
     "eslint-plugin-react-native": "^4.1.0",
@@ -110,6 +111,12 @@
         "functions": 85,
         "lines": 85,
         "statements": 85
+      },
+      "./src/core/runtime/": {
+        "branches": 75,
+        "functions": 90,
+        "lines": 90,
+        "statements": 90
       }
     },
     "testMatch": [
