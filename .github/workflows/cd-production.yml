@@ -196,7 +196,7 @@ jobs:
           username: ${{ env.PROD_DEPLOY_USER }}
           key: ${{ env.PROD_SSH_KEY }}
           script: |
-            cd /opt/araos
+            cd /root/projetos/araos
             ./scripts/backup.sh --env=production
             echo "Backup count: $(ls /var/backups/siap/ | wc -l)"
             echo "Latest:"
@@ -219,8 +219,9 @@ jobs:
           username: ${{ env.PROD_DEPLOY_USER }}
           key: ${{ env.PROD_SSH_KEY }}
           script: |
-            cd /opt/araos
+            cd /root/projetos/araos
             export IMAGE_TAG=${{ github.sha }}
+            git fetch --tags --all
             ./scripts/deploy_prod.sh ${{ github.ref_name }}
 
       - name: Post-deploy smoke
@@ -240,7 +241,7 @@ jobs:
           key: ${{ env.PROD_SSH_KEY }}
           script: |
             echo "═══ AUTO-ROLLBACK PRODUÇÃO ═══"
-            cd /opt/araos
+            cd /root/projetos/araos
             ./scripts/rollback.sh --env=production
             ./scripts/smoke.sh --env=production
             echo "🚨 PRODUÇÃO REVERTIDA — verificar Sentry"
