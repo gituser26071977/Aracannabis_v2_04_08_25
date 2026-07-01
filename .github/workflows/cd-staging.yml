@@ -5,6 +5,12 @@ on:
     branches: [develop, 'feat/**', 'fix/**']
   workflow_dispatch:
 
+# D02 FASE 3 — necessário para `docker push` no GHCR; sem packages:write o
+# token da Action falha com "installation not allowed to Create organization package".
+permissions:
+  contents: read
+  packages: write
+
 env:
   PYTHON_VERSION: '3.12'
   NODE_VERSION: '20.18.0'
