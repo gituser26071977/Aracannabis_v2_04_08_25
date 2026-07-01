@@ -8,8 +8,9 @@ set -euo pipefail
 
 VERSION="${1:-}"
 if [[ -z "$VERSION" ]]; then echo "Uso: $0 <version>"; exit 1; fi
-if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-  echo "✗ Versão inválida. Formato esperado: vX.Y.Z"; exit 1
+# D05 — aceita tambem sufixos de pre-release (e.g. v1.0.0-rc.10)
+if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
+  echo "✗ Versão inválida. Formato esperado: vX.Y.Z ou vX.Y.Z-suffix"; exit 1
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
