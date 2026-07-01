@@ -1,0 +1,25 @@
+# requirements-test.txt — Dependências para a suíte de testes
+# D02 FASE 2 (2026-06-30): substitui o `pip install pytest pytest-cov ...`
+# inline que estava no workflow, garantindo versionamento.
+#
+# Instalado em CI pelos workflows cd-production.yml (stage 3/9 Tests) e
+# cd-staging.yml (stage 3/9 Tests).
+#
+# Não adiciona ao requirements.txt de produção: as deps abaixo devem existir
+# apenas no venv de testes.
+
+# Framework
+pytest>=7.4.0,<9.0.0
+pytest-cov>=4.1.0,<6.0.0
+pytest-flask>=1.3.0,<2.0.0
+
+# Playwright (E2E browser)
+pytest-playwright>=0.4.0,<0.6.0
+playwright>=1.40.0,<2.0.0
+
+# Mocks & helpers
+requests-mock>=1.11.0,<2.0.0
+freezegun>=1.4.0,<2.0.0
+
+# Cobertura
+coverage[toml]>=7.3.0,<8.0.0

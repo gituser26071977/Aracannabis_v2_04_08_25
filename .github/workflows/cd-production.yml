@@ -35,6 +35,35 @@ jobs:
           docker build -f Dockerfile.backend -t siap-backend:prod-${{ github.sha }} .
           cd frontend && docker build --build-arg REACT_APP_API_URL=${{ env.PROD_URL }} \
             -t siap-frontend:prod-${{ github.sha }} . && cd ..
+      # D02 FASE 2 — imagens publicadas no GHCR (corrige bug RC1: build sem push)
+      - name: Login GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Push backend image to GHCR
+        run: |
+          docker tag siap-backend:prod-${{ github.sha }} \
+            ghcr.io/${{ github.repository_owner }}/siap-backend:prod-${{ github.sha }}
+          docker push ghcr.io/${{ github.repository_owner }}/siap-backend:prod-${{ github.sha }}
+      - name: Push frontend image to GHCR
+        run: |
+          docker tag siap-frontend:prod-${{ github.sha }} \
+            ghcr.io/${{ github.repository_owner }}/siap-frontend:prod-${{ github.sha }}
+          docker push ghcr.io/${{ github.repository_owner }}/siap-frontend:prod-${{ github.sha }}
+      # Validação obrigatória: confirma que a imagem realmente existe no registry
+      # antes que os estágios seguintes (Security, Smoke, Deploy) possam usá-la.
+      - name: Validate image digest
+        run: |
+          set -euo pipefail
+          echo "Validating ghcr.io/${{ github.repository_owner }}/siap-backend:prod-${{ github.sha }}"
+          docker pull --quiet \
+            ghcr.io/${{ github.repository_owner }}/siap-backend:prod-${{ github.sha }}
+          echo "Validating ghcr.io/${{ github.repository_owner }}/siap-frontend:prod-${{ github.sha }}"
+          docker pull --quiet \
+            ghcr.io/${{ github.repository_owner }}/siap-frontend:prod-${{ github.sha }}
+          echo "✓ Imagens confirmadas no GHCR"
 
   # 2. LINT
   lint:
@@ -77,11 +106,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+      # D02 FASE 2 — usa requirements-test.txt versionado (substitui o
+      # `pip install pytest ...` inline que duplicava configuração)
       - run: |
           python -m venv .venv-test
           .venv-test/bin/pip install --upgrade pip
-          .venv-test/bin/pip install -r requirements.txt
-          .venv-test/bin/pip install pytest pytest-cov pytest-flask pytest-playwright requests-mock freezegun
+          .venv-test/bin/pip install -r requirements.txt -r requirements-test.txt
       - name: P0 + integration + smoke
         run: |
           .venv-test/bin/python -m pytest tests/security/ tests/integration/ tests/smoke/ -v --tb=short
@@ -98,16 +128,32 @@ jobs:
       - run: bandit -r . -f json -o bandit.json -iii
       - run: safety check --json --output safety.json
       - run: pip-audit --format json --output pip-audit.json
+      # D02 FASE 2 — Trivy roda contra imagem do GHCR (imagens só existem
+      # localmente no runner do Build; este job roda em runner separado).
+      - name: Login GHCR (para Trivy)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Pull backend image from GHCR
+        run: |
+          docker pull --quiet \
+            ghcr.io/${{ github.repository_owner }}/siap-backend:prod-${{ github.sha }}
+      - name: Pull frontend image from GHCR
+        run: |
+          docker pull --quiet \
+            ghcr.io/${{ github.repository_owner }}/siap-frontend:prod-${{ github.sha }}
       - name: Trivy image scan (backend)
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: siap-backend:prod-${{ github.sha }}
+          image-ref: ghcr.io/${{ github.repository_owner }}/siap-backend:prod-${{ github.sha }}
           severity: HIGH,CRITICAL
           exit-code: '1'
       - name: Trivy image scan (frontend)
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: siap-frontend:prod-${{ github.sha }}
+          image-ref: ghcr.io/${{ github.repository_owner }}/siap-frontend:prod-${{ github.sha }}
           severity: HIGH,CRITICAL
           exit-code: '1'
 
@@ -138,6 +184,16 @@ jobs:
       ENVIRONMENT: production
     steps:
       - uses: actions/checkout@v4
+      # D02 FASE 2 — Smoke agora roda contra imagem do GHCR (corrige bug RC1:
+      # runner separado do Build não tinha a imagem localmente).
+      - name: Login GHCR + pull backend
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          docker pull --quiet \
+            ghcr.io/${{ github.repository_owner }}/siap-backend:prod-${{ github.sha }}
+          docker tag \
+            ghcr.io/${{ github.repository_owner }}/siap-backend:prod-${{ github.sha }} \
+            siap-backend:prod-${{ github.sha }}
       - name: Container efêmero
         run: |
           docker run -d --name siap-smoke -p 5002:5002 \
@@ -214,12 +270,32 @@ jobs:
       url: https://visualsmartflow.com.br
     steps:
       - name: Deploy produção
+        # D02 FASE 2 — valida imagem no GHCR antes de tocar VPS; abort se não existir.
         uses: appleboy/ssh-action@v1
+        env:
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           host: ${{ env.PROD_HOST }}
           username: ${{ env.PROD_DEPLOY_USER }}
           key: ${{ env.PROD_SSH_KEY }}
           script: |
+            set -euo pipefail
+            echo "── Validando imagem no GHCR ──"
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin >/dev/null
+            if ! docker manifest inspect \
+                ghcr.io/${{ github.repository_owner }}/siap-backend:prod-${{ github.sha }} \
+                >/dev/null 2>&1; then
+              echo "✗ Image not in GHCR — ABORT" >&2
+              exit 1
+            fi
+            if ! docker manifest inspect \
+                ghcr.io/${{ github.repository_owner }}/siap-frontend:prod-${{ github.sha }} \
+                >/dev/null 2>&1; then
+              echo "✗ Frontend image not in GHCR — ABORT" >&2
+              exit 1
+            fi
+            echo "✓ Imagens confirmadas; seguindo deploy"
             cd /root/projetos/araos
             export IMAGE_TAG=${{ github.sha }}
             git fetch --tags --all

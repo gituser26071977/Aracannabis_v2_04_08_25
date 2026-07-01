@@ -54,6 +54,42 @@ jobs:
           docker build --build-arg REACT_APP_API_URL=${{ env.STAGING_URL }} \
                        -t siap-frontend:staging-${{ github.sha }} .
 
+      # D02 FASE 2 — publica imagens no GHCR para que Smoke, Security e Deploy
+      # (que rodam em runners separados) consigam baixá-las.
+      - name: Login GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push backend image to GHCR
+        if: github.event_name != 'pull_request'
+        run: |
+          docker tag siap-backend:staging-${{ github.sha }} \
+            ghcr.io/${{ github.repository_owner }}/siap-backend:staging-${{ github.sha }}
+          docker push ghcr.io/${{ github.repository_owner }}/siap-backend:staging-${{ github.sha }}
+
+      - name: Push frontend image to GHCR
+        if: github.event_name != 'pull_request'
+        run: |
+          docker tag siap-frontend:staging-${{ github.sha }} \
+            ghcr.io/${{ github.repository_owner }}/siap-frontend:staging-${{ github.sha }}
+          docker push ghcr.io/${{ github.repository_owner }}/siap-frontend:staging-${{ github.sha }}
+
+      # Validação obrigatória: digest precisa estar disponível antes
+      # de qualquer estágio subsequente.
+      - name: Validate image digest
+        if: github.event_name != 'pull_request'
+        run: |
+          set -euo pipefail
+          docker pull --quiet \
+            ghcr.io/${{ github.repository_owner }}/siap-backend:staging-${{ github.sha }}
+          docker pull --quiet \
+            ghcr.io/${{ github.repository_owner }}/siap-frontend:staging-${{ github.sha }}
+          echo "✓ Imagens confirmadas no GHCR"
+
   # ════════════════════════════════════════════════════════════════
   # 2. LINT
   # ════════════════════════════════════════════════════════════════
@@ -194,6 +230,16 @@ jobs:
       ENVIRONMENT: staging
     steps:
       - uses: actions/checkout@v4
+      # D02 FASE 2 — Smoke agora roda contra imagem do GHCR (runner separado
+      # do Build não tem a imagem localmente).
+      - name: Login GHCR + pull backend
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          docker pull --quiet \
+            ghcr.io/${{ github.repository_owner }}/siap-backend:staging-${{ github.sha }}
+          docker tag \
+            ghcr.io/${{ github.repository_owner }}/siap-backend:staging-${{ github.sha }} \
+            siap-backend:staging-${{ github.sha }}
       - name: Run backend em background
         run: |
           docker run -d --name siap-smoke -p 5002:5002 \
@@ -285,7 +331,8 @@ jobs:
           username: ${{ env.STAGING_DEPLOY_USER }}
           key: ${{ env.STAGING_SSH_KEY }}
           script: |
-            cd /opt/araos
+            # D02 FASE 2 — path corrigido de /opt/araos para /root/projetos/araos
+            cd /root/projetos/araos
             ./scripts/backup.sh --env=staging
             ls -lt /var/backups/siap-staging/ | head -3
 
@@ -304,13 +351,27 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Deploy staging
+        # D02 FASE 2 — valida imagem no GHCR antes de tocar VPS + path corrigido
         uses: appleboy/ssh-action@v1
+        env:
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           host: ${{ env.STAGING_HOST }}
           username: ${{ env.STAGING_DEPLOY_USER }}
           key: ${{ env.STAGING_SSH_KEY }}
           script: |
-            cd /opt/araos
+            set -euo pipefail
+            echo "── Validando imagem no GHCR ──"
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin >/dev/null
+            if ! docker manifest inspect \
+                ghcr.io/${{ github.repository_owner }}/siap-backend:staging-${{ github.sha }} \
+                >/dev/null 2>&1; then
+              echo "✗ Image not in GHCR — ABORT" >&2
+              exit 1
+            fi
+            echo "✓ Imagem confirmada; seguindo deploy"
+            cd /root/projetos/araos
             export IMAGE_TAG=${{ github.sha }}
             ./scripts/deploy_staging.sh --skip-tests
 
@@ -321,7 +382,7 @@ jobs:
           username: ${{ env.STAGING_DEPLOY_USER }}
           key: ${{ env.STAGING_SSH_KEY }}
           script: |
-            cd /opt/araos
+            cd /root/projetos/araos
             ./scripts/smoke.sh --env=staging
 
       - name: AUTO-ROLLBACK on failure
@@ -333,7 +394,7 @@ jobs:
           key: ${{ env.STAGING_SSH_KEY }}
           script: |
             echo "═══ AUTO-ROLLBACK STAGING ═══"
-            cd /opt/araos
+            cd /root/projetos/araos
             ./scripts/rollback.sh --env=staging
             ./scripts/smoke.sh --env=staging
             echo "✗ Deploy reverted; failure notified."

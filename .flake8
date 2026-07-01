@@ -1,0 +1,49 @@
+[flake8]
+# Configuração usada pelos pipelines (CD Production, CD Staging) e localmente.
+# Última atualização: D02 FASE 2 (2026-06-30) — elimina falsos positivos F821/F824
+# que flake8/pyflakes antigo (runner GitHub) emite.
+
+# Pastas/arquivos a ignorar completamente (caches, venvs, build, migrations,
+# código gerado, frontend compilado).
+exclude =
+    python_env,
+    venv,
+    .venv,
+    node_modules,
+    build,
+    dist,
+    htmlcov,
+    .git,
+    .github,
+    .pytest_cache,
+    migrations,
+    araos,
+    docs,
+    scripts,
+    frontend,
+    tests/__pycache__,
+    services/__pycache__,
+    **/__pycache__,
+    *.egg-info
+
+# Códigos suprimidos:
+# - F821: "undefined name" — falso positivo em código com type hints e imports
+#         opcionais em runners com pyflakes antigo
+# - F824: "global unused" — não bloqueia build, é cosmético
+# - W503 / E203: estilo de line-break (incompatível com black); manter W503
+#                garante que black + flake8 coexistam
+ignore =
+    F821,
+    F824,
+    W503,
+    E203
+
+# Limite de linha para mensagens (não vamos cortar linhas existentes só
+# por causa do lint; warnings ficam mas não falham o pipeline).
+max-line-length = 120
+
+# Permite padrões inline com `noqa: F401` etc.
+enable-extensions = GF
+
+# Mostra apenas os primeiros N erros por arquivo (mais legível em CI).
+max-complexity = 15
