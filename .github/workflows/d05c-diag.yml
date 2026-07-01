@@ -83,3 +83,4 @@ jobs:
             echo ""
             echo "--- services via API Traefik ---"
             curl -s http://localhost:8080/api/http/services 2>&1 | python3 -c "import json,sys;d=json.load(sys.stdin);[print(f'{s[\"name\"]:30s} loadbalancer={s.get(\"loadbalancer\",{})} status={s[\"status\"]}') for s in d]" 2>&1 | head -20
+
