@@ -335,9 +335,16 @@ jobs:
       name: production
       url: https://visualsmartflow.com.br
     steps:
-      - name: Deploy produção
+      - name: Deploy produção (D05b — inline)
         # D02 FASE 2 — valida imagem no GHCR antes de tocar VPS; abort se não existir.
         # D05 — Tailscale para alcançar o VPS via 100.x.y.z (SSH público bloqueado).
+        # D05b — deploy INLINE (substitui ./scripts/deploy_prod.sh) para:
+        #   1) contornar regex antigo de deploy_prod.sh em rc.10 (só aceita vX.Y.Z,
+        #      workflow_dispatch passa v1.0.0-rc.10);
+        #   2) re-aplicar hardening D01 F2.4 (127.0.0.1:5440:5432) que existe
+        #      localmente na VPS mas NÃO está no commit rc.10;
+        #   3) preservar HEAD original da VPS (commit local com melhorias) via
+        #      git checkout -f $DEPLOY_VERSION + restore HEAD no final.
         uses: tailscale/github-action@v2
         with:
           authkey: ${{ secrets.TS_AUTHKEY }}
@@ -378,7 +385,45 @@ jobs:
             else
               DEPLOY_VERSION="v1.0.0-rc.10"
             fi
-            ./scripts/deploy_prod.sh "$DEPLOY_VERSION"
+            echo "── DEPLOY INLINE (D05b) para $DEPLOY_VERSION ──"
+
+            # 1. Backup completo pre-deploy
+            echo "→ Backup completo pre-deploy..."
+            ./scripts/backup.sh --env=production
+
+            # 2. Salvar HEAD antes do checkout, depois checkout -f (forcado)
+            ORIG_HEAD_BEFORE=$(git rev-parse HEAD)
+            echo "→ HEAD antes do checkout: $ORIG_HEAD_BEFORE"
+            echo "→ Checkout -f $DEPLOY_VERSION..."
+            git checkout -f "$DEPLOY_VERSION"
+
+            # 3. D05b — re-aplicar hardening D01 F2.4 (porta 5440 so localhost)
+            #    que existe localmente mas NAO esta no commit rc.10. Sem isso
+            #    o deploy REVERTE o fechamento da porta 5440 ao publico.
+            #    Re-aplicacao e cirurgica (so a linha do binding).
+            if grep -qE '^\s*-\s*"5440:5432"' docker-compose.prod.yml; then
+              echo "→ Re-aplicando hardening 127.0.0.1:5440:5432 (porta 5440 so localhost)..."
+              sed -i 's|^\(\s*-\s*\)"5440:5432"|\1"127.0.0.1:5440:5432"|' docker-compose.prod.yml
+            fi
+
+            # 4. Pull imagens do GHCR
+            echo "→ Pull imagens do GHCR..."
+            docker-compose -f docker-compose.prod.yml --env-file .env.production pull
+
+            # 5. Rolling restart (backend primeiro, depois frontend)
+            echo "→ Restart siap-backend..."
+            docker-compose -f docker-compose.prod.yml --env-file .env.production up -d --no-deps siap-backend
+            sleep 5
+            echo "→ Restart siap-frontend..."
+            docker-compose -f docker-compose.prod.yml --env-file .env.production up -d --no-deps siap-frontend
+
+            # 6. Restaurar HEAD original (commit local com melhorias) para proxima execucao
+            if [[ "$ORIG_HEAD_BEFORE" != "$(git rev-parse HEAD)" ]]; then
+              echo "→ Restaurando HEAD original: $ORIG_HEAD_BEFORE"
+              git checkout -f "$ORIG_HEAD_BEFORE" || true
+            fi
+
+            echo "── DEPLOY INLINE CONCLUIDO ──"
 
       - name: Post-deploy smoke
         uses: tailscale/github-action@v2
