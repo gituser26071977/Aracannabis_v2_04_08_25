@@ -51,3 +51,4 @@ Ver `docs/adr/araflow/template.md`.
 | 026 | Session Persistence (Local-only, Versioned)       | Accepted               | 2026-06-30 |
 | 027 | Animation Engine (Pure Projection Layer)            | Accepted               | 2026-07-01 |
 | 028 | Animation Renderer (Engine ↔ Renderer Separation)   | Accepted               | 2026-07-01 |
+| 029 | Audio Engine (Runtime-only Sync + Engine↔Adapter)    | Accepted               | 2026-07-01 |
