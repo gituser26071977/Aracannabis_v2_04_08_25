@@ -1,0 +1,100 @@
+name: VPS Live Diagnosis D05d
+on:
+  workflow_dispatch:
+
+jobs:
+  diag:
+    name: D05d — VPS Live Diagnosis
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Setup Tailscale
+        uses: tailscale/github-action@v2
+        with:
+          authkey: ${{ secrets.TS_AUTHKEY }}
+          tags: tag:ci
+          args: --accept-routes --hostname=d05d-runner
+
+      - name: SSH + Fase 1-5
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.PROD_SSH_HOST }}
+          username: ${{ secrets.PROD_DEPLOY_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          request_pty: true
+          script: |
+            set +e
+            echo "##### FASE 1 — Fotografar estado atual #####"
+            echo "--- docker ps ---"
+            docker ps -a --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}\t{{.RestartCount}}'
+            echo "--- docker compose ps ---"
+            docker compose -f /root/projetos/araos/docker-compose.prod.yml --env-file /root/projetos/araos/.env.production ps 2>&1 | head -40
+            echo "--- docker network ls ---"
+            docker network ls --format 'table {{.Name}}\t{{.ID}}\t{{.Driver}}\t{{.Scope}}'
+            echo "--- docker image ls (araos/siap) ---"
+            docker image ls --format 'table {{.Repository}}\t{{.Tag}}\t{{.CreatedSince}}\t{{.Size}}' | grep -E "REPOSITORY|siap|ghcr|araos" | head -20
+
+            echo ""
+            echo "##### FASE 2 — Inspecionar Traefik #####"
+            echo "--- docker inspect traefik (resumo) ---"
+            docker inspect traefik --format '{{.Name}} | image={{.Config.Image}} | restart={{.RestartCount}} | state={{.State.Status}} | started={{.State.StartedAt}} | ports={{range .NetworkSettings.Ports}}{{.}}{{end}}' 2>&1
+            echo "--- traefik networks ---"
+            docker inspect traefik --format '{{range $net,$conf := .NetworkSettings.Networks}}{{$net}} ({{$conf.IPAddress}}){{"\n"}}{{end}}'
+            echo "--- traefik labels (Traefik) ---"
+            docker inspect traefik --format '{{range $k,$v := .Config.Labels}}{{$k}}={{$v}}{{"\n"}}{{end}}' 2>&1 | grep -i "traefik\." | head -30
+            echo "--- traefik logs (tail 300) ---"
+            docker logs --tail 300 traefik 2>&1 | tail -80
+
+            echo ""
+            echo "##### FASE 3 — Inspecionar siap-backend #####"
+            echo "--- inspect resumo ---"
+            docker inspect siap-backend --format '{{.Name}} | image={{.Config.Image}} | restart={{.RestartCount}} | state={{.State.Status}} | started={{.State.StartedAt}}'
+            echo "--- networks ---"
+            docker inspect siap-backend --format '{{range $net,$conf := .NetworkSettings.Networks}}{{$net}} ({{$conf.IPAddress}}){{"\n"}}{{end}}'
+            echo "--- labels Traefik ---"
+            docker inspect siap-backend --format '{{range $k,$v := .Config.Labels}}{{$k}}={{$v}}{{"\n"}}{{end}}' | grep -iE "traefik\.|com\.docker\." | head -40
+            echo "--- env (vars sensiveis ocultas) ---"
+            docker inspect siap-backend --format '{{range .Config.Env}}{{.}}{{"\n"}}{{end}}' 2>&1 | head -20
+            echo "--- mounts ---"
+            docker inspect siap-backend --format '{{range .Mounts}}{{.Type}} {{.Source}} -> {{.Destination}}{{"\n"}}{{end}}' 2>&1 | head -10
+
+            echo ""
+            echo "##### FASE 4 — Networks #####"
+            echo "--- network web ---"
+            docker network inspect web --format '{{range .Containers}}{{.Name}}({{.IPv4Address}}) {{end}}' 2>&1
+            echo "--- network siap-internal ---"
+            docker network inspect siap-internal --format '{{range .Containers}}{{.Name}}({{.IPv4Address}}) {{end}}' 2>&1
+
+            echo ""
+            echo "##### FASE 5 — Backend interno #####"
+            echo "--- curl localhost:5002/api/status (do host) ---"
+            curl -sk -o /tmp/api_status.body -w "HTTP=%{http_code} bytes=%{size_download} ttfb=%{time_starttransfer}s total=%{time_total}s\n" --max-time 10 http://localhost:5002/api/status 2>&1
+            cat /tmp/api_status.body 2>&1 | head -5
+            echo "--- curl localhost:5002/api/health ---"
+            curl -sk -o /tmp/api_health.body -w "HTTP=%{http_code} bytes=%{size_download}\n" --max-time 10 http://localhost:5002/api/health 2>&1
+            cat /tmp/api_health.body 2>&1 | head -5
+            echo "--- curl localhost:5002/api/csrf-token ---"
+            curl -sk -o /tmp/api_csrf.body -w "HTTP=%{http_code} bytes=%{size_download}\n" --max-time 10 http://localhost:5002/api/csrf-token 2>&1
+            cat /tmp/api_csrf.body 2>&1 | head -5
+
+            echo ""
+            echo "##### FASE 6 add — Traefik API direta #####"
+            echo "--- routers via API Traefik ---"
+            curl -s http://localhost:8080/api/http/routers 2>&1 | python3 -c "
+import json,sys
+try:
+  d=json.load(sys.stdin)
+  for r in d:
+    n=r.get('name','')
+    if 'siap' in n.lower() or 'api' in n.lower() or 'visualsmartflow' in r.get('rule','').lower():
+      print(f\"{n:30s} rule={r['rule'][:80]} svc={r['service']} status={r['status']}\")
+except Exception as e:
+  print('parse error:', e)
+" 2>&1 | head -20
+            echo "--- TODOS routers ---"
+            curl -s http://localhost:8080/api/http/routers 2>&1 | python3 -c "import json,sys;d=json.load(sys.stdin);print(f'total={len(d)}');[print(f\"  {r['name']:40s} rule={r['rule'][:60]} status={r['status']}\") for r in d]" 2>&1 | head -40
+            echo "--- services ---"
+            curl -s http://localhost:8080/api/http/services 2>&1 | python3 -c "import json,sys;d=json.load(sys.stdin);[print(f\"{s['name']:30s} status={s['status']} lb={s.get('loadbalancer',{})}\") for s in d if 'siap' in s['name'].lower() or 'api' in s['name'].lower()]" 2>&1 | head -20
+
+            echo ""
+            echo "##### D05d_FIM — output completo capturado #####"
