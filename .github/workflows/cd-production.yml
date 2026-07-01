@@ -308,6 +308,11 @@ jobs:
     timeout-minutes: 30
     needs: [security, playwright, lighthouse]
     steps:
+      # D05 — conecta runner ao mesh Tailscale para alcançar o VPS
+      # (SSH direto ao IP público está bloqueado pelo firewall upstream)
+      - uses: tailscale/github-action@v2
+        with:
+          authkey: ${{ secrets.TS_AUTHKEY }}
       - uses: appleboy/ssh-action@v1
         with:
           host: ${{ env.PROD_HOST }}
@@ -332,7 +337,11 @@ jobs:
     steps:
       - name: Deploy produção
         # D02 FASE 2 — valida imagem no GHCR antes de tocar VPS; abort se não existir.
-        uses: appleboy/ssh-action@v1
+        # D05 — Tailscale para alcançar o VPS via 100.x.y.z (SSH público bloqueado).
+        uses: tailscale/github-action@v2
+        with:
+          authkey: ${{ secrets.TS_AUTHKEY }}
+      - uses: appleboy/ssh-action@v1
         env:
           GHCR_USER: ${{ github.actor }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -363,7 +372,10 @@ jobs:
             ./scripts/deploy_prod.sh ${{ github.ref_name }}
 
       - name: Post-deploy smoke
-        uses: appleboy/ssh-action@v1
+        uses: tailscale/github-action@v2
+        with:
+          authkey: ${{ secrets.TS_AUTHKEY }}
+      - uses: appleboy/ssh-action@v1
         with:
           host: ${{ env.PROD_HOST }}
           username: ${{ env.PROD_DEPLOY_USER }}
@@ -372,7 +384,10 @@ jobs:
 
       - name: AUTO-ROLLBACK on failure
         if: failure()
-        uses: appleboy/ssh-action@v1
+        uses: tailscale/github-action@v2
+        with:
+          authkey: ${{ secrets.TS_AUTHKEY }}
+      - uses: appleboy/ssh-action@v1
         with:
           host: ${{ env.PROD_HOST }}
           username: ${{ env.PROD_DEPLOY_USER }}
