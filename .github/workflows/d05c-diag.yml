@@ -1,0 +1,85 @@
+name: D05c — Diagnóstico Traefik (READ-ONLY)
+on:
+  workflow_dispatch:
+    inputs:
+      phase:
+        description: 'Fase 1-8'
+        required: false
+        default: 'all'
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Tailscale mesh
+        uses: tailscale/github-action@v2
+        with:
+          authkey: ${{ secrets.TS_AUTHKEY }}
+          tags: tag:ci
+          args: --accept-routes --hostname=d05c-diag
+
+      - name: SSH + Diagnóstico
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.PROD_SSH_HOST }}
+          username: ${{ secrets.PROD_DEPLOY_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          request_pty: true
+          script: |
+            set -u
+            echo "====== FASE 1 — Containers ======"
+            docker ps -a --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}\t{{.RestartCount}}'
+            echo ""
+            echo "--- docker inspect siap-backend (resumido) ---"
+            docker inspect siap-backend --format '{{.Name}} | image={{.Config.Image}} | restart={{.RestartCount}} | state={{.State.Status}} | started={{.State.StartedAt}}' 2>&1
+            echo ""
+            echo "--- networks do siap-backend ---"
+            docker inspect siap-backend --format '{{range $net,$conf := .NetworkSettings.Networks}}{{$net}} ({{$conf.IPAddress}}){{"\n"}}{{end}}' 2>&1
+            echo ""
+            echo "--- labels do siap-backend (apenas traefik) ---"
+            docker inspect siap-backend --format '{{range $k,$v := .Config.Labels}}traefik.{{$k}}={{$v}}{{"\n"}}{{end}}' 2>&1 | head -40
+            echo ""
+            echo "--- docker inspect siap-frontend (resumido) ---"
+            docker inspect siap-frontend --format '{{.Name}} | image={{.Config.Image}} | restart={{.RestartCount}} | state={{.State.Status}}' 2>&1
+            echo ""
+            echo "--- networks do siap-frontend ---"
+            docker inspect siap-frontend --format '{{range $net,$conf := .NetworkSettings.Networks}}{{$net}} ({{$conf.IPAddress}}){{"\n"}}{{end}}' 2>&1
+            echo ""
+            echo "--- docker inspect traefik (resumido) ---"
+            docker inspect traefik --format '{{.Name}} | image={{.Config.Image}} | restart={{.RestartCount}} | state={{.State.Status}} | started={{.State.StartedAt}}' 2>&1
+            echo ""
+            echo "--- networks do traefik ---"
+            docker inspect traefik --format '{{range $net,$conf := .NetworkSettings.Networks}}{{$net}} ({{$conf.IPAddress}}){{"\n"}}{{end}}' 2>&1
+            echo ""
+            echo "====== FASE 3 — Network web ======"
+            docker network inspect web --format '{{range .Containers}}{{.Name}}({{.IPv4Address}}) {{end}}' 2>&1
+            echo ""
+            echo "====== FASE 4 — Backend interno ======"
+            echo "--- curl http://siap-backend:5002/api/status ---"
+            curl -sk -o /tmp/api_status.body -w "HTTP=%{http_code} bytes=%{size_download} ttfb=%{time_starttransfer}s total=%{time_total}s\n" --max-time 10 http://siap-backend:5002/api/status 2>&1
+            cat /tmp/api_status.body 2>&1 | head -5
+            echo ""
+            echo "--- curl http://siap-backend:5002/api/health ---"
+            curl -sk -o /tmp/api_health.body -w "HTTP=%{http_code} bytes=%{size_download} ttfb=%{time_starttransfer}s\n" --max-time 10 http://siap-backend:5002/api/health 2>&1
+            cat /tmp/api_health.body 2>&1 | head -5
+            echo ""
+            echo "--- curl localhost:5002/api/status (do host) ---"
+            curl -sk -o /tmp/local_status.body -w "HTTP=%{http_code} bytes=%{size_download}\n" --max-time 5 http://localhost:5002/api/status 2>&1
+            cat /tmp/local_status.body 2>&1 | head -5
+            echo ""
+            echo "====== FASE 5 — Logs ======"
+            echo "--- traefik (tail 80, filtrado) ---"
+            docker logs --tail 200 traefik 2>&1 | grep -E "api\.visualsmartflow|siap-api|router|service|404|entrypoint" | tail -40
+            echo ""
+            echo "--- siap-backend (tail 50) ---"
+            docker logs --tail 80 siap-backend 2>&1 | tail -40
+            echo ""
+            echo "--- siap-frontend (tail 30) ---"
+            docker logs --tail 50 siap-frontend 2>&1 | tail -25
+            echo ""
+            echo "====== FASE 2 add — Traefik API ======"
+            echo "--- routers via API Traefik ---"
+            curl -s http://localhost:8080/api/http/routers 2>&1 | python3 -c "import json,sys;d=json.load(sys.stdin);[print(f'{r[\"name\"]:30s} rule={r[\"rule\"][:80]} svc={r[\"service\"]} status={r[\"status\"]}') for r in d if 'siap' in r.get('name','').lower() or 'api' in r.get('name','').lower() or 'visualsmartflow' in r.get('rule','').lower()]" 2>&1 | head -20
+            echo ""
+            echo "--- services via API Traefik ---"
+            curl -s http://localhost:8080/api/http/services 2>&1 | python3 -c "import json,sys;d=json.load(sys.stdin);[print(f'{s[\"name\"]:30s} loadbalancer={s.get(\"loadbalancer\",{})} status={s[\"status\"]}') for s in d]" 2>&1 | head -20
