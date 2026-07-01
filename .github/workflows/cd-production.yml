@@ -398,6 +398,14 @@ jobs:
             # 2. Salvar HEAD antes do checkout, depois checkout -f (forcado)
             ORIG_HEAD_BEFORE=$(git rev-parse HEAD)
             echo "→ HEAD antes do checkout: $ORIG_HEAD_BEFORE"
+            # D05b — copiar scripts/d05b_patch_compose.py do remote (rc.10 nao
+            # tem esse arquivo; checkout -f remove arquivos tracked que nao
+            # existem no destino). O arquivo fica untracked apos checkout rc.10,
+            # mas continua acessivel para o patch.
+            echo "→ Copiando scripts/d05b_patch_compose.py do remote..."
+            git fetch origin fix/p0-stabilization-2026-06 2>/dev/null || true
+            git checkout origin/fix/p0-stabilization-2026-06 -- scripts/d05b_patch_compose.py 2>/dev/null || true
+            ls -la scripts/d05b_patch_compose.py 2>/dev/null
             echo "→ Checkout -f $DEPLOY_VERSION..."
             git checkout -f "$DEPLOY_VERSION"
 
