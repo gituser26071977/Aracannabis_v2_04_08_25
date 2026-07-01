@@ -123,6 +123,12 @@
         "functions": 90,
         "lines": 90,
         "statements": 90
+      },
+      "./src/core/session-orchestrator/": {
+        "branches": 80,
+        "functions": 90,
+        "lines": 90,
+        "statements": 90
       }
     },
     "testMatch": [
