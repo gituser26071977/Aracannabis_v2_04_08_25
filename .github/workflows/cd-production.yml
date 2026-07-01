@@ -410,6 +410,12 @@ jobs:
               sed -i 's|^\(\s*-\s*\)"5440:5432"|\1"127.0.0.1:5440:5432"|' docker-compose.prod.yml
             fi
 
+            # 3.5. D05b — trocar build: por image: GHCR (rc.10 tem build: local,
+            #      docker-compose pull ignora esses servicos, restart usa imagem
+            #      antiga). Patch idempotente via script Python.
+            echo "→ Patch compose: build: -> image: GHCR..."
+            python3 scripts/d05b_patch_compose.py
+
             # 4. Pull imagens do GHCR
             echo "→ Pull imagens do GHCR..."
             docker-compose -f docker-compose.prod.yml --env-file .env.production pull
