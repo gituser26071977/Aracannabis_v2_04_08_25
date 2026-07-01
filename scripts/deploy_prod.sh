@@ -34,6 +34,14 @@ echo "→ Backup completo pré-deploy..."
 echo "→ Checkout $VERSION..."
 git fetch --tags
 git checkout "$VERSION"
+# D05 — re-aplica hardening crítico que existe localmente (127.0.0.1:5440:5432 do D01
+# F2.4) mas não está no commit rc.10. Sem isso, o deploy REVERTE o fechamento da
+# porta 5440 ao público. Re-aplicação é cirúrgica (só a linha específica).
+# TODO: mover este hardening para um commit dedicado pós-rc.10 (rc.11 ou main).
+if grep -qE '^\s*-\s*"5440:5432"' docker-compose.prod.yml 2>/dev/null; then
+  echo "→ Re-aplicando hardening 127.0.0.1:5440:5432 (porta 5440 só localhost)..."
+  sed -i 's|^\(\s*-\s*\)"5440:5432"|\1"127.0.0.1:5440:5432"|' docker-compose.prod.yml
+fi
 
 # 3. Pull imagens
 echo "→ Pull imagens..."
