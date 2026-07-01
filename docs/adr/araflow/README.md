@@ -48,3 +48,4 @@ Ver `docs/adr/araflow/template.md`.
 | 023 | AraFlow Runtime — Single Public API of the Core | Accepted               | 2026-06-27 |
 | 024 | Execution Session Domain (DDD Aggregate)        | Accepted               | 2026-06-29 |
 | 025 | Session Orchestrator (Runtime ↔ Session Bridge) | Accepted               | 2026-06-30 |
+| 026 | Session Persistence (Local-only, Versioned)       | Accepted               | 2026-06-30 |
