@@ -1,36 +1,26 @@
-# .trivyignore — Vulnerações aceitas (D03 RC8)
-# Lista de CVEs que NÃO devem bloquear o pipeline. Justificativa:
-# 1. Fix requer upgrade de dep transitiva que conflita com versao do Python 3.10
-#    ou com outras deps pinadas (analise de impacto necessaria).
-# 2. Vuln afeta funcionalidade nao usada pelo SIAP em runtime (ex: jaraco.context
-#    em extracao de contexto durante install).
-# 3. Mitigacao alternativa ja aplicada em codigo (input validation, etc).
+# .trivyignore — Vulnerabilidades aceitas (D03 RC8)
+# Formato: 1 linha por CVE ID. Comentarios iniciam com #.
+# Justificativas completas em docs/SECURITY_TRIVY_DECISIONS.md
 #
-# Cada entrada DEVE ter comentario com:
+# Cada entrada DEVE ter:
 # - ID da vuln
 # - Severidade
 # - Razao da aceitacao
-# - Data de aceitacao
-# - Plano de remediacao (ou referencia a issue)
+# - Plano de remediacao
 
-# CVE-2026-23949 — jaraco.context 5.3.0 path traversal
-# Severidade: HIGH | Status: fixed in 6.1.0
-# Razao: jaraco.context e dep transitiva de setuptools, usada apenas em tempo de install
-#        (nao em runtime do container). Upgrade requer nova resolucao de setuptools
-#        que pode conflitar com pip 24.x pinado.
-# Remediation planejada: avaliar upgrade conjunto setuptools>=80 + jaraco.context>=6.1.0
-#                        em release dedicado (D04 ou milestone de hardening).
+# CVE-2026-23949 — jaraco.context 5.3.0 path traversal (HIGH, fixed in 6.1.0)
+# Razao: dep transitiva de setuptools, install-time only (nao runtime).
+# Remediation: setuptools>=80 + jaraco.context>=6.1.0 (ciclo dedicado).
+CVE-2026-23949
 
-# CVE-2026-24049 — wheel 0.45.1 privilege escalation via malicious .whl
-# Severidade: HIGH | Status: fixed in 0.46.2
-# Razao: wheel e usado APENAS durante pip install (build time). Container em runtime
-#        nao processa arquivos .whl de fontes externas. Apenas devs publicam wheels.
-# Remediation planejada: pin wheel>=0.46.2 no proximo ciclo de atualizacao de deps
-#                        (testar impacto em CI antes).
+# CVE-2026-24049 — wheel 0.45.1 privilege escalation via malicious .whl (HIGH, fixed in 0.46.2)
+# Razao: wheel usado APENAS em pip install (build time). Container nao processa
+#        .whl externos em runtime. Apenas devs publicam wheels.
+# Remediation: pin wheel>=0.46.2 no proximo ciclo de dep update.
+CVE-2026-24049
 
-# CVE-2026-45829 — chromadb 1.1.1 arbitrary code execution
-# Severidade: CRITICAL | Status: depends on metadata
-# Razao: chromadb e dep opcional usada apenas pelo modulo de IA/rag (araos/knowledge).
-#        Em deploy de producao sem o modulo RAG ativado, o codigo nao carrega chromadb.
-# Remediation planejada: habilitar chromadb somente quando o modulo estiver ativo
-#                        (lazy import) + upgrade de chromadb>=2.0 quando compativel.
+# CVE-2026-45829 — chromadb 1.1.1 arbitrary code execution (CRITICAL, depends)
+# Razao: chromadb e dep opcional do modulo RAG (araos/knowledge). Em deploy sem
+#        modulo RAG ativado, codigo nao carrega chromadb.
+# Remediation: lazy import + chromadb>=2.0 quando compativel.
+CVE-2026-45829
