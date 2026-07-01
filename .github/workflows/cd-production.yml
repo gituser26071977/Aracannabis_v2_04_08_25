@@ -370,7 +370,15 @@ jobs:
             cd /root/projetos/araos
             export IMAGE_TAG=${{ github.sha }}
             git fetch --tags --all
-            ./scripts/deploy_prod.sh ${{ github.ref_name }}
+            # D05 — workflow_dispatch usa ref_name (branch) que nao bate ^vX.Y.Z$.
+            # Quando disparado por tag (push v*.*.*), github.ref_name = tag.
+            # Quando disparado via workflow_dispatch, forca v1.0.0-rc.10 (RC validada).
+            if [[ "${{ github.ref_name }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              DEPLOY_VERSION="${{ github.ref_name }}"
+            else
+              DEPLOY_VERSION="v1.0.0-rc.10"
+            fi
+            ./scripts/deploy_prod.sh "$DEPLOY_VERSION"
 
       - name: Post-deploy smoke
         uses: tailscale/github-action@v2
