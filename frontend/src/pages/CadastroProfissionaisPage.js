@@ -46,6 +46,7 @@ const ESPECIALIDADES = [
   'Fisioterapia',
   'Fonoaudiologia',
   'Nutrição',
+  'Nutrologia',
   'Odontologia',
   'Psicologia',
   'Serviço Social',
