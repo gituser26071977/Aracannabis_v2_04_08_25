@@ -167,10 +167,15 @@ jobs:
       - name: Integration tests
         # D02 FASE 3 — test_pharmacy_dispense requer backend em localhost:5000
         # (não iniciado pelo job). Para CI: skip; rodar local com backend up.
+        # Aceita exit 5 ("no tests ran") porque pharmacy_dispense é o único test.
         run: |
+          set +e
           .venv-test/bin/python -m pytest tests/integration/ \
             --ignore=tests/integration/test_pharmacy_dispense.py \
             -v --tb=short
+          ec=$?
+          echo "Pytest exit: $ec"
+          if [ $ec -ne 0 ] && [ $ec -ne 5 ]; then exit $ec; fi
         continue-on-error: false
       - name: Smoke tests
         run: |
