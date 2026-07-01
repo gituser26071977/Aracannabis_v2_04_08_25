@@ -5,8 +5,8 @@
  * logging, o error boundary global, e o theme provider. Nenhuma
  * feature, nenhum engine, nenhuma tela é montada aqui.
  *
- * No MVP, este componente renderiza uma tela placeholder; em sprints
- * subsequentes, as features são montadas pelo router.
+ * Sprint 11: renderiza a ClinicalScreen (single clinical screen,
+ * 3 internal phases: select → session → feedback).
  */
 
 import React from 'react';
@@ -22,7 +22,7 @@ import { configureI18n } from '@shared/i18n/configureI18n';
 
 import { logger } from '@infrastructure/logging/logger';
 
-import { PlaceholderScreen } from './PlaceholderScreen';
+import { ClinicalScreen } from '@features/session/Clinical';
 
 configureI18n();
 
@@ -45,7 +45,7 @@ export const App: React.FC = () => {
                 backgroundColor="transparent"
                 translucent
               />
-              <PlaceholderScreen />
+              <ClinicalScreen />
             </ThemeProvider>
           </I18nProvider>
         </GlobalErrorBoundary>

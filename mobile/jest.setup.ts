@@ -9,6 +9,12 @@
 // Silence React Native warnings em testes (HMR, View, etc.)
 jest.mock('react-native/Libraries/Animated/NativeAnimatedHelper');
 
+// AsyncStorage — official mock from the package's jest directory.
+// Sprint 11 (Clinical MVP) uses AsyncStorage for the feedback store.
+jest.mock('@react-native-async-storage/async-storage', () =>
+  require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
+);
+
 // Silent console.error quando vier de act() warnings.
 // Wrap in try/catch so this file is safe to load as either setupFiles
 // (pre-framework) or setupFilesAfterEach (post-framework).

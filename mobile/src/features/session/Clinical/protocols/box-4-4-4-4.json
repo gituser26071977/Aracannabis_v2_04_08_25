@@ -1,0 +1,31 @@
+{
+  "$schema": "https://araflow.app/schemas/protocol/v1.json",
+  "id": "01ARZ3NDEKTSV4RRFFQ69G5FBX",
+  "version": "1.0.0",
+  "title": "Respiração Quadrada 4-4-4-4",
+  "subtitle": "Box breathing 4-4-4-4",
+  "description": "Inale (4s), segure (4s), exale (4s), segure (4s). Repita por 6 ciclos. Técnica usada por Navy SEALs e primeiros socorristas.",
+  "breath": {
+    "cycles": 6,
+    "restBetweenCyclesMs": 0,
+    "phases": [
+      { "type": "inhale", "durationMs": 4000, "curve": "ease-in-out" },
+      { "type": "hold-in", "durationMs": 4000, "curve": "linear" },
+      { "type": "exhale", "durationMs": 4000, "curve": "ease-in-out" },
+      { "type": "hold-out", "durationMs": 4000, "curve": "linear" }
+    ]
+  },
+  "metadata": {
+    "author": "AraFlow Team",
+    "language": "pt-BR",
+    "references": [
+      "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5455070/",
+      "https://hubermanlab.com/breath-protocols"
+    ],
+    "evidenceLevel": "A",
+    "contraindications": [],
+    "category": "focus",
+    "tags": ["box-breathing", "tactical", "focus", "vagus-nerve"],
+    "approvedAt": "2026-07-01T00:00:00.000Z"
+  }
+}
