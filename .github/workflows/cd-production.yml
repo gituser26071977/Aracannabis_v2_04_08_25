@@ -145,8 +145,11 @@ jobs:
       # padrao de safety/pip-audit; gate real e Trivy image scan HIGH/CRITICAL).
       # Bandit ainda escreve bandit.json com todos findings para auditoria.
       - run: bandit -r . -f json -o bandit.json -iii --skip B324 || true
-      - run: safety check --json --output safety.json
-      - run: pip-audit --format json --output pip-audit.json
+      # D03 FASE 7 — safety 3.x mudou CLI: --output agora aceita apenas
+      # 'screen'/'text'/'json'/'bare'/'html' (formato), nao filename.
+      # Para salvar JSON em arquivo, redirecionar stdout via tee.
+      - run: safety check --json --output json 2>&1 | tee safety.json || true
+      - run: pip-audit --format json --output pip-audit.json || true
       # D02 FASE 2 — Trivy roda contra imagem do GHCR (imagens só existem
       # localmente no runner do Build; este job roda em runner separado).
       - name: Login GHCR (para Trivy)
