@@ -41,9 +41,10 @@ services:
 
   # ── Backend Flask ───────────────────────────────────────────────
   siap-backend:
-    build:
-      context: .
-      dockerfile: Dockerfile.backend
+    # D05b — troca build: por image: GHCR para que docker-compose pull
+    # baixe a imagem do registry (build: e ignorado por pull). IMAGE_TAG
+    # e exportado pelo workflow cd-production (sha do build validado).
+    image: ${GHCR_BACKEND_IMAGE:-ghcr.io/gituser26071977/siap-backend}:${IMAGE_TAG:-latest}
     container_name: siap-backend
     restart: always
     env_file:
@@ -94,12 +95,8 @@ services:
 
   # ── Frontend React (servido por Nginx) ─────────────────────────
   siap-frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        REACT_APP_API_URL: https://api.visualsmartflow.com.br
-        REACT_APP_WS_URL: wss://api.visualsmartflow.com.br/ws
+    # D05b — image: GHCR (build: e ignorado por pull). Veja nota no siap-backend.
+    image: ${GHCR_FRONTEND_IMAGE:-ghcr.io/gituser26071977/siap-frontend}:${IMAGE_TAG:-latest}
     container_name: siap-frontend
     restart: always
     networks:
@@ -139,6 +136,9 @@ services:
 
   # ── Serviço de Anonimização ─────────────────────────────────────
   siap-anonymization:
+    # D05b — mantem build: (anonymization NAO e publicado no GHCR pelo
+    # build stage atual; build local a partir do codigo em rc.10).
+    # TODO: adicionar publicacao GHCR para anonymization em missao futura.
     build:
       context: ./services/anonymization_service
       dockerfile: Dockerfile

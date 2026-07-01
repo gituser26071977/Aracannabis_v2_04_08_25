@@ -375,7 +375,11 @@ jobs:
             fi
             echo "✓ Imagens confirmadas; seguindo deploy"
             cd /root/projetos/araos
-            export IMAGE_TAG=${{ github.sha }}
+            # D05b — IMAGE_TAG com prefixo "prod-" para casar com a tag
+            # publicada pelo build stage (prod-<sha>). Sem o prefixo, o
+            # docker-compose pull falha silenciosamente ("skipped") e o
+            # restart usa a imagem local antiga.
+            export IMAGE_TAG=prod-${{ github.sha }}
             git fetch --tags --all
             # D05 — workflow_dispatch usa ref_name (branch) que nao bate ^vX.Y.Z$.
             # Quando disparado por tag (push v*.*.*), github.ref_name = tag.
@@ -434,7 +438,9 @@ jobs:
           host: ${{ env.PROD_HOST }}
           username: ${{ env.PROD_DEPLOY_USER }}
           key: ${{ env.PROD_SSH_KEY }}
-          script: ./scripts/smoke.sh --env=production
+          script: |
+            cd /root/projetos/araos
+            ./scripts/smoke.sh --env=production
 
       - name: AUTO-ROLLBACK on failure
         if: failure()
