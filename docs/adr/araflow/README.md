@@ -50,3 +50,4 @@ Ver `docs/adr/araflow/template.md`.
 | 025 | Session Orchestrator (Runtime ↔ Session Bridge) | Accepted               | 2026-06-30 |
 | 026 | Session Persistence (Local-only, Versioned)       | Accepted               | 2026-06-30 |
 | 027 | Animation Engine (Pure Projection Layer)            | Accepted               | 2026-07-01 |
+| 028 | Animation Renderer (Engine ↔ Renderer Separation)   | Accepted               | 2026-07-01 |
