@@ -349,6 +349,7 @@ jobs:
           host: ${{ env.PROD_HOST }}
           username: ${{ env.PROD_DEPLOY_USER }}
           key: ${{ env.PROD_SSH_KEY }}
+          envs: GHCR_USER,GHCR_TOKEN
           script: |
             set -euo pipefail
             echo "── Validando imagem no GHCR ──"
