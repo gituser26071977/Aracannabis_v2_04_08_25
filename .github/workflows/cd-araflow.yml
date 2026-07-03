@@ -57,6 +57,11 @@ jobs:
 
       - name: Lint mobile
         working-directory: mobile
+        # npm workspaces hoists @react-native/eslint-config to ../node_modules;
+        # ESLint resolves shared configs from the same location it would in
+        # production. Set NODE_PATH so node's module resolver finds it.
+        env:
+          NODE_PATH: ${{ github.workspace }}/node_modules
         run: npm run lint
 
       - name: Lint backend
@@ -85,6 +90,8 @@ jobs:
 
       - name: Typecheck mobile
         working-directory: mobile
+        env:
+          NODE_PATH: ${{ github.workspace }}/node_modules
         run: npm run typecheck
 
       - name: Typecheck backend
