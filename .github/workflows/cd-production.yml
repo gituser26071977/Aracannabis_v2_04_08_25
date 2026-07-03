@@ -232,7 +232,8 @@ jobs:
         # D03 FASE 7 — rc.3/rc.4 falharam por:
         #   - Flask nao subiu em 30s (curl exit 7)
         #   - assert_required_secrets_on_startup aborta em ENVIRONMENT=production
-        #     (faltam MERCADOPAGO_*, EVOLUTION_*, DR_ANDERSON_*, INTERNAL_SERVICE_KEY)
+        #     (faltam MERCADOPAGO_*, DR_ANDERSON_*, INTERNAL_SERVICE_KEY)
+        # D05k: removido EVOLUTION_* (Evolution descontinuada, Telegram assumiu).
         # Fix: ENVIRONMENT=staging no container (igual staging workflow), wait-loop
         # com 10 retries de 6s, aceita 503 em /api/health (DB sem schema em CI),
         # captura docker logs no FAIL. Production startup check fica garantido

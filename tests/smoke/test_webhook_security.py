@@ -40,8 +40,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 # Secrets para o teste (mockados, nao sao reais)
 os.environ["MERCADOPAGO_WEBHOOK_SECRET"] = "mp_test_secret_32_chars_xxxxxxxx"
 os.environ["MERCADOPAGO_MODULOS_WEBHOOK_SECRET"] = "modulos_test_secret_32_chars_xxx"
-os.environ["EVOLUTION_WEBHOOK_SECRET"] = "REDACTED"
 os.environ["DR_ANDERSON_WEBHOOK_SECRET"] = "REDACTED"
+# D05k: Evolution API removida. Telegram usa header X-Telegram-Bot-Api-Secret-Token
+# (validado dentro de cada route handler, nao via webhook_auth.py).
 os.environ["INTERNAL_SERVICE_KEY"] = "REDACTED"
 os.environ["FLASK_ENV"] = "production"
 
@@ -225,37 +226,30 @@ record(2, "MercadoPago replay", (not is_replay_1) and is_replay_2 and log_id_1 =
 })
 
 # ──────────────────────────────────────────────────────────────────────
-# TESTE 3 — Evolution W2/W4 valido (X-Internal-Token via compare_digest)
-# FASE 4.5 — W2 e W4 agora usam X-Internal-Token estatico (nao HMAC).
-# Evolution API nao calcula HMAC nativamente; token estatico via compare_digest
-# garante autenticacao com mesmo nivel de seguranca.
+# TESTE 3 — Telegram W2/W4 valido (X-Telegram-Bot-Api-Secret-Token)
+# D05k: webhooks Telegram validam via compare_digest contra o secret do
+# bot dedicado. O fluxo eh o mesmo do antigo X-Internal-Token (mesmo
+# nivel de seguranca, sem HMAC nativo).
 # ──────────────────────────────────────────────────────────────────────
 print("=" * 70)
-print("TESTE 3 — Evolution W2/W4 valido (X-Internal-Token via compare_digest)")
+print("TESTE 3 — Telegram W2/W4 valido (compare_digest)")
 print("=" * 70)
-evo_token_correct = os.environ["EVOLUTION_WEBHOOK_SECRET"]
-evo_token_wrong = "wrong-token-12345"
 dra_token_correct = os.environ["DR_ANDERSON_WEBHOOK_SECRET"]
+dra_token_wrong = "wrong-token-12345"
 
-# W2: token correto aceito
-ok_w2 = validate_internal_key(evo_token_correct, evo_token_correct)
-# W2: token errado rejeitado
-ok_w2_wrong = validate_internal_key(evo_token_wrong, evo_token_correct)
 # W4: token correto aceito
 ok_w4 = validate_internal_key(dra_token_correct, dra_token_correct)
 # W4: token errado rejeitado
-ok_w4_wrong = validate_internal_key(evo_token_correct, dra_token_correct)
+ok_w4_wrong = validate_internal_key(dra_token_wrong, dra_token_correct)
 
-event_id = "evolution_tenant:clinica01:msg-001"
+event_id = "telegram_tenant:clinica01:update-001"
 is_replay, log_id = register_webhook_event(
-    provider="evolution_tenant", event_id=event_id,
-    event_type="messages.upsert", payload={"event": "messages.upsert"},
+    provider="telegram_tenant", event_id=event_id,
+    event_type="telegram_update", payload={"update_id": 1},
 )
 
-record(3, "Evolution W2/W4 valido (X-Internal-Token)",
-       ok_w2 and not ok_w2_wrong and ok_w4 and not ok_w4_wrong and not is_replay and log_id is not None, {
-    "W2_token_correto_aceito": ok_w2,
-    "W2_token_errado_rejeitado": not ok_w2_wrong,
+record(3, "Telegram W4 valido (X-Telegram-Bot-Api-Secret-Token)",
+       ok_w4 and not ok_w4_wrong and not is_replay and log_id is not None, {
     "W4_token_correto_aceito": ok_w4,
     "W4_token_errado_rejeitado": not ok_w4_wrong,
     "register_new_event": not is_replay,
@@ -264,22 +258,22 @@ record(3, "Evolution W2/W4 valido (X-Internal-Token)",
 })
 
 # ──────────────────────────────────────────────────────────────────────
-# TESTE 4 — Evolution replay
+# TESTE 4 — Telegram replay
 # ──────────────────────────────────────────────────────────────────────
 print("=" * 70)
-print("TESTE 4 — Evolution replay (mesmo message_id)")
+print("TESTE 4 — Telegram replay (mesmo update_id)")
 print("=" * 70)
-event_id = "evolution_tenant:clinica02:msg-002"
+event_id = "telegram_tenant:clinica02:update-002"
 is_replay_1, log_id_1 = register_webhook_event(
-    provider="evolution_tenant", event_id=event_id,
-    event_type="messages.upsert", payload={},
+    provider="telegram_tenant", event_id=event_id,
+    event_type="telegram_update", payload={},
 )
 is_replay_2, log_id_2 = register_webhook_event(
-    provider="evolution_tenant", event_id=event_id,
-    event_type="messages.upsert", payload={},
+    provider="telegram_tenant", event_id=event_id,
+    event_type="telegram_update", payload={},
 )
 
-record(4, "Evolution replay", (not is_replay_1) and is_replay_2 and log_id_1 == log_id_2 and log_id_1 is not None, {
+record(4, "Telegram replay", (not is_replay_1) and is_replay_2 and log_id_1 == log_id_2 and log_id_1 is not None, {
     "first_register_new": not is_replay_1,
     "second_is_replay": is_replay_2,
     "log_ids_match": log_id_1 == log_id_2,
@@ -308,14 +302,12 @@ ok_mod, reason_mod = validate_mercadopago_signature(
     bad_sig, x_req_id, data_id, "{}"
 )
 
-# W2/W4 (Evolution) — agora usam X-Internal-Token via compare_digest
-ok_evo = validate_internal_key("invalid_token", os.environ["EVOLUTION_WEBHOOK_SECRET"])
+# W4 (Dr. Anderson Telegram) — X-Internal-Token via compare_digest
 ok_dra = validate_internal_key("invalid_token", os.environ["DR_ANDERSON_WEBHOOK_SECRET"])
 
-all_invalid = not (ok_mp or ok_evo or ok_dra or ok_mod)
+all_invalid = not (ok_mp or ok_dra or ok_mod)
 record(5, "Assinatura invalida", all_invalid, {
     "W1_MP_rejeitado": not ok_mp,
-    "W2_Evolution_rejeitado": not ok_evo,
     "W4_DrAnderson_rejeitado": not ok_dra,
     "W5_Modulos_rejeitado": not ok_mod,
     "expected_status": "HTTP 401 em todos",

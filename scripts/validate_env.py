@@ -61,9 +61,9 @@ REQUIRED_PRODUCTION_VARS = {
 
 # Variáveis OPCIONAIS mas recomendadas
 OPTIONAL_VARS = {
-    "WhatsApp": [
-        ("WHATSAPP_API_URL", "URL da Evolution API ou Twilio"),
-        ("WHATSAPP_API_KEY", "chave da Evolution API"),
+    "Telegram (D05k)": [
+        ("TELEGRAM_DEFAULT_BOT_TOKEN", "bot fixo Dr.Anderson para admin notif"),
+        ("TELEGRAM_ADMIN_CHAT_ID", "chat_id do admin que recebe notificações"),
     ],
     "LLMs": [
         ("OPENAI_API_KEY", "chave OpenAI (GPT-4, GPT-3.5)"),

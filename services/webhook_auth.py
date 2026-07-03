@@ -3,17 +3,20 @@ Webhook Auth — Helper centralizado para validacao de webhooks (P0-A FASE 4)
 
 Funcoes:
 - validate_mercadopago_signature: padrao oficial Mercado Pago (x-signature + x-request-id + data.id)
-- validate_generic_hmac_signature: HMAC SHA256 generico (Evolution API)
+- validate_generic_hmac_signature: HMAC SHA256 generico
 - validate_internal_key: compare_digest para X-Internal-Key
 - check_replay: idempotencia via WebhookLog (provider + provider_event_id)
 
 Variaveis ENV esperadas:
 - MERCADOPAGO_WEBHOOK_SECRET
 - MERCADOPAGO_MODULOS_WEBHOOK_SECRET
-- EVOLUTION_WEBHOOK_SECRET
 - DR_ANDERSON_WEBHOOK_SECRET
 - INTERNAL_SERVICE_KEY
 - ALLOW_WEBHOOK_SIMULATION (1/0)
+
+D05k: removido EVOLUTION_WEBHOOK_SECRET (Evolution API descontinuada em favor
+do Telegram Bot API). Webhooks Telegram validam via X-Telegram-Bot-Api-Secret-Token
+dentro de cada route handler, não via este módulo.
 """
 import hmac
 import hashlib

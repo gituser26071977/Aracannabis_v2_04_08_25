@@ -402,49 +402,33 @@ Equipe AraOS
         return False
 
 def enviar_whatsapp_lembrete(consulta):
-    """Enviar lembrete por WhatsApp (implementação básica)"""
+    """Enviar lembrete via Telegram (substitui antiga integração WhatsApp).
+
+    D05k: agora usa TelegramService. O paciente recebe mensagem no Telegram
+    se tiver chat_id cadastrado (campo telefone é interpretado como chat_id
+    pelo TelegramService, conforme decisão D05k).
+    """
     try:
-        # Esta é uma implementação básica
-        # Para produção, você precisaria integrar com uma API como Twilio, WhatsApp Business API, etc.
-        
-        whatsapp_api_url = os.getenv('WHATSAPP_API_URL')
-        whatsapp_token = os.getenv('WHATSAPP_TOKEN')
-        
-        if not whatsapp_api_url or not whatsapp_token:
-            print("Configurações do WhatsApp não encontradas")
+        from services.telegram_service import telegram_service
+
+        chat_id = consulta.paciente.telefone  # mantido: já é o chat_id do Telegram
+        if not chat_id:
+            print("[consultas] Paciente sem chat_id Telegram — pulando lembrete")
             return False
-        
+
         data_formatada = consulta.data_hora.strftime('%d/%m/%Y às %H:%M')
-        mensagem = f"""
-🏥 *Lembrete de Consulta - AraOS*
+        mensagem = (
+            f"🏥 <b>Lembrete de Consulta - AraOS</b>\n\n"
+            f"Olá {consulta.paciente.nome}!\n\n"
+            f"Você tem uma consulta agendada para <b>{data_formatada}</b>.\n\n"
+            f"📋 Tipo: {consulta.tipo_consulta.title()}\n"
+            f"⏰ Duração: {consulta.duracao_minutos} minutos\n\n"
+            f"{f'📝 Observações: {consulta.observacoes}' if consulta.observacoes else ''}\n"
+            f"Em caso de dúvidas, entre em contato conosco."
+        )
 
-Olá {consulta.paciente.nome}!
+        return telegram_service.send_message(chat_id=chat_id, text=mensagem)
 
-Você tem uma consulta agendada para *{data_formatada}*.
-
-📋 Tipo: {consulta.tipo_consulta.title()}
-⏰ Duração: {consulta.duracao_minutos} minutos
-
-{f"📝 Observações: {consulta.observacoes}" if consulta.observacoes else ""}
-
-Em caso de dúvidas, entre em contato conosco.
-        """
-        
-        # Exemplo de payload para API do WhatsApp
-        payload = {
-            'phone': consulta.paciente.telefone,
-            'message': mensagem
-        }
-        
-        headers = {
-            'Authorization': f'Bearer {whatsapp_token}',
-            'Content-Type': 'application/json'
-        }
-        
-        response = requests.post(whatsapp_api_url, json=payload, headers=headers)
-        
-        return response.status_code == 200
-        
     except Exception as e:
-        print(f"Erro ao enviar WhatsApp: {e}")
+        print(f"Erro ao enviar lembrete Telegram: {e}")
         return False

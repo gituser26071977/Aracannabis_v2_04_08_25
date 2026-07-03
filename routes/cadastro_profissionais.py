@@ -118,16 +118,15 @@ def solicitar_cadastro():
         # Executar verificação automática
         try:
             from services.registration_verification_service import RegistrationVerificationService
-            from services.whatsapp_service import WhatsAppService
-            
+            from services.telegram_service import telegram_service
+
             verifier = RegistrationVerificationService()
-            whatsapp_service = WhatsAppService()
-            
+
             verification_result = verifier.verify_registration(nova_solicitacao.id)
             current_app.logger.info(f"Verificação automática: {verification_result['summary']}")
-            
-            # Notificar Admin
-            whatsapp_service.notify_admin_new_registration(
+
+            # Notificar Admin (Dr. Anderson) via Telegram
+            telegram_service.notify_admin_new_registration(
                 nova_solicitacao.nome,
                 nova_solicitacao.email,
                 nova_solicitacao.crm,
@@ -164,9 +163,8 @@ def processar_aprovacao(solicitacao_id):
     Lógica centralizada de aprovação para uso na rota e na auto-aprovação.
     """
     try:
-        from services.whatsapp_service import WhatsAppService
-        whatsapp_service = WhatsAppService()
-        
+        from services.telegram_service import telegram_service
+
         # Re-query para garantir sessão
         solicitacao = SolicitacoesCadastro.query.get(solicitacao_id)
         if not solicitacao or solicitacao.status != 'pendente':
@@ -271,7 +269,7 @@ def processar_aprovacao(solicitacao_id):
         # Notificações
         try:
             email_service.send_approval_email(solicitacao.email, solicitacao.nome, usuario, senha_temporaria, novo_profissional.data_expiracao)
-            whatsapp_service.notify_doctor_approval(solicitacao.telefone, solicitacao.nome)
+            telegram_service.notify_doctor_approval(solicitacao.telefone, solicitacao.nome)
         except Exception:
              pass
 

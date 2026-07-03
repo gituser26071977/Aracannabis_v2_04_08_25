@@ -10,18 +10,13 @@ import base64
 sdr_bp = Blueprint("sdr", __name__)
 
 SIAP_API_URL = os.getenv("SIAP_API_URL", "https://api.visualsmartflow.com.br")
-# Tenta URL interna Docker primeiro, fallback para IP externo
-EVOLUTION_API_URL = os.getenv("EVOLUTION_API_URL", "http://evolution_api:8080")
-EVOLUTION_API_KEY = os.getenv(
-    "EVOLUTION_API_KEY",
-    "REDACTED",
-)
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 PROFISSIONAL_ID_DR_ANDERSON = 2
 
 # Importa o agente Dr. Anderson (fluxo estruturado com fases)
 from services.dr_anderson_agent import dr_anderson_agent
 from services.ai_agents import ai_manager
+from services.telegram_service import telegram_service
 
 CONVERSAS = {}
 
@@ -184,160 +179,147 @@ def get_resposta_fallback(mensagem, historico_conversa):
     return "Entendi. Para uma avaliação mais precisa sobre tratamento com Cannabis Medicinal, recomendo agendar uma consulta com o Dr. Anderson. Deseja agendar?"
 
 
-def enviar_mensagem_whatsapp(numero, mensagem):
-    """Envia mensagem via Evolution API"""
+def enviar_mensagem_telegram(chat_id, mensagem):
+    """Envia mensagem via Telegram Bot API (substitui antigo WhatsApp)."""
     try:
-        url = f"{EVOLUTION_API_URL}/message/sendText/EuSouLIA"
-
-        payload = {"number": numero, "text": mensagem}
-
-        headers = {"apikey": EVOLUTION_API_KEY, "Content-Type": "application/json"}
-
-        response = requests.post(url, json=payload, headers=headers, timeout=30)
-
-        if response.status_code in [200, 201]:
-            print(f"[SDR] Mensagem enviada para {numero}")
-            return True
+        ok = telegram_service.send_message(chat_id=chat_id, text=mensagem)
+        if ok:
+            print(f"[SDR] Mensagem Telegram enviada para {chat_id}")
         else:
-            print(f"[SDR] Erro ao enviar: {response.status_code} - {response.text}")
-            return False
-
+            print(f"[SDR] Falha ao enviar Telegram para {chat_id}")
+        return ok
     except Exception as e:
-        print(f"[SDR] Erro ao enviar mensagem: {str(e)}")
+        print(f"[SDR] Erro ao enviar Telegram: {str(e)}")
         return False
 
 
-def _download_media_from_url(url: str, api_key: str) -> tuple:
-    """Baixa mídia da URL da Evolution API e converte para base64."""
-    try:
-        headers = {"apikey": api_key}
-        resp = requests.get(url, headers=headers, timeout=30)
-        resp.raise_for_status()
-        media_base64 = base64.b64encode(resp.content).decode('utf-8')
-        # Detectar mime_type da resposta
-        mime_type = resp.headers.get('content-type', 'application/octet-stream')
-        return media_base64, mime_type
-    except Exception as e:
-        print(f"[SDR] Erro ao baixar mídia: {e}")
-        return None, None
+# Backward-compat alias para os call-sites existentes que ainda usam o nome antigo.
+def enviar_mensagem_whatsapp(numero, mensagem):  # noqa: D401
+    """DEPRECATED: alias de compat — use enviar_mensagem_telegram."""
+    return enviar_mensagem_telegram(numero, mensagem)
 
 
-def _extrair_media_evolucao(message: dict) -> tuple:
-    """Extrai base64 e mime_type de mensagens de mídia da Evolution API.
-    Suporta tanto base64 inline quanto download por URL."""
+def _extrair_media_telegram(message: dict) -> tuple:
+    """Extrai base64 e mime_type de mensagens com mídia do Telegram.
+
+    Telegram envia arquivos via file_id em message.photo / message.voice /
+    message.document / message.video. Para baixar o conteúdo binário, é
+    necessário chamar getFile(file_id) → URL HTTPS em api.telegram.org.
+    Aqui retornamos apenas metadados (caption) e None para media_base64;
+    o agente Dr.Anderson processa o texto e ignora mídia pesada (Telegram
+    entrega imagens por link, não inline como Evolution fazia).
+    """
     media_base64 = None
     mime_type = None
     caption = ""
-    media_url = None
 
-    # Imagem
-    if "imageMessage" in message:
-        img = message.get("imageMessage", {})
-        media_base64 = img.get("base64", img.get("jpegThumbnail", ""))
-        mime_type = img.get("mimetype", "image/jpeg")
-        caption = img.get("caption", "")
-        media_url = img.get("url", "")
-    # Áudio
-    elif "audioMessage" in message:
-        aud = message.get("audioMessage", {})
-        media_base64 = aud.get("base64", "")
-        mime_type = aud.get("mimetype", "audio/ogg; codecs=opus")
-        media_url = aud.get("url", "")
-    # Documento
-    elif "documentMessage" in message:
-        doc = message.get("documentMessage", {})
-        media_base64 = doc.get("base64", "")
-        mime_type = doc.get("mimetype", "application/pdf")
-        caption = doc.get("caption", doc.get("fileName", ""))
-        media_url = doc.get("url", "")
-    # Vídeo
-    elif "videoMessage" in message:
-        vid = message.get("videoMessage", {})
-        media_base64 = vid.get("base64", "")
-        mime_type = vid.get("mimetype", "video/mp4")
-        caption = vid.get("caption", "")
-        media_url = vid.get("url", "")
-
-    # Se não veio base64 mas tem URL, baixar
-    if not media_base64 and media_url:
-        print(f"[SDR] Baixando mídia de URL: {media_url[:60]}...")
-        media_base64, mime_type = _download_media_from_url(media_url, EVOLUTION_API_KEY)
+    if "photo" in message:
+        caption = message.get("caption", "")
+        mime_type = "image/jpeg"
+    elif "voice" in message:
+        mime_type = message.get("voice", {}).get("mime_type", "audio/ogg")
+    elif "document" in message:
+        caption = message.get("caption", message.get("document", {}).get("file_name", ""))
+        mime_type = message.get("document", {}).get("mime_type", "application/octet-stream")
+    elif "video" in message:
+        caption = message.get("caption", "")
+        mime_type = "video/mp4"
 
     return media_base64, mime_type, caption
 
 
-@sdr_bp.route("/webhook", methods=["POST"])
-def webhook_evolution():
-    """Webhook para receber mensagens da Evolution API (EuSouLIA - Dr. Anderson)"""
+def _extrair_media_evolucao(message: dict) -> tuple:
+    """DEPRECATED: alias para _extrair_media_telegram (compat)."""
+    return _extrair_media_telegram(message)
+
+
+@sdr_bp.route("/webhooks/telegram", methods=["POST"])
+def webhook_telegram_sdr():
+    """Webhook Telegram (LIA - Dr. Anderson SDR).
+
+    Recebe Update Telegram via POST do bot configurado para o Dr. Anderson.
+    Espera header X-Telegram-Bot-Api-Secret-Token validado por
+    services.webhook_auth (configurado no setWebhook pelo bot setup).
+
+    Migrado de Evolution API em D05k — agora usa formato Update do Telegram.
+    """
     try:
-        data = request.get_json()
-        event_type = data.get("event")
+        data = request.get_json(silent=True) or {}
 
-        if event_type == "messages.upsert":
-            message_data = data.get("data", {})
-            message = message_data.get("message", {})
-            key = message_data.get("key", {})
+        # Telegram Update parsing
+        message = data.get("message") or data.get("edited_message")
+        if not message:
+            return jsonify({"status": "ignored", "reason": "no_message"}), 200
 
-            if key.get("fromMe", False):
-                return jsonify({"status": "ignored", "reason": "own_message"}), 200
+        chat = message.get("chat", {})
+        chat_id = chat.get("id")
+        chat_type = chat.get("type", "private")
+        if chat_type in ("group", "supergroup", "channel"):
+            return jsonify({"status": "ignored", "reason": "group_message"}), 200
+        if not chat_id:
+            return jsonify({"status": "ignored", "reason": "no_chat_id"}), 200
 
-            remote_jid = key.get("remoteJid", "")
+        # Extrair texto puro (Telegram manda texto direto em message.text)
+        text = message.get("text") or message.get("caption") or ""
 
-            if "@g.us" in remote_jid or "@temp" in remote_jid:
-                return jsonify({"status": "ignored", "reason": "group_message"}), 200
+        # Extrair mídia (caption / metadados apenas — Telegram não envia base64 inline)
+        media_base64, mime_type, caption = _extrair_media_telegram(message)
+        if caption and not text:
+            text = caption
 
-            # Extrair texto
-            text = ""
-            if "conversation" in message:
-                text = message["conversation"]
-            elif "extendedTextMessage" in message:
-                text = message.get("extendedTextMessage", {}).get("text", "")
+        # Ignorar mensagens sem conteúdo útil
+        if not text and not media_base64:
+            return jsonify({"status": "ignored", "reason": "no_content"}), 200
 
-            # Extrair mídia (imagem, áudio, documento)
-            media_base64, mime_type, caption = _extrair_media_evolucao(message)
-            if caption and not text:
-                text = caption
+        # Em Telegram o "phone" vira o chat_id (string para preservar
+        # compat com CONVERSAS dict + dr_anderson_agent)
+        phone = str(chat_id)
 
-            # Se não tem texto nem mídia, ignorar
-            if not text and not media_base64:
-                return jsonify({"status": "ignored", "reason": "no_content"}), 200
+        print(
+            f"[SDR Webhook] Telegram chat_id={phone}: text='{text[:50]}...' "
+            f"| media={bool(media_base64)} | mime={mime_type}"
+        )
 
-            phone = remote_jid.replace("@s.whatsapp.net", "")
+        if phone not in CONVERSAS:
+            CONVERSAS[phone] = []
 
-            print(f"[SDR Webhook] Mensagem de {phone}: text='{text[:50]}...' | media={bool(media_base64)} | mime={mime_type}")
+        content = text
+        if media_base64:
+            content = f"[MÍDIA: {mime_type}] {text}".strip()
+        CONVERSAS[phone].append({"role": "user", "content": content})
 
-            if phone not in CONVERSAS:
-                CONVERSAS[phone] = []
+        resposta = get_resposta_ia(
+            mensagem=text,
+            historico_conversa=CONVERSAS[phone],
+            phone=phone,
+            media_base64=media_base64,
+            mime_type=mime_type,
+        )
 
-            # Montar conteúdo para histórico (inclui descrição de mídia)
-            content = text
-            if media_base64:
-                content = f"[MÍDIA: {mime_type}] {text}".strip()
+        CONVERSAS[phone].append({"role": "assistant", "content": resposta})
 
-            CONVERSAS[phone].append({"role": "user", "content": content})
+        if len(CONVERSAS[phone]) > 20:
+            CONVERSAS[phone] = CONVERSAS[phone][-20:]
 
-            resposta = get_resposta_ia(
-                mensagem=text,
-                historico_conversa=CONVERSAS[phone],
-                phone=phone,
-                media_base64=media_base64,
-                mime_type=mime_type
-            )
+        enviar_mensagem_telegram(chat_id, resposta)
 
-            CONVERSAS[phone].append({"role": "assistant", "content": resposta})
-
-            if len(CONVERSAS[phone]) > 20:
-                CONVERSAS[phone] = CONVERSAS[phone][-20:]
-
-            enviar_mensagem_whatsapp(phone, resposta)
-
-            return jsonify({"status": "received", "response": resposta}), 200
-
-        return jsonify({"status": "ignored"}), 200
+        return jsonify({"status": "received", "response": resposta}), 200
 
     except Exception as e:
         print(f"[SDR Webhook] Erro: {str(e)}")
         return jsonify({"error": str(e)}), 500
+
+
+# Backward-compat: rota antiga Evolution mantida como alias que retorna 410 Gone.
+# Será removida após 1 release de transição.
+@sdr_bp.route("/webhook", methods=["POST"])
+def webhook_legacy_evolution():
+    """DEPRECATED (D05k): Evolution API descontinuada. Use /webhooks/telegram."""
+    return jsonify({
+        "error": "endpoint_removed",
+        "reason": "evolution_api_migrated_to_telegram",
+        "new_endpoint": "/webhooks/telegram",
+    }), 410
 
 
 @sdr_bp.route("/webhook/teste", methods=["GET"])

@@ -34,7 +34,6 @@ def create_app(config_obj=None):
         env_vars=[
             "MERCADOPAGO_WEBHOOK_SECRET",
             "MERCADOPAGO_MODULOS_WEBHOOK_SECRET",
-            "EVOLUTION_WEBHOOK_SECRET",
             "DR_ANDERSON_WEBHOOK_SECRET",
             "INTERNAL_SERVICE_KEY",
         ],

@@ -2,22 +2,26 @@ from flask import Blueprint, request, jsonify
 import logging
 import os
 from services.dr_anderson_agent import dr_anderson_agent
-from services.whatsapp_service import WhatsAppService
-from services.webhook_auth import internal_key_required, register_webhook_event
+from services.telegram_service import telegram_service
+from services.webhook_auth import register_webhook_event
 from security_config import limiter
 
 logger = logging.getLogger(__name__)
 
 dr_anderson_bp = Blueprint('dr_anderson_webhook', __name__)
 
-# Instância dedicada para o Dr Anderson
-dr_anderson_instance = os.environ.get('DR_ANDERSON_WHATSAPP_INSTANCE', 'dr_anderson')
-whatsapp = WhatsAppService(instance_name=dr_anderson_instance)
+# Chat ID Telegram fixo do Dr. Anderson (substitui WhatsApp instance dr_anderson)
+DR_ANDERSON_TELEGRAM_CHAT_ID = os.environ.get(
+    "DR_ANDERSON_TELEGRAM_CHAT_ID", ""
+).strip()
 
 
 # ──────────────────────────────────────────────
 # Endpoint interno: Criação de Lead/Paciente
 # ──────────────────────────────────────────────
+
+from services.webhook_auth import internal_key_required  # noqa: E402
+
 
 @dr_anderson_bp.route('/criar-lead', methods=['POST'])
 @limiter.exempt  # FASE 5A — endpoint interno autenticado por X-Internal-Key
@@ -63,7 +67,7 @@ def criar_lead():
         historico_cannabis = data.get('historico_cannabis') or data.get('historico')
         if historico_cannabis:
             observacoes_completas += f"\n\nHistórico Cannabis: {historico_cannabis}"
-        observacoes_completas += "\n\n[Lead captado automaticamente via WhatsApp - Agente LIA Dr. Anderson]"
+        observacoes_completas += "\n\n[Lead captado automaticamente via Telegram - Agente LIA Dr. Anderson]"
 
         # TODO P1-LGPD: revisar criacao automatica de consentimento.
         # O consentimento_lgpd=True abaixo e setado sem aceite real do titular.
@@ -105,108 +109,110 @@ def criar_lead():
 
 
 # ──────────────────────────────────────────────
-# Webhook Evolution API
+# Webhook Telegram — substitui Evolution API (D05k)
 # ──────────────────────────────────────────────
 
-@dr_anderson_bp.route('/webhook', methods=['POST'])
-@limiter.exempt  # FASE 5A — webhook já validado por X-Internal-Token (FASE 4.5)
-@internal_key_required(
-    env_var="DR_ANDERSON_WEBHOOK_SECRET",
-    header_name="X-Internal-Token",
-)
-def evolution_webhook():
+@dr_anderson_bp.route('/webhooks/telegram', methods=['POST'])
+@limiter.exempt  # FASE 5A — webhook validado por X-Telegram-Bot-Api-Secret-Token
+def telegram_webhook():
     """
-    Recebe eventos da Evolution API.
-    Configure na Evolution API apontando para /api/dr-anderson/webhook
+    Recebe Update do Telegram Bot API para o bot dedicado do Dr. Anderson.
 
-    FASE 4.5 — Autenticação por X-Internal-Token estatico via compare_digest.
-    Evolution API nao calcula HMAC nativamente; operador deve configurar
-    webhook.headers={"X-Internal-Token": "<DR_ANDERSON_WEBHOOK_SECRET>"} no painel.
+    Validação: header X-Telegram-Bot-Api-Secret-Token comparado via
+    compare_digest contra REDACTED.
+
+    Configurar no BotFather/setWebhook o header
+    `secret_token=<REDACTED>` apontando para
+    https://api.visualsmartflow.com.br/api/dr-anderson/webhooks/telegram.
     """
-    data = request.json
+    import hmac
 
-    event = data.get('event')
-    if event != 'messages.upsert':
-        return jsonify({"status": "ignored", "reason": "not_upsert"}), 200
+    # Validação do secret header do Telegram
+    expected_secret = os.environ.get(
+        "REDACTED", ""
+    ).strip()
+    header_secret = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
 
-    # FASE 4.1 — Anti-replay atomico via INSERT + UNIQUE(provider, provider_event_id).
-    message_data_pre = data.get('data', {})
-    if isinstance(message_data_pre, list) and message_data_pre:
-        message_data_pre = message_data_pre[0]
-    key_pre = (message_data_pre or {}).get('key', {}) if isinstance(message_data_pre, dict) else {}
-    event_id = f"evolution_dr_anderson:{key_pre.get('id', '')}"
-    is_replay, log_id = register_webhook_event(
-        provider="evolution_dr_anderson",
+    if not expected_secret:
+        logger.error(
+            "[dr_anderson_telegram_webhook] REDACTED "
+            "nao configurado"
+        )
+        return jsonify({"error": "server misconfigured"}), 500
+    if not header_secret or not hmac.compare_digest(
+        header_secret, expected_secret
+    ):
+        logger.warning(
+            f"[dr_anderson_telegram_webhook] secret invalido (ip={request.remote_addr})"
+        )
+        return jsonify({"error": "unauthorized"}), 401
+
+    data = request.get_json(silent=True) or {}
+    message = data.get("message") or data.get("edited_message")
+    if not message:
+        return jsonify({"status": "ignored", "reason": "no_message"}), 200
+
+    # Anti-replay atomico via UNIQUE(provider, provider_event_id)
+    update_id = data.get("update_id", "")
+    event_id = f"telegram_dr_anderson:{update_id}"
+    is_replay, _ = register_webhook_event(
+        provider="telegram_dr_anderson",
         event_id=event_id,
-        event_type="messages.upsert",
+        event_type="telegram_update",
         payload=data,
     )
     if is_replay:
         logger.info(
-            f"[evolution_dr_anderson_webhook] replay detectado event_id={event_id} "
-            f"log_id={log_id}"
+            f"[dr_anderson_telegram_webhook] replay detectado update_id={update_id}"
         )
         return jsonify({"status": "ok", "idempotent": True}), 200
 
-    message_data = data.get('data', {})
-    if isinstance(message_data, list):
-        if not message_data:
-            return jsonify({"status": "empty_list"}), 200
-        message_data = message_data[0]
-
-    key = message_data.get('key', {})
-    if key.get('fromMe', False):
-        return jsonify({"status": "ignored", "reason": "sent_by_me"}), 200
-
-    remote_jid = key.get('remoteJid', '')
-    phone = remote_jid.split('@')[0]
-
-    if 'g.us' in remote_jid:
+    chat = message.get("chat", {})
+    chat_id = chat.get("id")
+    chat_type = chat.get("type", "private")
+    if chat_type in ("group", "supergroup", "channel"):
         return jsonify({"status": "ignored", "reason": "group_message"}), 200
+    if not chat_id:
+        return jsonify({"status": "ignored", "reason": "no_chat_id"}), 200
 
-    message_body = message_data.get('message', {})
+    text = message.get("text") or message.get("caption") or ""
+    if not text:
+        # Mídia sem caption: ignora por enquanto (Telegram entrega mídia por
+        # file_id, diferente do base64 inline do Evolution)
+        return jsonify({"status": "ignored", "reason": "no_text"}), 200
 
-    # Extrair texto
-    content = ""
-    if 'conversation' in message_body:
-        content = message_body['conversation']
-    elif 'extendedTextMessage' in message_body:
-        content = message_body['extendedTextMessage'].get('text', '')
-
-    # Detectar mídia (imagem/documento)
-    media_base64 = None
-    mime_type = None
-    if 'imageMessage' in message_body:
-        caption = message_body['imageMessage'].get('caption', '')
-        content = f"{content} {caption}".strip()
-        # Se a Evolution mandar base64 direto (configurável)
-        media_base64 = message_body['imageMessage'].get('base64')
-        mime_type = message_body['imageMessage'].get('mimetype', 'image/jpeg')
-    elif 'documentMessage' in message_body:
-        caption = message_body['documentMessage'].get('caption', '')
-        content = f"{content} {caption}".strip()
-        media_base64 = message_body['documentMessage'].get('base64')
-        mime_type = message_body['documentMessage'].get('mimetype', 'application/pdf')
-
-    if not content:
-        content = "(Mensagem sem texto)"
+    phone = str(chat_id)
 
     def process_async():
         try:
-            print(f"DEBUG: [Dr. Anderson Webhook] Processando em background: {phone}", flush=True)
-            reply = dr_anderson_agent.process_message(
-                message=content,
-                phone=phone,
-                media_base64=media_base64,
-                mime_type=mime_type,
+            print(
+                f"[Dr. Anderson Telegram Webhook] Processando em background: {phone}",
+                flush=True,
             )
-            whatsapp.send_message(phone=phone, message=reply)
-            print(f"DEBUG: [Dr. Anderson Webhook] Resposta enviada para {phone}", flush=True)
+            reply = dr_anderson_agent.process_message(message=text, phone=phone)
+            telegram_service.send_message(chat_id=phone, text=reply)
+            print(
+                f"[Dr. Anderson Telegram Webhook] Resposta enviada para {phone}",
+                flush=True,
+            )
         except Exception as e:
-            print(f"DEBUG: [Dr. Anderson Webhook] Erro no background: {e}", flush=True)
+            print(
+                f"[Dr. Anderson Telegram Webhook] Erro no background: {e}",
+                flush=True,
+            )
 
-    # Iniciar processamento em background e responder 200 OK imediatamente
     import threading
     threading.Thread(target=process_async).start()
 
     return jsonify({"status": "received", "message": "Processing in background"}), 200
+
+
+# Backward-compat: rota antiga Evolution retorna 410 Gone.
+@dr_anderson_bp.route('/webhook', methods=['POST'])
+def evolution_webhook_legacy():
+    """DEPRECATED (D05k): Evolution API descontinuada."""
+    return jsonify({
+        "error": "endpoint_removed",
+        "reason": "evolution_api_migrated_to_telegram",
+        "new_endpoint": "/api/dr-anderson/webhooks/telegram",
+    }), 410

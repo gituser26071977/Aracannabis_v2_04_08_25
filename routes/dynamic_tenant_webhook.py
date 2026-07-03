@@ -4,8 +4,8 @@ import threading
 
 from models import ConfiguracaoIA
 from services.dynamic_tenant_agent import DynamicTenantAgent
-from services.whatsapp_service import WhatsAppService
-from services.webhook_auth import register_webhook_event, internal_key_required
+from services.telegram_service import TelegramService
+from services.webhook_auth import register_webhook_event
 from security_config import limiter
 
 logger = logging.getLogger(__name__)
@@ -13,112 +13,111 @@ logger = logging.getLogger(__name__)
 tenant_webhook_bp = Blueprint('tenant_webhook', __name__)
 
 
-@tenant_webhook_bp.route('/webhook', methods=['POST'])
-@limiter.exempt  # FASE 5A — webhook já validado por X-Internal-Token (FASE 4.5)
-@internal_key_required(
-    env_var="EVOLUTION_WEBHOOK_SECRET",
-    header_name="X-Internal-Token",
-)
-def evolution_webhook_multi_tenant():
+@tenant_webhook_bp.route('/webhooks/telegram', methods=['POST'])
+@limiter.exempt  # FASE 5A — webhook validado por X-Telegram-Bot-Api-Secret-Token
+def telegram_webhook_multi_tenant():
     """
-    Recebe eventos da Evolution API para TODAS as instâncias conectadas.
-    Ele consulta o banco de dados para ver de qual médico é aquela instância.
+    Recebe Update do Telegram para múltiplos tenants (cada clínica = 1 bot).
 
-    FASE 4.5 — Autenticação por X-Internal-Token estatico via compare_digest.
-    Evolution API nao calcula HMAC nativamente; operador deve configurar
-    webhook.headers={"X-Internal-Token": "<EVOLUTION_WEBHOOK_SECRET>"} no painel.
+    Auth: header X-Telegram-Bot-Api-Secret-Token comparado contra o secret
+    do tenant que estiver cadastrado em ConfiguracaoIA. Sem match → 401.
+
+    Multi-tenant: o token do bot identifica o tenant (cada bot dedicado aponta
+    para este mesmo endpoint; o Telegram envia X-Telegram-Bot-Api-Secret-Token
+    e validamos contra ConfiguracaoIA.telegram_webhook_secret).
     """
-    data = request.json
+    import hmac
 
-    event = data.get('event')
-    if event != 'messages.upsert':
-        return jsonify({"status": "ignored", "reason": "not_upsert"}), 200
+    data = request.get_json(silent=True) or {}
+    message = data.get("message") or data.get("edited_message")
+    if not message:
+        return jsonify({"status": "ignored", "reason": "no_message"}), 200
 
-    instance_name = data.get('instance')
-    if not instance_name:
-        return jsonify({"status": "ignored", "reason": "no_instance_name"}), 200
-
-    # FASE 4.1 — Anti-replay atomico via INSERT + UNIQUE(provider, provider_event_id).
-    message_data_pre = data.get('data', {})
-    if isinstance(message_data_pre, list) and message_data_pre:
-        message_data_pre = message_data_pre[0]
-    key_pre = (message_data_pre or {}).get('key', {}) if isinstance(message_data_pre, dict) else {}
-    event_id = f"evolution_tenant:{instance_name}:{key_pre.get('id', '')}"
-    is_replay, log_id = register_webhook_event(
-        provider="evolution_tenant",
+    # Anti-replay atomico via UNIQUE(provider, provider_event_id).
+    update_id = data.get("update_id", "")
+    event_id = f"telegram_tenant:{update_id}"
+    is_replay, _ = register_webhook_event(
+        provider="telegram_tenant",
         event_id=event_id,
-        event_type="messages.upsert",
+        event_type="telegram_update",
         payload=data,
     )
     if is_replay:
         logger.info(
-            f"[evolution_tenant_webhook] replay detectado event_id={event_id} "
-            f"log_id={log_id}"
+            f"[telegram_tenant_webhook] replay detectado update_id={update_id}"
         )
         return jsonify({"status": "ok", "idempotent": True}), 200
 
-    # 1. Buscar configuração da IA correspondente a esta instância no DB
-    config = ConfiguracaoIA.query.filter_by(instance_name=instance_name).first()
-    
-    if not config or not config.ativo:
-        # A clínica não ativou a IA ou a instância não bate com o banco.
-        return jsonify({"status": "ignored", "reason": "ai_not_configured_or_inactive"}), 200
-
-    message_data = data.get('data', {})
-    if isinstance(message_data, list):
-        if not message_data:
-            return jsonify({"status": "empty_list"}), 200
-        message_data = message_data[0]
-
-    key = message_data.get('key', {})
-    if key.get('fromMe', False):
-        return jsonify({"status": "ignored", "reason": "sent_by_me"}), 200
-
-    remote_jid = key.get('remoteJid', '')
-    phone = remote_jid.split('@')[0]
-
-    if 'g.us' in remote_jid:
+    chat = message.get("chat", {})
+    chat_id = chat.get("id")
+    chat_type = chat.get("type", "private")
+    if chat_type in ("group", "supergroup", "channel"):
         return jsonify({"status": "ignored", "reason": "group_message"}), 200
+    if not chat_id:
+        return jsonify({"status": "ignored", "reason": "no_chat_id"}), 200
 
-    message_body = message_data.get('message', {})
-    
-    # Extrair texto da mensagem
-    content = ""
-    if 'conversation' in message_body:
-        content = message_body['conversation']
-    elif 'extendedTextMessage' in message_body:
-        content = message_body['extendedTextMessage'].get('text', '')
+    text = message.get("text") or message.get("caption") or ""
+    if not text:
+        return jsonify({"status": "ignored", "reason": "no_text"}), 200
 
-    # Extrair captions de imagens/documentos
-    if 'imageMessage' in message_body:
-        caption = message_body['imageMessage'].get('caption', '')
-        content = f"{content} {caption} [IMAGEM RECEBIDA]".strip()
-    elif 'documentMessage' in message_body:
-        caption = message_body['documentMessage'].get('caption', '')
-        content = f"{content} {caption} [DOCUMENTO RECEBIDO]".strip()
+    # Identifica tenant via header secret: bate contra ConfiguracaoIA.telegram_webhook_secret
+    header_secret = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
+    config = _resolve_tenant_by_secret(header_secret)
+    if not config or not config.ativo:
+        # Tenant nao cadastrado / bot nao provisionado
+        logger.warning(
+            f"[telegram_tenant_webhook] tenant nao encontrado ou inativo "
+            f"(ip={request.remote_addr})"
+        )
+        return jsonify({"error": "unauthorized"}), 401
 
-    if not content:
-        content = "[MENSAGEM DE TIPO DESCONHECIDO/ÁUDIO]"
+    phone = str(chat_id)
 
-    # 2. Processar assincronamente injetando o contexto do Tenants
-    def process_async(prof_id, inst_name, user_phone, user_msg):
+    def process_async(prof_id, inst_token, user_phone, user_msg):
         try:
-            logger.info(f"[Multi-Tenant Webhook] Atendendo {user_phone} para Prof{prof_id} via {inst_name}")
-            
-            # Instancia o motor genérico com os dados daquele médico específico
+            logger.info(
+                f"[Multi-Tenant Telegram Webhook] Atendendo {user_phone} "
+                f"para Prof{prof_id}"
+            )
             agent = DynamicTenantAgent(profissional_id=prof_id)
             reply = agent.process_message(message=user_msg, phone=user_phone)
-            
-            # Envia a resposta usando a instância WhatsApp correta da Evolution API
-            whatsapp = WhatsAppService(instance_name=inst_name)
-            whatsapp.send_message(phone=user_phone, message=reply)
-            
+
+            # Envia resposta usando o token do bot dedicado da clínica
+            svc = TelegramService(bot_token=inst_token)
+            svc.send_message(chat_id=user_phone, text=reply)
         except Exception as e:
-            logger.error(f"[Multi-Tenant Webhook] Erro fatal: {e}")
+            logger.error(f"[Multi-Tenant Telegram Webhook] Erro fatal: {e}")
 
     threading.Thread(
-        target=process_async, 
-        args=(config.profissional_id, instance_name, phone, content)
+        target=process_async,
+        args=(config.profissional_id, config.telegram_bot_token, phone, text),
     ).start()
 
     return jsonify({"status": "received", "message": "Dispatched to DynamicTenantAgent"}), 200
+
+
+def _resolve_tenant_by_secret(provided_secret: str):
+    """Busca ConfiguracaoIA cujo telegram_webhook_secret bate com o header.
+
+    Multi-tenant: cada bot dedicado tem seu próprio secret no setWebhook.
+    """
+    if not provided_secret:
+        return None
+    # Itera sobre todas as configs (volume baixo; indice dedicado pode ser
+    # adicionado se a tabela crescer muito)
+    for cfg in ConfiguracaoIA.query.filter(ConfiguracaoIA.telegram_webhook_secret.isnot(None)).all():
+        import hmac as _hmac
+        if _hmac.compare_digest(provided_secret, cfg.telegram_webhook_secret or ""):
+            return cfg
+    return None
+
+
+# Backward-compat: rota antiga Evolution retorna 410 Gone.
+@tenant_webhook_bp.route('/webhook', methods=['POST'])
+def evolution_webhook_legacy():
+    """DEPRECATED (D05k): Evolution API descontinuada."""
+    return jsonify({
+        "error": "endpoint_removed",
+        "reason": "evolution_api_migrated_to_telegram",
+        "new_endpoint": "/api/tenant/webhooks/telegram",
+    }), 410
