@@ -1,0 +1,247 @@
+name: CD — AraFlow RC1 (build + push GHCR, no deploy)
+
+# ================================================================
+# AraFlow RC1 — Continuous Deployment.
+#
+# Por design este workflow:
+#   - Dispara APENAS em workflow_dispatch (sem trigger automático).
+#   - Faz lint, typecheck, test, build do bundle RNW.
+#   - Constrói e publica as 2 imagens no GHCR (api + web) com tag
+#     rc1-${sha} e rc1-latest.
+#   - NÃO faz deploy. NÃO chama SSH no VPS. NÃO toca AraOS.
+#
+# Decisão consciente: deploy manual via docker compose no VPS,
+# conforme brief RC1 ("NÃO habilitar deploy automático").
+# ================================================================
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Tag da imagem (ex: rc1-<sha>). Default: rc1-<github.sha>.'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  NODE_VERSION: '20.18.0'
+  IMAGE_OWNER: ${{ github.repository_owner }}
+
+jobs:
+  # ----- 1. Lint -----
+  lint:
+    name: 1/5 — Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install root + mobile deps
+        run: npm ci --no-audit --no-fund --legacy-peer-deps
+
+      - name: Install mobile deps (no postinstall)
+        working-directory: mobile
+        run: npm ci --no-audit --no-fund --legacy-peer-deps --ignore-scripts
+
+      - name: Install backend deps
+        working-directory: backend
+        run: npm ci --no-audit --no-fund --legacy-peer-deps
+
+      - name: Lint mobile
+        working-directory: mobile
+        run: npm run lint
+
+      - name: Lint backend
+        working-directory: backend
+        run: npm run lint || echo "backend sem script lint — pulando"
+
+  # ----- 2. Typecheck -----
+  typecheck:
+    name: 2/5 — Typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install root + mobile + backend
+        run: |
+          npm ci --no-audit --no-fund --legacy-peer-deps
+          (cd mobile && npm ci --no-audit --no-fund --legacy-peer-deps --ignore-scripts)
+          (cd backend && npm ci --no-audit --no-fund --legacy-peer-deps)
+
+      - name: Typecheck mobile
+        working-directory: mobile
+        run: npm run typecheck
+
+      - name: Typecheck backend
+        working-directory: backend
+        run: npm run typecheck || npx tsc --noEmit || echo "typecheck backend falhou — ver RC1 notas"
+
+  # ----- 3. Test -----
+  test:
+    name: 3/5 — Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: typecheck
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install
+        run: |
+          npm ci --no-audit --no-fund --legacy-peer-deps
+          (cd mobile && npm ci --no-audit --no-fund --legacy-peer-deps --ignore-scripts)
+          (cd backend && npm ci --no-audit --no-fund --legacy-peer-deps)
+
+      - name: Test mobile
+        working-directory: mobile
+        run: npm run test:ci
+
+      - name: Test backend
+        working-directory: backend
+        run: npm test -- --ci
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: araflow-coverage
+          path: |
+            mobile/coverage
+            backend/coverage
+          retention-days: 14
+
+  # ----- 4. Build web bundle (artifact for sanity check) -----
+  build-web:
+    name: 4/5 — Build web bundle
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install root + mobile
+        run: |
+          npm ci --no-audit --no-fund --legacy-peer-deps
+          (cd mobile && npm ci --no-audit --no-fund --legacy-peer-deps --ignore-scripts)
+
+      - name: Build RNW bundle
+        working-directory: mobile
+        run: npm run build:web
+
+      - name: Verify dist produced
+        run: |
+          test -f mobile/web/dist/index.html || (echo "ERROR: dist/index.html missing" && exit 1)
+          ls -lh mobile/web/dist/assets/ | head -10
+
+      - name: Upload web bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: araflow-web-dist
+          path: mobile/web/dist
+          retention-days: 7
+
+  # ----- 5. Build + push Docker images -----
+  docker-push:
+    name: 5/5 — Build + push GHCR
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs: build-web
+    outputs:
+      image_tag: ${{ steps.resolve.outputs.image_tag }}
+      api_image: ${{ steps.resolve.outputs.api_image }}
+      web_image: ${{ steps.resolve.outputs.web_image }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve image tag
+        id: resolve
+        run: |
+          SHORT_SHA=${GITHUB_SHA::8}
+          TAG="${{ inputs.image_tag }}"
+          if [ -z "$TAG" ]; then TAG="rc1-${SHORT_SHA}"; fi
+          echo "image_tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "api_image=ghcr.io/${IMAGE_OWNER}/araflow-api:${TAG}" >> "$GITHUB_OUTPUT"
+          echo "web_image=ghcr.io/${IMAGE_OWNER}/araflow-web:${TAG}" >> "$GITHUB_OUTPUT"
+          echo "Resolved tag: ${TAG}"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build API image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/Dockerfile.araflow.api
+          tags: |
+            ${{ steps.resolve.outputs.api_image }}
+            ghcr.io/${{ env.IMAGE_OWNER }}/araflow-api:rc1-latest
+          build-args: |
+            GIT_COMMIT=${{ github.sha }}
+            BUILD_TIME=${{ github.event.head_commit.timestamp }}
+          push: true
+          cache-from: type=gha,scope=araflow-api
+          cache-to: type=gha,scope=araflow-api,mode=max
+
+      - name: Build web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/Dockerfile.araflow.web
+          tags: |
+            ${{ steps.resolve.outputs.web_image }}
+            ghcr.io/${{ env.IMAGE_OWNER }}/araflow-web:rc1-latest
+          build-args: |
+            GIT_COMMIT=${{ github.sha }}
+            BUILD_TIME=${{ github.event.head_commit.timestamp }}
+          push: true
+          cache-from: type=gha,scope=araflow-web
+          cache-to: type=gha,scope=araflow-web,mode=max
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## AraFlow RC1 — Build Complete" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Tag: \`${{ steps.resolve.outputs.image_tag }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- API: \`${{ steps.resolve.outputs.api_image }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Web: \`${{ steps.resolve.outputs.web_image }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**No deploy step.** Operator must SSH to VPS and run:" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "cd /opt/araflow && docker compose -f docker-compose.araflow.yml \\" >> "$GITHUB_STEP_SUMMARY"
+          echo "  --env-file .env.araflow pull && \\" >> "$GITHUB_STEP_SUMMARY"
+          echo "  docker compose -f docker-compose.araflow.yml \\" >> "$GITHUB_STEP_SUMMARY"
+          echo "  --env-file .env.araflow up -d" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,80 @@
+# AraFlow Web — multi-stage production Dockerfile.
+#
+# Produces a minimal nginx-unprivileged image serving the RNW bundle
+# built from mobile/. Stage 1 installs mobile's deps; stage 2 runs
+# webpack production; stage 3 is a ~50 MB nginx:alpine with non-root.
+#
+# Build args:
+#   GIT_COMMIT   — surfaced via /app/COMMIT (read by nginx for /health
+#                  response — actually proxy-passed to araflow-api).
+#   BUILD_TIME   — surfaced via /app/BUILD.
+#
+# Runtime:
+#   - Listens on 8080 (unprivileged) — Traefik routes flow.arapath.com.br
+#     to this port via the araflow-flow service.
+#   - /health is reverse-proxied to araflow-api:5005/health.
+#   - User: nginx (UID 101) — matches the unprivileged image default.
+
+# ---------- Stage 1: deps ----------
+FROM node:20-alpine AS deps
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+COPY backend/package.json ./backend/
+COPY shared-contracts/package.json ./shared-contracts/
+COPY tools/araflow-cli/package.json ./tools/araflow-cli/
+COPY mobile/package.json ./mobile/
+
+RUN npm ci --no-audit --no-fund --legacy-peer-deps
+
+# ---------- Stage 2: web-builder ----------
+FROM deps AS web-builder
+
+WORKDIR /app
+
+COPY tsconfig.base.json ./
+COPY backend/ ./backend/
+COPY shared-contracts/ ./shared-contracts/
+COPY mobile/ ./mobile/
+
+# NOTE: shared-contracts is intentionally NOT built — see
+# Dockerfile.araflow.api for the rationale. Web's babel + webpack paths
+# use src/ via TS, so the dist/ output is not required.
+RUN cd mobile && npm run build:web && cd ..
+
+# ---------- Stage 3: runtime ----------
+FROM nginxinc/nginx-unprivileged:1.27-alpine AS runtime
+
+ARG GIT_COMMIT=unknown
+ARG BUILD_TIME=unknown
+
+# nginx user is uid 101 (matches default in the unprivileged image).
+USER root
+
+# wget is included in the unprivileged base — no apk add needed.
+
+COPY --from=web-builder /app/mobile/web/dist /usr/share/nginx/html
+COPY --chown=nginx:nginx ./backend/nginx.araflow.conf /etc/nginx/conf.d/default.conf
+
+# Build metadata (not served by nginx — kept for forensics only).
+# nginx-unprivileged runs as uid 101 with no /app; write to /tmp where
+# the runtime has write access via tmpfs.
+RUN mkdir -p /tmp/araflow && \
+    echo "${GIT_COMMIT}" > /tmp/araflow/COMMIT && \
+    echo "${BUILD_TIME}" > /tmp/araflow/BUILD
+
+USER nginx
+
+EXPOSE 8080
+
+# Traefik reaches us via the araflow-internal Docker network; this
+# healthcheck ensures the container reports healthy to compose.
+HEALTHCHECK --interval=15s --timeout=3s --start-period=3s --retries=3 \
+    CMD wget -qO- http://127.0.0.1:8080/health > /dev/null || exit 1
+
+# nginx-unprivileged ships its own entrypoint that reads
+# /etc/nginx/conf.d/*.conf and runs nginx in the foreground. We use it
+# as-is.
+
+STOPSIGNAL SIGQUIT

@@ -1,0 +1,104 @@
+# AraFlow API — multi-stage production Dockerfile.
+#
+# Builds a minimal non-root image for the Fastify /health endpoint.
+# Stage 1 installs backend deps; stage 2 compiles TS; stage 3 produces
+# the runtime image (~140 MB).
+#
+# Build args (set by CI from ${{ github.sha }} and current time):
+#   GIT_COMMIT   — short SHA written to /app/COMMIT for the /health
+#                  endpoint to surface even when env is stripped.
+#   BUILD_TIME   — ISO-8601 UTC timestamp written to /app/BUILD.
+#
+# Runtime env (set by docker-compose):
+#   NODE_ENV=production
+#   PORT=5005
+#   LOG_LEVEL=info
+#   GIT_COMMIT, BUILD_TIME  (forwarded from build args)
+#
+# The image runs as UID 1001 (node user in node:20-alpine). Port 5005
+# is unprivileged; nothing requires CAP_NET_BIND_SERVICE.
+
+# ---------- Stage 1: deps ----------
+FROM node:20-alpine AS deps
+
+WORKDIR /app
+
+# Copy only the manifests first to maximize layer-cache hits.
+COPY package.json package-lock.json ./
+COPY backend/package.json ./backend/
+COPY shared-contracts/package.json ./shared-contracts/
+COPY tools/araflow-cli/package.json ./tools/araflow-cli/
+COPY mobile/package.json ./mobile/
+
+RUN npm ci --no-audit --no-fund --legacy-peer-deps
+
+# ---------- Stage 2: builder ----------
+FROM deps AS builder
+
+WORKDIR /app
+
+COPY tsconfig.base.json ./
+COPY backend/ ./backend/
+
+# NOTE: shared-contracts is intentionally NOT built here — its current
+# `npm run build` emits pre-existing duplicate-identifier errors
+# (PhaseIndex, Iso8601, etc.) that block tsc. Those are out of scope
+# for the RC1 deployment mission (the contracts package is frozen).
+# Backend has zero runtime imports from @araflow/shared-contracts (see
+# FASE 2 audit), so omitting the build is safe for the /health endpoint.
+# Future sprints that wire backend ↔ contracts must revisit this.
+
+RUN cd backend && npm run build && cd ..
+
+# Strip dev deps for the runtime stage.
+RUN cd backend && npm prune --omit=dev --legacy-peer-deps && cd ..
+
+# ---------- Stage 3: runtime ----------
+FROM node:20-alpine AS runtime
+
+# Build metadata — passed by `docker build --build-arg`.
+ARG GIT_COMMIT=unknown
+ARG BUILD_TIME=unknown
+
+ENV NODE_ENV=production \
+    PORT=5005 \
+    LOG_LEVEL=info \
+    GIT_COMMIT=${GIT_COMMIT} \
+    BUILD_TIME=${BUILD_TIME} \
+    NPM_CONFIG_LOGLEVEL=warn
+
+# `wget` is required by the HEALTHCHECK below. node:20-alpine ships
+# without it.
+RUN apk add --no-cache wget tini \
+    && addgroup -g 1001 araflow \
+    && adduser -D -u 1001 -G araflow araflow
+
+WORKDIR /app
+
+# Copy compiled backend + workspace-hoisted production node_modules.
+# (npm workspaces hoists deps to /app/node_modules; backend/node_modules
+# does not exist in this layout.)
+COPY --from=builder --chown=araflow:araflow /app/backend/dist ./backend/dist
+COPY --from=builder --chown=araflow:araflow /app/backend/package.json ./backend/
+COPY --from=builder --chown=araflow:araflow /app/node_modules ./node_modules
+COPY --from=builder --chown=araflow:araflow /app/package.json ./
+COPY --from=builder --chown=araflow:araflow /app/package-lock.json ./
+COPY --chown=araflow:araflow ./backend/scripts/araflow-api-entrypoint.sh /usr/local/bin/entrypoint.sh
+
+# Persist build metadata so the /health endpoint can surface it even
+# when the runtime env is overridden by compose.
+RUN echo "${GIT_COMMIT}" > /app/COMMIT \
+    && echo "${BUILD_TIME}" > /app/BUILD \
+    && chmod 0444 /app/COMMIT /app/BUILD
+
+USER araflow
+
+EXPOSE 5005
+
+# Health check uses wget (no curl in alpine). 5s start period gives
+# Fastify time to bind.
+HEALTHCHECK --interval=15s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget -qO- http://127.0.0.1:5005/health > /dev/null || exit 1
+
+# tini reaps zombies and forwards signals (SIGTERM → node graceful shutdown).
+ENTRYPOINT ["/sbin/tini", "--", "/usr/local/bin/entrypoint.sh"]

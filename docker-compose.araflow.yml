@@ -1,0 +1,182 @@
+# ================================================================
+# AraFlow — RC1 Internal Beta (docker-compose.araflow.yml)
+# ================================================================
+#
+# Stack isolada: 2 containers, 2 redes.
+#   - araflow-api   Fastify /health (porta interna 5005)
+#   - araflow-web   nginx unprivileged servindo bundle RNW (8080)
+#
+# Redes:
+#   - web         EXTERNA, criada pelo AraOS (Traefik ingress)
+#   - araflow-interna interna bridge para o proxy_pass nginx → api
+#
+# Traefik:
+#   - Todos routers/middlewares/services usam prefixo `araflow-*`
+#     para zero colisão com `siap-*` (verificado via grep).
+#   - Roteamento:
+#       Host(`flow.arapath.com.br`) AND Path(`/health`) → araflow-api:5005
+#       Host(`flow.arapath.com.br`)                     → araflow-web:8080
+#
+# Isolamento AraOS:
+#   - NÃO monta volumes do AraOS.
+#   - NÃO lê .env do AraOS.
+#   - NÃO inclui serviços AraOS.
+#   - Não tem `version:` (obsoleto desde Compose v2).
+#
+# Subir (no VPS):
+#   docker compose -f docker-compose.araflow.yml \
+#                  --env-file /opt/araflow/.env.araflow \
+#                  up -d
+#
+# IMPORTANTE: este arquivo NÃO declara `name:` no topo. Quando o
+# operador combinar `docker-compose.prod.yml -f docker-compose.araflow.yml`
+# (ex: para auditoria local), o project prefix herdado do diretório
+# preserva os nomes reais das redes/volumes do AraOS
+# (`aracannabis_siap_*`). Em produção rodamos SEMPRE os dois arquivos
+# isoladamente — o AraFlow usa apenas a rede `web` externa.
+#
+# ================================================================
+
+services:
+  araflow-api:
+    image: ${ARAFLOW_API_IMAGE:-ghcr.io/gituser26071977/araflow-api}:${ARAFLOW_IMAGE_TAG:-rc1-latest}
+    container_name: araflow-api
+    restart: ${RESTART_POLICY:-unless-stopped}
+
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: ${PORT:-5005}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      GIT_COMMIT: ${GIT_COMMIT:-unknown}
+      BUILD_TIME: ${BUILD_TIME:-unknown}
+      ARAFLOW_VERSION: ${ARAFLOW_VERSION:-1.0.0}
+
+    # Fastify bind em 5005 (porta não-privilegiada). Não expomos nada
+    # diretamente ao host — Traefik alcança via rede `web`.
+    expose:
+      - "5005"
+
+    networks:
+      - araflow-interna
+      - web
+
+    # Hardening mínimo sem quebrar runtime.
+    security_opt:
+      - no-new-privileges:true
+    # Fastify precisa escrever PID file? Não. Mas `pino` em modo dev
+    # grava em /tmp — em prod gravamos stdout. read_only OK.
+    read_only: true
+    tmpfs:
+      - /tmp:size=10m,mode=1777
+    # O usuário `araflow` (UID 1001) já é criado no Dockerfile.
+    user: "1001:1001"
+
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:5005/health > /dev/null || exit 1"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+    logging:
+      driver: json-file
+      options:
+        max-size: ${LOG_MAX_SIZE:-10m}
+        max-file: ${LOG_MAX_FILE:-3}
+
+    # Traefik: expõe SÓ o /health diretamente no domínio. Isso evita
+    # que a API inteira (futuras rotas) vaze publicamente por engano.
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=web"
+      - "traefik.http.routers.araflow-api-health.rule=Host(`${FLOW_DOMAIN:-flow.arapath.com.br}`) && Path(`/health`)"
+      - "traefik.http.routers.araflow-api-health.entrypoints=websecure"
+      - "traefik.http.routers.araflow-api-health.tls=true"
+      - "traefik.http.routers.araflow-api-health.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.araflow-api-health.service=araflow-api"
+      - "traefik.http.services.araflow-api.loadbalancer.server.port=5005"
+
+  araflow-web:
+    image: ${ARAFLOW_WEB_IMAGE:-ghcr.io/gituser26071977/araflow-web}:${ARAFLOW_IMAGE_TAG:-rc1-latest}
+    container_name: araflow-web
+    restart: ${RESTART_POLICY:-unless-stopped}
+
+    # nginx-unprivileged EXPÕE 8080 (default no healthcheck interno).
+    # Traefik alcança via rede `web` → labels abaixo.
+    expose:
+      - "8080"
+
+    networks:
+      - araflow-interna
+      - web
+
+    depends_on:
+      araflow-api:
+        condition: service_healthy
+
+    security_opt:
+      - no-new-privileges:true
+
+    # nginx grava em /var/cache/nginx, /var/run, /tmp (tmpfs).
+    # Read-only no rootfs é seguro com tmpfs abaixo.
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx:size=16m,mode=0755
+      - /var/run:size=4m,mode=0755
+      - /tmp:size=8m,mode=1777
+
+    # O usuário `nginx` (UID 101) é o default da imagem unprivileged.
+    user: "101:101"
+
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/health > /dev/null || exit 1"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 3s
+
+    logging:
+      driver: json-file
+      options:
+        max-size: ${LOG_MAX_SIZE:-10m}
+        max-file: ${LOG_MAX_FILE:-3}
+
+    # Traefik: serve o domínio inteiro. `/health` cai aqui também,
+    # mas é proxy-passed internamente para araflow-api (ver
+    # nginx.araflow.conf). Por isso temos DOIS routers para /health:
+    #   1) este (araflow-flow) — genérico, encaminha para web:8080,
+    #      onde o nginx faz proxy_pass para api:5005.
+    #   2) araflow-api-health — bypass direto (latência ligeiramente
+    #      menor e não depende do nginx upstream).
+    # Ordem de match do Traefik: regra mais específica vence
+    # (Path(`/health`)), então /health sempre vai direto pra API.
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=web"
+
+      # Router principal — todo o tráfego do domínio cai aqui.
+      - "traefik.http.routers.araflow-flow.rule=Host(`${FLOW_DOMAIN:-flow.arapath.com.br}`)"
+      - "traefik.http.routers.araflow-flow.entrypoints=websecure"
+      - "traefik.http.routers.araflow-flow.tls=true"
+      - "traefik.http.routers.araflow-flow.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.araflow-flow.service=araflow-flow"
+      - "traefik.http.services.araflow-flow.loadbalancer.server.port=8080"
+
+      # HTTP → HTTPS redirect (entrypoint `web` :80).
+      - "traefik.http.routers.araflow-flow-http.rule=Host(`${FLOW_DOMAIN:-flow.arapath.com.br}`)"
+      - "traefik.http.routers.araflow-flow-http.entrypoints=web"
+      - "traefik.http.routers.araflow-flow-http.middlewares=araflow-redirect-https"
+      - "traefik.http.middlewares.araflow-redirect-https.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.araflow-redirect-https.redirectscheme.permanent=true"
+
+networks:
+  # Rede do Traefik — JÁ EXISTE no VPS (criada por docker-compose.prod.yml
+  # do AraOS). Não recriar: `external: true`.
+  web:
+    external: true
+    name: web
+
+  # Rede interna para proxy nginx → api. NÃO é roteável externamente.
+  araflow-interna:
+    driver: bridge
+    name: araflow-internal
