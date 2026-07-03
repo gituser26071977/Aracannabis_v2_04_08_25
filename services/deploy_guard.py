@@ -45,6 +45,10 @@ logger = logging.getLogger(__name__)
 # o deploy NAO pode subir.
 # ──────────────────────────────────────────────────────────────────
 CRITICAL_TABLES: Dict[str, List[str]] = {
+    # IMPORTANTE: este dict deve estar SINCRONIZADO com models.py E com
+    # o schema real do banco. Manter via teste automatizado
+    # (tests/test_deploy_guard_sync.py) — ver docs/DEPLOY_GUARD_MAINTENANCE.md
+    # (D05j F5).
     "pacientes": [
         # B-001 (M27): coluna que faltava em producao
         "data_revogacao",
@@ -80,11 +84,15 @@ CRITICAL_TABLES: Dict[str, List[str]] = {
         "id",
         "paciente_id",
         "profissional_id",
-        "medicamentos",
-        "orientacoes",
-        "validade_dias",
         "associacao_id",
-        "created_at",
+        # Refatorado (D05j): medicamentos/orientacoes/validade_dias
+        # foram consolidados em `conteudo_json` (snapshot JSON).
+        # Schema original em database_schema.sql usa data_emissao
+        # (sem created_at dedicado).
+        "data_emissao",
+        "conteudo_json",
+        "arquivo_path",
+        "observacoes",
     ],
     "evolucoes": [
         "id",
@@ -93,14 +101,21 @@ CRITICAL_TABLES: Dict[str, List[str]] = {
         "nota_evolucao",
         "data_evolucao",
         "associacao_id",
-        "created_at",
+        # data_evolucao faz o papel de created_at (default=datetime.utcnow).
     ],
     "profissionais": [
         "id",
         "nome",
+        "crm",
+        "uf_crm",
+        "usuario",
+        # Schema original usa `senha` (não `senha_hash`).
+        # `senha_hash` existe apenas em `senhas_temporarias` (tabela separada).
+        "senha",
         "email",
-        "senha_hash",
-        "is_active",
+        "role",
+        "status_cadastro",
+        "status_conta",
         "created_at",
     ],
 }

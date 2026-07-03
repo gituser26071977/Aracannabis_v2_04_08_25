@@ -1,5 +1,5 @@
 """
-test_deploy_guard — Testes do guard de migrations + schema (MISSAO 28)
+test_deploy_guard — Testes do guard de migrations + schema (MISSAO 28 + D05j)
 
 Cenarios cobertos:
   1. Banco completo (todas colunas criticas presentes) — guard passa
@@ -10,6 +10,13 @@ Cenarios cobertos:
   4. Alembic_version atras da head — aborta em producao
   5. Alembic_version = head — passa
   6. Endpoint /api/schema-version retorna JSON correto
+
+ATUALIZADO D05j: CRITICAL_TABLES foi sincronizado com o schema real
+(banco + models.py). Colunas historicamente exigidas mas que nao existem
+no schema atual foram removidas:
+  - prescricoes.medicamentos/orientacoes/validade_dias/created_at
+  - evolucoes.created_at
+  - profissionais.senha_hash/is_active
 
 Para rodar:
   pytest tests/test_deploy_guard.py -v
@@ -65,20 +72,23 @@ def make_db_mock(columns_by_table: dict, alembic_state: dict = None):
 # Testes do schema preflight (FASE 3)
 # ──────────────────────────────────────────────────────────────────
 class TestSchemaColumnsExist:
+    # Schema real (D05j — sincronizado com banco + models.py)
+    SCHEMA_REAL = {
+        "pacientes": {"id","nome","data_nascimento","cpf","profissional_responsavel_id",
+                      "associacao_id","is_active","created_at","updated_at",
+                      "foto_nome","foto_caminho","foto_tipo","foto_tamanho",
+                      "consentimento_lgpd","data_consentimento","data_revogacao"},
+        "consultas": {"id","paciente_id","profissional_id","data_hora","status","tipo_consulta","associacao_id"},
+        "prescricoes": {"id","paciente_id","profissional_id","associacao_id",
+                        "data_emissao","conteudo_json","arquivo_path","observacoes"},
+        "evolucoes": {"id","paciente_id","profissional_id","nota_evolucao","data_evolucao","associacao_id"},
+        "profissionais": {"id","nome","crm","uf_crm","usuario","senha","email","role",
+                          "status_cadastro","status_conta","created_at"},
+    }
+
     def REDACTED(self):
         from services.deploy_guard import assert_schema_columns_exist
-        # Banco completo — todas as colunas criticas
-        full_cols = {
-            "pacientes": {"id","nome","data_nascimento","cpf","profissional_responsavel_id",
-                          "associacao_id","is_active","created_at","updated_at",
-                          "foto_nome","foto_caminho","foto_tipo","foto_tamanho",
-                          "consentimento_lgpd","data_consentimento","data_revogacao"},
-            "consultas": {"id","paciente_id","profissional_id","data_hora","status","tipo_consulta","associacao_id"},
-            "prescricoes": {"id","paciente_id","profissional_id","medicamentos","orientacoes","validade_dias","associacao_id","created_at"},
-            "evolucoes": {"id","paciente_id","profissional_id","nota_evolucao","data_evolucao","associacao_id","created_at"},
-            "profissionais": {"id","nome","email","senha_hash","is_active","created_at"},
-        }
-        db = make_db_mock(full_cols)
+        db = make_db_mock(self.SCHEMA_REAL)
         # Nao deve levantar em prod nem em dev
         assert_schema_columns_exist(db, is_production=True)  # passa
         assert_schema_columns_exist(db, is_production=False)  # passa
@@ -86,35 +96,18 @@ class TestSchemaColumnsExist:
     def REDACTED(self):
         """Cenario M27: coluna data_revogacao ausente em producao"""
         from services.deploy_guard import assert_schema_columns_exist
-        cols_without_b001 = {
-            "pacientes": {"id","nome","data_nascimento","cpf","profissional_responsavel_id",
-                          "associacao_id","is_active","created_at","updated_at",
-                          "foto_nome","foto_caminho","foto_tipo","foto_tamanho",
-                          "consentimento_lgpd","data_consentimento"},  # SEM data_revogacao
-            "consultas": {"id","paciente_id","profissional_id","data_hora","status","tipo_consulta","associacao_id"},
-            "prescricoes": {"id","paciente_id","profissional_id","medicamentos","orientacoes","validade_dias","associacao_id","created_at"},
-            "evolucoes": {"id","paciente_id","profissional_id","nota_evolucao","data_evolucao","associacao_id","created_at"},
-            "profissionais": {"id","nome","email","senha_hash","is_active","created_at"},
-        }
-        db = make_db_mock(cols_without_b001)
+        cols = {k: v - {"data_revogacao"} if k == "pacientes" else v
+                for k, v in self.SCHEMA_REAL.items()}
+        db = make_db_mock(cols)
         with pytest.raises(RuntimeError, match="ABORT STARTUP"):
             assert_schema_columns_exist(db, is_production=True)
 
     def REDACTED(self):
         """Em dev, somente loga warning — nao aborta"""
         from services.deploy_guard import assert_schema_columns_exist
-        cols_without_b001 = {
-            "pacientes": {"id","nome","data_nascimento","cpf","profissional_responsavel_id",
-                          "associacao_id","is_active","created_at","updated_at",
-                          "foto_nome","foto_caminho","foto_tipo","foto_tamanho",
-                          "consentimento_lgpd","data_consentimento"},  # SEM data_revogacao
-            "consultas": {"id","paciente_id","profissional_id","data_hora","status","tipo_consulta","associacao_id"},
-            "prescricoes": {"id","paciente_id","profissional_id","medicamentos","orientacoes","validade_dias","associacao_id","created_at"},
-            "evolucoes": {"id","paciente_id","profissional_id","nota_evolucao","data_evolucao","associacao_id","created_at"},
-            "profissionais": {"id","nome","email","senha_hash","is_active","created_at"},
-        }
-        db = make_db_mock(cols_without_b001)
-        # Em dev NAO deve levantar
+        cols = {k: v - {"data_revogacao"} if k == "pacientes" else v
+                for k, v in self.SCHEMA_REAL.items()}
+        db = make_db_mock(cols)
         assert_schema_columns_exist(db, is_production=False)  # passa
 
     def test_missing_entire_table_aborts(self):
@@ -164,17 +157,7 @@ class TestMigrationsApplied:
 class TestSchemaVersionEndpoint:
     def test_returns_complete_info(self):
         from services.deploy_guard import get_schema_version
-        full_cols = {
-            "pacientes": {"id","nome","data_nascimento","cpf","profissional_responsavel_id",
-                          "associacao_id","is_active","created_at","updated_at",
-                          "foto_nome","foto_caminho","foto_tipo","foto_tamanho",
-                          "consentimento_lgpd","data_consentimento","data_revogacao"},
-            "consultas": {"id","paciente_id","profissional_id","data_hora","status","tipo_consulta","associacao_id"},
-            "prescricoes": {"id","paciente_id","profissional_id","medicamentos","orientacoes","validade_dias","associacao_id","created_at"},
-            "evolucoes": {"id","paciente_id","profissional_id","nota_evolucao","data_evolucao","associacao_id","created_at"},
-            "profissionais": {"id","nome","email","senha_hash","is_active","created_at"},
-        }
-        db = make_db_mock(full_cols)
+        db = make_db_mock(TestSchemaColumnsExist.SCHEMA_REAL)
         with patch.dict(os.environ, {"ENVIRONMENT": "production", "GIT_COMMIT": "abc123def456"}):
             info = get_schema_version(db)
 
@@ -207,33 +190,21 @@ class TestSchemaVersionEndpoint:
 class TestRunAllChecks:
     def REDACTED(self):
         from services.deploy_guard import run_all_checks
-        full_cols = {
-            "pacientes": {"id","nome","data_nascimento","cpf","profissional_responsavel_id",
-                          "associacao_id","is_active","created_at","updated_at",
-                          "foto_nome","foto_caminho","foto_tipo","foto_tamanho",
-                          "consentimento_lgpd","data_consentimento","data_revogacao"},
-            "consultas": {"id","paciente_id","profissional_id","data_hora","status","tipo_consulta","associacao_id"},
-            "prescricoes": {"id","paciente_id","profissional_id","medicamentos","orientacoes","validade_dias","associacao_id","created_at"},
-            "evolucoes": {"id","paciente_id","profissional_id","nota_evolucao","data_evolucao","associacao_id","created_at"},
-            "profissionais": {"id","nome","email","senha_hash","is_active","created_at"},
-        }
-        db = make_db_mock(full_cols, {"table_exists": True, "current": "REDACTED"})
+        db = make_db_mock(
+            TestSchemaColumnsExist.SCHEMA_REAL,
+            {"table_exists": True, "current": "REDACTED"},
+        )
         run_all_checks(db, is_production=True)  # passa
 
     def REDACTED(self):
         """Replica exata do cenario M27: data_revogacao ausente"""
         from services.deploy_guard import run_all_checks
-        cols_without_b001 = {
-            "pacientes": {"id","nome","data_nascimento","cpf","profissional_responsavel_id",
-                          "associacao_id","is_active","created_at","updated_at",
-                          "foto_nome","foto_caminho","foto_tipo","foto_tamanho",
-                          "consentimento_lgpd","data_consentimento"},  # SEM data_revogacao
-            "consultas": {"id","paciente_id","profissional_id","data_hora","status","tipo_consulta","associacao_id"},
-            "prescricoes": {"id","paciente_id","profissional_id","medicamentos","orientacoes","validade_dias","associacao_id","created_at"},
-            "evolucoes": {"id","paciente_id","profissional_id","nota_evolucao","data_evolucao","associacao_id","created_at"},
-            "profissionais": {"id","nome","email","senha_hash","is_active","created_at"},
-        }
-        db = make_db_mock(cols_without_b001, {"table_exists": True, "current": "REDACTED"})
+        cols = {k: v - {"data_revogacao"} if k == "pacientes" else v
+                for k, v in TestSchemaColumnsExist.SCHEMA_REAL.items()}
+        db = make_db_mock(
+            cols,
+            {"table_exists": True, "current": "REDACTED"},
+        )
         # alembic diz "head" (alguem rodou `flask db stamp head`) mas coluna nao existe
         # O guard DEVE pegar isso — defesa em profundidade
         with pytest.raises(RuntimeError, match="ABORT STARTUP"):
