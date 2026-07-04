@@ -13,8 +13,8 @@ import './polyfills';
 
 import { AppRegistry } from 'react-native-web';
 
-import { App } from '../src/App';
 import { name as appName } from '../app.json';
+import { App } from '../src/App';
 
 AppRegistry.registerComponent(appName, () => App);
 

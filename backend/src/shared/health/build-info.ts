@@ -23,9 +23,8 @@
  */
 
 import * as fs from 'node:fs';
-import * as path from 'node:path';
-
 import { createRequire } from 'node:module';
+import * as path from 'node:path';
 
 // `import.meta.url` requires ESM. backend tsconfig uses CommonJS, so we
 // resolve via `__filename` instead. In compiled output, `__filename` is
