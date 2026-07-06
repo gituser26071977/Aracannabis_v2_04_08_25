@@ -97,6 +97,14 @@ class Config:
     # --- CORS ---
     CORS_HEADERS = "Content-Type"
 
+    # --- Redis (Flask-Limiter storage + cache) ---
+    # Default None para o health check usar fallback localhost
+    # (em prod o .env.production define REDIS_URL=redis://siap-redis:6379/0)
+    REDIS_URL = os.getenv("REDIS_URL", "").strip() or None
+
+    # --- Site URL (links em emails) ---
+    ARAOS_SITE_URL = os.getenv("ARAOS_SITE_URL", "https://araos.aracannabis.com.br").strip()
+
     # --- Upload de arquivos (P0-07) ---
     UPLOAD_FOLDER_EXAMES = os.path.join(os.getcwd(), "uploads", "exames")
     # 16MB — limite coerente entre rotas; app_cors_livre.py deve respeitar

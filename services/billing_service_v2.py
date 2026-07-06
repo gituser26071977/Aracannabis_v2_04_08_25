@@ -10,6 +10,7 @@ from typing import Optional, Dict, Any
 from models import db, Plano, Assinatura, Fatura, PagamentoRegistro, Profissional
 from services.payment_provider_factory import PaymentProviderFactory
 from services.feature_flag_service import FeatureFlagService
+from services.subscription_expiration_service import SubscriptionExpirationService
 
 import logging
 
@@ -102,7 +103,7 @@ class BillingServiceV2:
                 profissional_id=profissional_id,
                 plano_id=plano_id,
                 status="ativa" if sub_result.status == "active" else "pending",
-                trial_ends_at=datetime.utcnow() + timedelta(days=7),
+                trial_ends_at=datetime.utcnow() + timedelta(days=SubscriptionExpirationService.TRIAL_DAYS),
                 renovacao_em=sub_result.next_billing_date or self._calcular_next_billing(periodicidade),
                 provedor=provider.name,
                 provider_subscription_id=sub_result.subscription_id,
@@ -148,7 +149,7 @@ class BillingServiceV2:
                 profissional_id=profissional_id,
                 plano_id=plano_id,
                 status="trial",
-                trial_ends_at=datetime.utcnow() + timedelta(days=7),
+                trial_ends_at=datetime.utcnow() + timedelta(days=SubscriptionExpirationService.TRIAL_DAYS),
                 renovacao_em=self._calcular_next_billing(periodicidade),
                 provedor=provider.name,
                 periodicidade=periodicidade,

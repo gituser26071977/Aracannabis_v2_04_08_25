@@ -18,6 +18,8 @@ class EmailService:
         self.email_from = os.getenv('EMAIL_FROM', 'suporte@arapath.com.br')
         self.email_from_name = os.getenv('EMAIL_FROM_NAME', 'AraOS — Clinical Intelligence Operating System')
         self.development_mode = os.getenv('EMAIL_DEVELOPMENT_MODE', 'True').lower() == 'true'
+        # D05l (trial 14d): URL do site para CTA nos emails de boas-vindas/expiração
+        self.site_url = os.getenv('ARAOS_SITE_URL', 'https://araos.aracannabis.com.br').strip()
         print(f"DEBUG: EmailService initialized. User={self.username}, DevMode={self.development_mode}")
         
     def test_connection(self):
@@ -129,7 +131,13 @@ class EmailService:
     def send_approval_email(self, email, nome, usuario, senha_temporaria, data_expiracao):
         # Enviar email de aprovação com credenciais temporárias
         subject = "🎉 Sua solicitação foi aprovada - AraOS"
-        
+
+        # D05l (trial 14d): trial configurável via ARAOS_TRIAL_DAYS
+        try:
+            trial_days = int(os.getenv("ARAOS_TRIAL_DAYS", "14"))
+        except (TypeError, ValueError):
+            trial_days = 14
+
         # Formatear data de expiração
         try:
             if isinstance(data_expiracao, str):
@@ -138,8 +146,8 @@ class EmailService:
                 exp_date = data_expiracao
             data_formatada = exp_date.strftime('%d/%m/%Y')
         except:
-            data_formatada = "7 dias a partir de agora"
-        
+            data_formatada = f"{trial_days} dias a partir de agora"
+
         # Create email body
         html_body = f"<p>Olá {nome},</p>"
         html_body += "<p>Sua solicitação de acesso ao AraOS foi aprovada!</p>"
@@ -147,10 +155,25 @@ class EmailService:
         html_body += "<ul>"
         html_body += f"<li><strong>Usuário:</strong> {usuario}</li>"
         html_body += f"<li><strong>Senha temporária:</strong> {senha_temporaria}</li>"
-        html_body += f"<li><strong>Validade:</strong> {data_formatada}</li>"
+        html_body += f"<li><strong>Validade do trial:</strong> {data_formatada} ({trial_days} dias de acesso gratuito)</li>"
         html_body += "</ul>"
         html_body += "<p>Por favor, altere sua senha após o primeiro login.</p>"
-        
+        # D05l: aviso explícito do bloqueio + CTA para antecipar escolha de plano
+        html_body += (
+            "<p><strong>Importante:</strong> após o período de trial, o acesso ao "
+            "prontuário eletrônico será pausado até a escolha de um plano pago. "
+            "Você pode antecipar a escolha a qualquer momento para evitar "
+            "qualquer interrupção.</p>"
+        )
+        html_body += (
+            f"<p style=\"margin:24px 0 8px 0;\">"
+            f"<a href=\"{self.site_url}/planos\" "
+            f"style=\"display:inline-block;background:#2D5A3D;color:#ffffff;"
+            f"padding:12px 24px;border-radius:6px;text-decoration:none;"
+            f"font-weight:600;\">Conhecer os planos</a></p>"
+        )
+        html_body += f"<p><small>Link direto: <a href=\"{self.site_url}/planos\">{self.site_url}/planos</a></small></p>"
+
         # Send email
         return self.send_email(email, subject, html_body)
 
@@ -205,28 +228,51 @@ class EmailService:
 
     def send_trial_expired_email(self, email, nome):
         subject = "⏳ Seu período de testes acabou - AraOS"
-        
+
+        # D05l (trial 14d): texto alinhado com a constante configurável
+        try:
+            trial_days = int(os.getenv("ARAOS_TRIAL_DAYS", "14"))
+        except (TypeError, ValueError):
+            trial_days = 14
+
         html_body = f"<p>Olá {nome},</p>"
         html_body += "<p>Esperamos que tenha aproveitado seu período de testes no AraOS!</p>"
-        html_body += "<p>Seu acesso gratuito de 7 dias expirou.</p>"
+        html_body += f"<p>Seu acesso gratuito de <strong>{trial_days} dias</strong> expirou.</p>"
         html_body += "<h3>Para continuar usando o sistema, escolha um de nossos planos:</h3>"
         html_body += "<ul>"
         html_body += "<li><strong>Plano Sem IA:</strong> R$ 99,00/mês ou R$ 1.092,96/ano (8% OFF)</li>"
         html_body += "<li><strong>Plano Com IA:</strong> R$ 250,00/mês ou R$ 2.550,00/ano (15% OFF)</li>"
         html_body += "</ul>"
         html_body += "<p>Acesse nossa página de pagamentos para regularizar sua assinatura e desbloquear seu acesso imediatamente:</p>"
-        html_body += "<p><a href='http://localhost:3010/pagamento?plano=sem_ia'>Regularizar Assinatura</a></p>" # Ajustar URL em produção
+        html_body += (
+            f"<p style=\"margin:24px 0 8px 0;\">"
+            f"<a href=\"{self.site_url}/planos\" "
+            f"style=\"display:inline-block;background:#2D5A3D;color:#ffffff;"
+            f"padding:12px 24px;border-radius:6px;text-decoration:none;"
+            f"font-weight:600;\">Regularizar Assinatura</a></p>"
+        )
+        html_body += f"<p><small>Link direto: <a href=\"{self.site_url}/planos\">{self.site_url}/planos</a></small></p>"
         html_body += "<p>Se tiver dúvidas, entre em contato com nosso suporte.</p>"
         
         return self.send_email(email, subject, html_body)
 
     def send_registration_received_email(self, email, nome):
         subject = "🌿 Solicitação de Cadastro Recebida - AraOS"
-        
+
+        # D05l (trial 14d): texto alinhado com a constante configurável
+        try:
+            trial_days = int(os.getenv("ARAOS_TRIAL_DAYS", "14"))
+        except (TypeError, ValueError):
+            trial_days = 14
+
         html_body = f"<p>Olá {nome},</p>"
         html_body += "<p>Recebemos sua solicitação de cadastro no AraOS.</p>"
         html_body += "<p>Nossa equipe irá analisar seus dados (CRM, etc) e em breve você receberá um email com o resultado.</p>"
-        html_body += "<p>Se aprovado, você terá 7 dias de acesso gratuito para testar a plataforma.</p>"
+        html_body += (
+            f"<p>Se aprovado, você terá <strong>{trial_days} dias</strong> de "
+            f"acesso gratuito para testar a plataforma. Você pode antecipar a "
+            f"escolha de um plano a qualquer momento.</p>"
+        )
         html_body += "<p>Atenciosamente,<br>Equipe AraOS</p>"
         
         return self.send_email(email, subject, html_body)

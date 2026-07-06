@@ -9,6 +9,7 @@ from typing import Optional
 
 from models import db, Plano, Assinatura, Fatura, PagamentoRegistro
 from .payment_service import payment_service
+from .subscription_expiration_service import SubscriptionExpirationService
 
 
 class BillingService:
@@ -21,11 +22,12 @@ class BillingService:
         if assinatura:
             return {"error": "Já existe uma assinatura ativa"}
 
+        # D05l (trial 14d): usa constante centralizada
         nova_assinatura = Assinatura(
             profissional_id=profissional_id,
             plano_id=plano_id,
             status='trial',
-            trial_ends_at=datetime.utcnow() + timedelta(days=7),
+            trial_ends_at=datetime.utcnow() + timedelta(days=SubscriptionExpirationService.TRIAL_DAYS),
             renovacao_em=datetime.utcnow() + timedelta(days=30)
         )
         db.session.add(nova_assinatura)

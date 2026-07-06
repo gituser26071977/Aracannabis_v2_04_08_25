@@ -613,7 +613,7 @@ const CadastroProfissionaisPage = () => {
                   1. Nossa equipe irá analisar sua solicitação<br />
                   2. Verificaremos seus dados profissionais<br />
                   3. Após aprovação, você receberá um email com suas credenciais temporárias<br />
-                  4. As credenciais serão válidas por 7 dias para avaliação do sistema
+                  4. As credenciais serão válidas por 14 dias para avaliação do sistema
                 </Typography>
               </Alert>
 
@@ -722,7 +722,7 @@ const CadastroProfissionaisPage = () => {
             <Typography variant="body2">
               • Apenas profissionais de saúde com registro ativo (CRM, COREN, CRP, etc) podem se cadastrar<br />
               • Todas as informações serão verificadas junto aos respectivos Conselhos de Classe antes da aprovação<br />
-              • Após aprovação, você receberá credenciais temporárias válidas por 7 dias<br />
+              • Após aprovação, você receberá credenciais temporárias válidas por 14 dias<br />
               • O sistema é destinado ao acompanhamento de pacientes em tratamento com cannabis medicinal
             </Typography>
           </Alert>

@@ -47,8 +47,8 @@ const PLANOS = [
     id: 'trial',
     nome: 'Trial Gratuito',
     preco: 'R$ 0',
-    periodo: '/7 dias',
-    descricao: 'Acesso completo por 7 dias para testar todas as funcionalidades.',
+    periodo: '/14 dias',
+    descricao: 'Acesso completo por 14 dias para testar todas as funcionalidades.',
     features: ['Pacientes ilimitados', 'IA Assistida', 'Relatórios', 'Suporte por email'],
     cor: '#4CAF50',
     icone: <StarIcon />
@@ -384,7 +384,7 @@ const OnboardingPage = () => {
                 Escolha do Plano
               </Typography>
               <Typography variant="body2" color="text.secondary" gutterBottom>
-                Selecione o plano ideal para você. Comece com o trial gratuito de 7 dias.
+                Selecione o plano ideal para você. Comece com o trial gratuito de 14 dias.
               </Typography>
             </Grid>
             <Grid item xs={12}>

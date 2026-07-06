@@ -531,7 +531,7 @@ const LandingPage = () => {
                 variant="caption"
                 sx={{ display: 'block', mt: 2, opacity: 0.8 }}
               >
-                7 dias de trial · sem cartão · cancele quando quiser
+                14 dias de trial · sem cartão · cancele quando quiser
               </Typography>
             </Grid>
 
@@ -795,7 +795,7 @@ const LandingPage = () => {
             Pronto para operar sua clínica com IA?
           </Typography>
           <Typography variant="h6" sx={{ opacity: 0.9, mb: 4, fontWeight: 400 }}>
-            7 dias de trial gratuito. Sem cartão, sem instalação, sem complicação.
+            14 dias de trial gratuito. Sem cartão, sem instalação, sem complicação.
           </Typography>
           <Stack
             direction={{ xs: 'column', sm: 'row' }}

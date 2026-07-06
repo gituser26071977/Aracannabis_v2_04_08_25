@@ -6,6 +6,7 @@ com propostas de assinatura/renovação.
 """
 
 import logging
+import os
 from datetime import datetime, timedelta
 from typing import List, Dict
 from models import db, Profissional
@@ -15,9 +16,10 @@ logger = logging.getLogger(__name__)
 
 class SubscriptionExpirationService:
     """Gerencia expiração de acesso e renovações"""
-    
+
     # Configurações padrão
-    TRIAL_DAYS = 7  # Período de trial gratuito
+    # D05l (trial 14 dias): configurável por env var ARAOS_TRIAL_DAYS, default 14.
+    TRIAL_DAYS = int(os.getenv("ARAOS_TRIAL_DAYS", "14"))
     WARNING_DAYS_BEFORE = 2  # Avisar 2 dias antes de expirar
     
     @staticmethod

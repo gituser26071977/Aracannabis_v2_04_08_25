@@ -25,6 +25,7 @@ import secrets
 import string
 from datetime import datetime, timedelta
 from services.email_service import EmailService
+from services.subscription_expiration_service import SubscriptionExpirationService
 from sqlalchemy.exc import IntegrityError
 
 email_service = EmailService()
@@ -197,7 +198,7 @@ def processar_aprovacao(solicitacao_id):
             email=solicitacao.email,
             senha=generate_password_hash(senha_temporaria),
             role=role_inicial,
-            data_expiracao=datetime.now() + timedelta(days=7),
+            data_expiracao=datetime.now() + timedelta(days=SubscriptionExpirationService.TRIAL_DAYS),
             status_cadastro='aprovado',
             aprovado_por='system',
             data_aprovacao=datetime.now(),
