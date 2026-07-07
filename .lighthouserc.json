@@ -2,10 +2,10 @@
   "ci": {
     "collect": {
       "url": [
-        "https://staging.visualsmartflow.com.br/",
-        "https://staging.visualsmartflow.com.br/login",
-        "https://staging.visualsmartflow.com.br/dashboard",
-        "https://api.staging.visualsmartflow.com.br/api/status"
+        "https://visualsmartflow.com.br/",
+        "https://visualsmartflow.com.br/login",
+        "https://visualsmartflow.com.br/dashboard",
+        "https://api.visualsmartflow.com.br/api/status"
       ],
       "numberOfRuns": 3,
       "settings": {

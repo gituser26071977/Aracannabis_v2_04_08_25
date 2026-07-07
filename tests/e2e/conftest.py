@@ -6,7 +6,17 @@ import os
 import pytest
 from pathlib import Path
 
-BASE_URL = os.environ.get("BASE_URL", "https://staging.visualsmartflow.com.br")
+# D05l — staging.visualsmartflow.com.br NAO existe (NXDOMAIN); pipeline
+# passava com continue-on-error:true mas o teste nunca rodava de verdade.
+# Default passa a ser a URL de produção (visualsmartflow.com.br), mas o
+# cd-production.yml sobrescreve via env BASE_URL no step pytest.
+# Para rodar contra staging local, basta exportar BASE_URL antes do pytest.
+BASE_URL = os.environ.get(
+    "BASE_URL",
+    os.environ.get(
+        "REACT_APP_PRODUCTION_URL", "https://visualsmartflow.com.br"
+    ),
+)
 SCREENSHOTS_DIR = Path(__file__).parent / "screenshots"
 SCREENSHOTS_DIR.mkdir(parents=True, exist_ok=True)
 

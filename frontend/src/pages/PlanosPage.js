@@ -91,8 +91,8 @@ const PlanosPage = () => {
   };
 
   const calcularPreco = (precoMensalBase, periodoSelecionado, categoriaSelecionada) => {
-    // Aplica desconto de categoria (Outros profissionais pagam 60% do valor)
-    const precoBaseCorrigido = categoriaSelecionada === 'outros' ? precoMensalBase * 0.6 : precoMensalBase;
+    // Aplica desconto de categoria (Outros profissionais de saúde pagam 80% do valor = 20% OFF)
+    const precoBaseCorrigido = categoriaSelecionada === 'outros' ? precoMensalBase * 0.8 : precoMensalBase;
 
     const precoSemDesconto = precoBaseCorrigido * multiplicadores[periodoSelecionado];
     const desconto = descontos[periodoSelecionado];
@@ -162,7 +162,7 @@ const PlanosPage = () => {
               <ToggleButton value="outros" sx={{ px: 4 }}>
                 Outros Profissionais de Saúde<br />
                 <Typography variant="caption" color="success.main" fontWeight="bold">
-                  (-40% OFF)
+                  (-20% OFF)
                 </Typography>
               </ToggleButton>
             </ToggleButtonGroup>

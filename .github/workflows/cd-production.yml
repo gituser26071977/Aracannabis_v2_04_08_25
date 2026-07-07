@@ -267,10 +267,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: [smoke]
-    # D03 FASE 7 — rc.3-rc.6 falharam com ERR_NAME_NOT_RESOLVED contra
-    # staging.visualsmartflow.com.br (DNS nao alcancavel do runner CI).
-    # Playwright testa STAGING, nao a imagem prod deste RC. Resultado
-    # fica registrado no artifact, mas nao bloqueia o deploy.
+    # D05l — staging.visualsmartflow.com.br NAO existe (NXDOMAIN). Apontado
+    # para visualsmartflow.com.br (producao) via BASE_URL. Mantido
+    # continue-on-error:true porque rodar E2E contra prod real pode ser
+    # flaky por concorrencia com usuarios reais.
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
@@ -279,7 +279,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
       - run: pip install playwright pytest-playwright && playwright install --with-deps chromium
       - run: pytest tests/e2e/ -v --tb=short --maxfail=1
-        env: { BASE_URL: https://staging.visualsmartflow.com.br }   # usa staging, não prod
+        env: { BASE_URL: https://visualsmartflow.com.br }   # D05l — staging não existe; usa prod
       - uses: actions/upload-artifact@v4
         if: always()
         with: { name: playwright-prod, path: test-results/, retention-days: 14 }
@@ -290,8 +290,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: [smoke]
-    # D03 FASE 7 — mesmo motivo do Playwright: roda contra staging, que nao
-    # esta acessivel do CI runner. Nao bloqueia deploy.
+    # D05l — staging.visualsmartflow.com.br NAO existe (NXDOMAIN); apontado
+    # para visualsmartflow.com.br (producao). Mantido continue-on-error:true
+    # porque o desempenho de prod real pode oscilar e nao deve bloquear deploy.
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
@@ -309,11 +310,14 @@ jobs:
     timeout-minutes: 30
     needs: [security, playwright, lighthouse]
     steps:
-      # D05 — conecta runner ao mesh Tailscale para alcançar o VPS
-      # (SSH direto ao IP público está bloqueado pelo firewall upstream)
-      - uses: tailscale/github-action@v2
+      # D05l — migrado para tailscale/github-action@v4 com OAuth client
+      # (authkey foi deprecado pela Tailscale; OAuth é o método recomendado)
+      # Secrets necessários: TS_OAUTH_CLIENT_ID + TS_OAUTH_SECRET
+      - uses: tailscale/github-action@v4
         with:
-          authkey: ${{ secrets.TS_AUTHKEY }}
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
       - uses: appleboy/ssh-action@v1
         with:
           host: ${{ env.PROD_HOST }}
@@ -338,7 +342,8 @@ jobs:
     steps:
       - name: Deploy produção (D05b — inline)
         # D02 FASE 2 — valida imagem no GHCR antes de tocar VPS; abort se não existir.
-        # D05 — Tailscale para alcançar o VPS via 100.x.y.z (SSH público bloqueado).
+        # D05l — Tailscale v4 com OAuth para alcançar o VPS via 100.x.y.z
+        # (SSH público bloqueado; authkey foi deprecado pela Tailscale).
         # D05b — deploy INLINE (substitui ./scripts/deploy_prod.sh) para:
         #   1) contornar regex antigo de deploy_prod.sh em rc.10 (só aceita vX.Y.Z,
         #      workflow_dispatch passa v1.0.0-rc.10);
@@ -346,9 +351,11 @@ jobs:
         #      localmente na VPS mas NÃO está no commit rc.10;
         #   3) preservar HEAD original da VPS (commit local com melhorias) via
         #      git checkout -f $DEPLOY_VERSION + restore HEAD no final.
-        uses: tailscale/github-action@v2
+        uses: tailscale/github-action@v4
         with:
-          authkey: ${{ secrets.TS_AUTHKEY }}
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
       - uses: appleboy/ssh-action@v1
         env:
           GHCR_USER: ${{ github.actor }}
@@ -451,9 +458,11 @@ jobs:
             echo "── DEPLOY INLINE CONCLUIDO ──"
 
       - name: Post-deploy smoke
-        uses: tailscale/github-action@v2
+        uses: tailscale/github-action@v4
         with:
-          authkey: ${{ secrets.TS_AUTHKEY }}
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
       - uses: appleboy/ssh-action@v1
         with:
           host: ${{ env.PROD_HOST }}
@@ -465,9 +474,11 @@ jobs:
 
       - name: AUTO-ROLLBACK on failure
         if: failure()
-        uses: tailscale/github-action@v2
+        uses: tailscale/github-action@v4
         with:
-          authkey: ${{ secrets.TS_AUTHKEY }}
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
       - uses: appleboy/ssh-action@v1
         with:
           host: ${{ env.PROD_HOST }}
