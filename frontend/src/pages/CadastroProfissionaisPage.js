@@ -11,26 +11,17 @@ import {
   MenuItem,
   Card,
   CardContent,
-  CardActions,
   Stepper,
   Step,
   StepLabel,
   CircularProgress,
   Chip,
-  Divider,
-  Radio,
-  RadioGroup,
-  FormControlLabel,
-  FormControl
+  Divider
 } from '@mui/material';
 import {
   PersonAdd as PersonAddIcon,
   Email as EmailIcon,
-  CheckCircle as CheckCircleIcon,
-  Schedule as ScheduleIcon,
-  Star as StarIcon,
-  Business as BusinessIcon,
-  RocketLaunch as RocketIcon
+  CheckCircle as CheckCircleIcon
 } from '@mui/icons-material';
 import api from '../services/api';
 
@@ -66,48 +57,22 @@ const ESPECIALIDADES = [
   'Outras'
 ];
 
+// rc.15 — Stepper reduzido de 5 para 4 passos.
+// O 'Escolha do Plano' foi REMOVIDO do fluxo de cadastro.
+// Novos profissionais entram automaticamente em TRIAL de 14 dias (grátis,
+// com todas as funcionalidades) e recebem email com link para /planos
+// caso queiram antecipar a escolha.
+// O `plano_slug` continua no formData por compatibilidade do backend
+// (que aceita e ignora) mas seu valor default agora é null.
 const steps = [
   'Dados Pessoais',
   'Dados Profissionais',
-  'Escolha do Plano',
   'Confirmação',
   'Aguardar Aprovação'
 ];
 
-// Planos sincronizados com /api/planos/. O slug é a fonte de verdade no backend.
-const PLANOS_CADASTRO = [
-  {
-    slug: 'basico',
-    nome: 'Plano Sem IA',
-    preco: 99,
-    periodo: '/mês',
-    cor: '#2196F3',
-    icone: <BusinessIcon />,
-    descricao: 'Prontuário digital, gestão de pacientes, agenda e LGPD.',
-    features: ['Até 100 pacientes', 'Sem IA', '5 GB de armazenamento', 'Suporte por e-mail'],
-  },
-  {
-    slug: 'premium',
-    nome: 'Plano Com IA',
-    preco: 249,
-    periodo: '/mês',
-    cor: '#FF9800',
-    icone: <RocketIcon />,
-    popular: true,
-    descricao: 'Tudo do Básico + agentes de IA (EuSouLia), chatbot e dashboard SDR.',
-    features: ['Até 500 pacientes', '10 agentes de IA', '10 GB de armazenamento', 'Suporte prioritário'],
-  },
-  {
-    slug: 'enterprise',
-    nome: 'Plano Enterprise',
-    preco: 499.9,
-    periodo: '/mês',
-    cor: '#7B1FA2',
-    icone: <StarIcon />,
-    descricao: 'Clínicas multi-unidade, VSF, reconhecimento facial e métricas avançadas.',
-    features: ['Pacientes ilimitados', '50 agentes de IA', '10 GB de armazenamento', 'Onboarding dedicado'],
-  },
-];
+// rc.15 — PLANOS_CADASTRO removido. Plano agora é escolha voluntária
+// em /planos após aprovação. Cadastro entra direto em trial 14d.
 
 const CadastroProfissionaisPage = () => {
   const [activeStep, setActiveStep] = useState(0);
@@ -115,7 +80,6 @@ const CadastroProfissionaisPage = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [solicitacaoId, setSolicitacaoId] = useState(null);
-  const [planosDb, setPlanosDb] = useState([]);
 
   const [formData, setFormData] = useState({
     nome: '',
@@ -127,7 +91,7 @@ const CadastroProfissionaisPage = () => {
     instituicao: '',
     tipo_vinculo: 'pessoal', // 'pessoal' ou 'existente'
     associacao_id: '',
-    plano_slug: 'basico',   // padrão: começar com plano mais barato
+    plano_slug: null,        // rc.15: trial 14d é o padrão. Plano vira escolha voluntária em /planos.
   });
 
   const [associacoes, setAssociacoes] = React.useState([]);
@@ -146,25 +110,8 @@ const CadastroProfissionaisPage = () => {
     fetchAssociacoes();
   }, []);
 
-  // Carrega planos reais do backend (preço, slug, features) para exibir no passo 2.
-  React.useEffect(() => {
-    let cancelado = false;
-    (async () => {
-      try {
-        const r = await api.get('/planos/');
-        if (!cancelado && Array.isArray(r.data) && r.data.length) {
-          setPlanosDb(r.data);
-          const basico = r.data.find((p) => p.slug === 'basico');
-          if (basico) {
-            setFormData((prev) => ({ ...prev, plano_slug: basico.slug }));
-          }
-        }
-      } catch (_) {
-        // silencioso: usa fallback estático PLANOS_CADASTRO
-      }
-    })();
-    return () => { cancelado = true; };
-  }, []);
+  // rc.15 — Removido fetch de /planos/. Cadastro é livre (trial 14d grátis).
+  // Planos ficam disponíveis em /planos após aprovação.
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -207,12 +154,7 @@ const CadastroProfissionaisPage = () => {
         }
         break;
 
-      case 2: // Escolha do Plano
-        if (!formData.plano_slug) {
-          setError('Selecione um plano para continuar');
-          return false;
-        }
-        break;
+      // rc.15 — case 2 (Escolha do Plano) foi removido. Trial 14d é automático.
 
       default:
         break;
@@ -231,8 +173,9 @@ const CadastroProfissionaisPage = () => {
   };
 
   const handleSubmit = async () => {
-    // Valida todos os passos anteriores antes de enviar
-    for (let s = 0; s <= 2; s++) {
+    // rc.15 — Valida passos 0 e 1 antes de enviar. Step 2 (Confirmação)
+    // é apenas visual, sem validação própria.
+    for (let s = 0; s <= 1; s++) {
       if (!validateStep(s)) return;
     }
 
@@ -245,7 +188,7 @@ const CadastroProfissionaisPage = () => {
       if (response.data.success) {
         setSolicitacaoId(response.data.solicitacao_id);
         setSuccess('Solicitação enviada com sucesso!');
-        setActiveStep(4); // passo 4 = "Aguardar Aprovação"
+        setActiveStep(3); // rc.15: passo 3 = "Aguardar Aprovação" (era 4)
       } else {
         setError(response.data.error || 'Erro ao enviar solicitação');
       }
@@ -414,123 +357,10 @@ const CadastroProfissionaisPage = () => {
           </Grid>
         );
 
-      case 2:
-        {
-          // Mescla dados do backend (preço/limites/features) com fallback estático
-          const planosParaExibir = planosDb.length
-            ? planosDb.map((p) => ({
-                slug: p.slug,
-                nome: p.nome,
-                preco: p.preco_mensal,
-                periodo: '/mês',
-                cor: p.cor,
-                popular: p.is_popular,
-                descricao: p.descricao,
-                features: [
-                  `${p.limite_pacientes >= 99999 ? 'Pacientes ilimitados' : `Até ${p.limite_pacientes} pacientes`}`,
-                  p.permite_agentes_sdr
-                    ? `${p.limite_agentes_ia} agentes de IA`
-                    : 'Sem IA',
-                  `${p.limite_armazenamento_mb / 1024} GB de armazenamento`,
-                  p.slug === 'enterprise' ? 'Onboarding dedicado' : 'Suporte por e-mail',
-                ],
-                icone: p.slug === 'enterprise'
-                  ? <StarIcon />
-                  : p.slug === 'premium'
-                  ? <RocketIcon />
-                  : <BusinessIcon />,
-              }))
-            : PLANOS_CADASTRO;
+      // rc.15 — case 2 (Escolha do Plano) REMOVIDO. Antigos case 3 e 4
+      // viraram case 2 e 3 respectivamente.
 
-          return (
-            <Grid container spacing={3}>
-              <Grid item xs={12}>
-                <Typography variant="h6" gutterBottom>
-                  Escolha o plano ideal para você
-                </Typography>
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                  Você poderá fazer upgrade ou downgrade a qualquer momento após o cadastro.
-                </Typography>
-              </Grid>
-
-              <Grid item xs={12}>
-                <FormControl component="fieldset" fullWidth>
-                  <RadioGroup
-                    name="plano_slug"
-                    value={formData.plano_slug}
-                    onChange={handleInputChange}
-                  >
-                    <Grid container spacing={2}>
-                      {planosParaExibir.map((plano) => (
-                        <Grid item xs={12} md={4} key={plano.slug}>
-                          <Card
-                            variant={formData.plano_slug === plano.slug ? 'elevation' : 'outlined'}
-                            elevation={formData.plano_slug === plano.slug ? 4 : 0}
-                            sx={{
-                              borderRadius: 3,
-                              height: '100%',
-                              position: 'relative',
-                              border: formData.plano_slug === plano.slug
-                                ? `2px solid ${plano.cor}`
-                                : '1px solid #e0e0e0',
-                              transition: 'all 0.2s ease',
-                              '&:hover': { transform: 'translateY(-4px)', boxShadow: 3 },
-                            }}
-                          >
-                            {plano.popular && (
-                              <Chip
-                                label="Mais Popular"
-                                color="warning"
-                                size="small"
-                                sx={{ position: 'absolute', top: 12, right: 12 }}
-                              />
-                            )}
-                            <CardContent>
-                              <Box sx={{ color: plano.cor, mb: 1 }}>{plano.icone}</Box>
-                              <Typography variant="h6" gutterBottom>
-                                {plano.nome}
-                              </Typography>
-                              <Box sx={{ display: 'flex', alignItems: 'baseline', mb: 1 }}>
-                                <Typography variant="h4" fontWeight="bold">
-                                  R$ {Number(plano.preco).toFixed(plano.preco % 1 === 0 ? 0 : 2)}
-                                </Typography>
-                                <Typography variant="body2" color="text.secondary">
-                                  {plano.periodo}
-                                </Typography>
-                              </Box>
-                              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                                {plano.descricao}
-                              </Typography>
-                              <Divider sx={{ my: 1 }} />
-                              {plano.features.map((feat, idx) => (
-                                <Box key={idx} sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                                  <CheckCircleIcon sx={{ fontSize: 16, color: plano.cor }} />
-                                  <Typography variant="body2">{feat}</Typography>
-                                </Box>
-                              ))}
-                              <FormControlLabel
-                                value={plano.slug}
-                                control={<Radio />}
-                                label="Selecionar"
-                                sx={{ mt: 2 }}
-                              />
-                            </CardContent>
-                          </Card>
-                        </Grid>
-                      ))}
-                    </Grid>
-                  </RadioGroup>
-                </FormControl>
-              </Grid>
-            </Grid>
-          );
-        }
-
-      case 3:
-        {
-          const planoEscolhido = (planosDb.length
-            ? planosDb.find((p) => p.slug === formData.plano_slug)
-            : PLANOS_CADASTRO.find((p) => p.slug === formData.plano_slug));
+      case 2: {
           return (
             <Grid container spacing={3}>
               <Grid item xs={12}>
@@ -563,26 +393,12 @@ const CadastroProfissionaisPage = () => {
 
                     <Divider sx={{ my: 2 }} />
                     <Typography variant="subtitle1" gutterBottom>
-                      <strong>Plano Escolhido:</strong>
+                      <strong>Acesso Inicial:</strong>
                     </Typography>
-                    {planoEscolhido ? (
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Chip
-                          label={planoEscolhido.nome}
-                          sx={{
-                            bgcolor: planoEscolhido.cor,
-                            color: 'white',
-                            fontWeight: 'bold',
-                          }}
-                          size="small"
-                        />
-                        <Typography variant="body2">
-                          R$ {Number(planoEscolhido.preco).toFixed(planoEscolhido.preco % 1 === 0 ? 0 : 2)}/mês
-                        </Typography>
-                      </Box>
-                    ) : (
-                      <Typography variant="body2" color="text.secondary">—</Typography>
-                    )}
+                    <Typography variant="body2">
+                      Após aprovação, você terá <strong>14 dias de trial gratuito</strong> com todas as funcionalidades
+                      (CRM, prontuário, agenda, módulos). Você poderá assinar um plano a qualquer momento em /planos.
+                    </Typography>
                   </CardContent>
                 </Card>
               </Grid>
@@ -590,7 +406,7 @@ const CadastroProfissionaisPage = () => {
           );
         }
 
-      case 4:
+      case 3:
         return (
           <Grid container spacing={3}>
             <Grid item xs={12} sx={{ textAlign: 'center' }}>
@@ -632,7 +448,7 @@ const CadastroProfissionaisPage = () => {
                       instituicao: '',
                       tipo_vinculo: 'pessoal',
                       associacao_id: '',
-                      plano_slug: 'basico',
+                      plano_slug: null,
                     });
                     setSolicitacaoId(null);
                     setSuccess('');
@@ -687,7 +503,7 @@ const CadastroProfissionaisPage = () => {
 
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
           <Button
-            disabled={activeStep === 0 || activeStep === 4}
+            disabled={activeStep === 0 || activeStep === 3}
             onClick={handleBack}
           >
             Voltar
@@ -714,7 +530,7 @@ const CadastroProfissionaisPage = () => {
           </Box>
         </Box>
 
-        {activeStep < 4 && (
+        {activeStep < 3 && (
           <Alert severity="info" sx={{ mt: 4 }}>
             <Typography variant="subtitle2" gutterBottom>
               Informações importantes:
