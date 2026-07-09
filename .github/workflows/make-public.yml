@@ -72,30 +72,36 @@ jobs:
             echo "|---|---|---|---|---|"
           } >> "$GITHUB_STEP_SUMMARY"
 
-          # Process loop without subshell so FAILED propagates correctly.
-          # Use here-string on bash (dash-less run is bash on Ubuntu).
           FAILED=0
           while IFS= read -r PKG; do
             [ -z "$PKG" ] && continue
             echo "::group::Package: $PKG"
 
-            BEFORE=$(gh api "/user/packages/container/$PKG" \
-              --jq '.visibility // "unknown"' 2>/dev/null || echo "lookup-failed")
-            echo "Before: $BEFORE"
+            # 1) GET visibility (current state). Stderr not suppressed —
+            #    if this 403s on scope, we WANT to see the message.
+            echo "--- GET before ---"
+            BEFORE_JSON=$(gh api "/user/packages/container/$PKG" 2>&1 || echo '{"visibility":"lookup-failed"}')
+            echo "$BEFORE_JSON"
+            BEFORE=$(echo "$BEFORE_JSON" | grep -oE '"visibility"[[:space:]]*:[[:space:]]*"[^"]+"' | head -1 | sed 's/.*: *"//;s/"$//')
+            [ -z "$BEFORE" ] && BEFORE="lookup-failed"
 
-            HTTP=$(gh api -X PATCH "/user/packages/container/$PKG" \
+            echo "--- PATCH visibility=public ---"
+            PATCH_OUT=$(gh api -X PATCH "/user/packages/container/$PKG" \
               -f visibility=public \
-              -o /tmp/patch-body.json \
-              -w "%{http_code}" 2>/dev/null || echo "000")
-            echo "PATCH HTTP: $HTTP"
-            if [ -s /tmp/patch-body.json ]; then
-              cat /tmp/patch-body.json
-            fi
-            echo ""
+              --include 2>&1 || true)
+            # gh api --include prints response headers, blank line, body.
+            # Extract status code from the HTTP/1.1 line.
+            HTTP=$(echo "$PATCH_OUT" | grep -oE 'HTTP/[0-9.]+ [0-9]+' | head -1 | awk '{print $2}')
+            BODY=$(echo "$PATCH_OUT" | sed -n '/^\r*$/,$p' | tail -n +2 | head -20)
+            echo "PATCH HTTP: ${HTTP:-000}"
+            echo "$BODY"
 
-            AFTER=$(gh api "/user/packages/container/$PKG" \
-              --jq '.visibility // "unknown"' 2>/dev/null || echo "lookup-failed")
-            echo "After: $AFTER"
+            # 2) GET after to confirm persistence.
+            echo "--- GET after ---"
+            AFTER_JSON=$(gh api "/user/packages/container/$PKG" 2>&1 || echo '{"visibility":"lookup-failed"}')
+            echo "$AFTER_JSON"
+            AFTER=$(echo "$AFTER_JSON" | grep -oE '"visibility"[[:space:]]*:[[:space:]]*"[^"]+"' | head -1 | sed 's/.*: *"//;s/"$//')
+            [ -z "$AFTER" ] && AFTER="lookup-failed"
 
             if [ "$AFTER" = "public" ]; then
               VERDICT="✅ public"
@@ -104,7 +110,7 @@ jobs:
               FAILED=1
             fi
 
-            echo "|$PKG|$BEFORE|$AFTER|$HTTP|$VERDICT|" >> "$GITHUB_STEP_SUMMARY"
+            echo "|$PKG|$BEFORE|$AFTER|${HTTP:-000}|$VERDICT|" >> "$GITHUB_STEP_SUMMARY"
             echo "::endgroup::"
           done <<< "$NAMES"
 
