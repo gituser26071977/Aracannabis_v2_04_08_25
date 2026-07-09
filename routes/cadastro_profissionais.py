@@ -27,6 +27,7 @@ from datetime import datetime, timedelta
 from services.email_service import EmailService
 from services.subscription_expiration_service import SubscriptionExpirationService
 from sqlalchemy.exc import IntegrityError
+import psycopg2
 
 email_service = EmailService()
 
@@ -151,8 +152,25 @@ def solicitar_cadastro():
 
         return jsonify({'success': True, 'message': 'Solicitação enviada.', 'id': nova_solicitacao.id}), 201
 
-    except IntegrityError:
+    except IntegrityError as e:
         db.session.rollback()
+        # Diferenciar violação de constraint para mensagens úteis ao cliente
+        # (rc.16: o catch genérico "Dados duplicados" mascarava erros de NOT NULL).
+        cause = getattr(e, 'orig', None)
+        pgcode = getattr(cause, 'pgcode', None) if cause is not None else None
+        constraint = getattr(cause, 'constraint_name', None) or getattr(cause, 'diag', {}).get('constraint_name') if cause is not None else None
+        if pgcode == '23502':  # not_null_violation
+            field = getattr(cause, 'column_name', None) if cause is not None else None
+            current_app.logger.error(f"NotNull violation em cadastro: field={field}")
+            return jsonify({
+                'success': False,
+                'error': f"Campo obrigatório não preenchido: {field or 'desconhecido'}."
+            }), 400
+        if pgcode == '23505':  # unique_violation
+            if constraint == 'solicitacoes_cadastro_email_key':
+                return jsonify({'success': False, 'error': 'Email já cadastrado'}), 409
+            if constraint in ('uq_solicitacao_crm_uf_partial', 'uq_solicitacao_crm_uf'):
+                return jsonify({'success': False, 'error': 'Registro já cadastrado'}), 409
         return jsonify({'success': False, 'error': 'Dados duplicados.'}), 409
     except Exception as e:
         db.session.rollback()

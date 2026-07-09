@@ -1,5 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
+from sqlalchemy import text
 
 db = SQLAlchemy()
 
@@ -9,8 +10,11 @@ class Profissional(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String, nullable=False)
-    crm = db.Column(db.String, nullable=False)
-    uf_crm = db.Column(db.String, nullable=False)
+    # crm/uf_crm nullable para staff/secretária (conselho_tipo='NONE').
+    # Unicidade (crm, uf_crm) garantida por partial unique index
+    # `uq_crm_uf_partial` na migration rc.16 (apenas quando ambos NOT NULL).
+    crm = db.Column(db.String, nullable=True)
+    uf_crm = db.Column(db.String, nullable=True)
     conselho_tipo = db.Column(
         db.String(20), nullable=True, default="CRM"
     )  # 'CRM' | 'CRP' | 'COREN' | 'CRN' | 'CREFITO' | 'NONE' (staff sem conselho)
@@ -45,7 +49,16 @@ class Profissional(db.Model):
     consultas = db.relationship("Consulta", backref="profissional", lazy=True)
     exames = db.relationship("Exame", backref="profissional", lazy=True)
 
-    __table_args__ = (db.UniqueConstraint("crm", "uf_crm", name="uq_crm_uf"),)
+    # Partial unique index criado na migration rc.16 — mantém unicidade
+    # para profissionais de saúde sem barrar múltiplos staffs (crm NULL).
+    __table_args__ = (
+        db.Index(
+            "uq_crm_uf_partial",
+            "crm", "uf_crm",
+            unique=True,
+            postgresql_where=text("crm IS NOT NULL AND uf_crm IS NOT NULL"),
+        ),
+    )
 
     def to_dict(self):
         return {
@@ -1118,8 +1131,11 @@ class SolicitacoesCadastro(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String, nullable=False)
     email = db.Column(db.String, unique=True, nullable=False)
-    crm = db.Column(db.String, nullable=False)
-    uf_crm = db.Column(db.String, nullable=False)
+    # crm/uf_crm nullable para staff/secretária (conselho_tipo='NONE').
+    # Unicidade (crm, uf_crm) garantida por partial unique index
+    # `uq_solicitacao_crm_uf_partial` na migration rc.16.
+    crm = db.Column(db.String, nullable=True)
+    uf_crm = db.Column(db.String, nullable=True)
     conselho_tipo = db.Column(
         db.String(20), nullable=True, default="CRM"
     )  # 'CRM' | 'CRP' | 'COREN' | 'CRN' | 'CREFITO' | 'NONE'
@@ -1144,7 +1160,14 @@ class SolicitacoesCadastro(db.Model):
     )
 
     __table_args__ = (
-        db.UniqueConstraint("crm", "uf_crm", name="uq_solicitacao_crm_uf"),
+        # Partial unique index criado na migration rc.16 — mesma
+        # motivação da constraint `uq_crm_uf_partial` em Profissional.
+        db.Index(
+            "uq_solicitacao_crm_uf_partial",
+            "crm", "uf_crm",
+            unique=True,
+            postgresql_where=text("crm IS NOT NULL AND uf_crm IS NOT NULL"),
+        ),
     )
 
     def to_dict(self):

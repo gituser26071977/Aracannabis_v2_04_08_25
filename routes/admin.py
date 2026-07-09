@@ -458,9 +458,15 @@ def deletar_usuario(usuario_id):
         )
         db.session.add(log)
         
-        # Também remover da tabela de solicitações para permitir novo cadastro se necessário
+        # Também remover da tabela de solicitações para permitir novo cadastro se necessário.
+        # rc.16: filtrar por (crm, uf_crm) com ambos NULL apagaria TODAS as solicitações
+        # de staff — usar o email como chave primária ou, quando houver conselho,
+        # combinar crm+uf+email.
         SolicitacoesCadastro.query.filter_by(email=usuario.email).delete()
-        SolicitacoesCadastro.query.filter_by(crm=usuario.crm, uf_crm=usuario.uf_crm).delete()
+        if usuario.crm and usuario.uf_crm:
+            SolicitacoesCadastro.query.filter_by(
+                crm=usuario.crm, uf_crm=usuario.uf_crm
+            ).delete()
         
         db.session.delete(usuario)
         db.session.commit()

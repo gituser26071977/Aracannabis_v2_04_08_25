@@ -50,14 +50,23 @@ def validate_crm_format(crm: str, uf: str) -> dict:
 def check_duplicate_crm(crm: str, uf: str, exclude_id: int = None) -> dict:
     """
     Verifica se CRM já está cadastrado
-    
+
     Args:
         crm: Número do CRM
         uf: UF do CRM
-    
+
     Returns:
         dict com resultado da verificação
     """
+    # Staff (conselho_tipo='NONE') não tem CRM/UF — pular verificação
+    # para evitar falso positivo com NULL/NULL casando registros anteriores.
+    if not crm or not uf:
+        return {
+            "duplicate": False,
+            "reason": "Sem CRM/UF para verificar (staff)",
+            "confidence": 1.0,
+        }
+
     # Verificar em profissionais aprovados
     existing_prof = Profissional.query.filter_by(crm=crm, uf_crm=uf).first()
     if existing_prof:
