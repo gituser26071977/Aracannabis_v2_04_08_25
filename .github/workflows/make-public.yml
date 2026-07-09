@@ -1,0 +1,140 @@
+name: GHCR — Make packages public
+
+# ================================================================
+# Operator utility — flip one or more GHCR packages from private to
+# public. Idempotent.
+#
+# Use case: after a fresh image is published by cd-araflow.yml with
+# default visibility (private), this workflow promotes it to public
+# so anonymous `docker pull ghcr.io/...` works without `docker login`
+# on the target host.
+#
+# Design:
+#   - workflow_dispatch only (no auto trigger — same philosophy as
+#     cd-araflow.yml).
+#   - packages: write scoped per-job (minimum required).
+#   - Whitelist packages by name; defaults to the two AraFlow
+#     packages (araflow-api, araflow-web). Refuse empty/unknown
+#     names.
+#   - For each package: PATCH visibility=public, then GET to confirm
+#     it actually persisted (defence against silent PATCH 200s that
+#     didn't apply).
+#   - Writes a summary table to $GITHUB_STEP_SUMMARY.
+#
+# NOT in scope:
+#   - Making packages private again (out of mission).
+#   - Touching any other registry (only ghcr.io).
+#   - Deleting packages.
+# ================================================================
+
+on:
+  workflow_dispatch:
+    inputs:
+      packages:
+        description: 'Comma-separated GHCR package names (whitelist). Default: araflow-api,araflow-web.'
+        required: false
+        default: 'araflow-api,araflow-web'
+
+permissions: {}
+
+jobs:
+  make-public:
+    name: Flip packages to public
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      packages: write
+    steps:
+      - name: Validate input
+        id: parse
+        env:
+          RAW: ${{ inputs.packages }}
+        run: |
+          NAMES=$(echo "$RAW" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' \
+            | awk 'length>0' | sort -u)
+          COUNT=$(printf '%s\n' "$NAMES" | grep -c . || true)
+          {
+            echo "names<<__NAMES_EOF__"
+            echo "$NAMES"
+            echo "__NAMES_EOF__"
+          } >> "$GITHUB_OUTPUT"
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+          echo "Parsed $COUNT package(s):"
+          echo "$NAMES"
+
+      - name: Flip each package to public
+        env:
+          NAMES: ${{ steps.parse.outputs.names }}
+        run: |
+          # Summary table header
+          {
+            echo "| Package | Before | After | HTTP | Verdict |"
+            echo "|---|---|---|---|---|"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          # Process loop without subshell so FAILED propagates correctly.
+          # Use here-string on bash (dash-less run is bash on Ubuntu).
+          FAILED=0
+          while IFS= read -r PKG; do
+            [ -z "$PKG" ] && continue
+            echo "::group::Package: $PKG"
+
+            BEFORE=$(gh api "/user/packages/container/$PKG" \
+              --jq '.visibility // "unknown"' 2>/dev/null || echo "lookup-failed")
+            echo "Before: $BEFORE"
+
+            HTTP=$(gh api -X PATCH "/user/packages/container/$PKG" \
+              -f visibility=public \
+              -o /tmp/patch-body.json \
+              -w "%{http_code}" 2>/dev/null || echo "000")
+            echo "PATCH HTTP: $HTTP"
+            if [ -s /tmp/patch-body.json ]; then
+              cat /tmp/patch-body.json
+            fi
+            echo ""
+
+            AFTER=$(gh api "/user/packages/container/$PKG" \
+              --jq '.visibility // "unknown"' 2>/dev/null || echo "lookup-failed")
+            echo "After: $AFTER"
+
+            if [ "$AFTER" = "public" ]; then
+              VERDICT="✅ public"
+            else
+              VERDICT="❌ NOT public ($AFTER)"
+              FAILED=1
+            fi
+
+            echo "|$PKG|$BEFORE|$AFTER|$HTTP|$VERDICT|" >> "$GITHUB_STEP_SUMMARY"
+            echo "::endgroup::"
+          done <<< "$NAMES"
+
+          if [ "$FAILED" -ne 0 ]; then
+            echo "::error::One or more packages did not flip to public"
+            exit 1
+          fi
+
+      - name: Summary header
+        if: always()
+        run: |
+          echo "## GHCR — Make Public" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Operator-triggered flip from private → public. Idempotent." >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Anon pull sanity check
+        if: success()
+        env:
+          NAMES: ${{ steps.parse.outputs.names }}
+        run: |
+          echo ""
+          echo "=== Confirming anonymous access (no token) ==="
+          while IFS= read -r PKG; do
+            [ -z "$PKG" ] && continue
+            HTTP=$(curl -sIo /dev/null -w "%{http_code}" \
+              "https://ghcr.io/v2/gituser26071977/$PKG/manifests/rc1-latest" 2>/dev/null \
+              || echo "000")
+            echo "  $PKG rc1-latest manifest: HTTP $HTTP (200 = public, 401 = still private)"
+            if [ "$HTTP" != "200" ]; then
+              echo "::warning::Anon pull did not return 200 for $PKG"
+            fi
+          done <<< "$NAMES"
