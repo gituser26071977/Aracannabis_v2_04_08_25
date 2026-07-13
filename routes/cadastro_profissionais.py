@@ -226,10 +226,17 @@ def processar_aprovacao(solicitacao_id):
         db.session.flush()
 
         # Workspace Linking logic
+        # rc.16: usar instituicao (se preenchida) como nome da clinica
+        # em vez do fallback fixo "Consultorio {nome}". Tambem gerar
+        # CNPJ placeholder unico (AUTO-<id>-<ts>) em vez de reusar o CRM,
+        # que violava Associacao.cnpj UNIQUE NOT NULL. Erros agora sao
+        # logados estruturados (em vez de engolidos com `pass`) e usam
+        # SAVEPOINT para nao desfazer o INSERT do profissional.
         try:
+            sp = db.session.begin_nested()
             from association.models import Associacao
             from models_extra import UsuarioAssociacao
-            
+
             tipo_vinculo = getattr(solicitacao, 'tipo_vinculo', 'pessoal')
             target_assoc = None
 
@@ -247,10 +254,18 @@ def processar_aprovacao(solicitacao_id):
                 while Associacao.query.filter_by(slug=slug).first():
                     slug = f"{slug_base}-{count}"
                     count += 1
-                
-                nome_assoc = f"Consultório {solicitacao.nome}"
+
+                # rc.16: nome da clinica = instituicao quando preenchida;
+                # senao fallback "Consultorio {nome}"
+                instituicao = (getattr(solicitacao, 'instituicao', '') or '').strip()
+                nome_assoc = instituicao if instituicao else f"Consultorio {solicitacao.nome}"
+                # rc.16: CNPJ placeholder unico (AUTO-<prof_id>-<ts>) para
+                # nao colidir com CRM de outros profissionais. Usuario
+                # podera editar via /association para CNPJ real depois.
+                import time as _time
+                cnpj_placeholder = f"AUTO-{novo_profissional.id}-{int(_time.time())}"
                 target_assoc = Associacao(
-                    nome=nome_assoc, slug=slug, cnpj=solicitacao.crm, ativo=True
+                    nome=nome_assoc, slug=slug, cnpj=cnpj_placeholder, ativo=True
                 )
                 db.session.add(target_assoc)
                 db.session.flush()
@@ -265,8 +280,21 @@ def processar_aprovacao(solicitacao_id):
                 )
                 db.session.add(link)
 
-        except Exception:
-            pass # Logger handled in caller context usually
+            sp.commit()
+        except IntegrityError as ie:
+            sp.rollback()
+            current_app.logger.warning(
+                f"[cadastro_profissionais] workspace_link_integrity_error: "
+                f"prof_id={novo_profissional.id} tipo_vinculo={tipo_vinculo} "
+                f"error={getattr(ie, 'orig', ie)}"
+            )
+        except Exception as e:
+            sp.rollback()
+            current_app.logger.error(
+                f"[cadastro_profissionais] workspace_link_error: "
+                f"prof_id={novo_profissional.id} tipo_vinculo={tipo_vinculo} "
+                f"error={type(e).__name__}: {e}"
+            )
 
         # Criar configuração de prescrição padrão
         try:

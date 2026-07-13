@@ -4,9 +4,9 @@ import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
-import { 
-  Paper, 
-  Typography, 
+import {
+  Paper,
+  Typography,
   Box,
   Button,
   Dialog,
@@ -21,18 +21,16 @@ import {
   Grid,
   Alert,
   Chip,
-  IconButton,
-  Tooltip
+  Tooltip,
 } from '@mui/material';
-import { 
+import {
   Add as AddIcon,
-  Edit as EditIcon,
   Delete as DeleteIcon,
   Email as EmailIcon,
-  WhatsApp as WhatsAppIcon,
-  Event as EventIcon
+  EventAvailable as EventAvailableIcon,
 } from '@mui/icons-material';
 import { consultasService, pacientesService } from '../services/api';
+import EmptyState from './EmptyState';
 
 import useNotifier from '../hooks/useNotifier';
 const CalendarioConsultas = () => {
@@ -40,11 +38,16 @@ const CalendarioConsultas = () => {
   const [eventos, setEventos] = useState([]);
   const [pacientes, setPacientes] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  // rc.16: separar erros de pacientes vs consultas para nao mostrar
+  // "erro tecnico" quando apenas o resultado esta vazio (empty state).
+  const [pacientesError, setPacientesError] = useState('');
+  const [consultasError, setConsultasError] = useState('');
+  // rc.16: erros de dialog (salvar/cancelar/enviar lembretes) migraram
+  // para useNotifier.notify() — o Alert global antigo foi removido para
+  // nao confundir empty-state com erro tecnico.
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingConsulta, setEditingConsulta] = useState(null);
-  const [selectedDate, setSelectedDate] = useState(null);
-  
+
   // Estado do formulário
   const [rememberedTipo, setRememberedTipo] = useRemember('tipo_consulta_padrao', 'presencial');
   const [rememberedDuracao, setRememberedDuracao] = useRemember('duracao_consulta_padrao', 60);
@@ -53,77 +56,85 @@ const CalendarioConsultas = () => {
     data_hora: '',
     duracao_minutos: 60,
     tipo_consulta: 'presencial',
-    observacoes: ''
+    observacoes: '',
   });
 
   // Pré-preencher com valores lembrados do médico
   useEffect(() => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       tipo_consulta: rememberedTipo,
       duracao_minutos: rememberedDuracao,
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  
+
   // Carregar dados iniciais
+  // rc.16: separa erros de pacientes vs consultas. Antes, qualquer falha
+  // de pacientes mascarava o calendario (mostrava "nao foi possivel
+  // carregar dados do calendario") mesmo quando as consultas estavam OK.
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
+
+      // Carregar pacientes para o select (independente)
       try {
-        // Carregar pacientes para o select
         const pacientesData = await pacientesService.listar();
         setPacientes(pacientesData.pacientes || []);
-        
-        // Carregar consultas do mês atual
-        await carregarConsultas();
-        
-        setError('');
+        setPacientesError('');
       } catch (err) {
-        if(process.env.NODE_ENV!=='production')console.error('Erro ao carregar dados:', err);
-        setError('Não foi possível carregar os dados do calendário');
-      } finally {
-        setLoading(false);
+        if (process.env.NODE_ENV !== 'production')
+          console.error('Erro ao carregar pacientes:', err);
+        setPacientesError('Não foi possível carregar a lista de pacientes.');
       }
+
+      // Carregar consultas do mês atual (independente)
+      await carregarConsultas();
+
+      setLoading(false);
     };
-    
+
     fetchData();
   }, []);
-  
+
   // Carregar consultas
+  // rc.16: usa consultasError (separado) em vez de error global.
+  // Retorno bem-sucedido com lista vazia nao dispara mais alerta de erro.
   const carregarConsultas = async (ano = null, mes = null) => {
     try {
       const agora = new Date();
       const anoAtual = ano || agora.getFullYear();
-      const mesAtual = mes || (agora.getMonth() + 1);
-      
+      const mesAtual = mes || agora.getMonth() + 1;
+
       const data = await consultasService.obterCalendario(anoAtual, mesAtual);
       setEventos(data.eventos || []);
+      setConsultasError('');
     } catch (err) {
-      if(process.env.NODE_ENV!=='production')console.error('Erro ao carregar consultas:', err);
-      setError('Não foi possível carregar as consultas');
+      if (process.env.NODE_ENV !== 'production') console.error('Erro ao carregar consultas:', err);
+      setConsultasError('Não foi possível carregar as consultas. Tente recarregar a página.');
+      // Mantem eventos anteriores em tela (nao limpa) para o usuario
+      // nao perder o que ja estava vendo ao navegar entre meses.
     }
   };
-  
+
   // Manipular clique em data
   const handleDateClick = (arg) => {
-    setSelectedDate(arg.date);
     setEditingConsulta(null);
     setFormData({
       paciente_id: '',
       data_hora: arg.dateStr + 'T09:00',
       duracao_minutos: 60,
       tipo_consulta: 'presencial',
-      observacoes: ''
+      observacoes: '',
     });
     setDialogOpen(true);
   };
-  
+
   // Manipular clique em evento
   const handleEventClick = (clickInfo) => {
     const evento = clickInfo.event;
     const props = evento.extendedProps;
-    
+
     setEditingConsulta({
       id: evento.id,
       paciente_id: props.paciente_id,
@@ -131,35 +142,35 @@ const CalendarioConsultas = () => {
       duracao_minutos: Math.round((evento.end - evento.start) / (1000 * 60)),
       tipo_consulta: props.tipo_consulta,
       observacoes: props.observacoes || '',
-      status: props.status
+      status: props.status,
     });
-    
+
     setFormData({
       paciente_id: props.paciente_id,
       data_hora: evento.start.toISOString().slice(0, 16),
       duracao_minutos: Math.round((evento.end - evento.start) / (1000 * 60)),
       tipo_consulta: props.tipo_consulta,
-      observacoes: props.observacoes || ''
+      observacoes: props.observacoes || '',
     });
-    
+
     setDialogOpen(true);
   };
-  
+
   // Manipular mudança de mês/ano
   const handleDatesSet = (dateInfo) => {
     const data = new Date(dateInfo.start);
     carregarConsultas(data.getFullYear(), data.getMonth() + 1);
   };
-  
+
   // Manipular mudança no formulário
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
-  
+
   // Salvar consulta
   const handleSalvarConsulta = async () => {
     try {
@@ -181,57 +192,55 @@ const CalendarioConsultas = () => {
       // Fechar diálogo
       setDialogOpen(false);
       setEditingConsulta(null);
-
     } catch (err) {
-      if(process.env.NODE_ENV!=='production')console.error('Erro ao salvar consulta:', err);
-      setError(err.error || 'Não foi possível salvar a consulta');
+      if (process.env.NODE_ENV !== 'production') console.error('Erro ao salvar consulta:', err);
+      notify(err.error || 'Não foi possível salvar a consulta', 'error');
     }
   };
-  
+
   // Cancelar consulta
   const handleCancelarConsulta = async () => {
     if (!editingConsulta) return;
-    
+
     try {
       await consultasService.cancelar(editingConsulta.id);
       await carregarConsultas();
       setDialogOpen(false);
       setEditingConsulta(null);
     } catch (err) {
-      if(process.env.NODE_ENV!=='production')console.error('Erro ao cancelar consulta:', err);
-      setError('Não foi possível cancelar a consulta');
+      if (process.env.NODE_ENV !== 'production') console.error('Erro ao cancelar consulta:', err);
+      notify('Não foi possível cancelar a consulta', 'error');
     }
   };
-  
+
   // Enviar lembretes
   const handleEnviarLembretes = async () => {
     try {
       const response = await consultasService.enviarLembretes();
       notify(response.message, 'info');
     } catch (err) {
-      if(process.env.NODE_ENV!=='production')console.error('Erro ao enviar lembretes:', err);
-      setError('Não foi possível enviar os lembretes');
+      if (process.env.NODE_ENV !== 'production') console.error('Erro ao enviar lembretes:', err);
+      notify('Não foi possível enviar os lembretes', 'error');
     }
   };
-  
+
   // Fechar diálogo
   const handleFecharDialog = () => {
     setDialogOpen(false);
     setEditingConsulta(null);
-    setError('');
   };
-  
+
   // Obter cor do status
   const getStatusColor = (status) => {
     const colors = {
-      'agendada': 'primary',
-      'confirmada': 'success',
-      'realizada': 'default',
-      'cancelada': 'error'
+      agendada: 'primary',
+      confirmada: 'success',
+      realizada: 'default',
+      cancelada: 'error',
     };
     return colors[status] || 'primary';
   };
-  
+
   // Configurações do FullCalendar
   const calendarOptions = {
     plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin],
@@ -239,14 +248,14 @@ const CalendarioConsultas = () => {
     headerToolbar: {
       left: 'prev,next today',
       center: 'title',
-      right: 'dayGridMonth,timeGridWeek,timeGridDay'
+      right: 'dayGridMonth,timeGridWeek,timeGridDay',
     },
     locale: 'pt-br',
     buttonText: {
       today: 'Hoje',
       month: 'Mês',
       week: 'Semana',
-      day: 'Dia'
+      day: 'Dia',
     },
     height: 'auto',
     selectable: true,
@@ -262,18 +271,16 @@ const CalendarioConsultas = () => {
     eventTimeFormat: {
       hour: '2-digit',
       minute: '2-digit',
-      hour12: false
-    }
+      hour12: false,
+    },
   };
-  
+
   return (
     <Paper elevation={3} sx={{ p: 3 }}>
+      <NotifierElement />{' '}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h6">📅 Calendário de Consultas</Typography>
 
-        <NotifierElement />      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h6">
-          📅 Calendário de Consultas
-        </Typography>
-        
         <Box sx={{ display: 'flex', gap: 1 }}>
           <Tooltip title="Enviar lembretes das próximas 24h">
             <Button
@@ -286,20 +293,19 @@ const CalendarioConsultas = () => {
               Lembretes
             </Button>
           </Tooltip>
-          
+
           <Button
             variant="contained"
             color="primary"
             startIcon={<AddIcon />}
             onClick={() => {
-              setSelectedDate(new Date());
               setEditingConsulta(null);
               setFormData({
                 paciente_id: '',
                 data_hora: new Date().toISOString().slice(0, 16),
                 duracao_minutos: 60,
                 tipo_consulta: 'presencial',
-                observacoes: ''
+                observacoes: '',
               });
               setDialogOpen(true);
             }}
@@ -308,13 +314,21 @@ const CalendarioConsultas = () => {
           </Button>
         </Box>
       </Box>
-      
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
+      {pacientesError && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {pacientesError}
         </Alert>
       )}
-      
+      {consultasError && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {consultasError}
+        </Alert>
+      )}
+      {/*
+        rc.16: alertas antigos de `error` para o calendario foram
+        removidos. Erros de salvar/cancelar consulta continuam
+        aparecendo inline no Dialog (via `setError` no escopo do form).
+      */}
       {/* Legenda de cores */}
       <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
         <Chip label="Agendada" color="primary" size="small" />
@@ -322,31 +336,37 @@ const CalendarioConsultas = () => {
         <Chip label="Realizada" color="default" size="small" />
         <Chip label="Cancelada" color="error" size="small" />
       </Box>
-      
       {/* Calendário */}
       <Box sx={{ '& .fc': { fontSize: '0.875rem' } }}>
         <FullCalendar {...calendarOptions} />
       </Box>
-      
+      {/* rc.16: empty state amigavel para profissionais sem consultas.
+          Mantemos o calendario visivel acima para o usuario ainda poder
+          clicar em datas e criar a primeira consulta. */}
+      {!loading && !consultasError && eventos.length === 0 && (
+        <Box sx={{ mt: 2 }}>
+          <EmptyState
+            icon={<EventAvailableIcon sx={{ fontSize: 72 }} />}
+            title="Nenhuma consulta agendada"
+            description="Você ainda não tem consultas neste período. Clique em uma data no calendário ou use o botão 'Nova Consulta' acima para começar."
+            minHeight={200}
+          />
+        </Box>
+      )}
       {/* Diálogo de consulta */}
-      <Dialog
-        open={dialogOpen}
-        onClose={handleFecharDialog}
-        maxWidth="md"
-        fullWidth
-      >
+      <Dialog open={dialogOpen} onClose={handleFecharDialog} maxWidth="md" fullWidth>
         <DialogTitle>
           {editingConsulta ? 'Editar Consulta' : 'Nova Consulta'}
           {editingConsulta && (
-            <Chip 
-              label={editingConsulta.status} 
+            <Chip
+              label={editingConsulta.status}
               color={getStatusColor(editingConsulta.status)}
               size="small"
               sx={{ ml: 2 }}
             />
           )}
         </DialogTitle>
-        
+
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid item xs={12} sm={6}>
@@ -366,7 +386,7 @@ const CalendarioConsultas = () => {
                 </Select>
               </FormControl>
             </Grid>
-            
+
             <Grid item xs={12} sm={6}>
               <TextField
                 name="data_hora"
@@ -379,7 +399,7 @@ const CalendarioConsultas = () => {
                 InputLabelProps={{ shrink: true }}
               />
             </Grid>
-            
+
             <Grid item xs={12} sm={4}>
               <TextField
                 name="duracao_minutos"
@@ -391,7 +411,7 @@ const CalendarioConsultas = () => {
                 inputProps={{ min: 15, max: 240, step: 15 }}
               />
             </Grid>
-            
+
             <Grid item xs={12} sm={4}>
               <FormControl fullWidth>
                 <InputLabel>Tipo</InputLabel>
@@ -406,7 +426,7 @@ const CalendarioConsultas = () => {
                 </Select>
               </FormControl>
             </Grid>
-            
+
             {editingConsulta && (
               <Grid item xs={12} sm={4}>
                 <FormControl fullWidth>
@@ -414,10 +434,12 @@ const CalendarioConsultas = () => {
                   <Select
                     name="status"
                     value={editingConsulta.status}
-                    onChange={(e) => setEditingConsulta({
-                      ...editingConsulta,
-                      status: e.target.value
-                    })}
+                    onChange={(e) =>
+                      setEditingConsulta({
+                        ...editingConsulta,
+                        status: e.target.value,
+                      })
+                    }
                     label="Status"
                   >
                     <MenuItem value="agendada">Agendada</MenuItem>
@@ -428,7 +450,7 @@ const CalendarioConsultas = () => {
                 </FormControl>
               </Grid>
             )}
-            
+
             <Grid item xs={12}>
               <TextField
                 name="observacoes"
@@ -443,22 +465,18 @@ const CalendarioConsultas = () => {
             </Grid>
           </Grid>
         </DialogContent>
-        
+
         <DialogActions>
           {editingConsulta && editingConsulta.status !== 'cancelada' && (
-            <Button
-              onClick={handleCancelarConsulta}
-              color="error"
-              startIcon={<DeleteIcon />}
-            >
+            <Button onClick={handleCancelarConsulta} color="error" startIcon={<DeleteIcon />}>
               Cancelar Consulta
             </Button>
           )}
-          
+
           <Button onClick={handleFecharDialog} color="primary">
             Fechar
           </Button>
-          
+
           <Button
             onClick={handleSalvarConsulta}
             variant="contained"
