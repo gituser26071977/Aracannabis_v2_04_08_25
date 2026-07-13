@@ -29,6 +29,7 @@
  */
 
 const path = require('path');
+const webpack = require('webpack');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 
 const projectRoot = path.resolve(__dirname, '..');
@@ -103,6 +104,14 @@ module.exports = (env, argv) => {
       ],
     },
     plugins: [
+      // Injeta globals que Metro fornece nativamente mas webpack não:
+      //   __DEV__  → true em development, false em production (modo webpack)
+      // Sem isto, qualquer `if (__DEV__) ...` ou referência a __DEV__
+      // quebra em runtime com "ReferenceError: __DEV__ is not defined".
+      new webpack.DefinePlugin({
+        __DEV__: JSON.stringify(!isProd),
+        'process.env.NODE_ENV': JSON.stringify(isProd ? 'production' : 'development'),
+      }),
       new HtmlWebpackPlugin({
         template: path.resolve(__dirname, 'index.html'),
         inject: 'body',
