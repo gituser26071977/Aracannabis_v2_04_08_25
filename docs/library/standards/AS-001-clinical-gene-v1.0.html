@@ -1,0 +1,1541 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AS-001 — AraOS Standard 001: Clinical Gene Standard</title>
+<link rel="stylesheet" href="../stylesheets/araos.css">
+</head>
+<body>
+<nav id="TOC" role="doc-toc" aria-label="Sumário">
+<div class="toc">
+<ul>
+<li><a href="#fontes-normativas-obrigatorias">Fontes Normativas Obrigatórias</a></li>
+<li><a href="#prefacio">Prefácio</a></li>
+<li><a href="#design-goals-objetivos-de-design">Design Goals (Objetivos de Design)</a></li>
+<li><a href="#non-goals-fora-do-escopo">Non-Goals (Fora do Escopo)</a></li>
+<li><a href="#formal-axioms-axiomas-formais">Formal Axioms (Axiomas Formais)</a><ul>
+<li><a href="#axiom-1-uniqueness-of-function">Axiom 1 — Uniqueness of Function</a></li>
+<li><a href="#axiom-2-semantic-stability">Axiom 2 — Semantic Stability</a></li>
+<li><a href="#REDACTED">Axiom 3 — Event-Expression Decoupling</a></li>
+<li><a href="#axiom-4-canonical-representation">Axiom 4 — Canonical Representation</a></li>
+<li><a href="#REDACTED">Axiom 5 — Interpretation as Projection</a></li>
+<li><a href="#REDACTED">Axiom 6 — Identity is Stable, Context Modulates</a></li>
+<li><a href="#axiom-7-replay-idempotency">Axiom 7 — Replay Idempotency</a></li>
+<li><a href="#axiom-8-evidence-preservation">Axiom 8 — Evidence Preservation</a></li>
+<li><a href="#axiom-9-hypothesis-coexistence">Axiom 9 — Hypothesis Coexistence</a></li>
+<li><a href="#axiom-10-versioned-ontology">Axiom 10 — Versioned Ontology</a></li>
+</ul>
+</li>
+<li><a href="#1-escopo">1. Escopo</a></li>
+<li><a href="#2-referencias-normativas">2. Referências Normativas</a></li>
+<li><a href="#3-termos-e-definicoes">3. Termos e Definições</a><ul>
+<li><a href="#31-clinical-gene">3.1 Clinical Gene</a></li>
+<li><a href="#32-clinical-genome">3.2 Clinical Genome</a></li>
+<li><a href="#33-clinical-expression">3.3 Clinical Expression</a></li>
+<li><a href="#34-clinical-function">3.4 Clinical Function</a></li>
+<li><a href="#35-clinical-context">3.5 Clinical Context</a></li>
+<li><a href="#36-clinical-event">3.6 Clinical Event</a></li>
+<li><a href="#37-evidence">3.7 Evidence</a></li>
+<li><a href="#38-clinical-hypothesis">3.8 Clinical Hypothesis</a></li>
+<li><a href="#39-clinical-interpretation">3.9 Clinical Interpretation</a></li>
+<li><a href="#310-registry-version">3.10 Registry Version</a></li>
+<li><a href="#311-ubiquitous-language">3.11 Ubiquitous Language</a></li>
+</ul>
+</li>
+<li><a href="#REDACTED">4. Modelo Conceitual do Clinical Gene</a><ul>
+<li><a href="#41-principio-fundamental">4.1 Princípio Fundamental</a></li>
+<li><a href="#42-estabilidade-semantica">4.2 Estabilidade Semântica</a></li>
+<li><a href="#43-granularidade">4.3 Granularidade</a></li>
+<li><a href="#44-representacao-canonica">4.4 Representação Canônica</a></li>
+</ul>
+</li>
+<li><a href="#5-identidade-do-clinical-gene">5. Identidade do Clinical Gene</a><ul>
+<li><a href="#51-composicao-da-identidade">5.1 Composição da Identidade</a></li>
+<li><a href="#REDACTED">5.2 Catálogo Fechado: Clinical Gene Registry</a></li>
+<li><a href="#REDACTED">5.3 Capability é Terminologia Legada</a></li>
+</ul>
+</li>
+<li><a href="#REDACTED">6. Composição Interna do Clinical Gene</a><ul>
+<li><a href="#61-clinical-expression">6.1 Clinical Expression</a></li>
+<li><a href="#62-clinical-trajectory">6.2 Clinical Trajectory</a></li>
+<li><a href="#63-history">6.3 History</a></li>
+<li><a href="#64-contextdependencies">6.4 ContextDependencies</a></li>
+<li><a href="#65-evidence">6.5 Evidence</a></li>
+<li><a href="#66-confidence">6.6 Confidence</a></li>
+<li><a href="#67-hypotheses">6.7 Hypotheses</a></li>
+<li><a href="#68-relationships">6.8 Relationships</a></li>
+<li><a href="#69-metadata">6.9 Metadata</a></li>
+<li><a href="#610-resumo-da-composicao">6.10 Resumo da Composição</a></li>
+</ul>
+</li>
+<li><a href="#7-principios-de-comportamento">7. Princípios de Comportamento</a><ul>
+<li><a href="#REDACTED">7.1 Eventos Modificam Expressões, não Genes</a></li>
+<li><a href="#72-estabilidade-do-conhecimento">7.2 Estabilidade do Conhecimento</a></li>
+<li><a href="#73-integracao-de-evidencias">7.3 Integração de Evidências</a></li>
+<li><a href="#74-continuidade-longitudinal">7.4 Continuidade Longitudinal</a></li>
+<li><a href="#75-explainability-obrigatoria">7.5 Explainability Obrigatória</a></li>
+<li><a href="#76-independencia-de-hipoteses">7.6 Independência de Hipóteses</a></li>
+<li><a href="#77-idempotencia-de-replay">7.7 Idempotência de Replay</a></li>
+</ul>
+</li>
+<li><a href="#REDACTED">8. Versionamento do Clinical Gene Registry</a><ul>
+<li><a href="#REDACTED">8.1 Princípio do Versionamento Explícito</a></li>
+<li><a href="#82-formato-semantico">8.2 Formato Semântico</a></li>
+<li><a href="#83-versao-vigente">8.3 Versão Vigente</a></li>
+<li><a href="#84-persistencia-da-versao">8.4 Persistência da Versão</a></li>
+</ul>
+</li>
+<li><a href="#9-multi-tenancy">9. Multi-Tenancy</a></li>
+<li><a href="#10-requisitos-de-persistencia">10. Requisitos de Persistência</a></li>
+<li><a href="#11-conformidade">11. Conformidade</a><ul>
+<li><a href="#REDACTED">11.0 Compliance Levels (Níveis de Conformidade)</a></li>
+<li><a href="#111-declaracao-de-conformidade">11.1 Declaração de Conformidade</a></li>
+<li><a href="#112-processo-de-mudanca">11.2 Processo de Mudança</a></li>
+<li><a href="#113-matriz-de-conformidade-resumo">11.3 Matriz de Conformidade (Resumo)</a></li>
+</ul>
+</li>
+<li><a href="#12-conformidade-com-a-constituicao">12. Conformidade com a Constituição</a></li>
+<li><a href="#REDACTED">Apêndice A — Mapeamento para Fontes Normativas</a></li>
+<li><a href="#REDACTED">Apêndice B — Clinical Gene Registry v1.0 (Canônico)</a></li>
+<li><a href="#REDACTED">Apêndice C — Glossário de Referência Rápida</a></li>
+<li><a href="#apendice-d-historico-de-versoes">Apêndice D — Histórico de Versões</a></li>
+<li><a href="#apendice-e-evolution-roadmap">Apêndice E — Evolution Roadmap</a><ul>
+<li><a href="#e1-sequencia-canonica">E.1 Sequência Canônica</a></li>
+<li><a href="#e2-compatibilidade-direcional">E.2 Compatibilidade Direcional</a></li>
+<li><a href="#e3-mapa-de-acoplamento">E.3 Mapa de Acoplamento</a></li>
+<li><a href="#e4-marcos-historicos-do-roadmap">E.4 Marcos Históricos do Roadmap</a></li>
+</ul>
+</li>
+<li><a href="#aviso-final">Aviso Final</a></li>
+</ul>
+</div>
+
+</nav>
+<h1 id="REDACTED">AS-001 — AraOS Standard 001: Clinical Gene Standard</h1>
+<blockquote>
+<p><strong>Status:</strong> Aceito
+<strong>Versão:</strong> 1.0
+<strong>Data:</strong> 2026-07-17
+<strong>Tipo:</strong> AraOS Standard (Normativo)
+<strong>Autoria:</strong> AraOS Architecture
+<strong>Substitui:</strong> nenhum documento (primeira emissão)</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Identificador</strong></td>
+<td>AS-001</td>
+</tr>
+<tr>
+<td><strong>Título</strong></td>
+<td>Clinical Gene Standard</td>
+</tr>
+<tr>
+<td><strong>Categoria</strong></td>
+<td>Clinical Knowledge Representation</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td>Normative</td>
+</tr>
+<tr>
+<td><strong>Maturity</strong></td>
+<td>Stable</td>
+</tr>
+<tr>
+<td><strong>Versão</strong></td>
+<td>1.0</td>
+</tr>
+<tr>
+<td><strong>Data de emissão</strong></td>
+<td>2026-07-17</td>
+</tr>
+<tr>
+<td><strong>Próxima revisão prevista</strong></td>
+<td>quando AS-002 atingir Reference Implementation</td>
+</tr>
+<tr>
+<td><strong>Norma superior</strong></td>
+<td>Constituição do AraOS v1.0 (Lex AraOS)</td>
+</tr>
+<tr>
+<td><strong>ADR governante</strong></td>
+<td>ADR-0005 (ACCEPTED)</td>
+</tr>
+<tr>
+<td><strong>Paper governante</strong></td>
+<td>Paper III (Clinical Genome)</td>
+</tr>
+<tr>
+<td><strong>Persistent Identifier</strong></td>
+<td><code>urn:araos:standard:001:1.0</code></td>
+</tr>
+<tr>
+<td><strong>Estado editorial</strong></td>
+<td><strong>Verified</strong> (Draft → Technical Review → Scientific Review → Accepted → Published → Reference Implementation → Verified)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="fontes-normativas-obrigatorias">Fontes Normativas Obrigatórias</h2>
+<p>Este AraOS Standard é derivado e materializa as seguintes fontes:</p>
+<table>
+<thead>
+<tr>
+<th>Fonte</th>
+<th>Status</th>
+<th>Papel</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Manifesto do AraOS</strong></td>
+<td>Manifesto v0.1</td>
+<td>Princípio fundacional</td>
+</tr>
+<tr>
+<td><strong>Constituição do AraOS (Lex AraOS)</strong></td>
+<td>Constituição v1.0, 17/07/2026</td>
+<td>Lei suprema do domínio</td>
+</tr>
+<tr>
+<td><strong>Paper II — The Nature of Clinical Knowledge</strong></td>
+<td>Paper II</td>
+<td>Distinção informação × conhecimento</td>
+</tr>
+<tr>
+<td><strong>Paper III — Clinical Genome</strong> (referenciado em Papers IV–VI)</td>
+<td>Paper III</td>
+<td>Teoria do Genoma Clínico</td>
+</tr>
+<tr>
+<td><strong>Paper IV — A Teoria da Expressão Clínica</strong></td>
+<td>Paper IV</td>
+<td>Dinâmica do Gene</td>
+</tr>
+<tr>
+<td><strong>Paper V — A Teoria da Inferência Clínica</strong></td>
+<td>Paper V</td>
+<td>Atualização por evidências</td>
+</tr>
+<tr>
+<td><strong>Paper VI — A Teoria da Interpretação Clínica</strong></td>
+<td>Paper VI</td>
+<td>Interpretação do Gene</td>
+</tr>
+<tr>
+<td><strong>ADR-0005 — Sprint 4.3 Clinical Genome Engine</strong></td>
+<td>ADR-0005 (ACCEPTED)</td>
+<td>Decisão arquitetural canônica</td>
+</tr>
+</tbody>
+</table>
+<p>Em caso de conflito, prevalece a <strong>Constituição do AraOS</strong> (Lex AraOS).
+Em caso de ambiguidade, prevalece a redação do ADR-0005.</p>
+<hr />
+<h2 id="prefacio">Prefácio</h2>
+<p>O AraOS (Knowledge Infrastructure for Clinical Reasoning) é uma
+infraestrutura computacional para <strong>representação, evolução,
+inferência e interpretação do conhecimento clínico</strong>.</p>
+<p>A unidade fundamental dessa representação é o <strong>Clinical Gene</strong> —
+conceito central introduzido pelo Paper III e ratificado pelo Artigo 5
+da Constituição do AraOS.</p>
+<p>Este documento (<strong>AS-001</strong>) é a primeira especificação normativa do
+AraOS. Ele define, com rigor comparável a uma RFC ou norma ISO, o
+<strong>contrato conceitual, semântico e computacional</strong> que toda
+implementação do Clinical Gene deve observar.</p>
+<p>Nenhuma linha de código relacionada ao Clinical Gene é canônica se
+desrespeitar este Standard.</p>
+<hr />
+<h2 id="design-goals-objetivos-de-design">Design Goals (Objetivos de Design)</h2>
+<p>Este Standard foi concebido para satisfazer os seguintes objetivos
+de design, alinhados ao Manifesto do AraOS e à Constituição:</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Goal</th>
+<th>Materializa</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>Semantic Stability</strong> — Genes mantêm identidade ao longo do tempo.</td>
+<td>Paper III §3, Constituição Art. 5</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>Longitudinal Representation</strong> — toda observação clínica é integrada em trajetória temporal.</td>
+<td>Paper II Cap. 3, Constituição Art. 8</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>Explainability</strong> — toda alteração significativa produz explicação rastreável.</td>
+<td>Constituição Art. 9</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>Scientific Reproducibility</strong> — estado reconstruível bit-identical a partir de eventos.</td>
+<td>ADR-0001, Constituição Art. 7</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>Computational Traceability</strong> — toda mutação é registrada com proveniência.</td>
+<td>ADR-0001, Constituição Art. 7</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>Multi-tenancy</strong> — isolamento estrito por tenant sem vazamento.</td>
+<td>Constituição Art. 1</td>
+</tr>
+<tr>
+<td>7</td>
+<td><strong>Version Compatibility</strong> — múltiplas versões do Registry coexistem.</td>
+<td>Constituição Art. 16</td>
+</tr>
+<tr>
+<td>8</td>
+<td><strong>Incremental Evolution</strong> — adições futuras preservam compatibilidade.</td>
+<td>Constituição Art. 16, Art. 19</td>
+</tr>
+<tr>
+<td>9</td>
+<td><strong>AI Compatibility</strong> — Gene state é interpretável por sistemas de IA sem substituir o julgamento clínico.</td>
+<td>Constituição Art. 17</td>
+</tr>
+<tr>
+<td>10</td>
+<td><strong>Knowledge Graph Compatibility</strong> — Relationships nasce KG-ready.</td>
+<td>Paper III §5, ADR-0005</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>NOTA</strong> — Implementações <strong>should</strong> explicitar, em sua declaração
+de conformidade, quais Design Goals foram atendidos por quais
+requisitos (§11.3) e por quais decisões arquiteturais (ADRs
+derivados).</p>
+</blockquote>
+<hr />
+<h2 id="non-goals-fora-do-escopo">Non-Goals (Fora do Escopo)</h2>
+<p>Este Standard <strong>deliberadamente não define</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Item</th>
+<th>Razão</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>Algoritmos de inferência clínica</strong></td>
+<td>definidos no AS-004 (Clinical Inference).</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>Regras de diagnóstico</strong></td>
+<td>proibidas constitucionalmente (Art. 17). IA nunca diagnostica.</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>Camada de apresentação (UI)</strong></td>
+<td>decisão arquitetural fora do escopo.</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>Storage engine específico</strong></td>
+<td>definido pelo ADR-0001 (Event Store) e livre escolha de projeção.</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>Protocolo de serialização</strong></td>
+<td>responsabilidade do transport layer (não canônica).</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>Schema SQL</strong></td>
+<td>responsabilidade das migrations; AS-001 exige apenas persistência append-only e rebuildable.</td>
+</tr>
+<tr>
+<td>7</td>
+<td><strong>Modelos de machine learning</strong></td>
+<td>proibidos constitucionalmente como entrada diagnóstica (Art. 17); ML só como contrato (Sprint 4.5).</td>
+</tr>
+<tr>
+<td>8</td>
+<td><strong>Contratos de API</strong></td>
+<td>definidos em blueprints Flask; AS-001 fixa apenas o <strong>domínio</strong>.</td>
+</tr>
+<tr>
+<td>9</td>
+<td><strong>Critérios de interpretação clínica</strong></td>
+<td>definidos no AS-005 (Clinical Interpretation).</td>
+</tr>
+<tr>
+<td>10</td>
+<td><strong>Regras de decisão clínica automatizada</strong></td>
+<td>proibidas — toda decisão exige confirmação humana.</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>NOTA</strong> — Toda interpretação futura deste Standard <strong>shall not</strong>
+estender seu escopo a itens desta lista sem revisão explícita em
+ADR, seguida de nova versão SemVer major deste AS.</p>
+</blockquote>
+<hr />
+<h2 id="formal-axioms-axiomas-formais">Formal Axioms (Axiomas Formais)</h2>
+<p>Os axiomas a seguir fundamentam o Clinical Gene como conceito
+canônico. Toda implementação <strong>shall</strong> preservar sua validade.</p>
+<h3 id="axiom-1-uniqueness-of-function">Axiom 1 — Uniqueness of Function</h3>
+<blockquote>
+<p><strong>Every Clinical Gene represents exactly one Fundamental Clinical
+Function.</strong></p>
+<p>A granularidade de um Gene é determinada pelo Gene Registry v1.0
+(Apêndice B). Nenhum Gene pode representar duas funções
+fundamentais simultaneamente.</p>
+</blockquote>
+<h3 id="axiom-2-semantic-stability">Axiom 2 — Semantic Stability</h3>
+<blockquote>
+<p><strong>A Clinical Gene preserves semantic identity throughout its
+lifecycle.</strong></p>
+<p><code>clinical_gene_id</code> <strong>shall not</strong> mudar em resposta a eventos
+clínicos. A evolução do conhecimento que o Gene representa é
+expressa exclusivamente por sua Clinical Expression (AS-002) e
+documentada em sua Trajectory.</p>
+</blockquote>
+<h3 id="REDACTED">Axiom 3 — Event-Expression Decoupling</h3>
+<blockquote>
+<p><strong>Clinical Events never modify Clinical Genes.</strong>
+<strong>Clinical Events modify Clinical Expressions.</strong></p>
+<p>Toda mutação observável do Gene ocorre via Expression.
+Identidade, composição estrutural e relações de identidade do Gene
+<strong>shall not</strong> ser afetadas por eventos.</p>
+</blockquote>
+<h3 id="axiom-4-canonical-representation">Axiom 4 — Canonical Representation</h3>
+<blockquote>
+<p><strong>The Clinical Genome is the canonical representation of clinical
+knowledge for a patient.</strong></p>
+<p>O Genome é reconstruído a partir do Event Store e do conjunto de
+Genes observados. Não existe estado canônico fora do Genome.</p>
+</blockquote>
+<h3 id="REDACTED">Axiom 5 — Interpretation as Projection</h3>
+<blockquote>
+<p><strong>Interpretations are projections. Never canonical state.</strong></p>
+<p>Clinical Interpretation, Outcome View e demais leituras são
+derivados do estado do Gene. Nenhuma implementação <strong>shall</strong>
+tratar interpretação como fonte primária de verdade.</p>
+</blockquote>
+<h3 id="REDACTED">Axiom 6 — Identity is Stable, Context Modulates</h3>
+<blockquote>
+<p><strong>A Clinical Gene is semantically identical across patients and
+contexts; only its Clinical Expression is modulated.</strong></p>
+<p>Contexto clínico modula Expression, Hypotheses e Confidence, mas
+<strong>shall not</strong> alterar a identidade do Gene.</p>
+</blockquote>
+<h3 id="axiom-7-replay-idempotency">Axiom 7 — Replay Idempotency</h3>
+<blockquote>
+<p><strong>The state of any Clinical Gene is bit-identical regardless of
+replay order or count.</strong></p>
+<p>Reconstrução a partir do Event Store é determinística e
+idempotente. Esta propriedade <strong>shall</strong> ser testada por suite de
+conformidade (replay bit-identical, 1x / 2x / 50x / 100x, ordem
+aleatória).</p>
+</blockquote>
+<h3 id="axiom-8-evidence-preservation">Axiom 8 — Evidence Preservation</h3>
+<blockquote>
+<p><strong>Evidence that contributed to a Clinical Expression is preserved
+for the lifetime of the Expression.</strong></p>
+<p>A lista de evidências que sustentam uma Expression <strong>shall not</strong>
+ser reduzida após sua escrita. Novas evidências agregam; antigas
+permanecem como histórico causal.</p>
+</blockquote>
+<h3 id="axiom-9-hypothesis-coexistence">Axiom 9 — Hypothesis Coexistence</h3>
+<blockquote>
+<p><strong>Multiple Hypotheses may coexist for the same Clinical Gene.</strong></p>
+<p>Nenhuma implementação <strong>shall</strong> impor exclusividade automática
+entre hipóteses. Resolução <strong>shall</strong> ocorrer por novas evidências,
+nunca por sobrescrita direta.</p>
+</blockquote>
+<h3 id="axiom-10-versioned-ontology">Axiom 10 — Versioned Ontology</h3>
+<blockquote>
+<p><strong>Every Clinical Gene is bound to a Registry Version at creation
+time and remains so bound.</strong></p>
+<p>O Registry é versionado (SemVer). Genes carregam a versão sob a
+qual foram criados. Mudanças incompatíveis no Registry
+<strong>shall</strong> produzir versão major; Genes antigos permanecem
+interpretáveis.</p>
+<p><strong>NOTA</strong> — Axiomas são <strong>invariantes lógicas</strong>. Uma implementação
+que viole qualquer axioma <strong>shall</strong> ser declarada não-conforme,
+independentemente do atendimento a requisitos sintáticos.</p>
+</blockquote>
+<hr />
+<h2 id="1-escopo">1. Escopo</h2>
+<p>Este AraOS Standard define:</p>
+<ol>
+<li>O conceito normativo de <strong>Clinical Gene</strong> e seus atributos canônicos.</li>
+<li>A composição interna do Gene (Expression, Trajectory, History,
+   ContextDependencies, Evidence, Confidence, Hypotheses, Relationships,
+   Metadata).</li>
+<li>Os requisitos de identidade, versionamento e persistência.</li>
+<li>As invariantes que toda representação computacional do Gene deve
+   respeitar.</li>
+<li>Os critérios de conformidade para implementações que declarem
+   aderência a este Standard.</li>
+</ol>
+<p><strong>Fora do escopo</strong> (tratados em outros AraOS Standards):</p>
+<ul>
+<li>Estrutura interna da Clinical Expression → <strong>AS-002</strong>.</li>
+<li>Composição do Clinical Genome → <strong>AS-003</strong>.</li>
+<li>Processo de Inferência Clínica → <strong>AS-004</strong>.</li>
+<li>Clinical Interpretation → <strong>AS-005</strong>.</li>
+<li>Clinical Context (alimentador) → ADR-0003 / Clinical Context Engine.</li>
+</ul>
+<hr />
+<h2 id="2-referencias-normativas">2. Referências Normativas</h2>
+<p>Os documentos a seguir são indispensáveis para a aplicação deste
+Standard. Para referências datadas, aplica-se somente a edição citada.</p>
+<ul>
+<li><strong>Constituição do AraOS</strong>, versão 1.0, 17 de julho de 2026.</li>
+<li><strong>Manifesto do AraOS</strong>, versão 0.1 — A Fundação.</li>
+<li><strong>Paper II — The Nature of Clinical Knowledge</strong>.</li>
+<li><strong>Paper III — Clinical Genome</strong> (referência conceitual).</li>
+<li><strong>Paper IV — A Teoria da Expressão Clínica</strong>.</li>
+<li><strong>Paper V — A Teoria da Inferência Clínica</strong>.</li>
+<li><strong>Paper VI — A Teoria da Interpretação Clínica</strong>.</li>
+<li><strong>ADR-0005 — Clinical Genome Engine (Sprint 4.3)</strong>, status ACCEPTED.</li>
+</ul>
+<hr />
+<h2 id="3-termos-e-definicoes">3. Termos e Definições</h2>
+<p>Para os fins deste Standard, aplicam-se os termos e definições a
+seguir. Termos em <strong>negrito</strong> estão definidos neste Standard; termos
+em <em>itálico</em> remetem a definições da Constituição do AraOS.</p>
+<h3 id="31-clinical-gene">3.1 Clinical Gene</h3>
+<p>Unidade fundamental do conhecimento clínico no AraOS, representando
+uma <strong>Função Clínica Fundamental</strong> cuja expressão pode variar ao longo
+do tempo em resposta a eventos clínicos, preservando contexto,
+evidências, temporalidade, rastreabilidade e explicabilidade.</p>
+<blockquote>
+<p><strong>NOTA 1</strong> — Um Clinical Gene <strong>não</strong> representa qualidade,
+gravidade, intensidade ou desfecho. Esses pertencem à Clinical
+Expression (AS-002).</p>
+<p><strong>NOTA 2</strong> — O Clinical Gene é semanticamente estável; identidade
+não muda. O que evolui é sua Expression.</p>
+<p><strong>NOTA 3</strong> — Um Clinical Gene nunca é canonicamente criado ou
+destruído por um evento; ele passa a ser <strong>observado</strong> ou
+<strong>deixar de ser observado</strong>.</p>
+</blockquote>
+<h3 id="32-clinical-genome">3.2 Clinical Genome</h3>
+<p>Estado coletivo e canônico do conhecimento clínico de um paciente,
+representado pelo conjunto organizado de seus Clinical Genes e suas
+respectivas Expressions.</p>
+<blockquote>
+<p><strong>NOTA</strong> — Genome é conceito arquitetural derivado. Sua
+especificação detalhada pertence ao AS-003.</p>
+</blockquote>
+<h3 id="33-clinical-expression">3.3 Clinical Expression</h3>
+<p>Estado computacional observável de um Clinical Gene em um determinado
+instante temporal e contextual, inferido a partir da integração de
+múltiplas evidências clínicas.</p>
+<blockquote>
+<p><strong>NOTA</strong> — A composição interna da Clinical Expression é definida
+pelo AS-002.</p>
+</blockquote>
+<h3 id="34-clinical-function">3.4 Clinical Function</h3>
+<p>Função semântica à qual um Clinical Gene pode estar associado,
+utilizada para classificação, busca e correlação clínica.</p>
+<blockquote>
+<p><strong>NOTA 1</strong> — Substitui o termo legado <em>capability</em> (singular).</p>
+<p><strong>NOTA 2</strong> — Clinical Function <strong>não</strong> é identidade do Gene;
+múltiplos Genes podem partilhar funções.</p>
+</blockquote>
+<h3 id="35-clinical-context">3.5 Clinical Context</h3>
+<p>Contexto clínico que modula a interpretação de um ou mais Genes
+(medicação, sono, fase escolar, transição familiar, etc.).
+Definido em detalhe no ADR-0003 (Clinical Context Engine).</p>
+<h3 id="36-clinical-event">3.6 Clinical Event</h3>
+<p>Ocorrência clínica observada (consulta, exame, intervenção, relato,
+medição, etc.) que produz <strong>evidências</strong> capazes de modificar
+Expressões de Genes.</p>
+<h3 id="37-evidence">3.7 Evidence</h3>
+<p>Item atômico de informação clínica que sustenta uma afirmação sobre
+o estado de um Gene.</p>
+<h3 id="38-clinical-hypothesis">3.8 Clinical Hypothesis</h3>
+<p>Interpretação alternativa do estado de um Gene, com peso
+probabilístico explícito.</p>
+<h3 id="39-clinical-interpretation">3.9 Clinical Interpretation</h3>
+<p>Leitura do estado funcional atual de um Gene, resultante da
+integração de suas Expressões, Hipóteses e contexto. Especificada
+pelo AS-005.</p>
+<h3 id="310-registry-version">3.10 Registry Version</h3>
+<p>Identificador SemVer que carateriza um snapshot do Clinical Gene
+Registry em um determinado momento. Permite reprodutibilidade
+científica e compatibilidade entre estudos.</p>
+<h3 id="311-ubiquitous-language">3.11 Ubiquitous Language</h3>
+<p>Linguagem canônica do AraOS, ratificada pela Constituição (Artigo 4)
+e consolidada no ADR-0005.</p>
+<hr />
+<h2 id="REDACTED">4. Modelo Conceitual do Clinical Gene</h2>
+<h3 id="41-principio-fundamental">4.1 Princípio Fundamental</h3>
+<blockquote>
+<p><strong>O Clinical Gene é a unidade fundamental do conhecimento clínico
+no AraOS.</strong></p>
+<p>Toda representação computacional do conhecimento clínico deve
+<strong>partir</strong> do Clinical Gene. (Constituição, Artigo 5.)</p>
+</blockquote>
+<h3 id="42-estabilidade-semantica">4.2 Estabilidade Semântica</h3>
+<p>Um Clinical Gene é <strong>semanticamente estável</strong>: sua identidade
+(<code>clinical_gene_id</code>) não se altera em resposta a eventos clínicos.
+A variação temporal do conhecimento que ele representa é expressa
+por meio de sua <strong>Clinical Expression</strong> (AS-002) e documentada em
+sua <strong>Trajectory</strong>.</p>
+<blockquote>
+<p><strong>Requisito 4.2.1</strong> — Uma implementação <strong>shall not</strong> permitir que
+um Clinical Gene mude de identidade (<code>clinical_gene_id</code>) em
+resposta a eventos.</p>
+</blockquote>
+<h3 id="43-granularidade">4.3 Granularidade</h3>
+<p>Um Clinical Gene representa uma <strong>única</strong> Função Clínica Fundamental.
+A granularidade é determinada pelo <strong>Clinical Gene Registry v1.0</strong>
+(Apêndice B).</p>
+<blockquote>
+<p><strong>Requisito 4.3.1</strong> — Cada Clinical Gene <strong>shall</strong> estar associado
+a exatamente uma entrada do Clinical Gene Registry.</p>
+</blockquote>
+<h3 id="44-representacao-canonica">4.4 Representação Canônica</h3>
+<p>A representação canônica do conhecimento clínico de um paciente é o
+seu <strong>Clinical Genome</strong> — conjunto de Genes observados, com suas
+Expressões, Trajectories e Interpretações.</p>
+<blockquote>
+<p><strong>Requisito 4.4.1</strong> — O Clinical Genome <strong>shall</strong> ser reconstruível
+de forma bit-identical a partir do Event Store (Constituição,
+Artigo 7).</p>
+</blockquote>
+<hr />
+<h2 id="5-identidade-do-clinical-gene">5. Identidade do Clinical Gene</h2>
+<h3 id="51-composicao-da-identidade">5.1 Composição da Identidade</h3>
+<p>A identidade de uma instância de Clinical Gene é a tupla ordenada:</p>
+<pre><code>(tenant_id, patient_id, clinical_gene_id)
+</code></pre>
+<blockquote>
+<p><strong>Requisito 5.1.1</strong> — A identidade <strong>shall</strong> ser única no escopo
+do tenant.</p>
+<p><strong>Requisito 5.1.2</strong> — <code>clinical_gene_id</code> <strong>shall</strong> ser um valor
+pertencente ao <strong>Clinical Gene Registry</strong> vigente no momento da
+criação da instância.</p>
+<p><strong>Requisito 5.1.3</strong> — <code>tenant_id</code> e <code>patient_id</code> <strong>shall</strong> ser
+não-vazios.</p>
+</blockquote>
+<h3 id="REDACTED">5.2 Catálogo Fechado: Clinical Gene Registry</h3>
+<p>O conjunto de <code>clinical_gene_id</code> válidos é definido pelo
+<strong>Clinical Gene Registry</strong> — vocabulário <strong>fechado</strong> e
+<strong>versionado</strong>.</p>
+<blockquote>
+<p><strong>Requisito 5.2.1</strong> — O Registry <strong>shall</strong> ser o único produtor
+legítimo de <code>clinical_gene_id</code>.</p>
+<p><strong>Requisito 5.2.2</strong> — Toda instância de Gene <strong>shall</strong> referenciar
+a versão do Registry sob a qual foi criada.</p>
+</blockquote>
+<h3 id="REDACTED">5.3 Capability é Terminologia Legada</h3>
+<blockquote>
+<p><strong>Requisito 5.3.1</strong> — Implementações <strong>shall not</strong> tratar
+<em>capability</em> como identidade do Gene. <em>Capability</em> pode
+aparecer apenas como sinônimo histórico de <strong>Clinical Function</strong>
+(Artigo 13 da Constituição).</p>
+</blockquote>
+<hr />
+<h2 id="REDACTED">6. Composição Interna do Clinical Gene</h2>
+<p>Um Clinical Gene é composto por <strong>nove elementos canônicos</strong>, todos
+obrigatórios:</p>
+<h3 id="61-clinical-expression">6.1 Clinical Expression</h3>
+<p>Representa o estado observável atual do Gene.</p>
+<blockquote>
+<p><strong>Nota editorial (2026-07-17)</strong> — This Standard intentionally does
+not define the internal structure of Clinical Expression.
+Clinical Expression is specified by AS-002 and shall be treated as
+a normative Value Object. Ver
+<code>docs/standards/preparation/as002-design-principles.md</code> para os
+princípios arquiteturais que orientam o AS-002.</p>
+<p>No escopo do AS-001, a Clinical Expression é tratada <strong>apenas
+como um componente do Gene</strong> — sua estrutura interna é delegada
+integralmente ao AS-002.</p>
+<p><strong>Requisito 6.1.1</strong> — A Composition interna da Expression é
+especificada pelo <strong>AS-002</strong> e <strong>shall</strong> ser respeitada integralmente.</p>
+<p><strong>Requisito 6.1.2</strong> — O Gene <strong>shall</strong> sempre portar uma Expression
+atual, mesmo que inicializada com valores nulos explícitos.</p>
+</blockquote>
+<h3 id="62-clinical-trajectory">6.2 Clinical Trajectory</h3>
+<p>Série histórica bitemporal da Expression, preservando:</p>
+<ul>
+<li><code>valid_time</code> — quando a mudança ocorreu clinicamente.</li>
+<li><code>transaction_time</code> — quando o sistema registrou a mudança.</li>
+<li><code>expression_snapshot</code> — estado da Expression naquele ponto.</li>
+<li><code>contributing_event_ids</code> — proveniência.</li>
+</ul>
+<blockquote>
+<p><strong>Requisito 6.2.1</strong> — A Trajectory <strong>shall</strong> ser <strong>append-only</strong>.
+Nenhuma operação <strong>may</strong> remover, sobrescrever ou reordenar pontos
+históricos.</p>
+<p><strong>Requisito 6.2.2</strong> — A ordenação natural da Trajectory é por
+<code>valid_time</code> ascendente.</p>
+<p><strong>Requisito 6.2.3</strong> — Em caso de recebimento de evento
+desordenado, a inserção <strong>shall</strong> preservar a ordem por
+<code>valid_time</code>.</p>
+</blockquote>
+<h3 id="63-history">6.3 History</h3>
+<p>Audit chain canônico do Gene, contendo todas as mutações
+significativas (criação, atualização, transição de Expression, novo
+Relationship, nova Hypothesis).</p>
+<blockquote>
+<p><strong>Requisito 6.3.1</strong> — History <strong>shall</strong> ser append-only.</p>
+<p><strong>Requisito 6.3.2</strong> — Cada entrada <strong>shall</strong> referenciar um
+<code>event_id</code> único e preservar o <code>sequence</code> (cadeia canônica por
+tenant — ADR-0001).</p>
+<p><strong>Requisito 6.3.3</strong> — Toda mutação no Gene <strong>shall</strong> produzir
+ao menos uma entrada em History.</p>
+</blockquote>
+<h3 id="64-contextdependencies">6.4 ContextDependencies</h3>
+<p>Lista de identificadores de <strong>Clinical Context</strong> que afetam ou
+modulam a interpretação deste Gene.</p>
+<blockquote>
+<p><strong>Requisito 6.4.1</strong> — ContextDependencies <strong>shall</strong> referenciar
+apenas Contextos válidos no escopo <code>(tenant_id, patient_id)</code>.</p>
+<p><strong>Requisito 6.4.2</strong> — A remoção de um Clinical Context <strong>shall</strong>
+disparar a reavaliação da Expression (regra geral de inferência,
+AS-004).</p>
+</blockquote>
+<h3 id="65-evidence">6.5 Evidence</h3>
+<p>Lista de <code>event_id</code> que fundamentam o estado atual da Expression.</p>
+<blockquote>
+<p><strong>Requisito 6.5.1</strong> — Toda alteração de Expression <strong>shall</strong>
+preservar a referência às evidências que a produziram.</p>
+<p><strong>Requisito 6.5.2</strong> — Evidence <strong>shall not</strong> ser reduzida após a
+alteração (mesmo que novos eventos enfraqueçam a evidência
+original).</p>
+</blockquote>
+<h3 id="66-confidence">6.6 Confidence</h3>
+<p>Grau de confiança agregado da Expression atual.</p>
+<blockquote>
+<p><strong>Requisito 6.6.1</strong> — Confidence <strong>shall</strong> ser um valor decimal
+no intervalo <code>[0.0, 1.0]</code>.</p>
+<p><strong>Requisito 6.6.2</strong> — Confidence <strong>shall</strong> ser sempre explícita.
+Ausência de confiança equivale a <strong>0.0</strong> e <strong>shall</strong> ser
+registrada como tal.</p>
+<p><strong>Requisito 6.6.3</strong> — Confidence <strong>shall</strong> ser <strong>derivada</strong>, não
+primária. Ela é calculada a partir das evidências (Paper V, §6).</p>
+</blockquote>
+<h3 id="67-hypotheses">6.7 Hypotheses</h3>
+<p>Interpretações alternativas concorrentes sobre o estado do Gene.</p>
+<blockquote>
+<p><strong>Requisito 6.7.1</strong> — Cada Hypothesis <strong>shall</strong> possuir
+identificador único, descrição, peso (<code>weight ∈ [0.0, 1.0]</code>),
+lista de supporting events, confiança própria e timestamp de
+criação.</p>
+<p><strong>Requisito 6.7.2</strong> — A soma dos pesos das Hypotheses ativas
+<strong>may</strong> exceder <code>1.0</code> (representando hipóteses concorrentes
+com pesos normalizados pelo motor de inferência).</p>
+<p><strong>Requisito 6.7.3</strong> — Hypotheses <strong>shall</strong> poder coexistir e
+competir. Nenhuma implementação <strong>may</strong> impor exclusividade.</p>
+</blockquote>
+<h3 id="68-relationships">6.8 Relationships</h3>
+<p>Arestas Knowledge-Graph-ready que conectam este Gene a outros Genes.</p>
+<blockquote>
+<p><strong>Requisito 6.8.1</strong> — Cada Relationship <strong>shall</strong> especificar:
+<code>target_gene_id</code>, <code>relationship_type</code>, <code>confidence</code>,
+<code>evidence_event_ids</code>.</p>
+<p><strong>Requisito 6.8.2</strong> — Os tipos de Relationship canônicos
+<strong>shall</strong> ser versionados pelo Registry e <strong>shall</strong> incluir,
+no mínimo: <code>influences</code>, <code>co_occurs_with</code>, <code>precedes</code>,
+<code>antagonizes</code>, <code>amplifies</code>.</p>
+<p><strong>Requisito 6.8.3</strong> — Relationships <strong>shall</strong> respeitar a
+simetria ou direcionalidade declarada por <code>relationship_type</code>.
+Auto-relacionamentos (Gene → Gene) <strong>are permitted</strong> desde que
+justificados pela evidência.</p>
+</blockquote>
+<h3 id="69-metadata">6.9 Metadata</h3>
+<p>Extensões não-canônicas, labels livres, hints de UI, anotações
+operacionais.</p>
+<blockquote>
+<p><strong>Requisito 6.9.1</strong> — Metadata <strong>shall</strong> ser tratada como <strong>não
+canônica</strong>. Operações de inferência <strong>shall not</strong> depender do
+conteúdo de Metadata.</p>
+<p><strong>Requisito 6.9.2</strong> — Metadata <strong>shall</strong> ser imutável a partir
+do momento em que é registrada (atualizações produzem nova
+entrada em History).</p>
+</blockquote>
+<h3 id="610-resumo-da-composicao">6.10 Resumo da Composição</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Componente</th>
+<th>Mutabilidade</th>
+<th>Obrigatório</th>
+<th>Regido por</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Clinical Expression</td>
+<td>Substituível</td>
+<td>Sim</td>
+<td>AS-002</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Trajectory</td>
+<td>Append-only</td>
+<td>Sim</td>
+<td>§6.2</td>
+</tr>
+<tr>
+<td>3</td>
+<td>History</td>
+<td>Append-only</td>
+<td>Sim</td>
+<td>§6.3</td>
+</tr>
+<tr>
+<td>4</td>
+<td>ContextDependencies</td>
+<td>Mutável</td>
+<td>Sim</td>
+<td>§6.4</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Evidence</td>
+<td>Append-only</td>
+<td>Sim</td>
+<td>§6.5</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Confidence</td>
+<td>Derivada</td>
+<td>Sim</td>
+<td>§6.6</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Hypotheses</td>
+<td>Mutável</td>
+<td>Sim</td>
+<td>§6.7</td>
+</tr>
+<tr>
+<td>8</td>
+<td>Relationships</td>
+<td>Mutável</td>
+<td>Sim</td>
+<td>§6.8</td>
+</tr>
+<tr>
+<td>9</td>
+<td>Metadata</td>
+<td>Append-only</td>
+<td>Sim</td>
+<td>§6.9</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="7-principios-de-comportamento">7. Princípios de Comportamento</h2>
+<h3 id="REDACTED">7.1 Eventos Modificam Expressões, não Genes</h3>
+<blockquote>
+<p><strong>Requisito 7.1.1</strong> — Eventos clínicos <strong>shall</strong> modificar
+primariamente a Clinical Expression, e por consequência a
+Confidence, Hypotheses e History do Gene. A identidade do Gene
+<strong>shall not</strong> ser afetada.</p>
+<p>(Paper IV, §4; Constituição Artigo 7)</p>
+</blockquote>
+<h3 id="72-estabilidade-do-conhecimento">7.2 Estabilidade do Conhecimento</h3>
+<blockquote>
+<p><strong>Requisito 7.2.1</strong> — A unidade semântica do Gene <strong>shall</strong> ser
+preservada em toda a evolução temporal do sistema.</p>
+</blockquote>
+<h3 id="73-integracao-de-evidencias">7.3 Integração de Evidências</h3>
+<blockquote>
+<p><strong>Requisito 7.3.1</strong> — A Expression <strong>shall</strong> integrar múltiplas
+evidências. Nenhuma evidência isolada <strong>may</strong> definir a
+Expression final.</p>
+</blockquote>
+<h3 id="74-continuidade-longitudinal">7.4 Continuidade Longitudinal</h3>
+<blockquote>
+<p><strong>Requisito 7.4.1</strong> — A Trajectory <strong>shall</strong> preservar
+continuidade da expressão ao longo do tempo. Descontinuidades
+(gaps) <strong>shall</strong> ser representadas como pontos válidos com
+estado explícito <code>unknown</code>.</p>
+</blockquote>
+<h3 id="75-explainability-obrigatoria">7.5 Explainability Obrigatória</h3>
+<blockquote>
+<p><strong>Requisito 7.5.1</strong> — Toda alteração significativa de uma
+Expression <strong>shall</strong> produzir uma <strong>Explanation</strong> (Sprint 4.1,
+ADR-0001) referenciada por <code>Expression.explanation_reference</code>.</p>
+<p>(Constituição Artigo 9; Paper IV §9)</p>
+</blockquote>
+<h3 id="76-independencia-de-hipoteses">7.6 Independência de Hipóteses</h3>
+<blockquote>
+<p><strong>Requisito 7.6.1</strong> — Hipóteses <strong>shall</strong> poder coexistir.
+Implementações <strong>shall not</strong> impor exclusividade automática.
+Resolução de hipóteses <strong>shall</strong> ocorrer por novas evidências,
+não por sobrescrita direta.</p>
+</blockquote>
+<h3 id="77-idempotencia-de-replay">7.7 Idempotência de Replay</h3>
+<blockquote>
+<p><strong>Requisito 7.7.1</strong> — A reconstrução do Gene a partir do Event
+Store <strong>shall</strong> ser <strong>bit-identical</strong> ao estado atual, qualquer
+que seja a ordem de aplicação dos eventos (processamento
+sequencial) e qualquer que seja o número de aplicações
+(idempotência).</p>
+</blockquote>
+<hr />
+<h2 id="REDACTED">8. Versionamento do Clinical Gene Registry</h2>
+<h3 id="REDACTED">8.1 Princípio do Versionamento Explícito</h3>
+<p>O Clinical Gene Registry é <strong>versionado</strong> para garantir
+rastreabilidade científica, reprodutibilidade e compatibilidade
+entre estudos e versões da plataforma.</p>
+<blockquote>
+<p><strong>Requisito 8.1.1</strong> — Toda referência a um <code>clinical_gene_id</code>
+<strong>shall</strong> carregar implicitamente a versão do Registry sob a
+qual foi criada.</p>
+</blockquote>
+<h3 id="82-formato-semantico">8.2 Formato Semântico</h3>
+<p>O Registry usa <strong>SemVer</strong> simplificado: <code>MAJOR.MINOR</code> (com PATCH
+opcional: <code>MAJOR.MINOR.PATCH</code>).</p>
+<ul>
+<li><strong>MAJOR</strong> incompatível (reorganização conceitual).</li>
+<li><strong>MINOR</strong> aditivo/renomeação retrocompatível.</li>
+<li><strong>PATCH</strong> correções documentacionais.</li>
+</ul>
+<h3 id="83-versao-vigente">8.3 Versão Vigente</h3>
+<p>A versão vigente por este Standard é <strong>Registry v1.0</strong> (Apêndice B).</p>
+<blockquote>
+<p><strong>Requisito 8.3.1</strong> — Versões futuras <strong>shall</strong> coexistir com
+a v1.0. Implementações <strong>shall</strong> preservar a capacidade de
+interpretar Genes criados sob qualquer versão anterior do
+Registry.</p>
+</blockquote>
+<h3 id="84-persistencia-da-versao">8.4 Persistência da Versão</h3>
+<blockquote>
+<p><strong>Requisito 8.4.1</strong> — A versão do Registry <strong>shall</strong> ser
+persistida junto a cada Gene e <strong>shall</strong> ser consultável
+separadamente em tabela de controle
+(<code>clinical_gene_registry_versions</code>).</p>
+<p><strong>Requisito 8.4.2</strong> — A tabela de controle <strong>shall</strong> registrar,
+no mínimo: <code>version</code>, <code>effective_from</code>, <code>gene_ids_json</code>,
+<code>created_by</code>.</p>
+</blockquote>
+<hr />
+<h2 id="9-multi-tenancy">9. Multi-Tenancy</h2>
+<blockquote>
+<p><strong>Requisito 9.1</strong> — Toda instância de Clinical Gene <strong>shall</strong>
+carregar <code>tenant_id</code> explícito.</p>
+<p><strong>Requisito 9.2</strong> — Operações <strong>shall</strong> verificar isolamento por
+tenant antes de qualquer acesso. Fuga de tenant <strong>shall</strong> ser
+registrada como falha de segurança.</p>
+<p><strong>Requisito 9.3</strong> — Identidade <code>(tenant_id, patient_id,
+clinical_gene_id)</code> <strong>shall</strong> ser única no escopo global da
+plataforma.</p>
+</blockquote>
+<hr />
+<h2 id="10-requisitos-de-persistencia">10. Requisitos de Persistência</h2>
+<blockquote>
+<p><strong>Requisito 10.1</strong> — Toda mutação de Gene <strong>shall</strong> ser
+registrada no Event Store antes de ser refletida em qualquer
+projeção (Constituição Artigo 7; ADR-0001).</p>
+<p><strong>Requisito 10.2</strong> — A projeção materializada do Gene <strong>shall</strong>
+ser rebuildable a partir do Event Store.</p>
+<p><strong>Requisito 10.3</strong> — Reconstrução <strong>shall</strong> ser bit-identical
+ao estado atual.</p>
+<p><strong>Requisito 10.4</strong> — Processamento concorrente do mesmo Gene
+<strong>shall</strong> ser resolvido por <code>sequence</code> per-tenant (ADR-0001) e
+<code>processed_events</code>.</p>
+<p><strong>Requisito 10.5</strong> — Indexação mínima obrigatória:
+<code>(tenant_id, patient_id, gene_id)</code> único;
+<code>(tenant_id, patient_id, valid_time)</code> para Trajectory;
+<code>(tenant_id, source_gene_id)</code> para Relationships.</p>
+</blockquote>
+<hr />
+<h2 id="11-conformidade">11. Conformidade</h2>
+<h3 id="REDACTED">11.0 Compliance Levels (Níveis de Conformidade)</h3>
+<p>Uma implementação pode declarar conformidade em <strong>quatro níveis
+cumulativos</strong>, alinhados ao roadmap (Apêndice E):</p>
+<table>
+<thead>
+<tr>
+<th>Nível</th>
+<th>Nome</th>
+<th>Requisitos</th>
+<th>Caso de Uso</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>A</strong></td>
+<td>Gene-Conformant</td>
+<td>Implementa integralmente o <strong>AS-001</strong> (Clinical Gene v1.0).</td>
+<td>Implementações standalone que armazenam apenas Genes.</td>
+</tr>
+<tr>
+<td><strong>B</strong></td>
+<td>Expression-Conformant</td>
+<td><strong>A</strong> + <strong>AS-002</strong> (Clinical Expression v1.0).</td>
+<td>Sistemas que precisam dinâmicas de Expression ao longo do tempo.</td>
+</tr>
+<tr>
+<td><strong>C</strong></td>
+<td>Genome-Conformant</td>
+<td><strong>B</strong> + <strong>AS-003</strong> (Clinical Genome v1.0).</td>
+<td>Sistemas clínicos integrados com representação completa do Genome.</td>
+</tr>
+<tr>
+<td><strong>D</strong></td>
+<td>Full AraOS Standard Compliance</td>
+<td><strong>C</strong> + <strong>AS-004</strong> (Clinical Inference) + <strong>AS-005</strong> (Clinical Interpretation) + <strong>AS-006</strong> (Clinical Context).</td>
+<td>Plataforma AraOS canônica.</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Requisito 11.0.1</strong> — Toda implementação <strong>shall</strong> declarar
+explicitamente o nível de conformidade reivindicado.</p>
+<p><strong>Requisito 11.0.2</strong> — Conformidade em nível <strong>N</strong> <strong>shall</strong>
+implicar conformidade em todos os níveis inferiores.</p>
+<p><strong>Requisito 11.0.3</strong> — Integrações externas <strong>shall</strong> recusar
+declarar conformidade acima do nível que efetivamente
+implementam.</p>
+</blockquote>
+<h3 id="111-declaracao-de-conformidade">11.1 Declaração de Conformidade</h3>
+<p>Uma implementação declara conformidade com este Standard quando:</p>
+<ol>
+<li>Implementa <strong>todas</strong> as invariantes enumeradas neste documento
+   sem exceção.</li>
+<li>Aplica o Registry v1.0 (Apêndice B) integralmente.</li>
+<li>Respeita o Princípio da Coerência (Constituição Artigo 18):
+   toda decisão de modelagem é precedida pela pergunta
+   <em>"Esta decisão fortalece o Clinical Gene como unidade
+   fundamental da representação computacional do conhecimento
+   clínico?"</em>.</li>
+<li>Mantém cobertura de testes ≥ 95% para os componentes<blockquote>
+<p>diretamente relacionados ao Gene.</p>
+</blockquote>
+</li>
+<li>Documenta cada divergência eventual em ADR específico,<blockquote>
+<p>aprovado conforme o processo definido em §11.2.</p>
+</blockquote>
+</li>
+<li>Declara o Compliance Level (§11.0) alcançado.</li>
+</ol>
+<h3 id="112-processo-de-mudanca">11.2 Processo de Mudança</h3>
+<p>Mudanças neste Standard <strong>shall</strong> ser propostas via ADR, seguindo
+a hierarquia:</p>
+<pre><code>Papers → ADR → AS → Implementação
+</code></pre>
+<p>Versões deste AS seguem SemVer:</p>
+<ul>
+<li>Mudança incompatível com a versão anterior → <code>MAJOR+1</code>.</li>
+<li>Adição retrocompatível → <code>MINOR+1</code>.</li>
+<li>Correção editorial ou clarificação → <code>PATCH+1</code>.</li>
+</ul>
+<h3 id="113-matriz-de-conformidade-resumo">11.3 Matriz de Conformidade (Resumo)</h3>
+<table>
+<thead>
+<tr>
+<th>Requisito</th>
+<th>Verificável por</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>4.2.1 (estabilidade identidade)</td>
+<td>Teste de invariante de domínio</td>
+</tr>
+<tr>
+<td>4.3.1 (Registry)</td>
+<td>Teste de loader / enum coverage</td>
+</tr>
+<tr>
+<td>5.1.1–5.1.3 (identidade)</td>
+<td>Teste de chave primária</td>
+</tr>
+<tr>
+<td>5.2.1–5.2.2 (Registry)</td>
+<td>Teste de versionamento</td>
+</tr>
+<tr>
+<td>5.3.1 (sem capability)</td>
+<td>Teste estático de código</td>
+</tr>
+<tr>
+<td>6.2.1 (Trajectory append-only)</td>
+<td>Property-based test</td>
+</tr>
+<tr>
+<td>6.3.1–6.3.3 (History)</td>
+<td>Teste de audit chain</td>
+</tr>
+<tr>
+<td>6.6.1–6.6.3 (Confidence)</td>
+<td>Teste de invariante</td>
+</tr>
+<tr>
+<td>6.7.1–6.7.3 (Hypotheses)</td>
+<td>Property-based test</td>
+</tr>
+<tr>
+<td>7.1.1 (eventos não mudam Gene)</td>
+<td>Teste de invariante</td>
+</tr>
+<tr>
+<td>7.7.1 (idempotência replay)</td>
+<td>Teste de replay bit-identical</td>
+</tr>
+<tr>
+<td>8.4.1–8.4.2 (versão persistida)</td>
+<td>Teste de schema SQL</td>
+</tr>
+<tr>
+<td>9.1–9.3 (multi-tenancy)</td>
+<td>Teste de tenant isolation</td>
+</tr>
+<tr>
+<td>10.1–10.5 (persistência)</td>
+<td>Teste de projection rebuild</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="12-conformidade-com-a-constituicao">12. Conformidade com a Constituição</h2>
+<p>Este Standard não derroga nem substitui a Constituição do AraOS.
+Em particular, observam-se integralmente:</p>
+<ul>
+<li>Artigo 1 — O Domínio governa a Tecnologia.</li>
+<li>Artigo 2 — O Conhecimento precede os Dados.</li>
+<li>Artigo 4 — A Linguagem é o Principal Ativo.</li>
+<li>Artigo 5 — O Clinical Gene é a Unidade Fundamental.</li>
+<li>Artigo 7 — Eventos Transformam Conhecimento.</li>
+<li>Artigo 8 — Todo Conhecimento é Temporal.</li>
+<li>Artigo 9 — Explicabilidade é Obrigatória.</li>
+<li>Artigo 10 — O Contexto faz Parte do Conhecimento.</li>
+<li>Artigo 13 — A Ontologia é a Fonte da Verdade.</li>
+<li>Artigo 16 — O Conhecimento é Versionado.</li>
+<li>Artigo 18 — Princípio da Coerência.</li>
+<li>Artigo 19 — Princípio da Simplicidade Conceitual.</li>
+</ul>
+<hr />
+<h2 id="REDACTED">Apêndice A — Mapeamento para Fontes Normativas</h2>
+<table>
+<thead>
+<tr>
+<th>Cláusula deste AS</th>
+<th>Paper</th>
+<th>Constituição</th>
+<th>ADR</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>§3.1 Clinical Gene</td>
+<td>Paper III §3</td>
+<td>Artigo 5</td>
+<td>ADR-0005 §1</td>
+</tr>
+<tr>
+<td>§3.2 Clinical Genome</td>
+<td>Paper III §5</td>
+<td>Artigo 6</td>
+<td>ADR-0005 §5</td>
+</tr>
+<tr>
+<td>§3.3 Clinical Expression</td>
+<td>Paper IV §3</td>
+<td>Artigo 7</td>
+<td>ADR-0005 §5</td>
+</tr>
+<tr>
+<td>§4 Estabilidade</td>
+<td>Paper IV §2</td>
+<td>—</td>
+<td>ADR-0005 §1</td>
+</tr>
+<tr>
+<td>§5 Identidade</td>
+<td>Paper III §4</td>
+<td>Artigo 5</td>
+<td>ADR-0005 §1</td>
+</tr>
+<tr>
+<td>§6.1 Expression</td>
+<td>Paper IV §3</td>
+<td>—</td>
+<td>ADR-0005 §5</td>
+</tr>
+<tr>
+<td>§6.2 Trajectory</td>
+<td>Paper IV §6</td>
+<td>Artigo 8</td>
+<td>ADR-0005 §5</td>
+</tr>
+<tr>
+<td>§6.3 History</td>
+<td>—</td>
+<td>Artigo 7</td>
+<td>ADR-0001</td>
+</tr>
+<tr>
+<td>§6.4 ContextDependencies</td>
+<td>Paper IV §8</td>
+<td>Artigo 10</td>
+<td>ADR-0003</td>
+</tr>
+<tr>
+<td>§6.5 Evidence</td>
+<td>Paper V §6</td>
+<td>Artigo 11</td>
+<td>—</td>
+</tr>
+<tr>
+<td>§6.6 Confidence</td>
+<td>Paper IV §7</td>
+<td>Artigo 11</td>
+<td>—</td>
+</tr>
+<tr>
+<td>§6.7 Hypotheses</td>
+<td>Paper VI §4</td>
+<td>Artigo 15</td>
+<td>—</td>
+</tr>
+<tr>
+<td>§6.8 Relationships</td>
+<td>Paper III §5</td>
+<td>Artigo 6</td>
+<td>—</td>
+</tr>
+<tr>
+<td>§6.9 Metadata</td>
+<td>—</td>
+<td>Artigo 3</td>
+<td>—</td>
+</tr>
+<tr>
+<td>§7.1 Eventos → Expression</td>
+<td>Paper IV §4</td>
+<td>Artigo 7</td>
+<td>ADR-0005</td>
+</tr>
+<tr>
+<td>§7.5 Explainability</td>
+<td>Paper IV §9</td>
+<td>Artigo 9</td>
+<td>ADR-0001</td>
+</tr>
+<tr>
+<td>§7.7 Idempotência</td>
+<td>Paper V §8</td>
+<td>—</td>
+<td>ADR-0001</td>
+</tr>
+<tr>
+<td>§8 Versionamento</td>
+<td>Paper III §4</td>
+<td>Artigo 16</td>
+<td>ADR-0005 §4</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="REDACTED">Apêndice B — Clinical Gene Registry v1.0 (Canônico)</h2>
+<p>A versão <strong>v1.0</strong> do Clinical Gene Registry é fixada por este
+Standard. Mudanças incrementais exigem nova versão do Registry.</p>
+<table>
+<thead>
+<tr>
+<th>Gene ID</th>
+<th>Display Name</th>
+<th>Clinical Functions</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SOCIAL_COMMUNICATION</code></td>
+<td>Social Communication</td>
+<td>communication, language, social</td>
+</tr>
+<tr>
+<td><code>EXECUTIVE_FUNCTION</code></td>
+<td>Executive Function</td>
+<td>attention, planning, flexibility</td>
+</tr>
+<tr>
+<td><code>SLEEP</code></td>
+<td>Sleep</td>
+<td>sleep, circadian, rest</td>
+</tr>
+<tr>
+<td><code>LANGUAGE</code></td>
+<td>Language</td>
+<td>language, communication</td>
+</tr>
+<tr>
+<td><code>EMOTIONAL_REGULATION</code></td>
+<td>Emotional Regulation</td>
+<td>emotion, affect, self-regulation</td>
+</tr>
+<tr>
+<td><code>ANXIETY_REGULATION</code></td>
+<td>Anxiety Regulation</td>
+<td>anxiety, worry, fear</td>
+</tr>
+<tr>
+<td><code>MOBILITY</code></td>
+<td>Mobility</td>
+<td>motor, coordination, gait</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Renomeações ratificadas neste Standard:</strong></p>
+<ul>
+<li><code>SLEEP_QUALITY</code> (proposta inicial) → <strong><code>SLEEP</code></strong> (canônico).
+  Genes representam funções, não qualidades.</li>
+<li><code>ANXIETY</code> (proposta inicial) → <strong><code>ANXIETY_REGULATION</code></strong>
+  (canônico). Genes representam funções regulatórias, não
+  estados absolutos.</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="REDACTED">Apêndice C — Glossário de Referência Rápida</h2>
+<table>
+<thead>
+<tr>
+<th>Termo</th>
+<th>Definição</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Clinical Gene</strong></td>
+<td>Unidade fundamental do conhecimento clínico (AS-001).</td>
+</tr>
+<tr>
+<td><strong>Clinical Genome</strong></td>
+<td>Estado canônico coletivo (AS-003).</td>
+</tr>
+<tr>
+<td><strong>Clinical Expression</strong></td>
+<td>Estado observável atual do Gene (AS-002).</td>
+</tr>
+<tr>
+<td><strong>Clinical Trajectory</strong></td>
+<td>Evolução bitemporal da Expression (§6.2).</td>
+</tr>
+<tr>
+<td><strong>Clinical Context</strong></td>
+<td>Contexto clínico modulador (ADR-0003).</td>
+</tr>
+<tr>
+<td><strong>Clinical Event</strong></td>
+<td>Ocorrência que produz Evidence.</td>
+</tr>
+<tr>
+<td><strong>Evidence</strong></td>
+<td>Item atômico de sustentação.</td>
+</tr>
+<tr>
+<td><strong>Clinical Hypothesis</strong></td>
+<td>Interpretação alternativa concorrente.</td>
+</tr>
+<tr>
+<td><strong>Clinical Interpretation</strong></td>
+<td>Leitura atual do estado do Gene (AS-005).</td>
+</tr>
+<tr>
+<td><strong>Clinical Function</strong></td>
+<td>Função semântica associada ao Gene.</td>
+</tr>
+<tr>
+<td><strong>Registry Version</strong></td>
+<td>Identificador SemVer do Registry.</td>
+</tr>
+<tr>
+<td><strong>Confidence</strong></td>
+<td>Grau de certeza <code>[0.0, 1.0]</code>.</td>
+</tr>
+<tr>
+<td><strong>History</strong></td>
+<td>Audit chain canônico do Gene.</td>
+</tr>
+<tr>
+<td><strong>Metadata</strong></td>
+<td>Extensões não-canônicas.</td>
+</tr>
+<tr>
+<td><strong>Ubiquitous Language</strong></td>
+<td>Linguagem canônica do AraOS.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="apendice-d-historico-de-versoes">Apêndice D — Histórico de Versões</h2>
+<table>
+<thead>
+<tr>
+<th>Versão</th>
+<th>Data</th>
+<th>Mudança</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1.0</td>
+<td>2026-07-17</td>
+<td>Emissão inicial</td>
+<td>Aceito</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="apendice-e-evolution-roadmap">Apêndice E — Evolution Roadmap</h2>
+<p>Este Standard é o <strong>primeiro</strong> de uma família. Implementações
+devem prever sua evolução dentro do roadmap abaixo. Cada AraOS
+Standard da sequência adiciona contratos sem invalidar os
+anteriores; conformidade é cumulativa (§11.0).</p>
+<h3 id="e1-sequencia-canonica">E.1 Sequência Canônica</h3>
+<pre><code>AS-001  Clinical Gene v1.0         ← (este documento)
+   ↓
+AS-002  Clinical Expression v1.0   ← Paper IV, ADR-0005
+   ↓
+AS-003  Clinical Genome v1.0       ← Paper III, ADR-0005
+   ↓
+AS-004  Clinical Inference v1.0    ← Paper V, ADR-0005
+   ↓
+AS-005  Clinical Interpretation v1.0 ← Paper VI, ADR-0005
+   ↓
+AS-006  Clinical Context v1.0      ← ADR-0003
+</code></pre>
+<h3 id="e2-compatibilidade-direcional">E.2 Compatibilidade Direcional</h3>
+<blockquote>
+<p><strong>Requisito E.2.1</strong> — Cada AS subsequente <strong>shall</strong> referenciar
+e estender os AS anteriores, sem contradizê-los.</p>
+<p><strong>Requisito E.2.2</strong> — Caso um AS futuro precise romper
+compatibilidade com um AS anterior, o rompimento <strong>shall</strong>
+produzir nova versão major do AS anterior <strong>e</strong> o AS
+sucessor.</p>
+<p><strong>Requisito E.2.3</strong> — Implementações <strong>shall</strong> preservar a
+capacidade de ler Genes criados sob qualquer versão do
+Registry, indefinidamente.</p>
+</blockquote>
+<h3 id="e3-mapa-de-acoplamento">E.3 Mapa de Acoplamento</h3>
+<table>
+<thead>
+<tr>
+<th>De → Para</th>
+<th>Acoplamento</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AS-001 → AS-002</td>
+<td>Gene hospeda Expression (§6.1)</td>
+</tr>
+<tr>
+<td>AS-001 → AS-003</td>
+<td>Gene compõe Genome</td>
+</tr>
+<tr>
+<td>AS-001 → AS-006</td>
+<td>Gene referencia ContextDependencies (§6.4)</td>
+</tr>
+<tr>
+<td>AS-002 → AS-003</td>
+<td>Expressions compõem Genome state</td>
+</tr>
+<tr>
+<td>AS-002 → AS-004</td>
+<td>Expression é atualizada por Inference</td>
+</tr>
+<tr>
+<td>AS-002 → AS-005</td>
+<td>Interpretation lê Expression</td>
+</tr>
+<tr>
+<td>AS-004 → AS-005</td>
+<td>Inference alimenta Interpretation</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>NOTA</strong> — A direção <code>→</code> indica <strong>dependência funcional</strong>, não
+dependência temporal de publicação. Uma implementação
+Gene-Conformant (Level A) <strong>may</strong> existir antes do AS-002.</p>
+</blockquote>
+<h3 id="e4-marcos-historicos-do-roadmap">E.4 Marcos Históricos do Roadmap</h3>
+<table>
+<thead>
+<tr>
+<th>Marco</th>
+<th>Data</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AS-001 emitido</td>
+<td>2026-07-17</td>
+<td><strong>Alcançado</strong></td>
+</tr>
+<tr>
+<td>AS-002 a emitir</td>
+<td>Sprint 4.3 Phase 2</td>
+<td>Planejado</td>
+</tr>
+<tr>
+<td>AS-003 a emitir</td>
+<td>pós-Sprint 4.3</td>
+<td>Planejado</td>
+</tr>
+<tr>
+<td>AS-004 a emitir</td>
+<td>Sprint 4.4 (Correlation + Cohort + Research)</td>
+<td>Planejado</td>
+</tr>
+<tr>
+<td>AS-005 a emitir</td>
+<td>pós-Sprint 4.4</td>
+<td>Planejado</td>
+</tr>
+<tr>
+<td>AS-006 a emitir</td>
+<td>paralelo ao AS-002 (Clinical Context já implementado)</td>
+<td>Planejado</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="aviso-final">Aviso Final</h2>
+<blockquote>
+<p>Este AraOS Standard define o <strong>contrato normativo</strong> do Clinical
+Gene. Toda implementação que deseje ostentar conformidade com o
+AraOS <strong>shall</strong> observar as invariantes aqui declaradas.</p>
+<p>Em caso de dúvida durante a modelagem, responder primeiro:</p>
+<p><em>"Esta implementação fortalece o Clinical Gene como a unidade
+fundamental da representação computacional do conhecimento
+clínico?"</em></p>
+<p>Se a resposta for negativa, <strong>shall</strong> revisar a modelagem
+<strong>antes</strong> de escrever código. (Constituição, Artigo 18.)</p>
+</blockquote>
+</body>
+</html>

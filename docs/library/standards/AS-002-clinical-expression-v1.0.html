@@ -1,0 +1,1525 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AS-002 — AraOS Standard 002: Clinical Expression Standard</title>
+<link rel="stylesheet" href="../stylesheets/araos.css">
+</head>
+<body>
+<nav id="TOC" role="doc-toc" aria-label="Sumário">
+<div class="toc">
+<ul>
+<li><a href="#fontes-normativas-obrigatorias">Fontes Normativas Obrigatórias</a></li>
+<li><a href="#prefacio">Prefácio</a></li>
+<li><a href="#design-goals-objetivos-de-design">Design Goals (Objetivos de Design)</a></li>
+<li><a href="#non-goals-fora-do-escopo">Non-Goals (Fora do Escopo)</a></li>
+<li><a href="#1-escopo">1. Escopo</a></li>
+<li><a href="#2-referencias-normativas">2. Referências Normativas</a></li>
+<li><a href="#3-termos-e-definicoes">3. Termos e Definições</a><ul>
+<li><a href="#31-clinical-expression">3.1 Clinical Expression</a></li>
+<li><a href="#32-expression-state">3.2 Expression State</a></li>
+<li><a href="#33-observed-value">3.3 Observed Value</a></li>
+<li><a href="#34-confidence">3.4 Confidence</a></li>
+<li><a href="#35-trend">3.5 Trend</a></li>
+<li><a href="#36-volatility">3.6 Volatility</a></li>
+<li><a href="#REDACTED">3.7 Clinical Interpretation Reference</a></li>
+<li><a href="#38-explanation-reference">3.8 Explanation Reference</a></li>
+<li><a href="#39-evidence-references">3.9 Evidence References</a></li>
+<li><a href="#310-context-references">3.10 Context References</a></li>
+<li><a href="#311-last-update">3.11 Last Update</a></li>
+<li><a href="#312-valid-time">3.12 Valid Time</a></li>
+<li><a href="#313-transaction-time">3.13 Transaction Time</a></li>
+<li><a href="#314-unknown-state">3.14 Unknown State</a></li>
+<li><a href="#315-unavailable-state">3.15 Unavailable State</a></li>
+<li><a href="#316-derived-state">3.16 Derived State</a></li>
+<li><a href="#317-canonical-expression">3.17 Canonical Expression</a></li>
+</ul>
+</li>
+<li><a href="#REDACTED">4. Invariantes (Requisitos Normativos)</a><ul>
+<li><a href="#41-identidade-e-pertinencia">4.1 Identidade e Pertinência</a></li>
+<li><a href="#42-conteudo-minimo">4.2 Conteúdo Mínimo</a></li>
+<li><a href="#43-explicabilidade-e-evidencia">4.3 Explicabilidade e Evidência</a></li>
+<li><a href="#44-temporalidade">4.4 Temporalidade</a></li>
+<li><a href="#45-contextualidade">4.5 Contextualidade</a></li>
+<li><a href="#46-imutabilidade">4.6 Imutabilidade</a></li>
+<li><a href="#47-comparacao-e-igualdade">4.7 Comparação e Igualdade</a></li>
+<li><a href="#48-trajetoria-e-historico">4.8 Trajetória e Histórico</a></li>
+<li><a href="#49-interacao-com-hipoteses">4.9 Interação com Hipóteses</a></li>
+</ul>
+</li>
+<li><a href="#5-formal-axioms-axiomas-formais">5. Formal Axioms (Axiomas Formais)</a><ul>
+<li><a href="#REDACTED">Axiom 1 — Expression is a Value Object</a></li>
+<li><a href="#axiom-2-expression-has-no-identity">Axiom 2 — Expression has no Identity</a></li>
+<li><a href="#axiom-3-expression-is-temporal">Axiom 3 — Expression is Temporal</a></li>
+<li><a href="#axiom-4-expression-is-contextual">Axiom 4 — Expression is Contextual</a></li>
+<li><a href="#REDACTED">Axiom 5 — Expression is Derived from Evidence</a></li>
+<li><a href="#axiom-6-expression-is-explainable">Axiom 6 — Expression is Explainable</a></li>
+<li><a href="#REDACTED">Axiom 7 — Expression is Reconstructable</a></li>
+<li><a href="#REDACTED">Axiom 8 — Expression is a Projection of Observable State</a></li>
+<li><a href="#REDACTED">Axiom 9 — Expression never Owns Knowledge</a></li>
+<li><a href="#REDACTED">Axiom 10 — Expression Represents Knowledge</a></li>
+</ul>
+</li>
+<li><a href="#6-modelo-computacional">6. Modelo Computacional</a><ul>
+<li><a href="#61-current-expression">6.1 Current Expression</a></li>
+<li><a href="#62-historical-expression">6.2 Historical Expression</a></li>
+<li><a href="#63-expression-snapshot">6.3 Expression Snapshot</a></li>
+<li><a href="#64-expression-timeline">6.4 Expression Timeline</a></li>
+<li><a href="#65-expression-replacement">6.5 Expression Replacement</a></li>
+<li><a href="#66-expression-reconstruction">6.6 Expression Reconstruction</a></li>
+<li><a href="#67-expression-serialization">6.7 Expression Serialization</a></li>
+<li><a href="#68-expression-comparison">6.8 Expression Comparison</a></li>
+<li><a href="#69-expression-equality">6.9 Expression Equality</a></li>
+<li><a href="#610-expression-lifecycle">6.10 Expression Lifecycle</a></li>
+</ul>
+</li>
+<li><a href="#7-mapeamento-ddd-definitivo">7. Mapeamento DDD (Definitivo)</a></li>
+<li><a href="#8-exemplos-canonicos">8. Exemplos Canônicos</a><ul>
+<li><a href="#81-novo-paciente">8.1 Novo paciente</a></li>
+<li><a href="#82-nova-evidencia">8.2 Nova evidência</a></li>
+<li><a href="#83-atualizacao-de-expression">8.3 Atualização de Expression</a></li>
+<li><a href="#84-mudanca-de-confidence">8.4 Mudança de Confidence</a></li>
+<li><a href="#85-mudanca-de-trend">8.5 Mudança de Trend</a></li>
+<li><a href="#86-mudanca-de-contexto">8.6 Mudança de contexto</a></li>
+<li><a href="#87-replay">8.7 Replay</a></li>
+<li><a href="#88-reconstrucao-historica">8.8 Reconstrução histórica</a></li>
+</ul>
+</li>
+<li><a href="#9-conformidade">9. Conformidade</a><ul>
+<li><a href="#91-compliance-levels">9.1 Compliance Levels</a></li>
+<li><a href="#92-processo-de-mudanca">9.2 Processo de Mudança</a></li>
+</ul>
+</li>
+<li><a href="#10-hierarquia-canonica">10. Hierarquia Canônica</a></li>
+<li><a href="#11-conformidade-com-a-constituicao">11. Conformidade com a Constituição</a></li>
+<li><a href="#REDACTED">Apêndice A — Glossário de Referência Rápida</a></li>
+<li><a href="#apendice-b-dependency-graph">Apêndice B — Dependency Graph</a></li>
+<li><a href="#REDACTED">Apêndice C — Mapeamento para AS-000 (Gramática)</a></li>
+<li><a href="#REDACTED">Apêndice D — Mapeamento para Fontes Normativas</a></li>
+<li><a href="#REDACTED">Apêndice E — Requisitos de Conformidade</a></li>
+<li><a href="#apendice-f-historico-de-versoes">Apêndice F — Histórico de Versões</a></li>
+<li><a href="#aviso-final">Aviso Final</a></li>
+</ul>
+</div>
+
+</nav>
+<h1 id="REDACTED">AS-002 — AraOS Standard 002: Clinical Expression Standard</h1>
+<blockquote>
+<p><strong>Status:</strong> Draft
+<strong>Versão:</strong> 1.0
+<strong>Data:</strong> 2026-07-17
+<strong>Tipo:</strong> AraOS Standard (Normativo)
+<strong>Autoria:</strong> AraOS Architecture
+<strong>Substitui:</strong> nenhum documento (primeira emissão)</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Identificador</strong></td>
+<td>AS-002</td>
+</tr>
+<tr>
+<td><strong>Título</strong></td>
+<td>Clinical Expression Standard</td>
+</tr>
+<tr>
+<td><strong>Categoria</strong></td>
+<td>Clinical Knowledge Representation</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td>Normative</td>
+</tr>
+<tr>
+<td><strong>Maturity</strong></td>
+<td>Draft</td>
+</tr>
+<tr>
+<td><strong>Versão</strong></td>
+<td>1.0</td>
+</tr>
+<tr>
+<td><strong>Data de emissão</strong></td>
+<td>2026-07-17</td>
+</tr>
+<tr>
+<td><strong>Próxima revisão prevista</strong></td>
+<td>após primeira implementação concreta do ClinicalGene AR</td>
+</tr>
+<tr>
+<td><strong>Norma superior</strong></td>
+<td>Constituição do AraOS v1.0 (Lex AraOS)</td>
+</tr>
+<tr>
+<td><strong>Gramática oficial</strong></td>
+<td>AS-000 §3 (termos canônicos)</td>
+</tr>
+<tr>
+<td><strong>ADR governante</strong></td>
+<td>ADR-0005 (ACCEPTED)</td>
+</tr>
+<tr>
+<td><strong>Paper governante</strong></td>
+<td>Paper IV — A Teoria da Expressão Clínica</td>
+</tr>
+<tr>
+<td><strong>Persistent Identifier</strong></td>
+<td><code>urn:araos:standard:002:1.0</code></td>
+</tr>
+<tr>
+<td><strong>Estado editorial</strong></td>
+<td>Draft (ver §6 da AraOS Library README)</td>
+</tr>
+<tr>
+<td><strong>Posição hierárquica</strong></td>
+<td>Logo abaixo de AS-000; acima de implementações de Expression</td>
+</tr>
+</tbody>
+</table>
+<h2 id="fontes-normativas-obrigatorias">Fontes Normativas Obrigatórias</h2>
+<p>Este AraOS Standard é derivado e materializa as seguintes fontes,
+<strong>utilizando exclusivamente a gramática oficial fixada por AS-000</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Fonte</th>
+<th>Status</th>
+<th>Papel</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Manifesto do AraOS</strong></td>
+<td>Manifesto v0.1</td>
+<td>Princípio fundacional</td>
+</tr>
+<tr>
+<td><strong>Constituição do AraOS (Lex AraOS)</strong></td>
+<td>Constituição v1.0, 17/07/2026</td>
+<td>Lei suprema do domínio</td>
+</tr>
+<tr>
+<td><strong>Paper II — The Nature of Clinical Knowledge</strong></td>
+<td>Paper II</td>
+<td>Distinção informação × conhecimento</td>
+</tr>
+<tr>
+<td><strong>Paper III — Clinical Genome</strong></td>
+<td>Paper III</td>
+<td>Origem do Clinical Gene hospedeiro</td>
+</tr>
+<tr>
+<td><strong>Paper IV — A Teoria da Expressão Clínica</strong></td>
+<td>Paper IV</td>
+<td>Teoria da Expression</td>
+</tr>
+<tr>
+<td><strong>ADR-0005 — Sprint 4.3 Clinical Genome Engine</strong></td>
+<td>ADR-0005 (ACCEPTED)</td>
+<td>Decisão arquitetural canônica</td>
+</tr>
+<tr>
+<td><strong>AS-000 — AraOS Language Specification</strong></td>
+<td>AS-000 v1.0 (Draft)</td>
+<td>Gramática oficial</td>
+</tr>
+<tr>
+<td><strong>AS-001 — Clinical Gene Standard</strong></td>
+<td>AS-001 v1.0 (Published)</td>
+<td>Hospedeiro da Expression</td>
+</tr>
+</tbody>
+</table>
+<p>Em caso de conflito, prevalece a <strong>Constituição do AraOS</strong> (Lex AraOS).
+Em caso de ambiguidade terminológica, prevalece a redação do <strong>AS-000</strong>.</p>
+<hr />
+<h2 id="prefacio">Prefácio</h2>
+<p>O AraOS (Knowledge Infrastructure for Clinical Reasoning) é uma
+infraestrutura computacional para <strong>representação, evolução,
+inferência e interpretação do conhecimento clínico</strong>.</p>
+<p>O <strong>Clinical Gene</strong> (AS-001) representa uma Função Clínica
+Fundamental cuja identidade permanece semanticamente estável ao
+longo do tempo. A <strong>Clinical Expression</strong> — definida por este
+Standard — representa o <strong>estado observável</strong> desse Gene em um
+determinado instante.</p>
+<blockquote>
+<p><strong>Este Standard (AS-002) responde a uma única pergunta:</strong></p>
+<p><strong><em>"Como um Clinical Gene se torna observável?"</em></strong></p>
+</blockquote>
+<p>Toda a modelagem subsequente decorre dessa pergunta. A Expression
+é a <strong>interface observável</strong> entre o conhecimento durável
+(Gene) e o julgamento clínico humano.</p>
+<p>Este documento <strong>não</strong> redefine o Clinical Gene, o Clinical
+Genome, o Inference Engine, o Knowledge Graph, o Rule Engine
+ou o Projection Engine. Esses pertencem a outros Standards.
+Toda a terminologia aqui empregada é <strong>herdada da gramática
+oficial do AS-000</strong> (§3) e referenciada explicitamente.</p>
+<hr />
+<h2 id="design-goals-objetivos-de-design">Design Goals (Objetivos de Design)</h2>
+<p>Este Standard foi concebido para satisfazer os seguintes
+objetivos de design:</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Goal</th>
+<th>Materializa</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>Observable State</strong> — tornar o Gene observável sem expor sua estrutura interna.</td>
+<td>AS-001 §6.1, AS-000 §3.9</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>Replaceability</strong> — toda Expression pode ser substituída integralmente.</td>
+<td>AS-000 §3.2, Axiom 4</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>Temporal Awareness</strong> — toda Expression carrega bitemporalidade.</td>
+<td>AS-000 §3.17, Axiom 9</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>Contextual Sensitivity</strong> — toda Expression registra dependências de contexto.</td>
+<td>AS-000 §3.8</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>Confidence Always Explicit</strong> — Confidence nunca é omitida.</td>
+<td>AS-000 Axiom 11</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>Reconstructability</strong> — toda Expression pode ser reconstruída do Event Store.</td>
+<td>AS-000 §3.9, Axiom 7</td>
+</tr>
+<tr>
+<td>7</td>
+<td><strong>Explainability Native</strong> — toda Expression referencia Explanation.</td>
+<td>AS-000 §3.16, Axiom 10</td>
+</tr>
+<tr>
+<td>8</td>
+<td><strong>Hypothesis Coexistence</strong> — múltiplas Hypothesis sobre o mesmo Gene convivem.</td>
+<td>AS-000 §3.12, Axiom 12</td>
+</tr>
+<tr>
+<td>9</td>
+<td><strong>Knowledge Probabilistic</strong> — Confidence no intervalo <code>[0.0, 1.0]</code>.</td>
+<td>AS-000 Axiom 11</td>
+</tr>
+<tr>
+<td>10</td>
+<td><strong>Grammar Consistency</strong> — terminologia 100% consistente com AS-000.</td>
+<td>AS-000 §6.1</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>NOTA</strong> — Toda referência a um conceito canônico do AraOS
+neste documento <strong>shall</strong> referenciar AS-000 §3.X
+explicitamente. Ver Apêndice C.</p>
+</blockquote>
+<hr />
+<h2 id="non-goals-fora-do-escopo">Non-Goals (Fora do Escopo)</h2>
+<p>Este Standard <strong>deliberadamente não define</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Item</th>
+<th>Razão</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>Clinical Gene</strong></td>
+<td>definido no AS-001.</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>Clinical Genome</strong></td>
+<td>definido no AS-003 (futuro, pós-implementação).</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>Algoritmos de inferência</strong></td>
+<td>definidos no AS-004 (Clinical Inference).</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>Knowledge Graph</strong></td>
+<td>decisão arquitetural; fora do escopo deste Standard.</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>Rule Engine</strong></td>
+<td>decisão arquitetural; fora do escopo.</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>Projection Engine</strong></td>
+<td>responsabilidade do read-model layer.</td>
+</tr>
+<tr>
+<td>7</td>
+<td><strong>Storage engine</strong></td>
+<td>decisão técnica (ADR-0001, livre escolha).</td>
+</tr>
+<tr>
+<td>8</td>
+<td><strong>UI</strong></td>
+<td>decisão arquitetural.</td>
+</tr>
+<tr>
+<td>9</td>
+<td><strong>Diagnóstico clínico</strong></td>
+<td>proibido constitucionalmente (Art. 17).</td>
+</tr>
+<tr>
+<td>10</td>
+<td><strong>Padrões de Machine Learning</strong></td>
+<td>proibidos como entrada diagnóstica.</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>NOTA</strong> — Toda interpretação futura deste Standard <strong>shall
+not</strong> estender seu escopo a itens desta lista sem revisão
+explícita em ADR, seguida de nova versão SemVer major.</p>
+</blockquote>
+<hr />
+<h2 id="1-escopo">1. Escopo</h2>
+<p>Este AraOS Standard define exclusivamente o <strong>Value Object
+normativo Clinical Expression</strong> e seus componentes canônicos.</p>
+<p>Em particular:</p>
+<ol>
+<li>A natureza de Value Object da Expression.</li>
+<li>Os 17 conceitos que compõem a Expression.</li>
+<li>As invariantes SHALL que toda Expression deve respeitar.</li>
+<li>O modelo computacional de produção, substituição,
+   reconstrução e comparação de Expressions.</li>
+<li>O mapeamento DDD definitivo (Value Object × Aggregate Root).</li>
+<li>Os critérios de conformidade para qualquer implementação.</li>
+</ol>
+<p><strong>Fora do escopo</strong> (definidos em outros Standards):</p>
+<ul>
+<li>Hospedeiro (Clinical Gene) → <strong>AS-001</strong>.</li>
+<li>Coleção (Clinical Genome) → <strong>AS-003</strong> (futuro).</li>
+<li>Inferência que produz Expression → <strong>AS-004</strong> (futuro).</li>
+<li>Interpretação da Expression → <strong>AS-005</strong> (futuro).</li>
+<li>Clinical Context modulador → <strong>AS-006</strong> (ADR-0003).</li>
+<li>Gramática oficial → <strong>AS-000</strong>.</li>
+</ul>
+<hr />
+<h2 id="2-referencias-normativas">2. Referências Normativas</h2>
+<p>Os documentos a seguir são indispensáveis para a aplicação
+deste Standard. Para referências datadas, aplica-se somente a
+edição citada.</p>
+<ul>
+<li><strong>Constituição do AraOS</strong>, versão 1.0, 17 de julho de 2026.</li>
+<li><strong>Manifesto do AraOS</strong>, versão 0.1 — A Fundação.</li>
+<li><strong>Paper II — The Nature of Clinical Knowledge</strong>.</li>
+<li><strong>Paper III — Clinical Genome</strong>.</li>
+<li><strong>Paper IV — A Teoria da Expressão Clínica</strong>.</li>
+<li><strong>ADR-0001 — Clinical Event Engine</strong>.</li>
+<li><strong>ADR-0005 — Clinical Genome Engine</strong>, ACCEPTED.</li>
+<li><strong>AS-000 — AraOS Language Specification v1.0</strong>.</li>
+<li><strong>AS-001 — Clinical Gene Standard v1.0</strong>, Published.</li>
+</ul>
+<hr />
+<h2 id="3-termos-e-definicoes">3. Termos e Definições</h2>
+<blockquote>
+<p><strong>NOTA</strong> — Todo termo arquitetural utilizado neste Standard
+(Entity, Value Object, Aggregate Root, Domain Event,
+Projection, Evidence, Context, Canonical State, Derived
+State, Interpretation, Hypothesis, Semantic Identity,
+Clinical Function, Registry, Explainability, Temporality,
+Traceability, Knowledge Representation, Knowledge Evolution)
+<strong>shall</strong> ter seu significado oficial consultado em <strong>AS-000
+§3</strong>. Este Standard <strong>shall not</strong> redefinir nenhum desses
+termos.</p>
+</blockquote>
+<p>Os termos <strong>específicos da Clinical Expression</strong> são definidos
+a seguir. Cada definição referencia explicitamente os conceitos
+canônicos de AS-000 quando aplicável.</p>
+<h3 id="31-clinical-expression">3.1 Clinical Expression</h3>
+<blockquote>
+<p><strong>Clinical Expression é o Value Object (AS-000 §3.2) que
+representa o estado observável de um Clinical Gene (AS-001) em
+um determinado instante, carregando Observed Value, Confidence,
+Trend, Volatility e referências a Evidence, Context,
+Interpretation e Explanation.</strong></p>
+</blockquote>
+<ul>
+<li><strong>Natureza DDD:</strong> Value Object (AS-000 §3.2).</li>
+<li><strong>Hospedeiro:</strong> Aggregate Root Clinical Gene (AS-000 §3.4,
+  AS-001 §3.1).</li>
+<li><strong>Motivação:</strong> tornar o Gene observável sem expor sua
+  estrutura interna; produzir leitura atual do estado.</li>
+<li><strong>Responsabilidades:</strong> carregar estado observável; referenciar
+  Evidence; referenciar Explanation.</li>
+<li><strong>Invariantes:</strong> §4 deste Standard.</li>
+<li><strong>Contraexemplos:</strong> Clinical Gene (não é Expression — é
+  Aggregate Root).</li>
+</ul>
+<h3 id="32-expression-state">3.2 Expression State</h3>
+<blockquote>
+<p><strong>Expression State é o conjunto de campos observáveis que
+constituem o conteúdo da Clinical Expression em um instante.</strong></p>
+</blockquote>
+<p>Inclui: Observed Value, Confidence, Trend, Volatility, Last
+Update, Valid Time, Transaction Time e Unknown State.</p>
+<h3 id="33-observed-value">3.3 Observed Value</h3>
+<blockquote>
+<p><strong>Observed Value é o valor quantitativo ou qualitativo que
+representa o estado observado do Gene em um instante.</strong></p>
+</blockquote>
+<ul>
+<li><strong>Tipo:</strong> numérico (<code>float</code>), ordinal, categórico ou textual.</li>
+<li><strong>Invariante:</strong> <strong>shall</strong> sempre estar presente, mesmo quando
+  igual a <code>null</code> ou marcador de Unknown State (§3.14).</li>
+</ul>
+<h3 id="34-confidence">3.4 Confidence</h3>
+<blockquote>
+<p><strong>Confidence é o grau de certeza <code>[0.0, 1.0]</code> associado ao
+Observed Value, indicando a confiança do sistema na
+observação.</strong></p>
+</blockquote>
+<ul>
+<li><strong>Intervalo:</strong> <code>[0.0, 1.0]</code> (fechado).</li>
+<li><strong>Invariante:</strong> <strong>shall</strong> ser sempre explícita. Ausência
+  equivale a <code>0.0</code> e <strong>shall</strong> ser registrada como tal.</li>
+<li><strong>Natureza:</strong> derivada (AS-000 Axiom 11), não primária.</li>
+</ul>
+<h3 id="35-trend">3.5 Trend</h3>
+<blockquote>
+<p><strong>Trend é a direção observada da variação do Observed Value
+ao longo de uma janela temporal.</strong></p>
+</blockquote>
+<ul>
+<li><strong>Valores permitidos:</strong>
+  <code>improving</code> · <code>stable</code> · <code>declining</code> · <code>oscillating</code> ·
+  <code>unknown</code>.</li>
+<li><strong>Invariante:</strong> <strong>shall</strong> pertencer ao conjunto enumerado.</li>
+</ul>
+<h3 id="36-volatility">3.6 Volatility</h3>
+<blockquote>
+<p><strong>Volatility é a magnitude da variação do Observed Value em
+uma janela temporal, normalizada para fins de comparação.</strong></p>
+</blockquote>
+<ul>
+<li><strong>Valores permitidos:</strong> <code>low</code> · <code>medium</code> · <code>high</code> ·
+  <code>unknown</code>.</li>
+<li><strong>Invariante:</strong> <strong>shall</strong> pertencer ao conjunto enumerado.</li>
+</ul>
+<h3 id="REDACTED">3.7 Clinical Interpretation Reference</h3>
+<blockquote>
+<p><strong>Clinical Interpretation Reference é a referência à Clinical
+Interpretation (AS-000 §3.11) que produziu leitura sobre o
+estado atual da Expression.</strong></p>
+</blockquote>
+<ul>
+<li><strong>Cardinalidade:</strong> <code>0..1</code> (pode ser ausente antes da primeira
+  interpretação).</li>
+<li><strong>Invariante:</strong> quando presente, <strong>shall</strong> referenciar
+  Interpretation Published no AraOS.</li>
+</ul>
+<h3 id="38-explanation-reference">3.8 Explanation Reference</h3>
+<blockquote>
+<p><strong>Explanation Reference é a referência à Explanation que
+justifica o estado atual da Expression.</strong></p>
+</blockquote>
+<ul>
+<li><strong>Cardinalidade:</strong> <code>1</code> (obrigatória, AS-000 §3.16, Axiom 10).</li>
+<li><strong>Invariante:</strong> <strong>shall</strong> sempre existir; nunca nula.</li>
+<li><strong>Sem Explanation, não há Expression publicável.</strong></li>
+</ul>
+<h3 id="39-evidence-references">3.9 Evidence References</h3>
+<blockquote>
+<p><strong>Evidence References é a lista de identificadores de
+Domain Events (AS-000 §3.5) que fundamentam o Observed Value.</strong></p>
+</blockquote>
+<ul>
+<li><strong>Cardinalidade:</strong> <code>1..*</code> (ao menos uma evidência).</li>
+<li><strong>Invariante:</strong> <strong>shall</strong> ser append-only; <strong>shall not</strong> ser
+  reduzida após escrita (AS-000 Axiom 8).</li>
+</ul>
+<h3 id="310-context-references">3.10 Context References</h3>
+<blockquote>
+<p><strong>Context References é a lista de identificadores de Clinical
+Contexts (AS-000 §3.8, AS-006) que modularam o estado atual.</strong></p>
+</blockquote>
+<ul>
+<li><strong>Cardinalidade:</strong> <code>0..*</code>.</li>
+<li><strong>Invariante:</strong> <strong>shall</strong> referenciar Contexts válidos no
+  escopo <code>(tenant_id, patient_id)</code>.</li>
+</ul>
+<h3 id="311-last-update">3.11 Last Update</h3>
+<blockquote>
+<p><strong>Last Update é o timestamp (UTC) que registra o momento
+lógico da última substituição da Expression.</strong></p>
+</blockquote>
+<ul>
+<li><strong>Invariante:</strong> <strong>shall</strong> ser timezone-aware (UTC).</li>
+</ul>
+<h3 id="312-valid-time">3.12 Valid Time</h3>
+<blockquote>
+<p><strong>Valid Time é o instante em que a mudança do Gene foi
+clinicamente relevante.</strong></p>
+</blockquote>
+<ul>
+<li><strong>Relação:</strong> complementa Transaction Time (§3.13) para
+  formar bitemporalidade (AS-000 §3.17).</li>
+<li><strong>Invariante:</strong> <strong>shall</strong> ser timezone-aware (UTC).</li>
+</ul>
+<h3 id="313-transaction-time">3.13 Transaction Time</h3>
+<blockquote>
+<p><strong>Transaction Time é o instante em que o sistema registrou a
+Expression no Event Store.</strong></p>
+</blockquote>
+<ul>
+<li><strong>Invariante:</strong> <strong>shall</strong> ser timezone-aware (UTC); <strong>shall
+  not</strong> ser anterior a Valid Time no fluxo normal.</li>
+</ul>
+<h3 id="314-unknown-state">3.14 Unknown State</h3>
+<blockquote>
+<p><strong>Unknown State é o estado explícito da Expression quando o
+Gene é observado mas as evidências são insuficientes para
+inferir valor.</strong></p>
+</blockquote>
+<ul>
+<li><strong>Representação canônica:</strong> <code>observed_value = null</code>,
+  <code>confidence = 0.0</code>, <code>trend = "unknown"</code>,
+  <code>volatility = "unknown"</code>.</li>
+<li><strong>Invariante:</strong> <strong>shall</strong> ser distinguível de Unavailable State
+  (§3.15).</li>
+</ul>
+<h3 id="315-unavailable-state">3.15 Unavailable State</h3>
+<blockquote>
+<p><strong>Unavailable State é o estado explícito da Expression quando
+o Gene deixou de ser observado por mudança de contexto ou
+retirada de acompanhamento.</strong></p>
+</blockquote>
+<ul>
+<li><strong>Representação canônica:</strong> Expression ausente do Aggregate
+  Root (Gene passa a estado <code>not_observed</code>).</li>
+<li><strong>Diferença semântica:</strong> Unknown = observado sem evidência;
+  Unavailable = não-observado.</li>
+</ul>
+<h3 id="316-derived-state">3.16 Derived State</h3>
+<blockquote>
+<p><strong>Derived State é o estado da Expression calculado a partir de
+Canonical State (AS-000 §3.9) por meio de leitura especializada.</strong></p>
+</blockquote>
+<ul>
+<li><strong>Mapeamento:</strong> Derived State <strong>is-a</strong> Expression; nunca é
+  source of truth (AS-000 §3.10).</li>
+</ul>
+<h3 id="317-canonical-expression">3.17 Canonical Expression</h3>
+<blockquote>
+<p><strong>Canonical Expression é a Expression que reside no Aggregate
+Root (Clinical Gene) e representa o estado canônico
+observável do Gene no presente.</strong></p>
+</blockquote>
+<ul>
+<li><strong>Cardinalidade:</strong> exatamente <strong>1</strong> por Gene.</li>
+<li><strong>Mapeamento:</strong> Canonical Expression <strong>is-a</strong> Expression
+  current; reside no Aggregate Root (AS-000 §3.4).</li>
+</ul>
+<hr />
+<h2 id="REDACTED">4. Invariantes (Requisitos Normativos)</h2>
+<blockquote>
+<p><strong>Os requisitos abaixo são obrigatórios</strong> (<code>SHALL</code>). Uma
+Expression que viole qualquer invariante <strong>shall</strong> ser
+rejeitada pelo projection handler e <strong>shall</strong> ser registrada
+como falha na métrica <code>expression_violations_total</code>.</p>
+</blockquote>
+<h3 id="41-identidade-e-pertinencia">4.1 Identidade e Pertinência</h3>
+<blockquote>
+<p><strong>Requisito 4.1.1</strong> — Expression <strong>shall</strong> sempre referenciar
+exatamente um Clinical Gene (AS-000 §3.4, Axiom 3).</p>
+<p><strong>Requisito 4.1.2</strong> — Expression <strong>shall</strong> never possess
+semantic identity (AS-000 §3.13, Axiom 4). Igualdade é
+puramente estrutural.</p>
+<p><strong>Requisito 4.1.3</strong> — Expression <strong>shall</strong> never exist detached
+from a Clinical Gene (AS-000 Axiom 3).</p>
+<p><strong>Requisito 4.1.4</strong> — Expression <strong>shall not</strong> possuir campo
+<code>id</code> próprio. Identificação ocorre exclusivamente via
+<code>(tenant_id, patient_id, clinical_gene_id, valid_time)</code>.</p>
+</blockquote>
+<h3 id="42-conteudo-minimo">4.2 Conteúdo Mínimo</h3>
+<blockquote>
+<p><strong>Requisito 4.2.1</strong> — Expression <strong>shall</strong> always possess
+explicit Confidence (AS-000 Axiom 11) no intervalo
+<code>[0.0, 1.0]</code>.</p>
+<p><strong>Requisito 4.2.2</strong> — Expression <strong>shall</strong> always carry
+Observed Value (mesmo que <code>null</code> em Unknown State).</p>
+<p><strong>Requisito 4.2.3</strong> — Expression <strong>shall</strong> always carry Trend e
+Volatility pertencentes aos conjuntos enumerados em §3.5 e
+§3.6.</p>
+<p><strong>Requisito 4.2.4</strong> — Expression <strong>shall</strong> always carry Last
+Update, Valid Time e Transaction Time timezone-aware (UTC).</p>
+</blockquote>
+<h3 id="43-explicabilidade-e-evidencia">4.3 Explicabilidade e Evidência</h3>
+<blockquote>
+<p><strong>Requisito 4.3.1</strong> — Expression <strong>shall</strong> always preserve
+Explainability (AS-000 §3.16, Axiom 10). Explanation Reference
+<strong>shall</strong> nunca ser vazio.</p>
+<p><strong>Requisito 4.3.2</strong> — Expression <strong>shall</strong> always carry Evidence
+References não-vazio, com <code>1..*</code> Domain Events (AS-000 §3.5).</p>
+<p><strong>Requisito 4.3.3</strong> — Expression <strong>shall</strong> always be
+reconstructable (AS-000 Axiom 7) a partir do Event Store.</p>
+</blockquote>
+<h3 id="44-temporalidade">4.4 Temporalidade</h3>
+<blockquote>
+<p><strong>Requisito 4.4.1</strong> — Expression <strong>shall</strong> be temporal
+(AS-000 §3.17, Axiom 9). Bitemporalidade é obrigatória
+(Valid Time + Transaction Time).</p>
+<p><strong>Requisito 4.4.2</strong> — Transaction Time <strong>shall not</strong> ser
+anterior a Valid Time no fluxo normal (sem retroação
+artificial).</p>
+<p><strong>Requisito 4.4.3</strong> — Substituição de Expression <strong>shall</strong>
+preservar a Expression anterior na Trajectory (AS-001 §6.2)
+como Expression Snapshot imutável.</p>
+</blockquote>
+<h3 id="45-contextualidade">4.5 Contextualidade</h3>
+<blockquote>
+<p><strong>Requisito 4.5.1</strong> — Expression <strong>shall</strong> be contextual
+(AS-000 §3.8). Context References <strong>shall</strong> referenciar
+apenas Clinical Contexts válidos no escopo do Gene.</p>
+<p><strong>Requisito 4.5.2</strong> — Mudança em qualquer Context Reference
+<strong>shall</strong> disparar reavaliação da Expression (AS-004).</p>
+</blockquote>
+<h3 id="46-imutabilidade">4.6 Imutabilidade</h3>
+<blockquote>
+<p><strong>Requisito 4.6.1</strong> — Expression <strong>shall</strong> be immutable after
+publication (AS-000 §3.2). Mutações produzem <strong>nova</strong>
+Expression que substitui a anterior.</p>
+<p><strong>Requisito 4.6.2</strong> — Events <strong>shall</strong> replace Expressions
+(AS-000 Axiom 5). Events <strong>shall</strong> never mutate previous
+Expressions.</p>
+<p><strong>Requisito 4.6.3</strong> — New state <strong>shall</strong> create a new
+Expression snapshot na Trajectory.</p>
+</blockquote>
+<h3 id="47-comparacao-e-igualdade">4.7 Comparação e Igualdade</h3>
+<blockquote>
+<p><strong>Requisito 4.7.1</strong> — Expression equality <strong>shall</strong> be
+structural (AS-000 Axiom 4): dois Value Objects com os mesmos
+campos são indistinguíveis.</p>
+<p><strong>Requisito 4.7.2</strong> — Comparison <strong>shall</strong> ser canônica e
+determinística para qualquer par de Expressions no mesmo Gene.</p>
+</blockquote>
+<h3 id="48-trajetoria-e-historico">4.8 Trajetória e Histórico</h3>
+<blockquote>
+<p><strong>Requisito 4.8.1</strong> — Toda Expression publicada <strong>shall</strong> ser
+acrescentada à Trajectory do Gene (AS-001 §6.2) como snapshot
+imutável.</p>
+<p><strong>Requisito 4.8.2</strong> — Trajectory <strong>shall</strong> be append-only
+(AS-001 Requisito 6.2.1). Nenhuma operação <strong>may</strong> remover,
+sobrescrever ou reordenar snapshots históricos.</p>
+</blockquote>
+<h3 id="49-interacao-com-hipoteses">4.9 Interação com Hipóteses</h3>
+<blockquote>
+<p><strong>Requisito 4.9.1</strong> — Expression <strong>shall</strong> admitir múltiplas
+Hypothesis concorrentes (AS-000 §3.12, Axiom 12) sem
+exclusividade.</p>
+<p><strong>Requisito 4.9.2</strong> — Hypothesis <strong>shall</strong> never substituir
+Expression diretamente. Resolução <strong>shall</strong> ocorrer por nova
+Evidence (novo Domain Event).</p>
+</blockquote>
+<hr />
+<h2 id="5-formal-axioms-axiomas-formais">5. Formal Axioms (Axiomas Formais)</h2>
+<p>Os axiomas a seguir fundamentam a Clinical Expression como
+<strong>Value Object normativo</strong> do AraOS.</p>
+<h3 id="REDACTED">Axiom 1 — Expression is a Value Object</h3>
+<blockquote>
+<p><strong>Clinical Expressions are Value Objects.</strong></p>
+<p>Pertencem ao Aggregate Root Clinical Gene (AS-000 §3.2,
+§3.4). Possuem igualdade estrutural (Axiom 4) e não carregam
+identidade semântica.</p>
+</blockquote>
+<h3 id="axiom-2-expression-has-no-identity">Axiom 2 — Expression has no Identity</h3>
+<blockquote>
+<p><strong>Clinical Expressions have no identity.</strong></p>
+<p>Dois Value Objects com os mesmos campos são indistinguíveis.
+Identificação de uma Expression <strong>shall</strong> ocorrer via
+<code>(tenant_id, patient_id, clinical_gene_id, valid_time)</code>.</p>
+</blockquote>
+<h3 id="axiom-3-expression-is-temporal">Axiom 3 — Expression is Temporal</h3>
+<blockquote>
+<p><strong>Clinical Expressions are temporal.</strong></p>
+<p>Toda Expression <strong>shall</strong> carregar bitemporalidade
+(Valid Time + Transaction Time) conforme AS-000 §3.17.</p>
+</blockquote>
+<h3 id="axiom-4-expression-is-contextual">Axiom 4 — Expression is Contextual</h3>
+<blockquote>
+<p><strong>Clinical Expressions are contextual.</strong></p>
+<p>Toda Expression referencia os Clinical Contexts que a
+modularam. Remoção de um Context <strong>shall</strong> disparar
+reavaliação (AS-004).</p>
+</blockquote>
+<h3 id="REDACTED">Axiom 5 — Expression is Derived from Evidence</h3>
+<blockquote>
+<p><strong>Clinical Expressions are derived from Evidence.</strong></p>
+<p>Origem exclusiva de uma Expression é o conjunto de Domain
+Events que a sustentam (AS-000 §3.5, §3.7).</p>
+</blockquote>
+<h3 id="axiom-6-expression-is-explainable">Axiom 6 — Expression is Explainable</h3>
+<blockquote>
+<p><strong>Clinical Expressions are explainable.</strong></p>
+<p>Toda Expression <strong>shall</strong> carregar Explanation Reference não
+vazio. Sem Explanation, não há Expression publicável.</p>
+</blockquote>
+<h3 id="REDACTED">Axiom 7 — Expression is Reconstructable</h3>
+<blockquote>
+<p><strong>Clinical Expressions are reconstructable.</strong></p>
+<p>O estado de qualquer Expression pode ser reconstruído
+bit-identical a partir do Event Store (AS-000 Axiom 7).</p>
+</blockquote>
+<h3 id="REDACTED">Axiom 8 — Expression is a Projection of Observable State</h3>
+<blockquote>
+<p><strong>Clinical Expressions are projections of observable state.</strong></p>
+<p>Expression <strong>is-a</strong> Projection (AS-000 §3.6). Nunca é
+canonical state; é leitura derivada do Gene.</p>
+</blockquote>
+<h3 id="REDACTED">Axiom 9 — Expression never Owns Knowledge</h3>
+<blockquote>
+<p><strong>Clinical Expressions never own knowledge.</strong></p>
+<p>Conhecimento é de propriedade do Aggregate Root Clinical Gene.
+Expression é apenas sua leitura observável.</p>
+</blockquote>
+<h3 id="REDACTED">Axiom 10 — Expression Represents Knowledge</h3>
+<blockquote>
+<p><strong>Clinical Expressions represent knowledge.</strong></p>
+<p>Embora não possuam identidade, Expressions são a forma
+canônica pela qual o conhecimento clínico se torna
+acessível ao julgamento humano.</p>
+<p><strong>NOTA</strong> — Axiomas 9 e 10 formam par dialético: Expression
+não possui conhecimento (Ax. 9), mas <strong>representa</strong> o
+conhecimento do Gene hospedeiro (Ax. 10). Esta tensão é
+resolvida pela substituição: cada nova Expression é nova
+<strong>representação</strong> do mesmo conhecimento subjacente.</p>
+</blockquote>
+<hr />
+<h2 id="6-modelo-computacional">6. Modelo Computacional</h2>
+<p>Esta seção define os 10 elementos formais do modelo
+computacional da Expression.</p>
+<h3 id="61-current-expression">6.1 Current Expression</h3>
+<blockquote>
+<p><strong>Current Expression</strong> é a Canonical Expression (§3.17)
+atualmente residente no Aggregate Root Clinical Gene.</p>
+</blockquote>
+<p>Propriedades:</p>
+<ul>
+<li><strong>Cardinalidade:</strong> exatamente 1 por Gene.</li>
+<li><strong>Substituível:</strong> integralmente a cada Domain Event relevante.</li>
+<li><strong>Persistência:</strong> reside no Aggregate Root.</li>
+</ul>
+<h3 id="62-historical-expression">6.2 Historical Expression</h3>
+<blockquote>
+<p><strong>Historical Expression</strong> é qualquer Expression que já foi
+Current Expression em momento anterior.</p>
+</blockquote>
+<ul>
+<li><strong>Persistência:</strong> reside na Trajectory (AS-001 §6.2).</li>
+<li><strong>Acesso:</strong> read-only.</li>
+</ul>
+<h3 id="63-expression-snapshot">6.3 Expression Snapshot</h3>
+<blockquote>
+<p><strong>Expression Snapshot</strong> é a forma serializada e imutável de
+uma Expression em um instante específico.</p>
+</blockquote>
+<ul>
+<li><strong>Invariante:</strong> <strong>shall</strong> ser byte-equivalente em qualquer
+  serialização subsequente.</li>
+<li><strong>Uso:</strong> persistência, audit, replay.</li>
+</ul>
+<h3 id="64-expression-timeline">6.4 Expression Timeline</h3>
+<blockquote>
+<p><strong>Expression Timeline</strong> é a sequência ordenada por Valid Time
+ascendente de Expression Snapshots para um Gene.</p>
+</blockquote>
+<ul>
+<li><strong>Operação:</strong> append-only.</li>
+<li><strong>Cardinalidade:</strong> <code>0..*</code> por Gene (zero antes da primeira
+  observação).</li>
+</ul>
+<h3 id="65-expression-replacement">6.5 Expression Replacement</h3>
+<blockquote>
+<p><strong>Expression Replacement</strong> é a operação canônica de troca da
+Current Expression por uma nova Expression.</p>
+</blockquote>
+<ul>
+<li><strong>Trigger:</strong> Domain Event (AS-000 §3.5).</li>
+<li><strong>Atomicidade:</strong> substituição integral (não há merge parcial).</li>
+<li><strong>Efeito colateral:</strong> Expression anterior <strong>shall</strong> ser
+  preservada na Timeline como Historical Expression.</li>
+</ul>
+<h3 id="66-expression-reconstruction">6.6 Expression Reconstruction</h3>
+<blockquote>
+<p><strong>Expression Reconstruction</strong> é a operação de rebuild da
+Current Expression a partir do Event Store.</p>
+</blockquote>
+<ul>
+<li><strong>Idempotência:</strong> <code>f(f(state)) == f(state)</code>.</li>
+<li><strong>Ordem:</strong> Determinística por Valid Time ascendente.</li>
+</ul>
+<h3 id="67-expression-serialization">6.7 Expression Serialization</h3>
+<blockquote>
+<p><strong>Expression Serialization</strong> é a conversão de Expression
+Snapshot em formato transmível/estocável.</p>
+</blockquote>
+<ul>
+<li><strong>Determinismo:</strong> mesma Expression → mesma serialização.</li>
+<li><strong>Estabilidade:</strong> forward-compatible com versões anteriores do
+  AS-002.</li>
+</ul>
+<h3 id="68-expression-comparison">6.8 Expression Comparison</h3>
+<blockquote>
+<p><strong>Expression Comparison</strong> é a operação de verificar se duas
+Expressions são equivalentes.</p>
+</blockquote>
+<ul>
+<li><strong>Regra:</strong> igualdade estrutural (todos os campos).</li>
+</ul>
+<h3 id="69-expression-equality">6.9 Expression Equality</h3>
+<blockquote>
+<p><strong>Expression Equality</strong> é a propriedade de duas Expressions
+serem indistinguíveis estruturalmente.</p>
+</blockquote>
+<ul>
+<li><strong>Garantia:</strong> AS-000 Axiom 4.</li>
+</ul>
+<h3 id="610-expression-lifecycle">6.10 Expression Lifecycle</h3>
+<blockquote>
+<p><strong>Expression Lifecycle</strong> é o conjunto de estados pelos quais
+uma Expression transita: <strong>produced</strong> → <strong>published</strong> →
+<strong>replaced</strong> → <strong>historical</strong>.</p>
+</blockquote>
+<pre><code>[produced] → [published (Current)]
+                  │
+                  ▼ (Domain Event)
+              [replaced] → [historical]
+</code></pre>
+<hr />
+<h2 id="7-mapeamento-ddd-definitivo">7. Mapeamento DDD (Definitivo)</h2>
+<p>A tabela abaixo fixa <strong>definitivamente</strong> o mapeamento DDD dos
+conceitos centrais do Clinical Genome Engine. Implementações
+<strong>shall</strong> observar esta tabela.</p>
+<table>
+<thead>
+<tr>
+<th>Conceito AraOS</th>
+<th>Tipo DDD</th>
+<th>Justificativa</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Clinical Gene</strong></td>
+<td><strong>Aggregate Root</strong></td>
+<td>Identidade estável; hospeda Expression; emite eventos do Aggregate (AS-001 §3.1, AS-000 §3.4).</td>
+</tr>
+<tr>
+<td><strong>Clinical Expression</strong></td>
+<td><strong>Value Object</strong></td>
+<td>Igualdade estrutural; substituível integralmente; sem identidade (AS-000 §3.2, Axiom 1 deste Standard).</td>
+</tr>
+<tr>
+<td><strong>Clinical Genome</strong></td>
+<td>Aggregate</td>
+<td>Cluster de Genes (a ser detalhado no AS-003, pós-implementação).</td>
+</tr>
+<tr>
+<td><strong>Clinical Event</strong></td>
+<td>Domain Event</td>
+<td>Fato passado; imutável; append-only (AS-000 §3.5).</td>
+</tr>
+<tr>
+<td><strong>Clinical Interpretation</strong></td>
+<td>Projection</td>
+<td>Leitura derivada do estado (AS-000 §3.11).</td>
+</tr>
+<tr>
+<td><strong>Clinical Context</strong></td>
+<td>Value Object</td>
+<td>Modulador semântico (AS-000 §3.8).</td>
+</tr>
+<tr>
+<td><strong>Evidence</strong></td>
+<td>Value Object</td>
+<td>Item atômico; imutável (AS-000 §3.7).</td>
+</tr>
+<tr>
+<td><strong>Trajectory</strong></td>
+<td>Value Object</td>
+<td>Série temporal; estruturalmente igual se mesmo conteúdo (AS-000 §3.17).</td>
+</tr>
+<tr>
+<td><strong>History</strong></td>
+<td>Event Log</td>
+<td>Audit chain append-only (AS-000 §3.18).</td>
+</tr>
+<tr>
+<td><strong>Expression Snapshot</strong></td>
+<td>Value Object</td>
+<td>Forma serializada imutável (§6.3).</td>
+</tr>
+<tr>
+<td><strong>Expression Timeline</strong></td>
+<td>Aggregate-internal Collection</td>
+<td>Coleção ordenada interna ao Aggregate Root.</td>
+</tr>
+<tr>
+<td><strong>Hypothesis</strong></td>
+<td>Value Object</td>
+<td>Interpretação alternativa (AS-000 §3.12).</td>
+</tr>
+<tr>
+<td><strong>Confidence</strong></td>
+<td>Value</td>
+<td>Decimal <code>[0.0, 1.0]</code>.</td>
+</tr>
+<tr>
+<td><strong>Explanation Reference</strong></td>
+<td>Reference (string/ULID)</td>
+<td>Ponteiro imutável.</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>NOTA</strong> — Este mapeamento <strong>shall</strong> prevalecer até que nova
+revisão seja publicada em ADR e bump de versão deste AS.</p>
+</blockquote>
+<hr />
+<h2 id="8-exemplos-canonicos">8. Exemplos Canônicos</h2>
+<blockquote>
+<p><strong>NOTA</strong> — Os exemplos a seguir são <strong>ilustrativos</strong> e não
+vinculantes quanto à sintaxe de implementação. Eles ilustram
+o <strong>comportamento normativo</strong> exigido por este Standard.</p>
+</blockquote>
+<h3 id="81-novo-paciente">8.1 Novo paciente</h3>
+<p>Gene observado pela primeira vez:</p>
+<pre><code>Expression {
+  observed_value: null      # Unknown State (§3.14)
+  confidence: 0.0           # Confidence explícita (Req. 4.2.1)
+  trend: &quot;unknown&quot;
+  volatility: &quot;unknown&quot;
+  evidence_references: [E1] # primeira evidência (Req. 4.3.2)
+  context_references: []    # sem contexto modulador ainda
+  explanation_reference: X1  # explicação da observação inicial
+  valid_time: T0            # momento clínico
+  transaction_time: T0+ε    # momento do registro
+  last_update: T0+ε
+}
+</code></pre>
+<h3 id="82-nova-evidencia">8.2 Nova evidência</h3>
+<p>Nova Evidence modifica Expression:</p>
+<pre><code>Antes:  Expression { observed_value: 0.4, confidence: 0.6, ... }
+Depois: Expression { observed_value: 0.55, confidence: 0.75, ... }
+
+Eventos: E2 adicionado a evidence_references.
+Confiança recalculada. Expressão anterior preservada em Timeline.
+</code></pre>
+<h3 id="83-atualizacao-de-expression">8.3 Atualização de Expression</h3>
+<p>Substituição integral disparada por Domain Event E3:</p>
+<pre><code>Current Expression (v2) substitui Current Expression (v1).
+v1 → preservada em Trajectory como Historical Expression.
+v2 → nova Current Expression do Gene.
+Evidence: [...E1, E2, E3].
+Explanation: X2 (justifica a substituição).
+</code></pre>
+<h3 id="84-mudanca-de-confidence">8.4 Mudança de Confidence</h3>
+<p>Confiança recalculada após Evidence conflitante:</p>
+<pre><code>Expression {
+  observed_value: 0.55,
+  confidence: 0.50,         # diminuiu (Evidence E4 contradiz E3)
+  trend: &quot;stable&quot;,
+  volatility: &quot;medium&quot;,
+  evidence_references: [...E1, E2, E3, E4],
+  ...
+}
+</code></pre>
+<blockquote>
+<p><strong>NOTA</strong> — Evidence E4 foi <strong>adicionada</strong>; Evidence E3 foi
+<strong>preservada</strong> (AS-000 Axiom 8). Confidence diminuiu porque
+o sistema integra múltiplas evidências, não porque
+"descartou" E3.</p>
+</blockquote>
+<h3 id="85-mudanca-de-trend">8.5 Mudança de Trend</h3>
+<p>Declínio observado em janela de 90 dias:</p>
+<pre><code>Expression {
+  trend: &quot;declining&quot;,
+  velocity: -0.02,         # magnitude normalizada
+  volatility: &quot;high&quot;,
+  ...
+}
+</code></pre>
+<h3 id="86-mudanca-de-contexto">8.6 Mudança de contexto</h3>
+<p>Clinical Context C5 adicionado; reavaliação disparada:</p>
+<pre><code>Expression {
+  context_references: [..., C5],   # novo contexto
+  confidence: recalculada,         # novo cálculo
+  ...
+}
+</code></pre>
+<blockquote>
+<p>Remoção de C5 no futuro <strong>shall</strong> disparar nova reavaliação
+(AS-004).</p>
+</blockquote>
+<h3 id="87-replay">8.7 Replay</h3>
+<p>Aplicação de eventos do Event Store produz Expression idêntica
+à atual:</p>
+<pre><code>Replay 1x: Expression_state_after_replay == Current Expression
+Replay 2x: igual
+Replay 50x: igual
+Replay 100x: igual
+</code></pre>
+<blockquote>
+<p>Invariante: AS-000 Axiom 7, Requisito 4.3.3.</p>
+</blockquote>
+<h3 id="88-reconstrucao-historica">8.8 Reconstrução histórica</h3>
+<p>Para uma data D no passado:</p>
+<pre><code>historical_expression_at(D):
+  Expression válida em Valid Time = D
+  Calculada por projection sobre Timeline truncada em D
+</code></pre>
+<hr />
+<h2 id="9-conformidade">9. Conformidade</h2>
+<h3 id="91-compliance-levels">9.1 Compliance Levels</h3>
+<p>Uma implementação declara conformidade com este Standard em
+<strong>quatro níveis cumulativos</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Nível</th>
+<th>Nome</th>
+<th>Requisitos</th>
+<th>Caso de Uso</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>E0</strong></td>
+<td><strong>Expression-Vocabulary</strong></td>
+<td>Utiliza os 17 termos canônicos (§3) com o significado oficial.</td>
+<td>Documentação e nomenclatura.</td>
+</tr>
+<tr>
+<td><strong>E1</strong></td>
+<td><strong>Expression-Axiom</strong></td>
+<td><strong>E0</strong> + respeita todos os axiomas (§5).</td>
+<td>Modelagem e design.</td>
+</tr>
+<tr>
+<td><strong>E2</strong></td>
+<td><strong>Expression-Invariants</strong></td>
+<td><strong>E1</strong> + observa todas as invariantes SHALL (§4).</td>
+<td>Implementação.</td>
+</tr>
+<tr>
+<td><strong>E3</strong></td>
+<td><strong>Full AS-002 Compliance</strong></td>
+<td><strong>E2</strong> + respeita o modelo computacional (§6) + mapeamento DDD (§7).</td>
+<td>Produção canônica.</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Requisito 9.1.1</strong> — Toda implementação <strong>shall</strong> declarar
+o nível de conformidade reivindicado na seção "Compliance".</p>
+<p><strong>Requisito 9.1.2</strong> — Conformidade em nível <strong>N</strong> <strong>shall</strong>
+implicar conformidade em todos os níveis inferiores.</p>
+<p><strong>Requisito 9.1.3</strong> — Conformidade com este Standard <strong>shall</strong>
+pressupor conformidade com <strong>AS-000</strong> (gramática oficial).</p>
+</blockquote>
+<h3 id="92-processo-de-mudanca">9.2 Processo de Mudança</h3>
+<p>Mudanças neste Standard <strong>shall</strong> ser propostas via ADR,
+seguindo a hierarquia:</p>
+<pre><code>Papers → ADR → AS-000 → AS-002 → Implementação
+</code></pre>
+<p>Versões deste AS seguem SemVer:</p>
+<ul>
+<li>Mudança incompatível com versão anterior → <code>MAJOR+1</code>.</li>
+<li>Adição retrocompatível → <code>MINOR+1</code>.</li>
+<li>Correção editorial → <code>PATCH+1</code>.</li>
+</ul>
+<hr />
+<h2 id="10-hierarquia-canonica">10. Hierarquia Canônica</h2>
+<pre><code>Constituição do AraOS (Lex AraOS)        ← Lei suprema
+        ↓
+AS-000 — AraOS Language Specification   ← Gramática oficial
+        ↓
+AS-001 — Clinical Gene Standard         ← Aggregate Root
+        ↓
+AS-002 — Clinical Expression Standard   ← Value Object (este)
+        ↓
+AS-003+ demais Standards                 ← Genome, Inference, etc.
+        ↓
+Implementação (código + testes)
+</code></pre>
+<hr />
+<h2 id="11-conformidade-com-a-constituicao">11. Conformidade com a Constituição</h2>
+<p>Este Standard observa integralmente a Constituição do AraOS:</p>
+<ul>
+<li>Artigo 1 — O Domínio governa a Tecnologia.</li>
+<li>Artigo 2 — O Conhecimento precede os Dados.</li>
+<li>Artigo 4 — A Linguagem é o Principal Ativo.</li>
+<li>Artigo 5 — O Clinical Gene é a Unidade Fundamental.</li>
+<li>Artigo 7 — Eventos Transformam Conhecimento.</li>
+<li>Artigo 8 — Todo Conhecimento é Temporal.</li>
+<li>Artigo 9 — Explicabilidade é Obrigatória.</li>
+<li>Artigo 10 — O Contexto faz Parte do Conhecimento.</li>
+<li>Artigo 17 — IA nunca substitui o médico.</li>
+</ul>
+<hr />
+<h2 id="REDACTED">Apêndice A — Glossário de Referência Rápida</h2>
+<table>
+<thead>
+<tr>
+<th>Termo</th>
+<th>Definição Resumida</th>
+<th>§</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Clinical Expression</strong></td>
+<td>Value Object que representa o estado observável do Gene.</td>
+<td>3.1</td>
+</tr>
+<tr>
+<td><strong>Expression State</strong></td>
+<td>Conjunto de campos observáveis.</td>
+<td>3.2</td>
+</tr>
+<tr>
+<td><strong>Observed Value</strong></td>
+<td>Valor quantitativo ou qualitativo observado.</td>
+<td>3.3</td>
+</tr>
+<tr>
+<td><strong>Confidence</strong></td>
+<td>Certeza <code>[0.0, 1.0]</code> da observação.</td>
+<td>3.4</td>
+</tr>
+<tr>
+<td><strong>Trend</strong></td>
+<td>improving / stable / declining / oscillating / unknown.</td>
+<td>3.5</td>
+</tr>
+<tr>
+<td><strong>Volatility</strong></td>
+<td>low / medium / high / unknown.</td>
+<td>3.6</td>
+</tr>
+<tr>
+<td><strong>Clinical Interpretation Reference</strong></td>
+<td>Ref. à Interpretation atual.</td>
+<td>3.7</td>
+</tr>
+<tr>
+<td><strong>Explanation Reference</strong></td>
+<td>Ref. à Explanation (obrigatória).</td>
+<td>3.8</td>
+</tr>
+<tr>
+<td><strong>Evidence References</strong></td>
+<td>Lista de Domain Events que fundamentam.</td>
+<td>3.9</td>
+</tr>
+<tr>
+<td><strong>Context References</strong></td>
+<td>Lista de Contexts moduladores.</td>
+<td>3.10</td>
+</tr>
+<tr>
+<td><strong>Last Update</strong></td>
+<td>Timestamp lógico da substituição.</td>
+<td>3.11</td>
+</tr>
+<tr>
+<td><strong>Valid Time</strong></td>
+<td>Momento clínico da mudança.</td>
+<td>3.12</td>
+</tr>
+<tr>
+<td><strong>Transaction Time</strong></td>
+<td>Momento do registro no Event Store.</td>
+<td>3.13</td>
+</tr>
+<tr>
+<td><strong>Unknown State</strong></td>
+<td>Observado sem evidência suficiente.</td>
+<td>3.14</td>
+</tr>
+<tr>
+<td><strong>Unavailable State</strong></td>
+<td>Gene não-observado.</td>
+<td>3.15</td>
+</tr>
+<tr>
+<td><strong>Derived State</strong></td>
+<td>Expression calculada a partir do canonical.</td>
+<td>3.16</td>
+</tr>
+<tr>
+<td><strong>Canonical Expression</strong></td>
+<td>Current Expression residente no AR.</td>
+<td>3.17</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="apendice-b-dependency-graph">Apêndice B — Dependency Graph</h2>
+<pre><code>        ┌────────────────────────────┐
+        │  Lex AraOS                │
+        └─────────────┬─────────────┘
+                      │
+                      ▼
+        ┌────────────────────────────┐
+        │  AS-000 Language Spec      │
+        └─────────────┬─────────────┘
+                      │
+                      ▼
+        ┌────────────────────────────┐
+        │  AS-001 Clinical Gene      │
+        └─────────────┬─────────────┘
+                      │ (Expression é VO do Gene)
+                      ▼
+        ┌────────────────────────────┐
+        │  AS-002 Clinical           │
+        │  Expression (este)         │
+        └─────────────┬─────────────┘
+                      │
+                      ▼
+        ┌────────────────────────────┐
+        │  Implementação             │
+        │  Gene AR + Expression VO   │
+        └────────────────────────────┘
+</code></pre>
+<hr />
+<h2 id="REDACTED">Apêndice C — Mapeamento para AS-000 (Gramática)</h2>
+<p>Cada termo canônico utilizado neste Standard é referenciado
+explicitamente a AS-000 §3:</p>
+<table>
+<thead>
+<tr>
+<th>Termo usado neste AS</th>
+<th>Origem canônica (AS-000)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Value Object</td>
+<td>§3.2</td>
+</tr>
+<tr>
+<td>Aggregate Root</td>
+<td>§3.4</td>
+</tr>
+<tr>
+<td>Domain Event</td>
+<td>§3.5</td>
+</tr>
+<tr>
+<td>Evidence</td>
+<td>§3.7</td>
+</tr>
+<tr>
+<td>Context</td>
+<td>§3.8</td>
+</tr>
+<tr>
+<td>Canonical State</td>
+<td>§3.9</td>
+</tr>
+<tr>
+<td>Derived State</td>
+<td>§3.10</td>
+</tr>
+<tr>
+<td>Interpretation</td>
+<td>§3.11</td>
+</tr>
+<tr>
+<td>Hypothesis</td>
+<td>§3.12</td>
+</tr>
+<tr>
+<td>Semantic Identity</td>
+<td>§3.13</td>
+</tr>
+<tr>
+<td>Explainability</td>
+<td>§3.16</td>
+</tr>
+<tr>
+<td>Temporality</td>
+<td>§3.17</td>
+</tr>
+<tr>
+<td>Traceability</td>
+<td>§3.18</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Este Standard não redefine nenhum desses termos.</strong></p>
+<hr />
+<h2 id="REDACTED">Apêndice D — Mapeamento para Fontes Normativas</h2>
+<table>
+<thead>
+<tr>
+<th>Cláusula deste AS</th>
+<th>Paper</th>
+<th>Constituição</th>
+<th>ADR</th>
+<th>AS</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>§3 Value Object</td>
+<td>Paper IV §3</td>
+<td>Art. 4</td>
+<td>ADR-0005</td>
+<td>AS-000 §3.2</td>
+</tr>
+<tr>
+<td>§4.1 Identidade</td>
+<td>Paper IV §2</td>
+<td>Art. 5</td>
+<td>ADR-0005</td>
+<td>AS-000 §3.13</td>
+</tr>
+<tr>
+<td>§4.2 Conteúdo</td>
+<td>Paper IV §3</td>
+<td>—</td>
+<td>ADR-0005</td>
+<td>AS-001 §6.1</td>
+</tr>
+<tr>
+<td>§4.3 Explainability</td>
+<td>Paper IV §9</td>
+<td>Art. 9</td>
+<td>ADR-0001</td>
+<td>AS-000 §3.16</td>
+</tr>
+<tr>
+<td>§4.4 Temporalidade</td>
+<td>Paper IV §6</td>
+<td>Art. 8</td>
+<td>ADR-0001</td>
+<td>AS-000 §3.17</td>
+</tr>
+<tr>
+<td>§4.5 Contextualidade</td>
+<td>Paper IV §8</td>
+<td>Art. 10</td>
+<td>ADR-0003</td>
+<td>AS-000 §3.8</td>
+</tr>
+<tr>
+<td>§4.6 Imutabilidade</td>
+<td>Paper IV §4</td>
+<td>Art. 7</td>
+<td>ADR-0005</td>
+<td>AS-000 Axiom 4</td>
+</tr>
+<tr>
+<td>§5 Axiom 5</td>
+<td>Paper V §6</td>
+<td>Art. 11</td>
+<td>—</td>
+<td>AS-000 §3.5</td>
+</tr>
+<tr>
+<td>§5 Axiom 8</td>
+<td>Paper IV §1</td>
+<td>Art. 2</td>
+<td>—</td>
+<td>AS-000 §3.6</td>
+</tr>
+<tr>
+<td>§6 Modelo</td>
+<td>Paper IV §5</td>
+<td>Art. 7</td>
+<td>ADR-0001</td>
+<td>AS-001 §6.2</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="REDACTED">Apêndice E — Requisitos de Conformidade</h2>
+<p>Um sistema é considerado <strong>compatível com o AS-002</strong> quando:</p>
+<ol>
+<li><strong>C1</strong> — Utiliza exclusivamente os termos de §3 com o
+   significado oficial do AS-000.</li>
+<li><strong>C2</strong> — Respeita todos os axiomas de §5.</li>
+<li><strong>C3</strong> — Observa todos os requisitos SHALL de §4.</li>
+<li><strong>C4</strong> — Implementa o modelo computacional de §6.</li>
+<li><strong>C5</strong> — Mapeia Expression como Value Object conforme §7.</li>
+<li><strong>C6</strong> — Mantém cobertura de testes ≥ 95% para o módulo
+   Expression.</li>
+<li><strong>C7</strong> — Inclui suite de replay bit-identical (1x / 2x /
+   50x / 100x).</li>
+<li><strong>C8</strong> — Documenta divergências eventuais em ADR.</li>
+</ol>
+<blockquote>
+<p><strong>Requisito E.1</strong> — Sistemas não conformes <strong>shall not</strong> ser
+marcados como compatíveis com o AraOS.</p>
+</blockquote>
+<hr />
+<h2 id="apendice-f-historico-de-versoes">Apêndice F — Histórico de Versões</h2>
+<table>
+<thead>
+<tr>
+<th>Versão</th>
+<th>Data</th>
+<th>Mudança</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1.0</td>
+<td>2026-07-17</td>
+<td>Emissão inicial</td>
+<td>Draft</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="aviso-final">Aviso Final</h2>
+<blockquote>
+<p>Este AraOS Standard define a Clinical Expression como
+<strong>Value Object normativo</strong> do AraOS — a forma canônica pela
+qual o conhecimento clínico se torna observável.</p>
+<p>Após sua aprovação, nenhuma implementação <strong>shall</strong> tratar
+Expression como Entity ou Aggregate. Expression é o que se
+sabe sobre um Gene no presente.
+Gene é o que se sabe sobre o paciente ao longo do tempo.</p>
+<p>Toda a terminologia deste documento é <strong>herdada da gramática
+oficial do AS-000</strong>. Em caso de dúvida sobre um termo,
+consultar AS-000 §3 antes de presumir significado local.</p>
+</blockquote>
+<hr />
+<p><strong>Próxima transição prevista:</strong> Draft → Review após a
+implementação concreta da Expression como Value Object do
+Clinical Gene (Sprint 4.3 Phase 2).</p>
+</body>
+</html>

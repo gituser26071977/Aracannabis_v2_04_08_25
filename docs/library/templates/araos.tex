@@ -1,0 +1,164 @@
+% =====================================================================
+% AraOS Library — Template LaTeX institucional para Pandoc
+% Usado para renderizar AraOS Standards (AS-XXX) em PDF tipográfico.
+% Invocação:
+%   pandoc -s --template=araos.tex --pdf-engine=xelatex \
+%          --toc --toc-depth=3 \
+%          docs/standards/AS-XXX.md \
+%          -o docs/library/standards/AS-XXX-vY.Z.pdf
+% =====================================================================
+
+\documentclass[11pt,a4paper]{article}
+
+% --- Pacotes base ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[portuguese,english]{babel}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{geometry}
+\usepackage{titlesec}
+\usepackage{tocloft}
+\usepackage{fancyhdr}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{hyperref}
+\usepackage{lastpage}
+
+% --- Geometria institucional ---
+\geometry{
+  a4paper,
+  top=3cm, bottom=2.5cm, left=2.5cm, right=2.5cm,
+  headheight=18pt
+}
+
+% --- Paleta cromática AraOS ---
+\definecolor{araosaccent}{HTML}{2E5A87}
+\definecolor{araosaccentlight}{HTML}{E8F0FA}
+\definecolor{araosrule}{HTML}{D0D7DE}
+\definecolor{araosnote}{HTML}{5D4037}
+\definecolor{araosnotebg}{HTML}{FFF8E1}
+\definecolor{araosaxiom}{HTML}{4A148C}
+\definecolor{araosaxiombg}{HTML}{F3E5F5}
+
+% --- Hyperref ---
+\hypersetup{
+  colorlinks=true,
+  linkcolor=araosaccent,
+  urlcolor=araosaccent,
+  citecolor=araosaccent,
+  pdftitle={$title$},
+  pdfauthor={AraOS Architecture},
+  pdfsubject={AraOS Standard (Normative)},
+  pdfkeywords={AraOS, Clinical Gene, Knowledge Representation, $keywords$}
+}
+
+% --- Cabeçalhos/rodapés institucionais ---
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\color{araosaccent}\textsf{AraOS Library}}
+\fancyhead[R]{\small\color{araosaccent}\textsf{$title$}}
+\fancyfoot[C]{\small\thepage\ de \pageref{LastPage}}
+\fancyfoot[L]{\small\color{araosrule}AraOS Standard (Normative)}
+\fancyfoot[R]{\small\color{araosrule}v$version$}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\headrule}{\color{araosrule}\hrule width\headwidth height\headrulewidth}
+
+% --- Estilo de títulos ---
+\titleformat{\section}
+  {\color{araosaccent}\Large\bfseries\sffamily}
+  {\thesection}{1em}{}
+  [\vspace{-0.3em}\color{araosrule}\titlerule]
+\titleformat{\subsection}
+  {\color{araosaccent}\large\bfseries\sffamily}
+  {\thesubsection}{1em}{}
+\titleformat{\subsubsection}
+  {\color{araosaccent}\normalsize\bfseries\sffamily}
+  {\thesubsubsection}{1em}{}
+
+% --- Blockquotes (NOTAs) ---
+\usepackage[most]{tcolorbox}
+\newtcolorbox{araosnote}{
+  colback=araosnotebg,
+  colframe=araosaccent,
+  boxrule=0pt,
+  leftrule=4pt,
+  arc=0pt,
+  outer arc=0pt,
+  left=8pt, right=8pt, top=6pt, bottom=6pt,
+  fonttitle=\bfseries,
+  title={NOTA}
+}
+
+\newtcolorbox{araosaxiom}{
+  colback=araosaxiombg,
+  colframe=araosaxiom,
+  boxrule=0pt,
+  leftrule=4pt,
+  arc=0pt,
+  outer arc=0pt,
+  left=8pt, right=8pt, top=6pt, bottom=6pt,
+  fonttitle=\bfseries,
+  title={Axiom}
+}
+
+% --- Caption de tabelas ---
+\usepackage{caption}
+\captionsetup{font=small,labelfont={color=araosaccent,bfseries}}
+
+% --- Variáveis Pandoc ---
+$if(title)$
+\title{$title$}
+$endif$
+$if(subtitle)$
+\subtitle{$subtitle$}
+$endif$
+$if(author)$
+\author{$author$}
+$endif$
+$if(date)$
+\date{$date$}
+$endif$
+
+\begin{document}
+
+% --- Capa institucional ---
+\begin{titlepage}
+\centering
+\vspace*{2cm}
+{\Huge\color{araosaccent}\textsf{AraOS Library}}\\[1em]
+{\large\color{araosaccent}\textsf{Clinical Knowledge Representation}}\\[3em]
+\rule{\textwidth}{1pt}\\[1em]
+{\Huge\bfseries $title$}\\[1em]
+{\Large\color{araosaccent}v$version$}\\[3em]
+{\large $if(date)$Emitido em $date$$endif$}\\[0.5em]
+{\large AraOS Architecture}\\[1em]
+\rule{\textwidth}{0.5pt}\\[1em]
+{\small\color{araosaccent}\textsf{AraOS Standard (Normativo)}}\\
+{\small\color{araosrule}\textsf{Status: $status$ · Maturity: $maturity$ · Categoria: $category$}}
+\vfill
+{\small\color{araosrule}Hierarquia: Papers → ADR → AraOS Standard → Implementação}
+\end{titlepage}
+
+% --- Sumário ---
+\tableofcontents
+\newpage
+
+% --- Corpo ---
+$body$
+
+% --- Colofão ---
+\vfill
+\hrule
+\vspace{0.5em}
+\begin{center}
+\small\color{araosrule}
+AraOS Library · $title$ · v$version$\\[0.3em]
+Emitido em $date$ · Status: $status$\\[0.3em]
+Hierarquia canônica: \textbf{Papers} → \textbf{ADR} → \textbf{AraOS Standard} → \textbf{Implementação}
+\end{center}
+
+\end{document}

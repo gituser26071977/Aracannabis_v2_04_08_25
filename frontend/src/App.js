@@ -73,6 +73,7 @@ import OnboardingPage from './pages/OnboardingPage';
 import TrialEndingPage from './pages/TrialEndingPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
 import ModulosPage from './pages/ModulosPage';
+import ClinicalPipelineExplorer from './pages/ClinicalPipelineExplorer';
 import TrialBanner from './components/TrialBanner';
 import ErrorBoundary from './components/ErrorBoundary';
 import NotFoundPage from './pages/NotFoundPage';
@@ -775,6 +776,7 @@ function AppContent() {
           <Route path="/association/stock" element={<ProtectedRoute><StockPage /></ProtectedRoute>} />
           <Route path="/association/dispensation" element={<ProtectedRoute><DispensationPage /></ProtectedRoute>} />
           <Route path="/intelligent-import" element={<ProtectedRoute><IntelligentImportPage /></ProtectedRoute>} />
+          <Route path="/clinical-pipeline" element={<ProtectedRoute><ClinicalPipelineExplorer /></ProtectedRoute>} />
 
           {/* Specialty Modules */}
           <Route

@@ -1,0 +1,50 @@
+%PDF-1.4
+%PDF placeholder — substituir por renderização pandoc+xelatex quando disponível.
+
+ARAOS LIBRARY
+==============
+
+Publication:  AS-001 — AraOS Standard 001: Clinical Gene v1.0
+Identifier:  AS-001
+Category:    Clinical Knowledge Representation
+Status:      Aceito (Normative)
+Maturity:    Stable
+Version:     1.0
+Date:        2026-07-17
+Issued by:   AraOS Architecture
+
+This is a placeholder. The official PDF renderization is produced
+by the command documented in docs/library/README.md:
+
+    pandoc -s --template=docs/library/templates/araos.tex \
+           --pdf-engine=xelatex --toc --toc-depth=3 \
+           docs/standards/AS-001-clinical-gene.md \
+           -o docs/library/standards/AS-001-clinical-gene-v1.0.pdf
+
+Until pandoc + xelatex are available in the build environment, the
+Markdown source at docs/library/standards/AS-001-clinical-gene-v1.0.md
+and the HTML renderization at
+docs/library/standards/AS-001-clinical-gene-v1.0.html are the
+canonical publication artifacts.
+
+To regenerate this PDF:
+
+    # Install dependencies (Ubuntu/Debian)
+    sudo apt-get install pandoc texlive-xetex texlive-fonts-recommended
+
+    # Render
+    cd <repo-root>
+    pandoc -s --template=docs/library/templates/araos.tex \
+           --pdf-engine=xelatex --toc --toc-depth=3 \
+           -M title="AS-001 — AraOS Standard 001: Clinical Gene v1.0" \
+           -M version="1.0" \
+           -M status="Aceito" \
+           -M maturity="Stable" \
+           -M category="Clinical Knowledge Representation" \
+           -M date="2026-07-17" \
+           docs/standards/AS-001-clinical-gene.md \
+           -o docs/library/standards/AS-001-clinical-gene-v1.0.pdf
+
+— AraOS Library, 2026-07-17.
+
+%%EOF

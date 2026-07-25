@@ -1,0 +1,760 @@
+openapi: 3.0.3
+info:
+  title: AraOS Clinical Intelligence — Knowledge API
+  description: |
+    RC1 public API for the Clinical Knowledge Engine.
+
+    The API is a translation layer only — all business logic lives in
+    the Knowledge Service (`KnowledgeService`, `ResearchService`,
+    `CorrelationService`, etc.). Handlers convert HTTP ↔ DTOs and call
+    existing services. No domain mutation, no ORM access, no business
+    rules in the REST layer.
+
+    All endpoints are tenant-scoped via JWT-linked association (the
+    request `tenant_id` is NEVER trusted). Cross-tenant access returns
+    404 (no existence leak) — never 403.
+
+    Standard envelope:
+    ```json
+    {
+      "success": true|false,
+      "data": ...,
+      "error": {"code": "...", "message": "...", "details": [...]} | null,
+      "meta": {"timestamp": "...", "request_id": "...", "correlation_id": "..."}
+    }
+    ```
+  version: 1.0.0
+  contact:
+    name: AraOS Engineering
+    email: eng@arapath.com.br
+
+servers:
+  - url: https://flow.arapath.com.br/api/v1
+    description: Production
+  - url: http://localhost:5000/api/v1
+    description: Development
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Health
+    description: Liveness probe (public, no auth).
+  - name: "Knowledge: Pipelines"
+    description: Pipeline orchestration (run correlation to hypothesis to graph).
+  - name: "Knowledge: Genomes"
+    description: Clinical Genome read API (computed projections).
+  - name: "Knowledge: Cohorts"
+    description: Patient cohort definitions and matching.
+  - name: "Knowledge: Research"
+    description: Research sessions and reproducibility (replay).
+
+paths:
+  /knowledge/health:
+    get:
+      tags: [Health]
+      summary: Liveness probe
+      description: Public endpoint; no auth required. Returns the API version and current timestamp.
+      security: []
+      operationId: getHealth
+      responses:
+        "200":
+          description: Service is alive.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              example:
+                success: true
+                data:
+                  status: ok
+                  version: "1.0.0"
+                  timestamp: "2026-07-22T12:00:00.000000+00:00"
+                error: null
+                meta:
+                  request_id: "req_abc123"
+                  correlation_id: "corr_def456"
+                  latency_ms: 4.21
+
+  /knowledge/pipelines/run:
+    post:
+      tags: [Knowledge: Pipelines]
+      summary: Run the Knowledge pipeline
+      description: |
+        Computes correlations (Pearson/Spearman/etc.), generates hypotheses,
+        and optionally builds the knowledge graph for the given patient + window.
+        Result is persisted under the tenant and returned in the response envelope.
+      operationId: runPipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PipelineRunRequest"
+            example:
+              patient_id: "patient_a1"
+              window_start: "2026-01-01T00:00:00+00:00"
+              window_end: "2026-06-01T00:00:00+00:00"
+              window_label: "6_months"
+              methods: []
+              include_graph: true
+      responses:
+        "201":
+          description: Pipeline completed; genome + correlations + hypotheses + graph returned.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PipelineRunResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /knowledge/genomes:
+    get:
+      tags: [Knowledge: Genomes]
+      summary: List genomes for current tenant
+      description: Returns lightweight summaries (no embedded correlations). For detail use `GET /genomes/{id}`.
+      operationId: listGenomes
+      responses:
+        "200":
+          description: Paginated (in-RC1 single page) list of genome summaries.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenomeListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /knowledge/genomes/{genome_id}:
+    get:
+      tags: [Knowledge: Genomes]
+      summary: Get a clinical genome by id
+      description: |
+        Full genome record including embedded correlations, hypotheses, and
+        (if present) the knowledge graph snapshot. Cross-tenant genome_id
+        returns 404 (existence not leaked).
+      operationId: getGenome
+      parameters:
+        - in: path
+          name: genome_id
+          required: true
+          schema:
+            type: string
+          description: Deterministic genome identifier.
+      responses:
+        "200":
+          description: Genome detail.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenomeDetailResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /knowledge/cohorts:
+    get:
+      tags: [Knowledge: Cohorts]
+      summary: List cohorts for current tenant
+      operationId: listCohorts
+      responses:
+        "200":
+          description: Cohort list.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CohortListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /knowledge/cohorts/{cohort_id}:
+    get:
+      tags: [Knowledge: Cohorts]
+      summary: Get a cohort by id
+      operationId: getCohort
+      parameters:
+        - in: path
+          name: cohort_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Cohort detail with criteria and matched patients.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CohortDetailResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /knowledge/research/sessions:
+    get:
+      tags: [Knowledge: Research]
+      summary: List research sessions for current tenant
+      operationId: listResearchSessions
+      responses:
+        "200":
+          description: Research session list (metadata only — no result_json).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResearchSessionListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /knowledge/research/sessions/{session_id}:
+    get:
+      tags: [Knowledge: Research]
+      summary: Get a research session by id
+      description: Returns the session metadata AND the canonical JSON result.
+      operationId: getResearchSession
+      parameters:
+        - in: path
+          name: session_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Session detail.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResearchSessionDetailResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /knowledge/research/sessions/{session_id}/replay:
+    post:
+      tags: [Knowledge: Research]
+      summary: Replay a prior research session
+      description: |
+        Re-runs the session's query against the same scope and returns a new
+        ResearchSession whose state_hash MUST equal the original (byte-exact
+        reproducibility). Idempotent at the input level; new session_id each call.
+      operationId: replayResearchSession
+      parameters:
+        - in: path
+          name: session_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "201":
+          description: New session reproducibly computed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResearchSessionDetailResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    # ──────── request DTOs ────────
+    PipelineRunRequest:
+      type: object
+      required: [patient_id, window_start, window_end]
+      properties:
+        patient_id:
+          type: string
+          example: "patient_a1"
+        window_start:
+          type: string
+          format: date-time
+          description: ISO 8601 with offset.
+          example: "2026-01-01T00:00:00+00:00"
+        window_end:
+          type: string
+          format: date-time
+          example: "2026-06-01T00:00:00+00:00"
+        window_label:
+          type: string
+          nullable: true
+          example: "6_months"
+        methods:
+          type: array
+          items:
+            type: string
+            enum: [POSITIVE, NEGATIVE, PARTIAL, NONLINEAR]
+          description: Empty list = use all methods.
+        include_graph:
+          type: boolean
+          default: true
+      example:
+        patient_id: "patient_a1"
+        window_start: "2026-01-01T00:00:00+00:00"
+        window_end: "2026-06-01T00:00:00+00:00"
+        window_label: "6_months"
+        methods: []
+        include_graph: true
+
+    # ──────── response DTOs (entity-shaped) ────────
+    HealthResponse:
+      type: object
+      required: [success, data, error, meta]
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: "#/components/schemas/HealthData"
+        error:
+          nullable: true
+        meta:
+          $ref: "#/components/schemas/Meta"
+
+    HealthData:
+      type: object
+      required: [status, version, timestamp]
+      properties:
+        status: {type: string}
+        version: {type: string}
+        timestamp: {type: string, format: date-time}
+
+    GenomeSummary:
+      type: object
+      required: [genome_id, tenant_id, patient_id, window_start, window_end,
+                 state_hash, built_at, gene_count, has_graph]
+      properties:
+        genome_id: {type: string}
+        tenant_id: {type: string}
+        patient_id: {type: string}
+        window_start: {type: string, format: date-time}
+        window_end: {type: string, format: date-time}
+        window_label: {type: string, nullable: true}
+        state_hash: {type: string}
+        built_at: {type: string, format: date-time}
+        gene_count: {type: integer}
+        has_graph: {type: boolean}
+
+    GenomeDetail:
+      allOf:
+        - $ref: "#/components/schemas/GenomeSummary"
+        - type: object
+          required: [gene_ids, correlation_count, hypothesis_count, urn]
+          properties:
+            gene_ids:
+              type: array
+              items: {type: string}
+            correlation_count: {type: integer}
+            hypothesis_count: {type: integer}
+            graph_snapshot_id: {type: string, nullable: true}
+            urn: {type: string}
+
+    Correlation:
+      type: object
+      required: [correlation_id, method, gene_x_id, gene_y_id, coefficient,
+                 n_observations, confidence, computed_at]
+      properties:
+        correlation_id: {type: string}
+        method: {type: string}
+        gene_x_id: {type: string}
+        gene_y_id: {type: string}
+        coefficient: {type: number, format: double}
+        p_value: {type: number, format: double, nullable: true}
+        n_observations: {type: integer}
+        confidence: {type: number, format: double}
+        computed_at: {type: string, format: date-time}
+        explanation_id: {type: string, nullable: true}
+
+    Hypothesis:
+      type: object
+      required: [hypothesis_id, claim, confidence, status, rule_id, created_at]
+      properties:
+        hypothesis_id: {type: string}
+        claim: {type: string}
+        confidence: {type: number, format: double}
+        supporting_genes:
+          type: array
+          items: {type: string}
+        contradicting_genes:
+          type: array
+          items: {type: string}
+        evidence:
+          type: array
+          items: {type: string}
+        correlations_used:
+          type: array
+          items: {type: string}
+        status: {type: string}
+        rule_id: {type: string}
+        created_at: {type: string, format: date-time}
+        explanation_id: {type: string, nullable: true}
+
+    KnowledgeGraph:
+      type: object
+      required: [graph_id, tenant_id, patient_id, nodes, edges, built_at, state_hash, urn]
+      properties:
+        graph_id: {type: string}
+        tenant_id: {type: string}
+        patient_id: {type: string}
+        nodes:
+          type: array
+          items:
+            type: object
+            properties:
+              node_id: {type: string}
+              node_type: {type: string}
+              label: {type: string}
+              urn: {type: string}
+        edges:
+          type: array
+          items:
+            type: object
+            properties:
+              edge_id: {type: string}
+              source_node_id: {type: string}
+              target_node_id: {type: string}
+              edge_type: {type: string}
+              weight: {type: number, format: double}
+        built_at: {type: string, format: date-time}
+        state_hash: {type: string}
+        urn: {type: string}
+
+    Cohort:
+      type: object
+      required: [cohort_id, tenant_id, name, criteria, matched_patient_ids,
+                 count, built_at, state_hash]
+      properties:
+        cohort_id: {type: string}
+        tenant_id: {type: string}
+        name: {type: string}
+        criteria:
+          type: array
+          items:
+            type: object
+        matched_patient_ids:
+          type: array
+          items: {type: string}
+        count: {type: integer}
+        built_at: {type: string, format: date-time}
+        state_hash: {type: string}
+
+    ResearchSessionSummary:
+      type: object
+      required: [session_id, tenant_id, query_id, cohort_id, analysis_type,
+                 started_at, completed_at, duration_seconds, state_hash, reproducible]
+      properties:
+        session_id: {type: string}
+        tenant_id: {type: string}
+        query_id: {type: string}
+        cohort_id: {type: string}
+        analysis_type: {type: string}
+        started_at: {type: string, format: date-time}
+        completed_at: {type: string, format: date-time}
+        duration_seconds: {type: number, format: double}
+        state_hash: {type: string}
+        reproducible: {type: boolean}
+
+    ResearchSessionDetail:
+      allOf:
+        - $ref: "#/components/schemas/ResearchSessionSummary"
+        - type: object
+          required: [result_json]
+          properties:
+            result_json:
+              type: string
+              description: Canonical JSON (no parse on server).
+            explanation_id: {type: string, nullable: true}
+
+    # ──────── response envelopes ────────
+    PipelineRunResponse:
+      type: object
+      required: [success, data, error, meta]
+      properties:
+        success: {type: boolean}
+        data:
+          type: object
+          required: [genome, correlations, hypotheses, started_at, completed_at, duration_seconds]
+          properties:
+            genome: {$ref: "#/components/schemas/GenomeDetail"}
+            correlations:
+              type: array
+              items: {$ref: "#/components/schemas/Correlation"}
+            hypotheses:
+              type: array
+              items: {$ref: "#/components/schemas/Hypothesis"}
+            graph:
+              allOf:
+                - $ref: "#/components/schemas/KnowledgeGraph"
+              nullable: true
+            started_at: {type: string, format: date-time}
+            completed_at: {type: string, format: date-time}
+            duration_seconds: {type: number, format: double}
+        error: {nullable: true}
+        meta: {$ref: "#/components/schemas/Meta"}
+
+    GenomeListResponse:
+      type: object
+      required: [success, data, error, meta]
+      properties:
+        success: {type: boolean}
+        data:
+          type: object
+          required: [items, count]
+          properties:
+            items:
+              type: array
+              items: {$ref: "#/components/schemas/GenomeSummary"}
+            count: {type: integer}
+        error: {nullable: true}
+        meta: {$ref: "#/components/schemas/Meta"}
+
+    GenomeDetailResponse:
+      type: object
+      required: [success, data, error, meta]
+      properties:
+        success: {type: boolean}
+        data: {$ref: "#/components/schemas/GenomeDetail"}
+        error: {nullable: true}
+        meta: {$ref: "#/components/schemas/Meta"}
+
+    CohortListResponse:
+      type: object
+      required: [success, data, error, meta]
+      properties:
+        success: {type: boolean}
+        data:
+          type: object
+          required: [items, count]
+          properties:
+            items:
+              type: array
+              items: {$ref: "#/components/schemas/Cohort"}
+            count: {type: integer}
+        error: {nullable: true}
+        meta: {$ref: "#/components/schemas/Meta"}
+
+    CohortDetailResponse:
+      type: object
+      required: [success, data, error, meta]
+      properties:
+        success: {type: boolean}
+        data: {$ref: "#/components/schemas/Cohort"}
+        error: {nullable: true}
+        meta: {$ref: "#/components/schemas/Meta"}
+
+    ResearchSessionListResponse:
+      type: object
+      required: [success, data, error, meta]
+      properties:
+        success: {type: boolean}
+        data:
+          type: object
+          required: [items, count]
+          properties:
+            items:
+              type: array
+              items: {$ref: "#/components/schemas/ResearchSessionSummary"}
+            count: {type: integer}
+        error: {nullable: true}
+        meta: {$ref: "#/components/schemas/Meta"}
+
+    ResearchSessionDetailResponse:
+      type: object
+      required: [success, data, error, meta]
+      properties:
+        success: {type: boolean}
+        data: {$ref: "#/components/schemas/ResearchSessionDetail"}
+        error: {nullable: true}
+        meta: {$ref: "#/components/schemas/Meta"}
+
+    # ──────── envelope helpers ────────
+    Meta:
+      type: object
+      required: [timestamp, request_id]
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        request_id:
+          type: string
+          description: Per-request UUID, returned in X-Request-ID header.
+        correlation_id:
+          type: string
+          description: Echoed from X-Correlation-ID header when provided.
+        latency_ms:
+          type: number
+          format: double
+          description: Server-measured latency; also in X-Latency-MS header.
+
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          enum:
+            - GENOME_NOT_FOUND
+            - COHORT_NOT_FOUND
+            - RESEARCH_SESSION_NOT_FOUND
+            - PATIENT_NOT_FOUND
+            - INVALID_REQUEST
+            - VALIDATION_ERROR
+            - AUTH_REQUIRED
+            - TENANT_REQUIRED
+            - PERMISSION_DENIED
+            - INTERNAL_ERROR
+            - SERVICE_UNAVAILABLE
+        message: {type: string}
+        details:
+          type: array
+          items:
+            type: object
+            properties:
+              field: {type: string}
+              error: {type: string}
+              value: {}
+
+    Envelope:
+      type: object
+      required: [success, data, error, meta]
+      properties:
+        success: {type: boolean}
+        data: {}
+        error:
+          allOf:
+            - $ref: "#/components/schemas/Error"
+          nullable: true
+        meta: {$ref: "#/components/schemas/Meta"}
+
+  responses:
+    BadRequest:
+      description: Request validation failed.
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Envelope"}
+          example:
+            success: false
+            data: null
+            error:
+              code: "VALIDATION_ERROR"
+              message: "window_end must be after window_start"
+              details:
+                - field: "window_end"
+                  error: "must be after window_start"
+                  value: "2025-12-31T00:00:00+00:00"
+            meta:
+              timestamp: "2026-07-22T12:00:00.000000+00:00"
+              request_id: "req_abc123"
+              correlation_id: "corr_def456"
+
+    Unauthorized:
+      description: Authentication required or invalid JWT.
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Envelope"}
+          example:
+            success: false
+            data: null
+            error:
+              code: "AUTH_REQUIRED"
+              message: "Missing or invalid JWT"
+              details: []
+            meta:
+              timestamp: "2026-07-22T12:00:00.000000+00:00"
+              request_id: "req_abc123"
+              correlation_id: "corr_def456"
+
+    Forbidden:
+      description: Caller is authenticated but lacks the required permission.
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Envelope"}
+          example:
+            success: false
+            data: null
+            error:
+              code: "PERMISSION_DENIED"
+              message: "Caller is missing permission: intelligence.correlation.read"
+              details: []
+            meta:
+              timestamp: "2026-07-22T12:00:00.000000+00:00"
+              request_id: "req_abc123"
+              correlation_id: "corr_def456"
+
+    NotFound:
+      description: Resource not found (or not visible to this tenant — 404 by design).
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Envelope"}
+          example:
+            success: false
+            data: null
+            error:
+              code: "GENOME_NOT_FOUND"
+              message: "Genome with id genome_xxx not found"
+              details: []
+            meta:
+              timestamp: "2026-07-22T12:00:00.000000+00:00"
+              request_id: "req_abc123"
+              correlation_id: "corr_def456"
+
+    InternalError:
+      description: Unhandled server-side error.
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Envelope"}
+          example:
+            success: false
+            data: null
+            error:
+              code: "INTERNAL_ERROR"
+              message: "An unexpected error occurred"
+              details: []
+            meta:
+              timestamp: "2026-07-22T12:00:00.000000+00:00"
+              request_id: "req_abc123"
+              correlation_id: "corr_def456"
+
+    ServiceUnavailable:
+      description: Underlying infrastructure is not configured.
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Envelope"}
+          example:
+            success: false
+            data: null
+            error:
+              code: "SERVICE_UNAVAILABLE"
+              message: "Knowledge persistence is not configured in this deployment"
+              details: []
+            meta:
+              timestamp: "2026-07-22T12:00:00.000000+00:00"
+              request_id: "req_abc123"
+              correlation_id: "corr_def456"

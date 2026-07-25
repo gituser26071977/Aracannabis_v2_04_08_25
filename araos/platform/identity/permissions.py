@@ -119,7 +119,69 @@ class Permission:
     LGPD_EXPORT = "lgpd.export"
     LGPD_PURGE = "lgpd.purge"
     LGPD_AUDIT = "lgpd.audit"
-    
+
+    # ─── Neurodevelopmental Module ───────────────────────────────────
+    # Plataforma de assistência, pesquisa, gestão e ensino em
+    # neurodesenvolvimento (TEA, TDAH, AH/SD, Dupla Excepcionalidade, TOD,
+    # Transtornos de Linguagem, Deficiência Intelectual, Transtornos de
+    # Aprendizagem, Outras). Substitui e amplia o antigo "módulo TEA".
+    NEURODEVELOPMENTAL_PROFILE_READ = "neurodevelopmental.profile.read"
+    NEURODEVELOPMENTAL_PROFILE_WRITE = "neurodevelopmental.profile.write"
+    NEURODEVELOPMENTAL_SCALE_APPLY = "neurodevelopmental.scale.apply"
+    NEURODEVELOPMENTAL_SCALE_INTERPRET = "neurodevelopmental.scale.interpret"
+    REDACTED = "neurodevelopmental.medication.prescribe"
+    REDACTED = "neurodevelopmental.cannabis.prescribe"
+    NEURODEVELOPMENTAL_GRAPH_VIEW = "neurodevelopmental.graph.view"
+    NEURODEVELOPMENTAL_GRAPH_CREATE = "neurodevelopmental.graph.create"
+    NEURODEVELOPMENTAL_REPORT_GENERATE = "neurodevelopmental.report.generate"
+    NEURODEVELOPMENTAL_REPORT_EXPORT = "neurodevelopmental.report.export"
+    NEURODEVELOPMENTAL_AI_USE = "neurodevelopmental.ai.use"
+    NEURODEVELOPMENTAL_RESEARCH_EXPORT = "neurodevelopmental.research.export"
+    REDACTED = "neurodevelopmental.observatory.view"
+    REDACTED = "neurodevelopmental.dashboard.medical"
+    REDACTED = "neurodevelopmental.dashboard.coordinator"
+    REDACTED = "neurodevelopmental.dashboard.researcher"
+    REDACTED = "neurodevelopmental.dashboard.manager"
+    REDACTED = "neurodevelopmental.dashboard.health_secretary"
+    REDACTED = "neurodevelopmental.dashboard.financial"
+    REDACTED = "neurodevelopmental.dashboard.scientific"
+
+    # ─── Sprint 4 — Clinical Intelligence Platform ────────────────────
+    # Explainability + Timeline + Analytics + Correlation + Cohort +
+    # Research + Dashboard + ML Preparation (Sprint 4.1–4.5)
+    INTELLIGENCE_TIMELINE_READ = "intelligence.timeline.read"
+    INTELLIGENCE_EPISODE_READ = "intelligence.episode.read"
+    INTELLIGENCE_EPISODE_WRITE = "intelligence.episode.write"
+    INTELLIGENCE_EPISODE_CONFIRM = "intelligence.episode.confirm"
+    INTELLIGENCE_ANALYTICS_READ = "intelligence.analytics.read"
+    INTELLIGENCE_CORRELATION_READ = "intelligence.correlation.read"
+    INTELLIGENCE_CORRELATION_COMPUTE = "intelligence.correlation.compute"
+    INTELLIGENCE_COHORT_READ = "intelligence.cohort.read"
+    INTELLIGENCE_COHORT_DEFINE = "intelligence.cohort.define"
+    RESEARCH_EXPORT = "research.export"
+    RESEARCH_OMOP_ACCESS = "research.omop.access"
+    EXPLAINABILITY_READ = "explainability.read"
+    EXPLAINABILITY_AUDIT = "explainability.audit"
+    DASHBOARD_PATIENT_VIEW = "dashboard.patient.view"
+    DASHBOARD_COHORT_VIEW = "dashboard.cohort.view"
+    DASHBOARD_MANAGERIAL = "dashboard.managerial"
+    ML_FEATURE_READ = "ml.feature.read"
+    ML_DATASET_BUILD = "ml.dataset.build"
+    ML_PREDICT_USE = "ml.predict.use"
+
+    # ─── Sprint 4.2 — Clinical Context Engine (ADR-0003) ─────────────
+    INTELLIGENCE_CONTEXT_READ = "intelligence.context.read"
+    INTELLIGENCE_CONTEXT_WRITE = "intelligence.context.write"
+    INTELLIGENCE_CONTEXT_CONFIRM = "intelligence.context.confirm"
+    INTELLIGENCE_CONTEXT_RULE_RUN = "intelligence.context.rule.run"
+    INTELLIGENCE_CONTEXT_QUERY = "intelligence.context.query"
+
+    # ─── Sprint 4.5 — Knowledge REST API (RC1 Gate 2) ────────────────
+    # ADDITIVE ONLY. These constants extend the registry; existing
+    # roles default to ADMIN bypass via routes/auth_decorators.py.
+    INTELLIGENCE_RESEARCH_READ = "intelligence.research.read"
+    INTELLIGENCE_REPLAY_EXECUTE = "intelligence.replay.execute"
+
     @classmethod
     def all(cls) -> List[str]:
         """Retorna todas as permissões definidas."""
@@ -423,7 +485,120 @@ class RoleRegistry:
         }),
         description="Apenas visualização",
     )
-    
+
+    # ─── ROLE_NEURODEVELOPMENTAL_PHYSICIAN ──────────────────────────
+    # Médico especialista em neurodesenvolvimento.
+    # Herda permissões clínicas gerais + bundle específico do módulo.
+    ROLE_NEURODEVELOPMENTAL_PHYSICIAN = Role(
+        name="neuro_physician",
+        permissions=frozenset({
+            # Bundle clínico padrão (subset de physician)
+            Permission.PATIENT_READ,
+            Permission.PATIENT_WRITE,
+            Permission.PATIENT_EXPORT,
+            Permission.CONSULTATION_READ,
+            Permission.CONSULTATION_WRITE,
+            Permission.CONSULTATION_SCHEDULE,
+            Permission.CONSULTATION_START,
+            Permission.CONSULTATION_FINISH,
+            Permission.EVOLUTION_READ,
+            Permission.EVOLUTION_WRITE,
+            Permission.PRESCRIPTION_READ,
+            Permission.PRESCRIPTION_WRITE,
+            Permission.EXAM_REQUEST,
+            Permission.EXAM_READ,
+            Permission.DIAGNOSIS_READ,
+            Permission.DIAGNOSIS_WRITE,
+            Permission.ALLERGY_WRITE,
+            Permission.MEDICATION_PRESCRIBE,
+            Permission.DOCUMENT_UPLOAD,
+            Permission.DOCUMENT_READ,
+            Permission.VOICE_USE,
+            Permission.COMMUNICATION_SEND,
+            Permission.COMMUNICATION_READ,
+            Permission.BILLING_READ,
+            Permission.AI_USE,
+            Permission.LGPD_EXPORT,
+            Permission.CLINIC_READ,
+            # Bundle neurodesenvolvimento
+            Permission.NEURODEVELOPMENTAL_PROFILE_READ,
+            Permission.NEURODEVELOPMENTAL_PROFILE_WRITE,
+            Permission.NEURODEVELOPMENTAL_SCALE_APPLY,
+            Permission.NEURODEVELOPMENTAL_SCALE_INTERPRET,
+            Permission.REDACTED,
+            Permission.REDACTED,
+            Permission.NEURODEVELOPMENTAL_GRAPH_VIEW,
+            Permission.NEURODEVELOPMENTAL_GRAPH_CREATE,
+            Permission.NEURODEVELOPMENTAL_REPORT_GENERATE,
+            Permission.NEURODEVELOPMENTAL_REPORT_EXPORT,
+            Permission.NEURODEVELOPMENTAL_AI_USE,
+            Permission.REDACTED,
+            Permission.REDACTED,
+            # Sprint 4 — Clinical Intelligence Platform
+            Permission.INTELLIGENCE_TIMELINE_READ,
+            Permission.INTELLIGENCE_CONTEXT_READ,
+            Permission.INTELLIGENCE_CONTEXT_WRITE,
+            Permission.INTELLIGENCE_CONTEXT_CONFIRM,
+            Permission.INTELLIGENCE_CONTEXT_QUERY,
+            Permission.EXPLAINABILITY_READ,
+            Permission.DASHBOARD_PATIENT_VIEW,
+        }),
+        description="Médico especialista em neurodesenvolvimento",
+    )
+
+    # ─── ROLE_INTELLIGENCE_CURATOR ────────────────────────────────────
+    # Curador de Inteligência Clínica — responsável por revisar sugestões
+    # de ClinicalContext, validar explicações, manter grafo de relacionamentos.
+    # Read-only em módulos de inteligência clínica (timeline, analytics, correlation).
+    ROLE_INTELLIGENCE_CURATOR = Role(
+        name="intelligence_curator",
+        permissions=frozenset({
+            Permission.INTELLIGENCE_CONTEXT_READ,
+            Permission.INTELLIGENCE_CONTEXT_WRITE,
+            Permission.INTELLIGENCE_CONTEXT_CONFIRM,
+            Permission.INTELLIGENCE_CONTEXT_RULE_RUN,
+            Permission.INTELLIGENCE_CONTEXT_QUERY,
+            Permission.INTELLIGENCE_TIMELINE_READ,
+            Permission.INTELLIGENCE_EPISODE_READ,
+            Permission.INTELLIGENCE_EPISODE_CONFIRM,
+            Permission.INTELLIGENCE_ANALYTICS_READ,
+            Permission.INTELLIGENCE_CORRELATION_READ,
+            Permission.INTELLIGENCE_COHORT_READ,
+            Permission.EXPLAINABILITY_READ,
+            Permission.EXPLAINABILITY_AUDIT,
+            Permission.DASHBOARD_PATIENT_VIEW,
+            Permission.DASHBOARD_COHORT_VIEW,
+        }),
+        description="Curador de Inteligência Clínica — revisão de contextos e explicações",
+    )
+
+    # ─── ROLE_HEALTH_SECRETARY ──────────────────────────────────────
+    # Secretaria Estadual/Municipal de Saúde — acesso somente leitura ao
+    # Observatório Sergipano de Neurodesenvolvimento.
+    ROLE_HEALTH_SECRETARY = Role(
+        name="health_secretary",
+        permissions=frozenset({
+            Permission.REDACTED,
+            Permission.REDACTED,
+        }),
+        description="Secretaria de Saúde (acesso somente leitura ao Observatório)",
+    )
+
+    # ─── ROLE_SCIENTIFIC_PRODUCER ───────────────────────────────────
+    # Pesquisador / Produtor Científico — exportação de dados e
+    # dashboards de pesquisa + produção científica.
+    ROLE_SCIENTIFIC_PRODUCER = Role(
+        name="scientific_producer",
+        permissions=frozenset({
+            Permission.PATIENT_READ,
+            Permission.NEURODEVELOPMENTAL_PROFILE_READ,
+            Permission.NEURODEVELOPMENTAL_RESEARCH_EXPORT,
+            Permission.REDACTED,
+            Permission.REDACTED,
+        }),
+        description="Pesquisador / Produtor Científico",
+    )
+
     _ROLES: Dict[str, Role] = {
         ROLE_ADMIN.name: ROLE_ADMIN,
         ROLE_PHYSICIAN.name: ROLE_PHYSICIAN,
@@ -433,6 +608,10 @@ class RoleRegistry:
         ROLE_AGENT.name: ROLE_AGENT,
         ROLE_SERVICE_ACCOUNT.name: ROLE_SERVICE_ACCOUNT,
         ROLE_VIEWER.name: ROLE_VIEWER,
+        ROLE_NEURODEVELOPMENTAL_PHYSICIAN.name: ROLE_NEURODEVELOPMENTAL_PHYSICIAN,
+        ROLE_HEALTH_SECRETARY.name: ROLE_HEALTH_SECRETARY,
+        ROLE_SCIENTIFIC_PRODUCER.name: ROLE_SCIENTIFIC_PRODUCER,
+        ROLE_INTELLIGENCE_CURATOR.name: ROLE_INTELLIGENCE_CURATOR,
     }
     
     @classmethod

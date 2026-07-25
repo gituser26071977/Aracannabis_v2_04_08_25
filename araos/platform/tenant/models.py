@@ -38,6 +38,29 @@ def now_utc() -> datetime:
     return datetime.now(timezone.utc)
 
 
+class AuditFieldsMixin:
+    """
+    Mixin com campos de auditoria completos (LGPD/SOC2 friendly).
+
+    Adiciona created_by / updated_by / deleted_by aos modelos que
+    precisam de rastreabilidade humana (não apenas timestamps automáticos).
+
+    Aplicado em módulos greenfield — módulos legados (ex.: cannabis db_models)
+    continuam sem o mixin até migração específica.
+
+    Uso:
+        class NeuroPatientProfile(AuditFieldsMixin, Base):
+            __tablename__ = "neuro_patient_profiles"
+            ...
+    """
+
+    created_by: Mapped[Optional[str]] = mapped_column(String(36), nullable=True, index=True)
+    updated_by: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    deleted_by: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    # created_at / updated_at / deleted_at continuam na própria entidade
+    # (declarados em cada model para manter clareza do schema)
+
+
 # ═══════════════════════════════════════════════════════════════════════
 # ENTIDADE 1: ORGANIZATION
 # ═══════════════════════════════════════════════════════════════════════

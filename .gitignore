@@ -127,3 +127,4 @@ tools/*/build/
 
 # Husky
 .husky/_/
+mobile/web/dist/

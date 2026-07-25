@@ -1,0 +1,1519 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ASM-001 — AraOS Specification Meta Model v1.0</title>
+<link rel="stylesheet" href="../stylesheets/araos.css">
+</head>
+<body>
+<nav id="TOC" role="doc-toc" aria-label="Sumário">
+<div class="toc">
+<ul>
+<li><a href="#1-header">§1 — Header</a><ul>
+<li><a href="#11-objetivo-da-secao">1.1 Objetivo da seção</a></li>
+<li><a href="#12-obrigatoriedade">1.2 Obrigatoriedade</a></li>
+<li><a href="#13-regras-de-escrita">1.3 Regras de escrita</a></li>
+<li><a href="#14-dependencias">1.4 Dependências</a></li>
+<li><a href="#15-restricoes">1.5 Restrições</a></li>
+</ul>
+</li>
+<li><a href="#2-normative-sources">§2 — Normative Sources</a><ul>
+<li><a href="#21-objetivo">2.1 Objetivo</a></li>
+<li><a href="#22-obrigatoriedade">2.2 Obrigatoriedade</a></li>
+<li><a href="#23-regras-de-escrita">2.3 Regras de escrita</a></li>
+<li><a href="#24-dependencias">2.4 Dependências</a></li>
+<li><a href="#25-restricoes">2.5 Restrições</a></li>
+</ul>
+</li>
+<li><a href="#3-design-goals">§3 — Design Goals</a><ul>
+<li><a href="#31-objetivo">3.1 Objetivo</a></li>
+<li><a href="#32-obrigatoriedade">3.2 Obrigatoriedade</a></li>
+<li><a href="#33-regras-de-escrita">3.3 Regras de escrita</a></li>
+<li><a href="#34-dependencias">3.4 Dependências</a></li>
+<li><a href="#35-restricoes">3.5 Restrições</a></li>
+</ul>
+</li>
+<li><a href="#4-non-goals">§4 — Non Goals</a><ul>
+<li><a href="#41-objetivo">4.1 Objetivo</a></li>
+<li><a href="#42-obrigatoriedade">4.2 Obrigatoriedade</a></li>
+<li><a href="#43-regras-de-escrita">4.3 Regras de escrita</a></li>
+<li><a href="#44-dependencias">4.4 Dependências</a></li>
+<li><a href="#45-restricoes">4.5 Restrições</a></li>
+</ul>
+</li>
+<li><a href="#5-scope">§5 — Scope</a><ul>
+<li><a href="#51-objetivo">5.1 Objetivo</a></li>
+<li><a href="#52-obrigatoriedade">5.2 Obrigatoriedade</a></li>
+<li><a href="#53-regras-de-escrita">5.3 Regras de escrita</a></li>
+<li><a href="#54-dependencias">5.4 Dependências</a></li>
+<li><a href="#55-restricoes">5.5 Restrições</a></li>
+</ul>
+</li>
+<li><a href="#6-normative-references">§6 — Normative References</a><ul>
+<li><a href="#61-objetivo">6.1 Objetivo</a></li>
+<li><a href="#62-obrigatoriedade">6.2 Obrigatoriedade</a></li>
+<li><a href="#63-regras-de-escrita">6.3 Regras de escrita</a></li>
+<li><a href="#64-dependencias">6.4 Dependências</a></li>
+<li><a href="#65-restricoes">6.5 Restrições</a></li>
+</ul>
+</li>
+<li><a href="#7-terms-and-definitions">§7 — Terms and Definitions</a><ul>
+<li><a href="#71-objetivo">7.1 Objetivo</a></li>
+<li><a href="#72-obrigatoriedade">7.2 Obrigatoriedade</a></li>
+<li><a href="#73-regras-de-escrita">7.3 Regras de escrita</a></li>
+<li><a href="#74-dependencias">7.4 Dependências</a></li>
+<li><a href="#75-restricoes">7.5 Restrições</a></li>
+</ul>
+</li>
+<li><a href="#8-invariants">§8 — Invariants</a><ul>
+<li><a href="#81-objetivo">8.1 Objetivo</a></li>
+<li><a href="#82-obrigatoriedade">8.2 Obrigatoriedade</a></li>
+<li><a href="#83-regras-de-escrita">8.3 Regras de escrita</a></li>
+<li><a href="#84-dependencias">8.4 Dependências</a></li>
+<li><a href="#85-restricoes">8.5 Restrições</a></li>
+</ul>
+</li>
+<li><a href="#9-formal-axioms">§9 — Formal Axioms</a><ul>
+<li><a href="#91-objetivo">9.1 Objetivo</a></li>
+<li><a href="#92-obrigatoriedade">9.2 Obrigatoriedade</a></li>
+<li><a href="#93-regras-de-escrita">9.3 Regras de escrita</a></li>
+<li><a href="#94-dependencias">9.4 Dependências</a></li>
+<li><a href="#95-restricoes">9.5 Restrições</a></li>
+</ul>
+</li>
+<li><a href="#10-normative-requirements-shall">§10 — Normative Requirements (SHALL)</a><ul>
+<li><a href="#101-objetivo">10.1 Objetivo</a></li>
+<li><a href="#102-obrigatoriedade">10.2 Obrigatoriedade</a></li>
+<li><a href="#103-regras-de-escrita">10.3 Regras de escrita</a><ul>
+<li><a href="#1031-requirement-id">10.3.1 Requirement ID</a></li>
+<li><a href="#1032-section">10.3.2 Section</a></li>
+<li><a href="#1033-text">10.3.3 Text</a></li>
+<li><a href="#1034-normative-verb">10.3.4 Normative Verb</a></li>
+<li><a href="#1035-rationale">10.3.5 Rationale</a></li>
+<li><a href="#1036-references">10.3.6 References</a></li>
+<li><a href="#1037-conformance-test">10.3.7 Conformance Test</a></li>
+<li><a href="#1038-status">10.3.8 Status</a></li>
+<li><a href="#1039-version-introduced">10.3.9 Version Introduced</a></li>
+<li><a href="#10310-version-deprecated-opcional">10.3.10 Version Deprecated (opcional)</a></li>
+</ul>
+</li>
+<li><a href="#104-dependencias">10.4 Dependências</a></li>
+<li><a href="#105-restricoes">10.5 Restrições</a></li>
+</ul>
+</li>
+<li><a href="#11-computational-model">§11 — Computational Model</a><ul>
+<li><a href="#111-objetivo">11.1 Objetivo</a></li>
+<li><a href="#112-obrigatoriedade">11.2 Obrigatoriedade</a></li>
+<li><a href="#113-regras-de-escrita">11.3 Regras de escrita</a></li>
+<li><a href="#114-dependencias">11.4 Dependências</a></li>
+<li><a href="#115-restricoes">11.5 Restrições</a></li>
+</ul>
+</li>
+<li><a href="#12-normative-verbs">§12 — Normative Verbs</a><ul>
+<li><a href="#REDACTED">12.1 Definição canônica (RFC 2119 + ISO/IEC Directives Part 2)</a></li>
+<li><a href="#122-regras-de-uso">12.2 Regras de uso</a></li>
+</ul>
+</li>
+<li><a href="#13-ddd-mapping">§13 — DDD Mapping</a><ul>
+<li><a href="#131-objetivo">13.1 Objetivo</a></li>
+<li><a href="#132-obrigatoriedade">13.2 Obrigatoriedade</a></li>
+<li><a href="#133-regras-de-escrita">13.3 Regras de escrita</a></li>
+<li><a href="#134-dependencias">13.4 Dependências</a></li>
+<li><a href="#135-restricoes">13.5 Restrições</a></li>
+</ul>
+</li>
+<li><a href="#14-canonical-examples">§14 — Canonical Examples</a><ul>
+<li><a href="#141-objetivo">14.1 Objetivo</a></li>
+<li><a href="#142-obrigatoriedade">14.2 Obrigatoriedade</a></li>
+<li><a href="#143-regras-de-escrita">14.3 Regras de escrita</a></li>
+<li><a href="#144-dependencias">14.4 Dependências</a></li>
+<li><a href="#145-restricoes">14.5 Restrições</a></li>
+</ul>
+</li>
+<li><a href="#15-compliance-levels">§15 — Compliance Levels</a><ul>
+<li><a href="#151-objetivo">15.1 Objetivo</a></li>
+<li><a href="#152-obrigatoriedade">15.2 Obrigatoriedade</a></li>
+<li><a href="#153-regras-de-escrita">15.3 Regras de escrita</a></li>
+<li><a href="#154-dependencias">15.4 Dependências</a></li>
+<li><a href="#155-restricoes">15.5 Restrições</a></li>
+</ul>
+</li>
+<li><a href="#16-conformance-requirements">§16 — Conformance Requirements</a><ul>
+<li><a href="#161-objetivo">16.1 Objetivo</a></li>
+<li><a href="#162-obrigatoriedade">16.2 Obrigatoriedade</a></li>
+<li><a href="#163-regras-de-escrita">16.3 Regras de escrita</a></li>
+<li><a href="#164-dependencias">16.4 Dependências</a></li>
+<li><a href="#165-restricoes">16.5 Restrições</a></li>
+</ul>
+</li>
+<li><a href="#17-machine-readability">§17 — Machine Readability</a><ul>
+<li><a href="#171-objetivo">17.1 Objetivo</a></li>
+<li><a href="#172-obrigatoriedade">17.2 Obrigatoriedade</a></li>
+<li><a href="#REDACTED">17.3 Modelo conceitual (Requirement serializado)</a></li>
+<li><a href="#REDACTED">17.4 Modelo conceitual (Standard serializado)</a></li>
+<li><a href="#175-restricoes">17.5 Restrições</a></li>
+</ul>
+</li>
+<li><a href="#18-appendices">§18 — Appendices</a><ul>
+<li><a href="#181-objetivo">18.1 Objetivo</a></li>
+<li><a href="#182-obrigatoriedade">18.2 Obrigatoriedade</a></li>
+<li><a href="#183-regras-de-escrita">18.3 Regras de escrita</a></li>
+<li><a href="#184-dependencias">18.4 Dependências</a></li>
+<li><a href="#185-restricoes">18.5 Restrições</a></li>
+</ul>
+</li>
+<li><a href="#19-version-history">§19 — Version History</a><ul>
+<li><a href="#191-objetivo">19.1 Objetivo</a></li>
+<li><a href="#192-obrigatoriedade">19.2 Obrigatoriedade</a></li>
+<li><a href="#193-regras-de-escrita">19.3 Regras de escrita</a></li>
+<li><a href="#194-dependencias">19.4 Dependências</a></li>
+<li><a href="#195-restricoes">19.5 Restrições</a></li>
+</ul>
+</li>
+<li><a href="#20-change-control">§20 — Change Control</a><ul>
+<li><a href="#201-semver">20.1 SemVer</a></li>
+<li><a href="#202-deprecation">20.2 Deprecation</a></li>
+<li><a href="#203-replacement">20.3 Replacement</a></li>
+<li><a href="#204-superseded">20.4 Superseded</a></li>
+<li><a href="#205-backward-compatibility">20.5 Backward Compatibility</a></li>
+<li><a href="#206-forward-compatibility">20.6 Forward Compatibility</a></li>
+</ul>
+</li>
+<li><a href="#21-maturity-model">§21 — Maturity Model</a><ul>
+<li><a href="#211-definicao-dos-9-estados">21.1 Definição dos 9 estados</a></li>
+<li><a href="#212-criterios-de-promocao">21.2 Critérios de promoção</a></li>
+<li><a href="#213-distincao-critica">21.3 Distinção crítica</a></li>
+<li><a href="#214-ordem-obrigatoria">21.4 Ordem obrigatória</a></li>
+</ul>
+</li>
+<li><a href="#22-dependency-graph">§22 — Dependency Graph</a><ul>
+<li><a href="#221-regra-fundamental">22.1 Regra fundamental</a></li>
+<li><a href="#REDACTED">22.2 Dependências permitidas (exemplos)</a></li>
+<li><a href="#223-proibicoes">22.3 Proibições</a></li>
+<li><a href="#224-verificacao">22.4 Verificação</a></li>
+</ul>
+</li>
+<li><a href="#23-traceability-chain">§23 — Traceability Chain</a><ul>
+<li><a href="#231-cadeia-canonica">23.1 Cadeia canônica</a></li>
+<li><a href="#232-regras">23.2 Regras</a></li>
+<li><a href="#233-metrica-de-cobertura">23.3 Métrica de cobertura</a></li>
+</ul>
+</li>
+<li><a href="#24-meta-model-formal">§24 — Meta-Model Formal</a><ul>
+<li><a href="#241-elementos-do-meta-modelo">24.1 Elementos do meta-modelo</a></li>
+<li><a href="#242-relacionamentos">24.2 Relacionamentos</a></li>
+<li><a href="#243-invariantes-do-meta-modelo">24.3 Invariantes do meta-modelo</a></li>
+</ul>
+</li>
+<li><a href="#25-axiomas-formais">§25 — Axiomas Formais</a><ul>
+<li><a href="#axiom-1-structure-precedes-content">Axiom 1 — Structure Precedes Content</a></li>
+<li><a href="#axiom-2-requirements-are-testable">Axiom 2 — Requirements are Testable</a></li>
+<li><a href="#axiom-3-vocabulary-is-canonical">Axiom 3 — Vocabulary is Canonical</a></li>
+<li><a href="#REDACTED">Axiom 4 — Dependency is Strictly Downward</a></li>
+<li><a href="#axiom-5-maturity-is-monotonic">Axiom 5 — Maturity is Monotonic</a></li>
+<li><a href="#REDACTED">Axiom 6 — Conformance Precedes Reference</a></li>
+<li><a href="#axiom-7-traceability-is-total">Axiom 7 — Traceability is Total</a></li>
+<li><a href="#REDACTED">Axiom 8 — Machine Readability is Mandatory</a></li>
+<li><a href="#REDACTED">Axiom 9 — Section Structure is Mandatory</a></li>
+<li><a href="#REDACTED">Axiom 10 — Backward Compatibility is Default</a></li>
+</ul>
+</li>
+<li><a href="#REDACTED">§26 — Compliance Levels (do próprio ASM-001)</a></li>
+<li><a href="#27-computational-model-do-asm-001">§27 — Computational Model (do ASM-001)</a><ul>
+<li><a href="#REDACTED">27.1 Estrutura de um Standard (esquema)</a></li>
+<li><a href="#272-operacoes-canonicas">27.2 Operações canônicas</a></li>
+</ul>
+</li>
+<li><a href="#28-ddd-mapping-do-asm-001">§28 — DDD Mapping (do ASM-001)</a></li>
+<li><a href="#29-canonical-examples">§29 — Canonical Examples</a><ul>
+<li><a href="#REDACTED">29.1 Exemplo 1: Requirement completo (AS-002-REQ-0046)</a></li>
+<li><a href="#REDACTED">29.2 Exemplo 2: Header canônico (AS-002)</a></li>
+<li><a href="#REDACTED">29.3 Contraexemplo: Requirement inválido</a></li>
+</ul>
+</li>
+<li><a href="#REDACTED">§30 — Conformance Requirements (do ASM-001)</a></li>
+<li><a href="#REDACTED">Apêndice A — Norma externa de referência</a></li>
+<li><a href="#REDACTED">Apêndice B — Glossário de Meta-Termos</a></li>
+<li><a href="#apendice-c-conformidade-cross-as">Apêndice C — Conformidade Cross-AS</a></li>
+<li><a href="#apendice-d-roadmap">Apêndice D — Roadmap</a></li>
+<li><a href="#version-history">Version History</a></li>
+</ul>
+</div>
+
+</nav>
+<h1 id="REDACTED">ASM-001 — AraOS Specification Meta Model v1.0</h1>
+<blockquote>
+<p><strong>URN:</strong> <code>urn:araos:meta:001:1.0</code>
+<strong>Categoria:</strong> Meta-normative Specification
+<strong>Status editorial:</strong> Draft (2026-07-17)
+<strong>Maturidade:</strong> Draft
+<strong>Versão:</strong> 1.0
+<strong>Posição hierárquica:</strong> acima de AS-001..006; abaixo de AS-000 Language Specification
+<strong>Idiomas:</strong> PT-BR (canônico) / EN (derivado, quando aplicável)</p>
+</blockquote>
+<hr />
+<h2 id="1-header">§1 — Header</h2>
+<h3 id="11-objetivo-da-secao">1.1 Objetivo da seção</h3>
+<p>Identificar univocamente o documento e expor seus metadados canônicos para indexação e consumo automatizado.</p>
+<h3 id="12-obrigatoriedade">1.2 Obrigatoriedade</h3>
+<p><strong>MANDATÓRIO.</strong> Todo AraOS Standard <strong>SHALL</strong> possuir um Header com todos os campos especificados em §10 (Requisitos Normativos).</p>
+<h3 id="13-regras-de-escrita">1.3 Regras de escrita</h3>
+<ul>
+<li>O Header é a <strong>primeira</strong> seção do documento.</li>
+<li>Cada campo aparece em sua própria linha.</li>
+<li>O <strong>URN</strong> SHALL seguir o esquema <code>urn:araos:&lt;categoria&gt;:&lt;número&gt;:&lt;versão&gt;</code>.</li>
+<li>A <strong>Maturidade</strong> SHALL ser um dos 9 estados definidos em §11.</li>
+</ul>
+<h3 id="14-dependencias">1.4 Dependências</h3>
+<p>Nenhuma (auto-contida).</p>
+<h3 id="15-restricoes">1.5 Restrições</h3>
+<ul>
+<li>Nenhum campo SHALL ser inferido por leitores.</li>
+<li>A versão SHALL seguir SemVer (<code>MAJOR.MINOR.PATCH</code>).</li>
+</ul>
+<hr />
+<h2 id="2-normative-sources">§2 — Normative Sources</h2>
+<h3 id="21-objetivo">2.1 Objetivo</h3>
+<p>Declarar formalmente a origem teórica e decisória do Standard.</p>
+<h3 id="22-obrigatoriedade">2.2 Obrigatoriedade</h3>
+<p><strong>MANDATÓRIO.</strong></p>
+<h3 id="23-regras-de-escrita">2.3 Regras de escrita</h3>
+<ul>
+<li>Listar em ordem hierárquica: Constituição → Papers → ADRs.</li>
+<li>Cada fonte SHALL ser referenciada por nome e versão quando aplicável.</li>
+<li>A ausência de um Paper SHALL ser justificada explicitamente.</li>
+</ul>
+<h3 id="24-dependencias">2.4 Dependências</h3>
+<p>Nenhuma.</p>
+<h3 id="25-restricoes">2.5 Restrições</h3>
+<p>Esta seção <strong>SHALL NOT</strong> introduzir conceitos novos; apenas referenciar fontes externas ao Standard.</p>
+<hr />
+<h2 id="3-design-goals">§3 — Design Goals</h2>
+<h3 id="31-objetivo">3.1 Objetivo</h3>
+<p>Declarar os <strong>objetivos</strong> que motivaram a redação do Standard.</p>
+<h3 id="32-obrigatoriedade">3.2 Obrigatoriedade</h3>
+<p><strong>MANDATÓRIO.</strong></p>
+<h3 id="33-regras-de-escrita">3.3 Regras de escrita</h3>
+<ul>
+<li>Goals SHALL ser enunciados com verbos no infinitivo.</li>
+<li>Cada Goal SHALL ser testável por presença/ausência.</li>
+<li>Goals SHALL ser ordenados por prioridade quando hierárquicos.</li>
+</ul>
+<h3 id="34-dependencias">3.4 Dependências</h3>
+<p>Nenhuma.</p>
+<h3 id="35-restricoes">3.5 Restrições</h3>
+<ul>
+<li>Goals SHALL NOT descrever <strong>como</strong> atingir o objetivo (isso é responsabilidade da seção §10).</li>
+<li>Goals SHALL NOT contradizer Non Goals (§4).</li>
+</ul>
+<hr />
+<h2 id="4-non-goals">§4 — Non Goals</h2>
+<h3 id="41-objetivo">4.1 Objetivo</h3>
+<p>Declarar explicitamente o que está <strong>fora do escopo</strong> do Standard, prevenindo interpretações extensivas indevidas.</p>
+<h3 id="42-obrigatoriedade">4.2 Obrigatoriedade</h3>
+<p><strong>MANDATÓRIO.</strong></p>
+<h3 id="43-regras-de-escrita">4.3 Regras de escrita</h3>
+<ul>
+<li>Cada Non Goal SHALL ser redigido como uma negação explícita do que <strong>não</strong> é objetivo.</li>
+<li>Non Goals SHOULD ser redigidos em par com um Design Goal correspondente.</li>
+</ul>
+<h3 id="44-dependencias">4.4 Dependências</h3>
+<p>Nenhuma.</p>
+<h3 id="45-restricoes">4.5 Restrições</h3>
+<p>Non Goals SHALL NOT ser usados como mecanismo de exclusão para逃避 análise crítica.</p>
+<hr />
+<h2 id="5-scope">§5 — Scope</h2>
+<h3 id="51-objetivo">5.1 Objetivo</h3>
+<p>Definir a fronteira exata do que o Standard governa.</p>
+<h3 id="52-obrigatoriedade">5.2 Obrigatoriedade</h3>
+<p><strong>MANDATÓRIO.</strong></p>
+<h3 id="53-regras-de-escrita">5.3 Regras de escrita</h3>
+<ul>
+<li>Scope SHALL ser redigido em prosa contínua, sem listas.</li>
+<li>Scope SHALL responder: "o que está dentro" e "o que está fora".</li>
+</ul>
+<h3 id="54-dependencias">5.4 Dependências</h3>
+<p>Referencia §3 e §4.</p>
+<h3 id="55-restricoes">5.5 Restrições</h3>
+<p>Scope SHALL NOT duplicar Design Goals ou Non Goals.</p>
+<hr />
+<h2 id="6-normative-references">§6 — Normative References</h2>
+<h3 id="61-objetivo">6.1 Objetivo</h3>
+<p>Listar documentos externos (normas técnicas, RFCs, papers) referenciados como autoridade.</p>
+<h3 id="62-obrigatoriedade">6.2 Obrigatoriedade</h3>
+<p><strong>MANDATÓRIO</strong> quando o Standard referenciar normas externas; caso contrário, <strong>OPCIONAL</strong> com menção "Nenhuma".</p>
+<h3 id="63-regras-de-escrita">6.3 Regras de escrita</h3>
+<ul>
+<li>Cada referência SHALL incluir identificador, título e data de publicação.</li>
+<li>Referências SHALL ser listadas em ordem alfabética por identificador.</li>
+</ul>
+<h3 id="64-dependencias">6.4 Dependências</h3>
+<p>Nenhuma.</p>
+<h3 id="65-restricoes">6.5 Restrições</h3>
+<p>Esta seção SHALL NOT incluir Standards AraOS internos (esses aparecem em §7 — Terms and Definitions como cross-references).</p>
+<hr />
+<h2 id="7-terms-and-definitions">§7 — Terms and Definitions</h2>
+<h3 id="71-objetivo">7.1 Objetivo</h3>
+<p>Definir cada termo canônico usado pelo Standard, em alinhamento com AS-000 §3.</p>
+<h3 id="72-obrigatoriedade">7.2 Obrigatoriedade</h3>
+<p><strong>MANDATÓRIO.</strong></p>
+<h3 id="73-regras-de-escrita">7.3 Regras de escrita</h3>
+<ul>
+<li>Cada termo SHALL ser definido usando exatamente <strong>9 propriedades</strong>: Definição, Motivação, Responsabilidades, Invariantes, Exemplos, Contraexemplos, Relação, Consequência para implementação, Referências cruzadas.</li>
+<li>Termos SHALL ser ordenados alfabeticamente.</li>
+<li>Termos já definidos em AS-000 SHALL ser referenciados por seção (<code>AS-000 §3.X</code>) e <strong>não redefinidos</strong>.</li>
+</ul>
+<h3 id="74-dependencias">7.4 Dependências</h3>
+<p>Depende de AS-000 §3 (vocabulário canônico).</p>
+<h3 id="75-restricoes">7.5 Restrições</h3>
+<p>Esta seção SHALL NOT redefinir termos canônicos do AS-000.</p>
+<hr />
+<h2 id="8-invariants">§8 — Invariants</h2>
+<h3 id="81-objetivo">8.1 Objetivo</h3>
+<p>Declarar propriedades que <strong>devem sempre ser verdadeiras</strong> durante toda a vida do objeto definido.</p>
+<h3 id="82-obrigatoriedade">8.2 Obrigatoriedade</h3>
+<p><strong>MANDATÓRIO.</strong></p>
+<h3 id="83-regras-de-escrita">8.3 Regras de escrita</h3>
+<ul>
+<li>Cada invariante SHALL ser identificável univocamente (<code>§8.N.M</code>).</li>
+<li>Invariantes SHALL ser redigidas em forma declarativa, sem verbo normativo (são fatos, não requisitos).</li>
+<li>Invariantes SHALL ser verificáveis em tempo constante (O(1)) sempre que possível.</li>
+</ul>
+<h3 id="84-dependencias">8.4 Dependências</h3>
+<p>Construídas sobre §7.</p>
+<h3 id="85-restricoes">8.5 Restrições</h3>
+<p>Invariantes SHALL NOT depender de estado externo mutável.</p>
+<hr />
+<h2 id="9-formal-axioms">§9 — Formal Axioms</h2>
+<h3 id="91-objetivo">9.1 Objetivo</h3>
+<p>Capturar princípios formais do Standard em axiomas verificáveis.</p>
+<h3 id="92-obrigatoriedade">9.2 Obrigatoriedade</h3>
+<p><strong>MANDATÓRIO.</strong></p>
+<h3 id="93-regras-de-escrita">9.3 Regras de escrita</h3>
+<ul>
+<li>Cada axioma SHALL ser identificável (<code>Axiom N</code>).</li>
+<li>Cada axioma SHALL ser redigido como uma implicação ou equivalência lógica.</li>
+<li>Axiomas SHOULD ser demonstráveis a partir de propriedades mais fundamentais.</li>
+<li>Axiomas SHALL ser enumerados em ordem lógica (axiomas básicos primeiro).</li>
+</ul>
+<h3 id="94-dependencias">9.4 Dependências</h3>
+<p>Construídas sobre §7 e §8.</p>
+<h3 id="95-restricoes">9.5 Restrições</h3>
+<ul>
+<li>Axiomas SHALL NOT contradizer axiomas do AS-000.</li>
+<li>Axiomas SHALL ser em número mínimo necessário (não proliferar axiomas triviais).</li>
+</ul>
+<hr />
+<h2 id="10-normative-requirements-shall">§10 — Normative Requirements (SHALL)</h2>
+<h3 id="101-objetivo">10.1 Objetivo</h3>
+<p>Listar <strong>todos</strong> os requisitos normativos do Standard, cada um identificável, testável e rastreável.</p>
+<h3 id="102-obrigatoriedade">10.2 Obrigatoriedade</h3>
+<p><strong>MANDATÓRIO.</strong> Esta é a seção central do Standard.</p>
+<h3 id="103-regras-de-escrita">10.3 Regras de escrita</h3>
+<ul>
+<li>Cada requisito SHALL possuir exatamente os campos definidos em §10.3.1–10.3.10 abaixo.</li>
+<li>Requisitos SHALL ser identificados pelo formato <code>AS-XXX-REQ-NNNN</code> (Requirement ID canônico).</li>
+<li>Requisitos SHOULD ser agrupados em subseções por invariante ou axioma relacionado.</li>
+<li>O verbo SHALL ser um dos definidos em §12.</li>
+</ul>
+<h4 id="1031-requirement-id">10.3.1 Requirement ID</h4>
+<ul>
+<li>Formato: <code>AS-XXX-REQ-NNNN</code> onde <code>XXX</code> é o número do Standard e <code>NNNN</code> é sequência zero-padded.</li>
+<li>SHALL ser único dentro do Standard.</li>
+<li>SHALL ser estável (não reutilizado após deprecation).</li>
+</ul>
+<h4 id="1032-section">10.3.2 Section</h4>
+<ul>
+<li>Referência à seção do Standard que contém o requisito (ex: <code>§4.2.1</code>).</li>
+</ul>
+<h4 id="1033-text">10.3.3 Text</h4>
+<ul>
+<li>Texto do requisito em prosa declarativa, começando com o verbo normativo.</li>
+<li>SHALL ser auto-contido (não depender de contexto fora do Standard).</li>
+</ul>
+<h4 id="1034-normative-verb">10.3.4 Normative Verb</h4>
+<ul>
+<li>SHALL ser um de: <code>SHALL</code>, <code>SHALL NOT</code>, <code>MUST</code>, <code>MUST NOT</code>, <code>SHOULD</code>, <code>SHOULD NOT</code>, <code>MAY</code>.</li>
+</ul>
+<h4 id="1035-rationale">10.3.5 Rationale</h4>
+<ul>
+<li>Justificativa da existência do requisito.</li>
+<li>SHOULD referenciar o axioma ou invariante que origina o requisito.</li>
+</ul>
+<h4 id="1036-references">10.3.6 References</h4>
+<ul>
+<li>Lista de IDs de outros requisitos, axiomas, ADRs ou Papers relacionados.</li>
+</ul>
+<h4 id="1037-conformance-test">10.3.7 Conformance Test</h4>
+<ul>
+<li>Referência ao teste de conformidade (path relativo ou nome simbólico).</li>
+<li>SHALL ser verificável em CI.</li>
+</ul>
+<h4 id="1038-status">10.3.8 Status</h4>
+<ul>
+<li>Valores possíveis: <code>active</code>, <code>deprecated</code>, <code>superseded</code>.</li>
+<li>Default: <code>active</code>.</li>
+</ul>
+<h4 id="1039-version-introduced">10.3.9 Version Introduced</h4>
+<ul>
+<li>Versão SemVer na qual o requisito foi introduzido.</li>
+</ul>
+<h4 id="10310-version-deprecated-opcional">10.3.10 Version Deprecated (opcional)</h4>
+<ul>
+<li>Versão SemVer na qual o requisito foi marcado como deprecated.</li>
+<li>Quando preenchido, SHALL também referenciar o requisito que o substituiu.</li>
+</ul>
+<h3 id="104-dependencias">10.4 Dependências</h3>
+<p>Nenhuma (auto-contida).</p>
+<h3 id="105-restricoes">10.5 Restrições</h3>
+<ul>
+<li>Nenhum requisito SHALL ser adicionado sem Requirement ID.</li>
+<li>Requisitos <code>deprecated</code> SHALL NOT ser removidos antes da versão <code>superseded</code>.</li>
+</ul>
+<hr />
+<h2 id="11-computational-model">§11 — Computational Model</h2>
+<h3 id="111-objetivo">11.1 Objetivo</h3>
+<p>Descrever a estrutura de dados computável que materializa o Standard.</p>
+<h3 id="112-obrigatoriedade">11.2 Obrigatoriedade</h3>
+<p><strong>MANDATÓRIO.</strong></p>
+<h3 id="113-regras-de-escrita">11.3 Regras de escrita</h3>
+<ul>
+<li>O modelo SHALL ser descrito em termos de entidades, value objects, eventos e operações.</li>
+<li>O modelo SHALL usar exclusivamente tipos DDD definidos em AS-000 §5.</li>
+<li>Diagramas (Mermaid, UML) SHOULD acompanhar a descrição textual.</li>
+<li>O modelo SHALL ser <strong>independente de implementação</strong> (sem código de produção).</li>
+</ul>
+<h3 id="114-dependencias">11.4 Dependências</h3>
+<p>Construída sobre §7.</p>
+<h3 id="115-restricoes">11.5 Restrições</h3>
+<ul>
+<li>Nenhuma linguagem de programação SHALL ser imposta.</li>
+<li>O modelo SHALL ser serializável (ver §17 — Machine Readability).</li>
+</ul>
+<hr />
+<h2 id="12-normative-verbs">§12 — Normative Verbs</h2>
+<h3 id="REDACTED">12.1 Definição canônica (RFC 2119 + ISO/IEC Directives Part 2)</h3>
+<table>
+<thead>
+<tr>
+<th>Verbo</th>
+<th>Significado</th>
+<th>Quando usar</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>SHALL</strong></td>
+<td>Requisito absoluto. Conformidade impossível sem cumprimento.</td>
+<td>Obrigação não-negociável da qual dependem outras propriedades.</td>
+</tr>
+<tr>
+<td><strong>SHALL NOT</strong></td>
+<td>Proibição absoluta.</td>
+<td>Vedação cuja violação quebra o invariante.</td>
+</tr>
+<tr>
+<td><strong>MUST</strong></td>
+<td>Sinônimo de SHALL.</td>
+<td>Quando citação literal de norma externa usa MUST.</td>
+</tr>
+<tr>
+<td><strong>MUST NOT</strong></td>
+<td>Sinônimo de SHALL NOT.</td>
+<td>Quando citação literal de norma externa usa MUST NOT.</td>
+</tr>
+<tr>
+<td><strong>SHOULD</strong></td>
+<td>Recomendação forte; pode haver razão válida para não cumprir, mas implicações devem ser compreendidas.</td>
+<td>Práticas recomendadas cuja omissão degrada qualidade mas não quebra invariantes.</td>
+</tr>
+<tr>
+<td><strong>SHOULD NOT</strong></td>
+<td>Vedação recomendada.</td>
+<td>Práticas desencorajadas mas toleráveis em contextos específicos.</td>
+</tr>
+<tr>
+<td><strong>MAY</strong></td>
+<td>Permissão explícita; opcional.</td>
+<td>Comportamentos opcionais que melhoram o sistema mas não são exigidos.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="122-regras-de-uso">12.2 Regras de uso</h3>
+<ul>
+<li>Todo uso de verbo SHALL estar em <strong>maiúsculas</strong>.</li>
+<li>Em texto corrido, verbos SHOULD ser capitalizados para destaque.</li>
+<li>Mistura de <code>SHALL</code> e <code>MUST</code> no mesmo Standard SHOULD ser evitada (preferir um único conjunto).</li>
+<li>Verbos em minúsculas (<code>shall</code>, <code>must</code>) SHALL ser interpretados como texto descritivo, não como requisito.</li>
+</ul>
+<hr />
+<h2 id="13-ddd-mapping">§13 — DDD Mapping</h2>
+<h3 id="131-objetivo">13.1 Objetivo</h3>
+<p>Mapear cada conceito do Standard a uma categoria DDD canônica do AS-000 §5.</p>
+<h3 id="132-obrigatoriedade">13.2 Obrigatoriedade</h3>
+<p><strong>MANDATÓRIO.</strong></p>
+<h3 id="133-regras-de-escrita">13.3 Regras de escrita</h3>
+<ul>
+<li>Tabela canônica: <code>Conceito | Tipo DDD</code>.</li>
+<li>Conceitos SHALL ser mapeados para exatamente uma categoria.</li>
+<li>A categoria SHALL estar entre as definidas em AS-000 §5.</li>
+</ul>
+<h3 id="134-dependencias">13.4 Dependências</h3>
+<p>Depende de AS-000 §5.</p>
+<h3 id="135-restricoes">13.5 Restrições</h3>
+<p>Conceitos SHALL NOT ser mapeados para múltiplas categorias simultaneamente.</p>
+<hr />
+<h2 id="14-canonical-examples">§14 — Canonical Examples</h2>
+<h3 id="141-objetivo">14.1 Objetivo</h3>
+<p>Ilustrar, por meio de exemplos canônicos, a aplicação dos requisitos.</p>
+<h3 id="142-obrigatoriedade">14.2 Obrigatoriedade</h3>
+<p><strong>OBRIGATÓRIO</strong> para conceitos centrais; <strong>OPCIONAL</strong> para periféricos.</p>
+<h3 id="143-regras-de-escrita">14.3 Regras de escrita</h3>
+<ul>
+<li>Cada exemplo SHALL demonstrar <strong>conformidade positiva</strong> com pelo menos um requisito.</li>
+<li>Exemplos SHOULD incluir dados realistas (não <code>foo</code>/<code>bar</code>).</li>
+<li>Exemplos SHALL ser identificados (<code>Exemplo N: título</code>).</li>
+<li>Contraexemplos (demonstrações de violação) SHOULD ser incluídos quando o requisito for sutil.</li>
+</ul>
+<h3 id="144-dependencias">14.4 Dependências</h3>
+<p>Construída sobre §10.</p>
+<h3 id="145-restricoes">14.5 Restrições</h3>
+<p>Exemplos SHALL NOT substituir a especificação formal (não são fonte primária).</p>
+<hr />
+<h2 id="15-compliance-levels">§15 — Compliance Levels</h2>
+<h3 id="151-objetivo">15.1 Objetivo</h3>
+<p>Definir níveis graduais de conformidade para que diferentes implementações possam declarar perfis de aderência.</p>
+<h3 id="152-obrigatoriedade">15.2 Obrigatoriedade</h3>
+<p><strong>MANDATÓRIO.</strong></p>
+<h3 id="153-regras-de-escrita">15.3 Regras de escrita</h3>
+<ul>
+<li>Níveis SHALL ser cumulativos (N+1 inclui todos os requisitos de N).</li>
+<li>Cada nível SHALL ter nome, requisitos cobertos e critérios de promoção.</li>
+<li>SHOULD existir entre 2 e 4 níveis.</li>
+</ul>
+<h3 id="154-dependencias">15.4 Dependências</h3>
+<p>Construída sobre §10.</p>
+<h3 id="155-restricoes">15.5 Restrições</h3>
+<p>Níveis SHALL NOT ser incompatíveis entre si (uma implementação nível N+1 SHALL também passar no nível N).</p>
+<hr />
+<h2 id="16-conformance-requirements">§16 — Conformance Requirements</h2>
+<h3 id="161-objetivo">16.1 Objetivo</h3>
+<p>Especificar métricas e critérios de cobertura que a Conformance Suite SHALL atingir.</p>
+<h3 id="162-obrigatoriedade">16.2 Obrigatoriedade</h3>
+<p><strong>MANDATÓRIO.</strong></p>
+<h3 id="163-regras-de-escrita">16.3 Regras de escrita</h3>
+<ul>
+<li>Métricas SHALL ser quantificáveis (threshold numérico).</li>
+<li>Métricas SHOULD incluir:</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Métrica</th>
+<th>Definição</th>
+<th>Threshold mínimo</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Requirement Coverage</strong></td>
+<td>% de requisitos SHALL com teste de conformidade.</td>
+<td>100%</td>
+</tr>
+<tr>
+<td><strong>Axiom Coverage</strong></td>
+<td>% de axiomas com teste.</td>
+<td>100%</td>
+</tr>
+<tr>
+<td><strong>Vocabulary Coverage</strong></td>
+<td>% de termos canônicos usados e testados.</td>
+<td>100%</td>
+</tr>
+<tr>
+<td><strong>DDD Coverage</strong></td>
+<td>% de conceitos com teste de tipo DDD.</td>
+<td>100%</td>
+</tr>
+<tr>
+<td><strong>Behavior Coverage</strong></td>
+<td>% de comportamentos especificados testados.</td>
+<td>≥ 95%</td>
+</tr>
+<tr>
+<td><strong>Temporal Coverage</strong></td>
+<td>% de invariantes temporais testados.</td>
+<td>100%</td>
+</tr>
+<tr>
+<td><strong>Replay Coverage</strong></td>
+<td>% de projections testadas para replay bit-identical.</td>
+<td>100% (quando aplicável)</td>
+</tr>
+<tr>
+<td><strong>Explainability Coverage</strong></td>
+<td>% de análises com Explanation testadas.</td>
+<td>100% (quando aplicável)</td>
+</tr>
+<tr>
+<td><strong>Traceability Coverage</strong></td>
+<td>% de requisitos com cadeia de rastreabilidade completa.</td>
+<td>100%</td>
+</tr>
+</tbody>
+</table>
+<h3 id="164-dependencias">16.4 Dependências</h3>
+<p>Construída sobre §10.</p>
+<h3 id="165-restricoes">16.5 Restrições</h3>
+<p>Nenhuma métrica SHALL ser declarada sem threshold mensurável.</p>
+<hr />
+<h2 id="17-machine-readability">§17 — Machine Readability</h2>
+<h3 id="171-objetivo">17.1 Objetivo</h3>
+<p>Definir o <strong>modelo conceitual</strong> para exportação automática do Standard em formatos estruturados (JSON, YAML).</p>
+<h3 id="172-obrigatoriedade">17.2 Obrigatoriedade</h3>
+<p><strong>MANDATÓRIO para o modelo conceitual.</strong> Implementação de parser é OPCIONAL e fora do escopo do ASM-001 v1.0.</p>
+<h3 id="REDACTED">17.3 Modelo conceitual (Requirement serializado)</h3>
+<pre><code class="language-json">{
+  &quot;id&quot;: &quot;AS-002-REQ-0046&quot;,
+  &quot;section&quot;: &quot;§4.3.1&quot;,
+  &quot;verb&quot;: &quot;SHALL&quot;,
+  &quot;text&quot;: &quot;Explanation Reference shall never be empty.&quot;,
+  &quot;rationale&quot;: &quot;Axiom 6 (explainability) requires that every Expression carries a justified Explanation; absence of the reference would break the audit chain.&quot;,
+  &quot;references&quot;: [
+    &quot;AS-000-AXIOM-006&quot;,
+    &quot;AS-000-§3.16&quot;
+  ],
+  &quot;tests&quot;: [
+    &quot;tests/conformance/AS-002/test_explainability.py::REDACTED&quot;
+  ],
+  &quot;status&quot;: &quot;active&quot;,
+  &quot;version_introduced&quot;: &quot;1.0&quot;,
+  &quot;version_deprecated&quot;: null,
+  &quot;supersedes&quot;: null,
+  &quot;superseded_by&quot;: null
+}
+</code></pre>
+<h3 id="REDACTED">17.4 Modelo conceitual (Standard serializado)</h3>
+<pre><code class="language-json">{
+  &quot;id&quot;: &quot;AS-002&quot;,
+  &quot;urn&quot;: &quot;urn:araos:standard:002:1.0&quot;,
+  &quot;title&quot;: &quot;Clinical Expression v1.0&quot;,
+  &quot;category&quot;: &quot;clinical&quot;,
+  &quot;maturity&quot;: &quot;draft&quot;,
+  &quot;version&quot;: &quot;1.0&quot;,
+  &quot;parent&quot;: &quot;AS-001&quot;,
+  &quot;sections&quot;: [&quot;§1&quot;, &quot;§2&quot;, &quot;§3&quot;, &quot;§4&quot;, &quot;§5&quot;, &quot;§6&quot;, &quot;§7&quot;, &quot;§8&quot;, &quot;§9&quot;, &quot;§10&quot;, &quot;§11&quot;, &quot;§12&quot;, &quot;§13&quot;, &quot;§14&quot;, &quot;§15&quot;, &quot;§16&quot;, &quot;§17&quot;],
+  &quot;requirements&quot;: [&quot;AS-002-REQ-0001&quot;, &quot;AS-002-REQ-0046&quot;, &quot;...&quot;],
+  &quot;axioms&quot;: [&quot;AS-002-AXIOM-001&quot;, &quot;...&quot;],
+  &quot;vocabulary&quot;: [&quot;clinical_expression&quot;, &quot;expression_state&quot;, &quot;...&quot;],
+  &quot;ddd_mapping&quot;: {
+    &quot;clinical_expression&quot;: &quot;value_object&quot;,
+    &quot;clinical_gene&quot;: &quot;aggregate_root&quot;
+  },
+  &quot;conformance_metrics&quot;: {
+    &quot;requirement_coverage_target&quot;: 1.0,
+    &quot;axiom_coverage_target&quot;: 1.0,
+    &quot;vocabulary_coverage_target&quot;: 1.0
+  },
+  &quot;normative_sources&quot;: {
+    &quot;papers&quot;: [&quot;Paper IV&quot;],
+    &quot;adrs&quot;: [&quot;ADR-0005&quot;]
+  }
+}
+</code></pre>
+<h3 id="175-restricoes">17.5 Restrições</h3>
+<ul>
+<li>O modelo SHALL ser serializável em JSON (obrigatório) e SHOULD em YAML (opcional).</li>
+<li>Nenhum campo SHALL ser obrigatório além dos especificados em §10.3.</li>
+<li>Implementação de parser SHALL ser responsabilidade de outro Standard (ASM-002 ou sucessor).</li>
+</ul>
+<hr />
+<h2 id="18-appendices">§18 — Appendices</h2>
+<h3 id="181-objetivo">18.1 Objetivo</h3>
+<p>Anexar material de referência que <strong>não pertence</strong> ao corpo normativo.</p>
+<h3 id="182-obrigatoriedade">18.2 Obrigatoriedade</h3>
+<p><strong>OPCIONAL.</strong></p>
+<h3 id="183-regras-de-escrita">18.3 Regras de escrita</h3>
+<ul>
+<li>Apêndices SHALL ser identificados por letra (<code>Apêndice A</code>, <code>Apêndice B</code>...).</li>
+<li>Apêndices SHALL ser marcados como <code>informative</code> ou <code>normative</code> (default: informative).</li>
+<li>Apêndices normativos SHALL ter seus próprios requisitos rastreáveis.</li>
+</ul>
+<h3 id="184-dependencias">18.4 Dependências</h3>
+<p>Variável por apêndice.</p>
+<h3 id="185-restricoes">18.5 Restrições</h3>
+<p>Apêndices SHALL NOT contradizer requisitos do corpo normativo.</p>
+<hr />
+<h2 id="19-version-history">§19 — Version History</h2>
+<h3 id="191-objetivo">19.1 Objetivo</h3>
+<p>Registrar todas as mudanças publicadas do Standard.</p>
+<h3 id="192-obrigatoriedade">19.2 Obrigatoriedade</h3>
+<p><strong>MANDATÓRIO.</strong></p>
+<h3 id="193-regras-de-escrita">19.3 Regras de escrita</h3>
+<p>Tabela canônica: <code>Versão | Data | Status | Mudanças | Autor</code>.</p>
+<h3 id="194-dependencias">19.4 Dependências</h3>
+<p>Nenhuma.</p>
+<h3 id="195-restricoes">19.5 Restrições</h3>
+<p>Versões SHALL seguir SemVer (ver §20 — Change Control).</p>
+<hr />
+<h2 id="20-change-control">§20 — Change Control</h2>
+<h3 id="201-semver">20.1 SemVer</h3>
+<table>
+<thead>
+<tr>
+<th>Componente</th>
+<th>Incremento quando</th>
+<th>Compatibilidade</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>MAJOR</strong></td>
+<td>Mudança incompatível.</td>
+<td>Quebra.</td>
+</tr>
+<tr>
+<td><strong>MINOR</strong></td>
+<td>Adição retrocompatível.</td>
+<td>Preservada.</td>
+</tr>
+<tr>
+<td><strong>PATCH</strong></td>
+<td>Correção ou clarificação.</td>
+<td>Preservada.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="202-deprecation">20.2 Deprecation</h3>
+<ul>
+<li>Um requisito MAY ser marcado como <code>deprecated</code>.</li>
+<li>Deprecation SHALL indicar versão de remoção prevista.</li>
+<li>Requisitos deprecated SHALL continuar sendo testados até a remoção.</li>
+</ul>
+<h3 id="203-replacement">20.3 Replacement</h3>
+<ul>
+<li>Um Standard MAY ser substituído por outro via <code>Replacement</code>.</li>
+<li>O Standard substituinte SHALL indicar <code>supersedes: &lt;ID&gt;</code>.</li>
+<li>O Standard substituído SHALL indicar <code>superseded_by: &lt;ID&gt;</code>.</li>
+</ul>
+<h3 id="204-superseded">20.4 Superseded</h3>
+<ul>
+<li>Estado terminal do Maturity Model (§21).</li>
+<li>Indica que o Standard foi <strong>oficialmente substituído</strong> por outro.</li>
+<li>O Standard superseded SHALL permanecer na Library para referência histórica.</li>
+</ul>
+<h3 id="205-backward-compatibility">20.5 Backward Compatibility</h3>
+<ul>
+<li>Adições retrocompatíveis (novos requisitos opcionais, novos exemplos) MAY ser feitas em MINOR.</li>
+<li>Mudanças em requisitos existentes SHALL exigir MAJOR.</li>
+</ul>
+<h3 id="206-forward-compatibility">20.6 Forward Compatibility</h3>
+<ul>
+<li>Implementações MAY antecipar features de versões futuras.</li>
+<li>O Standard SHOULD declarar features experimentais claramente.</li>
+</ul>
+<hr />
+<h2 id="21-maturity-model">§21 — Maturity Model</h2>
+<h3 id="211-definicao-dos-9-estados">21.1 Definição dos 9 estados</h3>
+<pre><code>Draft → Technical Review → Scientific Review → Accepted →
+Published → Verified → Reference Implementation →
+Superseded (terminal) / Archived (terminal)
+</code></pre>
+<h3 id="212-criterios-de-promocao">21.2 Critérios de promoção</h3>
+<table>
+<thead>
+<tr>
+<th>Estado</th>
+<th>Critério de saída</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Draft</strong></td>
+<td>Documento editado; aberto para mudanças editoriais.</td>
+</tr>
+<tr>
+<td><strong>Technical Review</strong></td>
+<td>Revisão por pares de engenharia (DDD, arquitetura, consistência computacional) aprovada.</td>
+</tr>
+<tr>
+<td><strong>Scientific Review</strong></td>
+<td>Revisão por pares de pesquisa (correção, completude, alinhamento com Papers) aprovada.</td>
+</tr>
+<tr>
+<td><strong>Accepted</strong></td>
+<td>Comitê aprova como normativa; congelamento editorial.</td>
+</tr>
+<tr>
+<td><strong>Published</strong></td>
+<td>Disponível na AraOS Library com URN persistente e versão SemVer.</td>
+</tr>
+<tr>
+<td><strong>Verified</strong></td>
+<td>Conformance Suite passa em CI com cobertura mínima.</td>
+</tr>
+<tr>
+<td><strong>Reference Implementation</strong></td>
+<td>Uma implementação <strong>oficialmente reconhecida como exemplar</strong> existe, documentada e mantida.</td>
+</tr>
+<tr>
+<td><strong>Superseded</strong></td>
+<td>Substituído por outro Standard via Replacement.</td>
+</tr>
+<tr>
+<td><strong>Archived</strong></td>
+<td>Retirado sem substituição (descontinuação explícita).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="213-distincao-critica">21.3 Distinção crítica</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Verified</th>
+<th>Reference Implementation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>O que comprova</strong></td>
+<td>A especificação é executável e testável.</td>
+<td>Uma implementação é canônica para o domínio.</td>
+</tr>
+<tr>
+<td><strong>Requisito</strong></td>
+<td>Conformance Suite passa.</td>
+<td>Implementação reconhecida pelo comitê como exemplar.</td>
+</tr>
+<tr>
+<td><strong>Quando ocorre</strong></td>
+<td>Após Published.</td>
+<td>Após Verified.</td>
+</tr>
+<tr>
+<td><strong>Quem decide</strong></td>
+<td>CI (automatizado).</td>
+<td>Comitê editorial.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="214-ordem-obrigatoria">21.4 Ordem obrigatória</h3>
+<p>A ordem correta de promoção após Published é:</p>
+<pre><code>Published → Verified → Reference Implementation
+</code></pre>
+<p>Um Standard SHALL NOT saltar <code>Verified</code> (a conformidade deve ser comprovada antes de reconhecer uma implementação exemplar).</p>
+<hr />
+<h2 id="22-dependency-graph">§22 — Dependency Graph</h2>
+<h3 id="221-regra-fundamental">22.1 Regra fundamental</h3>
+<blockquote>
+<p>Um Standard <code>S_X</code> MAY depender de um Standard <code>S_Y</code> se, e somente se, <code>S_Y</code> precede <code>S_X</code> na ordem canônica AS-000 &lt; AS-001 &lt; AS-002 &lt; ...</p>
+</blockquote>
+<h3 id="REDACTED">22.2 Dependências permitidas (exemplos)</h3>
+<table>
+<thead>
+<tr>
+<th>Origem</th>
+<th>→</th>
+<th>Destino</th>
+<th>Permitido?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AS-002</td>
+<td>→</td>
+<td>AS-001</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>AS-002</td>
+<td>→</td>
+<td>AS-000</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>AS-001</td>
+<td>→</td>
+<td>AS-000</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>AS-000</td>
+<td>→</td>
+<td>Constituição</td>
+<td>✅</td>
+</tr>
+<tr>
+<td><strong>AS-000</strong></td>
+<td>→</td>
+<td><strong>AS-001</strong></td>
+<td><strong>❌ (proibido)</strong></td>
+</tr>
+<tr>
+<td><strong>AS-001</strong></td>
+<td>→</td>
+<td><strong>AS-002</strong></td>
+<td><strong>❌ (proibido)</strong></td>
+</tr>
+<tr>
+<td>AS-X</td>
+<td>→</td>
+<td>AS-X</td>
+<td>❌ (auto-referência proibida exceto para versionamento)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="223-proibicoes">22.3 Proibições</h3>
+<ul>
+<li><strong>Dependência ascendente</strong>: Standard inferior SHALL NOT depender de Standard superior.</li>
+<li><strong>Dependência circular</strong>: ciclos <code>S_A → S_B → S_A</code> SHALL NOT existir.</li>
+<li><strong>Dependência lateral</strong>: AS-001 SHALL NOT depender de AS-002 (mesmo que "independentes").</li>
+<li><strong>Auto-referência</strong>: SHALL NOT existir exceto para referências versionais explícitas.</li>
+</ul>
+<h3 id="224-verificacao">22.4 Verificação</h3>
+<p>O grafo de dependências SHALL ser verificável por inspeção dos Requirements → References em cada Standard publicado.</p>
+<hr />
+<h2 id="23-traceability-chain">§23 — Traceability Chain</h2>
+<h3 id="231-cadeia-canonica">23.1 Cadeia canônica</h3>
+<pre><code>Constituição
+   ↓
+Paper
+   ↓
+ADR
+   ↓
+AS (Standard)
+   ↓
+Requirement (REQ-NNNN)
+   ↓
+Conformance Test
+   ↓
+Implementation
+   ↓
+Evidence (test execution, deployment, audit log)
+</code></pre>
+<h3 id="232-regras">23.2 Regras</h3>
+<ul>
+<li>Cada elemento SHALL ser identificável univocamente.</li>
+<li>Cada elemento SHALL referenciar seu predecessor imediato.</li>
+<li>A cadeia SHALL ser navegável em ambas as direções (forward e backward).</li>
+<li>Nenhum elemento SHALL quebrar a cadeia (todo Requirement SHALL ter pelo menos um Conformance Test).</li>
+</ul>
+<h3 id="233-metrica-de-cobertura">23.3 Métrica de cobertura</h3>
+<p>A métrica <code>Traceability Coverage</code> (§16.3) SHALL medir a fração de Requirements com cadeia completa até Evidence. Target: 100%.</p>
+<hr />
+<h2 id="24-meta-model-formal">§24 — Meta-Model Formal</h2>
+<h3 id="241-elementos-do-meta-modelo">24.1 Elementos do meta-modelo</h3>
+<table>
+<thead>
+<tr>
+<th>Elemento</th>
+<th>Definição</th>
+<th>Tipo DDD</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Standard</strong></td>
+<td>Documento normativo completo. Identificável por URN.</td>
+<td>Aggregate Root</td>
+</tr>
+<tr>
+<td><strong>Section</strong></td>
+<td>Subdivisão estruturada do Standard. Numerada (e.g., <code>§4.2.1</code>).</td>
+<td>Entity</td>
+</tr>
+<tr>
+<td><strong>Requirement</strong></td>
+<td>Cláusula normativa individual com Requirement ID.</td>
+<td>Entity</td>
+</tr>
+<tr>
+<td><strong>Constraint</strong></td>
+<td>Restrição técnica ou formal que limita o Requirement.</td>
+<td>Value Object</td>
+</tr>
+<tr>
+<td><strong>Example</strong></td>
+<td>Ilustração canônica de conformidade ou violação.</td>
+<td>Value Object</td>
+</tr>
+<tr>
+<td><strong>Reference</strong></td>
+<td>Apontamento para fonte externa ou interna (Paper, ADR, Standard).</td>
+<td>Value Object</td>
+</tr>
+<tr>
+<td><strong>Artifact</strong></td>
+<td>Materialização física do Standard (MD, HTML, PDF, JSON serializado).</td>
+<td>Entity</td>
+</tr>
+</tbody>
+</table>
+<h3 id="242-relacionamentos">24.2 Relacionamentos</h3>
+<pre><code>Standard (AR)
+  ├─ contains → Section (1..*)
+  ├─ contains → Requirement (1..*)
+  ├─ contains → Example (0..*)
+  ├─ references → Reference (1..*)
+  └─ produces → Artifact (1..*)
+
+Section
+  └─ contains → Requirement (0..*)
+
+Requirement
+  ├─ uses → Normative Verb (1..1)
+  ├─ references → Reference (0..*)
+  ├─ constrained by → Constraint (0..*)
+  └─ tested by → Conformance Test (1..*)
+
+Reference
+  └─ points to → External/Internal target (1..1)
+
+Artifact
+  └─ serializes → Standard/Requirement (1..*)
+</code></pre>
+<h3 id="243-invariantes-do-meta-modelo">24.3 Invariantes do meta-modelo</h3>
+<ul>
+<li><strong>MM-INV-01</strong>: Todo Standard SHALL conter pelo menos um Requirement.</li>
+<li><strong>MM-INV-02</strong>: Todo Requirement SHALL conter exatamente um Normative Verb.</li>
+<li><strong>MM-INV-03</strong>: Todo Requirement SHALL ser testável por pelo menos um Conformance Test.</li>
+<li><strong>MM-INV-04</strong>: Todo Standard SHALL produzir pelo menos um Artifact (MD mínimo).</li>
+<li><strong>MM-INV-05</strong>: Todo Standard SHALL referenciar pelo menos uma Normative Source.</li>
+<li><strong>MM-INV-06</strong>: Nenhum Requirement SHALL ter <code>Version Deprecated</code> sem <code>Superseded By</code> quando marcado como <code>deprecated</code>.</li>
+<li><strong>MM-INV-07</strong>: A soma de Requirements ativos + deprecated SHALL ser igual ao número de Requirements já introduzidos.</li>
+</ul>
+<hr />
+<h2 id="25-axiomas-formais">§25 — Axiomas Formais</h2>
+<h3 id="axiom-1-structure-precedes-content">Axiom 1 — Structure Precedes Content</h3>
+<p>A estrutura de um Standard precede e governa seu conteúdo. Um Standard sem estrutura canônica não é interpretável.</p>
+<h3 id="axiom-2-requirements-are-testable">Axiom 2 — Requirements are Testable</h3>
+<p>Todo requisito normativo SHALL ser testável. Requisitos não-testáveis são recomendações, não normas.</p>
+<h3 id="axiom-3-vocabulary-is-canonical">Axiom 3 — Vocabulary is Canonical</h3>
+<p>Termos usados em Standards SHALL ser do vocabulário do AS-000. Novos termos SHALL ser adicionados via bump do AS-000, não redefinidos localmente.</p>
+<h3 id="REDACTED">Axiom 4 — Dependency is Strictly Downward</h3>
+<p>Standards SHALL depender apenas de Standards anteriores na ordem canônica. Dependências ascendentes invalidam o Standard.</p>
+<h3 id="axiom-5-maturity-is-monotonic">Axiom 5 — Maturity is Monotonic</h3>
+<p>A promoção de maturidade SHALL ser monotônica (não regride). Superseded/Archived são estados terminais.</p>
+<h3 id="REDACTED">Axiom 6 — Conformance Precedes Reference</h3>
+<p>Verified SHALL anteceder Reference Implementation. Implementação exemplar só pode ser reconhecida após conformidade comprovada.</p>
+<h3 id="axiom-7-traceability-is-total">Axiom 7 — Traceability is Total</h3>
+<p>Toda Requirement SHALL ter cadeia de rastreabilidade completa até Evidence. Requirements órfãs são inválidas.</p>
+<h3 id="REDACTED">Axiom 8 — Machine Readability is Mandatory</h3>
+<p>Todo Requirement SHALL poder ser serializado sem perda semântica em JSON. Texto não-serializável é texto interpretativo, não requisito.</p>
+<h3 id="REDACTED">Axiom 9 — Section Structure is Mandatory</h3>
+<p>Todo Standard SHALL conter as 16 seções definidas em §1–§17 (ou seção única agregadora se o Standard for minimal).</p>
+<h3 id="REDACTED">Axiom 10 — Backward Compatibility is Default</h3>
+<p>Mudanças SHALL preservar compatibilidade descendente. Quebras SHALL ser explicitamente marcadas como MAJOR.</p>
+<hr />
+<h2 id="REDACTED">§26 — Compliance Levels (do próprio ASM-001)</h2>
+<table>
+<thead>
+<tr>
+<th>Nível</th>
+<th>Nome</th>
+<th>Requisitos</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>M0</strong></td>
+<td>Document-Structural</td>
+<td>§1, §2, §3, §4, §5 — Header, Normative Sources, Design Goals, Non Goals, Scope</td>
+</tr>
+<tr>
+<td><strong>M1</strong></td>
+<td>Reference-Complete</td>
+<td>M0 + §6, §7 — Normative References, Terms and Definitions</td>
+</tr>
+<tr>
+<td><strong>M2</strong></td>
+<td>Semantically-Sound</td>
+<td>M1 + §8, §9 — Invariants, Formal Axioms</td>
+</tr>
+<tr>
+<td><strong>M3</strong></td>
+<td>Normative</td>
+<td>M2 + §10 — Normative Requirements (SHALL)</td>
+</tr>
+<tr>
+<td><strong>M4</strong></td>
+<td>Computational</td>
+<td>M3 + §11, §13 — Computational Model, DDD Mapping</td>
+</tr>
+<tr>
+<td><strong>M5</strong></td>
+<td>Documented</td>
+<td>M4 + §14, §15 — Canonical Examples, Compliance Levels</td>
+</tr>
+<tr>
+<td><strong>M6</strong></td>
+<td>Verified</td>
+<td>M5 + §16 — Conformance Requirements</td>
+</tr>
+<tr>
+<td><strong>M7</strong></td>
+<td>Machine-Readable</td>
+<td>M6 + §17 — Machine Readability</td>
+</tr>
+<tr>
+<td><strong>M8</strong></td>
+<td>Full ASM-001 Compliance</td>
+<td>M7 + §18–§26 — Appendices, Version History, Change Control, Maturity, Dependency Graph, Traceability, Meta-Model, Axiomas</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="27-computational-model-do-asm-001">§27 — Computational Model (do ASM-001)</h2>
+<h3 id="REDACTED">27.1 Estrutura de um Standard (esquema)</h3>
+<pre><code>Standard {
+  id: URN                        # urn:araos:&lt;categoria&gt;:&lt;num&gt;:1.0
+  title: string
+  category: enum                 # standard | meta | constitution
+  maturity: Maturity             # 9 estados
+  version: SemVer
+  parent: optional URN           # Standard predecessor
+  children: list of URN          # Standards dependentes
+  sections: list of Section      # 1..16 mínimo
+  requirements: list of REQ      # 1..*
+  axioms: list of AXIOM          # 0..*
+  vocabulary: list of Term       # todos os termos usados
+  ddd_mapping: Dict&lt;Term, DDDType&gt;
+  normative_sources: list of Source
+  references: list of Reference
+  artifacts: list of Artifact    # MD, HTML, PDF, JSON
+}
+
+Section {
+  number: string                 # §4.2.1
+  title: string
+  objective: string
+  mandatory: bool
+  writing_rules: list of Rule
+  dependencies: list of SectionRef
+  restrictions: list of Rule
+}
+
+Requirement {
+  id: AS-XXX-REQ-NNNN
+  section: SectionRef
+  text: string
+  verb: NormativeVerb            # SHALL, MUST, SHOULD, MAY
+  rationale: string
+  references: list of Reference
+  conformance_tests: list of TestRef
+  status: enum                   # active | deprecated | superseded
+  version_introduced: SemVer
+  version_deprecated: optional SemVer
+  superseded_by: optional REQ_ID
+}
+</code></pre>
+<h3 id="272-operacoes-canonicas">27.2 Operações canônicas</h3>
+<table>
+<thead>
+<tr>
+<th>Operação</th>
+<th>Descrição</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>parse_standard(path)</code></td>
+<td>Carrega Standard de MD estruturado.</td>
+</tr>
+<tr>
+<td><code>extract_requirements()</code></td>
+<td>Lista todos os REQ-IDs do Standard.</td>
+</tr>
+<tr>
+<td><code>verify_dependency_graph()</code></td>
+<td>Confirma que não há ciclos nem upward deps.</td>
+</tr>
+<tr>
+<td><code>check_machine_readability()</code></td>
+<td>Confirma que cada REQ é serializável em JSON.</td>
+</tr>
+<tr>
+<td><code>compute_traceability_coverage()</code></td>
+<td>Mede % de REQs com cadeia até Evidence.</td>
+</tr>
+<tr>
+<td><code>validate_maturity_transition(from, to)</code></td>
+<td>Confirma que transição é permitida.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="28-ddd-mapping-do-asm-001">§28 — DDD Mapping (do ASM-001)</h2>
+<table>
+<thead>
+<tr>
+<th>Conceito ASM-001</th>
+<th>Tipo DDD</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Standard</td>
+<td>Aggregate Root</td>
+</tr>
+<tr>
+<td>Section</td>
+<td>Entity</td>
+</tr>
+<tr>
+<td>Requirement</td>
+<td>Entity</td>
+</tr>
+<tr>
+<td>Constraint</td>
+<td>Value Object</td>
+</tr>
+<tr>
+<td>Example</td>
+<td>Value Object</td>
+</tr>
+<tr>
+<td>Reference</td>
+<td>Value Object</td>
+</tr>
+<tr>
+<td>Artifact</td>
+<td>Entity</td>
+</tr>
+<tr>
+<td>Conformance Test</td>
+<td>Domain Service</td>
+</tr>
+<tr>
+<td>Normative Verb</td>
+<td>Value Object (enum)</td>
+</tr>
+<tr>
+<td>Maturity State</td>
+<td>Value Object (enum)</td>
+</tr>
+<tr>
+<td>URN</td>
+<td>Value Object</td>
+</tr>
+<tr>
+<td>SemVer</td>
+<td>Value Object</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="29-canonical-examples">§29 — Canonical Examples</h2>
+<h3 id="REDACTED">29.1 Exemplo 1: Requirement completo (AS-002-REQ-0046)</h3>
+<pre><code class="language-yaml">id: AS-002-REQ-0046
+section: §4.3.1
+text: &quot;Explanation Reference shall never be empty.&quot;
+verb: SHALL
+rationale: |
+  Axiom 6 (Explainability is mandatory) requires that every
+  Clinical Expression carries a justified Explanation. Absence
+  of the reference would break the audit chain and violate the
+  explainability contract.
+references:
+  - AS-002-AXIOM-006
+  - AS-000-§3.16
+tests:
+  - tests/conformance/AS-002/test_explainability.py::REDACTED
+status: active
+version_introduced: 1.0
+version_deprecated: null
+superseded_by: null
+</code></pre>
+<h3 id="REDACTED">29.2 Exemplo 2: Header canônico (AS-002)</h3>
+<pre><code class="language-yaml">urn: urn:araos:standard:002:1.0
+categoria: Clinical Specification
+status_editorial: Draft
+maturidade: Draft
+versao: 1.0
+data: 2026-07-17
+idiomas: [pt-BR]
+</code></pre>
+<h3 id="REDACTED">29.3 Contraexemplo: Requirement inválido</h3>
+<pre><code class="language-yaml"># INVÁLIDO — sem Requirement ID
+text: &quot;Expression should be explainable.&quot;
+# Faltam: id, section, rationale, references, tests
+</code></pre>
+<p>Por que viola ASM-001:
+- Sem Requirement ID (MM-INV-02 falharia).
+- Sem Conformance Test referenciado (§10.3.7 obrigatório).
+- Rationale ausente (§10.3.5 obrigatório).</p>
+<hr />
+<h2 id="REDACTED">§30 — Conformance Requirements (do ASM-001)</h2>
+<table>
+<thead>
+<tr>
+<th>Métrica</th>
+<th>Threshold</th>
+<th>Como medir</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Header Coverage</strong></td>
+<td>100%</td>
+<td>Todos os 6 campos canônicos presentes.</td>
+</tr>
+<tr>
+<td><strong>Section Coverage</strong></td>
+<td>100%</td>
+<td>Todas as 16 seções mínimas presentes (§1–§17, exceto §18 §19 que são opcionais/informativos).</td>
+</tr>
+<tr>
+<td><strong>Requirement Coverage</strong></td>
+<td>100%</td>
+<td>Toda REQ com teste em <code>tests/conformance/AS-XXX/</code>.</td>
+</tr>
+<tr>
+<td><strong>Dependency Coverage</strong></td>
+<td>100%</td>
+<td>Grafo de dependências verifica §22.</td>
+</tr>
+<tr>
+<td><strong>Maturity Consistency</strong></td>
+<td>100%</td>
+<td>Transições seguem §21.2.</td>
+</tr>
+<tr>
+<td><strong>Vocabulary Coverage</strong></td>
+<td>100%</td>
+<td>Todos os termos mapeados em §7.</td>
+</tr>
+<tr>
+<td><strong>Axiom Coverage</strong></td>
+<td>100%</td>
+<td>Todo axioma testado em conformidade.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="REDACTED">Apêndice A — Norma externa de referência</h2>
+<ul>
+<li><strong>RFC 2119</strong> — "Key words for use in RFCs to Indicate Requirement Levels" (1997).</li>
+<li><strong>ISO/IEC Directives Part 2</strong> — Principles and rules for the structure and drafting of ISO and IEC documents.</li>
+<li><strong>IETF RFC 8126</strong> — Guidelines for Writing an IETF Standards Track RFC.</li>
+</ul>
+<hr />
+<h2 id="REDACTED">Apêndice B — Glossário de Meta-Termos</h2>
+<table>
+<thead>
+<tr>
+<th>Termo</th>
+<th>Significado</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Standard</strong></td>
+<td>Documento normativo da AraOS Library.</td>
+</tr>
+<tr>
+<td><strong>Requirement</strong></td>
+<td>Cláusula normativa individual com ID canônico.</td>
+</tr>
+<tr>
+<td><strong>Constraint</strong></td>
+<td>Restrição técnica ou formal.</td>
+</tr>
+<tr>
+<td><strong>Reference</strong></td>
+<td>Apontamento para fonte interna ou externa.</td>
+</tr>
+<tr>
+<td><strong>Artifact</strong></td>
+<td>Materialização física do Standard.</td>
+</tr>
+<tr>
+<td><strong>Conformance Test</strong></td>
+<td>Teste automatizado que verifica cumprimento de Requirement.</td>
+</tr>
+<tr>
+<td><strong>Maturity</strong></td>
+<td>Estado do ciclo de vida editorial.</td>
+</tr>
+<tr>
+<td><strong>URN</strong></td>
+<td>Uniform Resource Name — identificador persistente.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="apendice-c-conformidade-cross-as">Apêndice C — Conformidade Cross-AS</h2>
+<table>
+<thead>
+<tr>
+<th>AS verificado</th>
+<th>Como ASM-001 se aplica</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AS-000</td>
+<td>ASM-001 SHALL NOT redefinir termos de AS-000.</td>
+</tr>
+<tr>
+<td>AS-001</td>
+<td>ASM-001 SHALL usar AS-001 §10 como exemplo concreto de Requirement.</td>
+</tr>
+<tr>
+<td>AS-002</td>
+<td>ASM-001 SHALL usar AS-002 §10 como exemplo concreto de Requirement.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="apendice-d-roadmap">Apêndice D — Roadmap</h2>
+<table>
+<thead>
+<tr>
+<th>Versão</th>
+<th>Mudança prevista</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1.1</td>
+<td>Adicionar suporte a schemas versionais (Requirement → Schema).</td>
+</tr>
+<tr>
+<td>1.2</td>
+<td>Adicionar modelo de Profile (subconjunto nomeado de Requirements).</td>
+</tr>
+<tr>
+<td>2.0</td>
+<td>Parser canônico de MD → JSON.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="version-history">Version History</h2>
+<table>
+<thead>
+<tr>
+<th>Versão</th>
+<th>Data</th>
+<th>Status</th>
+<th>Mudanças</th>
+<th>Autor</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1.0</td>
+<td>2026-07-17</td>
+<td>Draft</td>
+<td>Redação inaugural. Definição completa do meta-modelo, maturidade 9 estados, verbos RFC 2119, dependency graph, traceability chain, machine readability.</td>
+<td>AraOS Editorial Committee</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<p><strong>Fim do ASM-001 v1.0 (Draft).</strong></p>
+</body>
+</html>

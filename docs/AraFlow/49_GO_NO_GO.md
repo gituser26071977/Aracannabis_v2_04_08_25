@@ -1,14 +1,45 @@
 # AraFlow RC1.1 — GO / NO-GO
 
 **Versão:** 1.0.0
-**Data:** 2026-07-03
+**Data:** 2026-07-13
 **Pergunta única:** A infraestrutura está pronta para receber o deploy do AraFlow RC1?
 
 ---
 
-## 🔴 NO GO
+## 🟢 GO
 
-**3 bloqueadores impedem o deploy no estado atual. Veja detalhes abaixo.**
+**Todos os bloqueadores e pendências foram resolvidos. Deploy executado em 2026-07-13 às 21:25 UTC.**
+
+| Item | Status | Evidência |
+|---|---|---|
+| ✅ B1 — Canal operacional | Console Hostinger usado; Tailscale NeedsLogin aceito como degradado (rollback ≤ 5min via console + `docker compose down`) | Deploy completou via console; sem dependência de SSH externo |
+| ✅ B2 — Imagens publicadas | `ghcr.io/gituser26071977/araflow-{api,web}:rc1-latest` | `docker pull` no Codex step 3 completou |
+| ✅ B3 — Packages public | Visibilidade `public` em ambos packages | Anon pull sem credencial, `docker compose pull` ok |
+| ✅ P1 — DNS propaga | `flow.arapath.com.br → 147.93.33.253` em 1.1.1.1, 8.8.8.8, autoritativo Cloudflare | `dig +short` retornou IP |
+| ✅ P2 — Cloudflare proxy off | Nuvenzinha cinza (DNS only) | Letsencrypt YR1 emitido automaticamente |
+| ✅ P3 — `.env.araflow` com metadata real | `GIT_COMMIT=14dd2a4b`, `BUILD_TIME=2026-07-08T00:00:00Z` | `/health` retorna `commit`/`build` reais |
+
+### Pós-deploy: smoke test (passou)
+
+| Verificação | Resultado |
+|---|---|
+| `/health` direto no container `araflow-api` | ✅ `{"status":"ok","version":"1.0.0","commit":"14dd2a4b",...}` |
+| `/health` via DNS público HTTPS | ✅ HTTP/2 200, JSON idêntico |
+| `/` via DNS público HTTPS | ✅ HTML AraFlow (`<title>AraFlow — Clinical MVP</title>`) |
+| TLS cert | ✅ Let's Encrypt YR1 (ACME HTTP-01) |
+| Containers `araflow-*` | ✅ `araflow-api` + `araflow-web` healthy |
+| AraOS não-impact | ✅ `siap-backend` 4 dias, `siap-frontend` 4 dias, `siap-db` 13 dias — todos healthy |
+| `api.visualsmartflow.com.br` | ✅ HTTP 200 |
+
+---
+
+## Histórico de decisões
+
+### 2026-07-03 — 🔴 NO GO inicial
+3 bloqueadores impediam o deploy: Tailscale NeedsLogin (B1), CI não-disparada (B2), packages ainda private (B3).
+
+### 2026-07-13 — 🟢 GO
+Todos os 3 bloqueadores resolvidos. Pendências P1/P2/P3 também resolvidas. Deploy executado via console Hostinger (não Tailscale, decisão aceita como degradado). Containers rodando, smoke test passou, AraOS intacto.
 
 ---
 
