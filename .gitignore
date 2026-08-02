@@ -24,6 +24,10 @@ env/
 .env.local
 .env.production.local
 .env.test.local
+# Sprint S1 — real secrets ficam fora do repo
+.env.staging
+.env.staging.local
+*.staging.local
 frontend/build/
 # Frontend build
 frontend/dist/
@@ -127,3 +131,4 @@ tools/*/build/
 
 # Husky
 .husky/_/
+mobile/web/dist/

@@ -90,7 +90,8 @@ class Config:
         JWT_SECRET_KEY = require_secret("JWT_SECRET_KEY", min_length=32, allow_default=True)
         SECRET_KEY = require_secret("SECRET_KEY", min_length=32, allow_default=True)
 
-    JWT_ACCESS_TOKEN_EXPIRES = 86400  # 24 horas em segundos
+    JWT_ACCESS_TOKEN_EXPIRES = 3600  # 1 hora em segundos (Sprint S1 — AraOS unificado)
+    JWT_REFRESH_TOKEN_EXPIRES = 2592000  # 30 dias em segundos (Sprint S1 — AraOS unificado)
 
     DEBUG = os.getenv("DEBUG", "False").lower() in ("true", "1", "t")
 

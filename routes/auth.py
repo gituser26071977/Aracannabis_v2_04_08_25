@@ -19,6 +19,17 @@ from models_extra import EmailVerification
 from services.feature_flag_service import FeatureFlagService
 from services.subscription_expiration_service import SubscriptionExpirationService
 
+# Sprint S1 — EPIC 1 (Security & LGPD): provider de identidade unificado
+# (araos.platform.identity.tokens.JWTTokenProvider). flask_jwt_extended
+# permanece para as rotas legadas (~30); S2/S3 fará migração gradual.
+from services.araos_auth import (
+    issue_araos_token_pair,
+    refresh_araos_token_pair,
+    revoke_araos_token,
+    araos_jwt_required,
+    get_araos_current_user,
+)
+
 email_service = EmailService()
 
 logger = logging.getLogger(__name__)
@@ -134,21 +145,131 @@ def login():
     expires = datetime.timedelta(hours=12)
     access_token = create_access_token(identity=str(profissional.id), expires_delta=expires)
 
+    # Sprint S1 — emissão dual: AraOS (novo, primário) + flask_jwt_extended (legado)
+    # O par AraOS suporta /api/auth/refresh; o legacy_access_token mantém
+    # compatibilidade com rotas que ainda usam @jwt_required().
+    try:
+        araos_pair = issue_araos_token_pair(
+            actor_id=str(profissional.id),
+            tenant_id=str(profissional.tenant_id) if getattr(profissional, 'tenant_id', None) else "default",
+            roles=[profissional.role] if getattr(profissional, 'role', None) else [],
+            permissions=[],
+            email=getattr(profissional, 'email', None),
+            full_name=getattr(profissional, 'nome', None),
+        )
+    except Exception as exc:  # pragma: no cover — defesa em produção
+        logger.error("AraOS issue falhou: %s", exc)
+        return jsonify({'error': 'Falha ao emitir token de sessão'}), 500
+
     if trial_expired:
         return jsonify({
             'message': 'Login realizado, mas seu trial expirou.',
-            'access_token': access_token,
+            'access_token': araos_pair.access_token,
+            'refresh_token': araos_pair.refresh_token,
+            'legacy_access_token': access_token,
             'user': profissional.to_dict(),
+            'token_expires_in': araos_pair.expires_in,
             'token_expires_in_hours': 12,
             'trial_expired': True
         }), 200
 
     return jsonify({
         'message': 'Login realizado com sucesso',
-        'access_token': access_token,
+        'access_token': araos_pair.access_token,
+        'refresh_token': araos_pair.refresh_token,
+        'legacy_access_token': access_token,
         'user': profissional.to_dict(),
+        'token_expires_in': araos_pair.expires_in,
         'token_expires_in_hours': 12
     }), 200
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Sprint S1 — EPIC 1: Refresh Token (item 1.4) + Logout (revogação)
+# ═══════════════════════════════════════════════════════════════════════
+
+
+@auth_bp.route('/refresh', methods=['POST'])
+@limiter.limit(LOGIN_RATE_LIMIT)
+def refresh_token():
+    """
+    Renova par de tokens AraOS a partir de refresh_token válido.
+
+    Request:
+        {"refresh_token": "<jwt_refresh>"}
+
+    Response 200:
+        {"access_token": "<jwt>",
+         "refresh_token": "<jwt>",  # novo (one-time use)
+         "expires_in": 3600,
+         "token_type": "Bearer"}
+
+    Errors:
+        400 — refresh_token ausente
+        401 — refresh_token inválido/expirado/revogado
+    """
+    data = request.get_json() or {}
+    refresh = data.get('refresh_token', '').strip()
+
+    if not refresh:
+        return jsonify({'error': 'refresh_token ausente'}), 400
+
+    try:
+        new_pair = refresh_araos_token_pair(refresh)
+    except Exception as exc:
+        # refresh_araos_token_pair levanta TokenExpiredError/TokenInvalidError
+        # internamente via JWTTokenProvider; capturamos aqui.
+        logger.warning("refresh: token inválido/expirado (%s)", type(exc).__name__)
+        return jsonify({'error': 'refresh_token inválido ou expirado'}), 401
+    except RuntimeError as exc:
+        # Provider não inicializado
+        logger.error("refresh: provider não disponível: %s", exc)
+        return jsonify({'error': 'Auth não configurada'}), 503
+
+    return jsonify({
+        'access_token': new_pair.access_token,
+        'refresh_token': new_pair.refresh_token,
+        'expires_in': new_pair.expires_in,
+        'token_type': new_pair.token_type,
+    }), 200
+
+
+@auth_bp.route('/logout', methods=['POST'])
+@limiter.limit(SENSITIVE_ENDPOINTS_RATE_LIMIT)
+def logout():
+    """
+    Revoga o access_token AraOS ativo.
+
+    Request:
+        Header: Authorization: Bearer <access_token>
+
+    Response 200:
+        {"message": "Logout efetuado", "revoked": true|false}
+
+    Errors:
+        400 — header ausente
+        401 — token inválido (idempotente: ainda retorna sucesso)
+    """
+    auth = request.headers.get('Authorization', '')
+    if not auth.startswith('Bearer '):
+        return jsonify({'error': 'Authorization header ausente'}), 400
+
+    token = auth.split(' ', 1)[1].strip()
+    revoked = revoke_araos_token(token)
+    return jsonify({'message': 'Logout efetuado', 'revoked': revoked}), 200
+
+
+@auth_bp.route('/me', methods=['GET'])
+@araos_jwt_required
+def me():
+    """
+    Endpoint protegido demonstrativo do @araos_jwt_required.
+
+    Retorna os claims do token ativo. Substitui o uso direto de
+    flask_jwt_extended para rotas que migram para o provider AraOS.
+    """
+    user = get_araos_current_user() or {}
+    return jsonify({'user': user}), 200
 
 @auth_bp.route('/profile', methods=['GET'])
 @jwt_required()

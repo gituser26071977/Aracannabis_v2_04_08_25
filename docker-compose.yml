@@ -27,8 +27,8 @@ services:
     environment:
       - FLASK_ENV=development
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/aracannabis
-      - JWT_SECRET_KEY=super_secret_key_12345
-      - SECRET_KEY=another_super_secret_key_67890
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:?JWT_SECRET_KEY must be set in environment (≥32 chars)}
+      - SECRET_KEY=${SECRET_KEY:?SECRET_KEY must be set in environment (≥32 chars)}
       - DEBUG=True
       - OLLAMA_HOST=http://host.docker.internal:11434
       - OLLAMA_BASE_URL=http://host.docker.internal:11434 # Ollama local fora do cluster
