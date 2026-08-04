@@ -333,6 +333,9 @@ def create_app(config_obj=None):
     app.register_blueprint(ai_management_bp, url_prefix="/api/ai-management")
     app.register_blueprint(crew_ai_bp, url_prefix="/api/crew-ai")
     app.register_blueprint(billing_bp, url_prefix="/api/billing")
+    from routes.faturamento import faturamento_bp
+
+    app.register_blueprint(faturamento_bp, url_prefix="/api/faturamento")
     app.register_blueprint(webhooks_bp, url_prefix="/api/webhooks")
     app.register_blueprint(ai_chat_simples_bp, url_prefix="/api")
     from routes.utils import utils_bp

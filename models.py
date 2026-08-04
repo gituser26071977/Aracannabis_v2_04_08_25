@@ -1125,6 +1125,240 @@ class PagamentoRegistro(db.Model):
         }
 
 
+# ========== FATURAMENTO CLÍNICO ==========
+# Módulo de faturamento do atendimento (convênios, tabela de preços,
+# percentual de repasse do profissional, contas a receber).
+# Modalidade PARTICULAR = lançamento sem convenio_id (convenio_id NULL).
+# Valor particular vem de `servicos.valor_particular`.
+
+class Convenio(db.Model):
+    """Convênio/plano de saúde que paga pelos atendimentos (valor fixo por serviço)."""
+
+    __tablename__ = "convenios"
+
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(200), unique=True, nullable=False)
+    registro_ans = db.Column(db.String(50), nullable=True)
+    tipo = db.Column(db.String(20), default="operadora")  # operadora | consultorio | outro
+    ativo = db.Column(db.Boolean, default=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "nome": self.nome,
+            "registro_ans": self.registro_ans,
+            "tipo": self.tipo,
+            "ativo": self.ativo,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+class Servico(db.Model):
+    """Serviço/procedimento/consulta com valor particular (tabela base)."""
+
+    __tablename__ = "servicos"
+
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(200), nullable=False)
+    tipo = db.Column(db.String(20), default="consulta")  # consulta | retorno | procedimento | outro
+    codigo = db.Column(db.String(50), nullable=True)
+    valor_particular = db.Column(db.Float, default=0.0, nullable=False)
+    ativo = db.Column(db.Boolean, default=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "nome": self.nome,
+            "tipo": self.tipo,
+            "codigo": self.codigo,
+            "valor_particular": self.valor_particular,
+            "ativo": self.ativo,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+class TabelaPrecoConvenio(db.Model):
+    """Valor fixo que um convênio paga por serviço (override sobre o particular)."""
+
+    __tablename__ = "tabela_preco_convenios"
+
+    id = db.Column(db.Integer, primary_key=True)
+    convenio_id = db.Column(db.Integer, db.ForeignKey("convenios.id"), nullable=False)
+    servico_id = db.Column(db.Integer, db.ForeignKey("servicos.id"), nullable=False)
+    valor = db.Column(db.Float, nullable=False)
+    ativo = db.Column(db.Boolean, default=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint("convenio_id", "servico_id", name="uq_tabela_convenio_servico"),
+    )
+
+    convenio = db.relationship("Convenio")
+    servico = db.relationship("Servico")
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "convenio_id": self.convenio_id,
+            "convenio_nome": self.convenio.nome if self.convenio else None,
+            "servico_id": self.servico_id,
+            "servico_nome": self.servico.nome if self.servico else None,
+            "valor": self.valor,
+            "ativo": self.ativo,
+        }
+
+
+class PercentualRepasse(db.Model):
+    """Percentual do valor que vai para o profissional, por serviço (ou global).
+
+    `servico_id` NULL = percentual global do profissional (fallback).
+    Resolução: linha por serviço → linha global → 100% (profissional fica com tudo).
+    """
+
+    __tablename__ = "percentuais_repasse"
+
+    id = db.Column(db.Integer, primary_key=True)
+    profissional_id = db.Column(
+        db.Integer, db.ForeignKey("profissionais.id"), nullable=False
+    )
+    servico_id = db.Column(db.Integer, db.ForeignKey("servicos.id"), nullable=True)
+    percentual = db.Column(db.Float, nullable=False)  # 0-100
+    ativo = db.Column(db.Boolean, default=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            "profissional_id", "servico_id", name="uq_repasse_profissional_servico"
+        ),
+    )
+
+    profissional = db.relationship("Profissional")
+    servico = db.relationship("Servico")
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "profissional_id": self.profissional_id,
+            "profissional_nome": self.profissional.nome if self.profissional else None,
+            "servico_id": self.servico_id,
+            "servico_nome": self.servico.nome if self.servico else None,
+            "percentual": self.percentual,
+            "ativo": self.ativo,
+        }
+
+
+class LancamentoFaturamento(db.Model):
+    """Conta a receber de um atendimento (modalidade particular ou convênio)."""
+
+    __tablename__ = "lancamentos_faturamento"
+
+    id = db.Column(db.Integer, primary_key=True)
+    associacao_id = db.Column(
+        db.Integer, db.ForeignKey("associacoes.id", ondelete="CASCADE"), nullable=True
+    )
+    paciente_id = db.Column(
+        db.Integer, db.ForeignKey("pacientes.id", ondelete="SET NULL"), nullable=True
+    )
+    atendimento_id = db.Column(
+        db.Integer, db.ForeignKey("consultas.id", ondelete="SET NULL"), nullable=True
+    )
+    profissional_id = db.Column(
+        db.Integer, db.ForeignKey("profissionais.id"), nullable=False
+    )
+    servico_id = db.Column(db.Integer, db.ForeignKey("servicos.id"), nullable=False)
+    convenio_id = db.Column(
+        db.Integer, db.ForeignKey("convenios.id"), nullable=True  # NULL = PARTICULAR
+    )
+    valor_total = db.Column(db.Float, nullable=False)
+    desconto = db.Column(db.Float, default=0.0, nullable=False)
+    valor_receber = db.Column(db.Float, nullable=False)  # valor_total - desconto
+    percentual_repasse = db.Column(db.Float, nullable=False)  # 0-100
+    valor_repasse = db.Column(db.Float, nullable=False)  # parte do profissional
+    forma_pagamento = db.Column(db.String(30), default="dinheiro")
+    status = db.Column(db.String(20), default="pendente")  # pendente | parcial | pago | cancelado
+    data_lancamento = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    data_recebimento = db.Column(db.DateTime, nullable=True)
+    observacao = db.Column(db.Text, nullable=True)
+    criado_por = db.Column(db.String(120), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    convenio = db.relationship("Convenio")
+    servico = db.relationship("Servico")
+    profissional = db.relationship("Profissional")
+    paciente = db.relationship("Paciente")
+
+    def to_dict(self):
+        recebido = sum(r.valor for r in self.recebimentos) if self.recebimentos else 0.0
+        return {
+            "id": self.id,
+            "associacao_id": self.associacao_id,
+            "paciente_id": self.paciente_id,
+            "paciente_nome": self.paciente.nome if self.paciente else None,
+            "atendimento_id": self.atendimento_id,
+            "profissional_id": self.profissional_id,
+            "profissional_nome": self.profissional.nome if self.profissional else None,
+            "servico_id": self.servico_id,
+            "servico_nome": self.servico.nome if self.servico else None,
+            "convenio_id": self.convenio_id,
+            "convenio_nome": self.convenio.nome if self.convenio else None,
+            "modalidade": "particular" if self.convenio_id is None else "convenio",
+            "valor_total": self.valor_total,
+            "desconto": self.desconto,
+            "valor_receber": self.valor_receber,
+            "percentual_repasse": self.percentual_repasse,
+            "valor_repasse": self.valor_repasse,
+            "forma_pagamento": self.forma_pagamento,
+            "status": self.status,
+            "valor_recebido": round(recebido, 2),
+            "data_lancamento": self.data_lancamento.isoformat() if self.data_lancamento else None,
+            "data_recebimento": self.data_recebimento.isoformat() if self.data_recebimento else None,
+            "observacao": self.observacao,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+class Recebimento(db.Model):
+    """Pagamento (parcial/múltiplo) recebido de um lançamento."""
+
+    __tablename__ = "recebimentos"
+
+    id = db.Column(db.Integer, primary_key=True)
+    lancamento_id = db.Column(
+        db.Integer, db.ForeignKey("lancamentos_faturamento.id"), nullable=False
+    )
+    valor = db.Column(db.Float, nullable=False)
+    forma_pagamento = db.Column(db.String(30), default="dinheiro")
+    data = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    observacao = db.Column(db.Text, nullable=True)
+    criado_por = db.Column(db.String(120), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    lancamento = db.relationship(
+        "LancamentoFaturamento", backref=db.backref("recebimentos", lazy="select")
+    )
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "lancamento_id": self.lancamento_id,
+            "valor": self.valor,
+            "forma_pagamento": self.forma_pagamento,
+            "data": self.data.isoformat() if self.data else None,
+            "observacao": self.observacao,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
 class SolicitacoesCadastro(db.Model):
     __tablename__ = "solicitacoes_cadastro"
 

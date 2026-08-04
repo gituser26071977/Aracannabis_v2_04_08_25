@@ -82,6 +82,11 @@ class Permission:
     BILLING_INVOICE_CREATE = "billing.invoice.create"
     BILLING_PAYMENT_RECEIVE = "billing.payment.receive"
     SUBSCRIPTION_MANAGE = "subscription.manage"
+
+    # ─── Faturamento clínico ─────────────────────────────────────────────
+    FATURAMENTO_READ = "faturamento.read"
+    FATURAMENTO_MANAGE = "faturamento.manage"
+    FATURAMENTO_RECEIVE = "faturamento.receive"
     
     # ─── Platform ────────────────────────────────────────────────────
     PLATFORM_ADMIN = "platform.admin"
@@ -297,6 +302,7 @@ class RoleRegistry:
             Permission.COMMUNICATION_READ,
             Permission.BILLING_READ,
             Permission.BILLING_INVOICE_CREATE,
+            Permission.FATURAMENTO_READ,
             Permission.LGPD_EXPORT,
             Permission.AI_USE,
             Permission.CLINIC_READ,
@@ -328,6 +334,8 @@ class RoleRegistry:
             Permission.BILLING_READ,
             Permission.BILLING_INVOICE_CREATE,
             Permission.BILLING_PAYMENT_RECEIVE,
+            Permission.FATURAMENTO_READ,
+            Permission.FATURAMENTO_RECEIVE,
             Permission.CLINIC_READ,
             Permission.USER_READ,
             Permission.PROFESSIONAL_READ,
@@ -366,6 +374,9 @@ class RoleRegistry:
             Permission.BILLING_MANAGE,
             Permission.BILLING_INVOICE_CREATE,
             Permission.BILLING_PAYMENT_RECEIVE,
+            Permission.FATURAMENTO_MANAGE,
+            Permission.FATURAMENTO_RECEIVE,
+            Permission.FATURAMENTO_READ,
             Permission.SUBSCRIPTION_MANAGE,
             Permission.PLATFORM_READ,
             Permission.PLATFORM_CONFIGURE,
