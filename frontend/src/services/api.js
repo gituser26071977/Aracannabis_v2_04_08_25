@@ -1,9 +1,7 @@
 import axios from 'axios';
 
 // Definir a URL base da API
-const API_BASE_URL = process.env.REACT_APP_API_URL
-  ? `${process.env.REACT_APP_API_URL}/api`
-  : null;
+const API_BASE_URL = process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL}/api` : null;
 
 if (!API_BASE_URL) {
   // Em produção a variável REACT_APP_API_URL é obrigatória.
@@ -63,7 +61,7 @@ api.interceptors.request.use(
   },
   (error) => {
     return Promise.reject(error);
-  }
+  },
 );
 
 // Interceptor para tratar erros de resposta
@@ -90,16 +88,15 @@ api.interceptors.response.use(
       }
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 // Serviço de autenticação
 export const authService = {
   login: async (usuario, senha) => {
     try {
-      const payload = usuario && usuario.includes('@')
-        ? { email: usuario, senha }
-        : { usuario, senha };
+      const payload =
+        usuario && usuario.includes('@') ? { email: usuario, senha } : { usuario, senha };
       const response = await api.post('/auth/login', payload);
       localStorage.setItem('token', response.data.access_token);
       localStorage.setItem('refresh_token', response.data.refresh_token);
@@ -180,7 +177,7 @@ export const authService = {
   getUser: () => {
     const user = localStorage.getItem('user');
     return user ? JSON.parse(user) : null;
-  }
+  },
 };
 
 // Serviço de pacientes
@@ -212,11 +209,13 @@ export const pacientesService = {
     try {
       // Verificar se é FormData (com foto) ou objeto JSON
       const isFormData = paciente instanceof FormData;
-      const config = isFormData ? {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      } : {};
+      const config = isFormData
+        ? {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            },
+          }
+        : {};
 
       const response = await api.post('/pacientes/', paciente, config);
       return response.data;
@@ -229,11 +228,13 @@ export const pacientesService = {
     try {
       // Verificar se é FormData (com foto) ou objeto JSON
       const isFormData = paciente instanceof FormData;
-      const config = isFormData ? {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      } : {};
+      const config = isFormData
+        ? {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            },
+          }
+        : {};
 
       const response = await api.put(`/pacientes/${id}`, paciente, config);
       return response.data;
@@ -255,7 +256,7 @@ export const pacientesService = {
     try {
       const response = await api.post(`/pacientes/${pacienteId}/compartilhar`, {
         profissional_id: profissionalId,
-        nivel_acesso: nivelAcesso
+        nivel_acesso: nivelAcesso,
       });
       return response.data;
     } catch (error) {
@@ -274,7 +275,9 @@ export const pacientesService = {
 
   removerCompartilhamento: async (pacienteId, compartilhamentoId) => {
     try {
-      const response = await api.delete(`/pacientes/${pacienteId}/compartilhamentos/${compartilhamentoId}`);
+      const response = await api.delete(
+        `/pacientes/${pacienteId}/compartilhamentos/${compartilhamentoId}`,
+      );
       return response.data;
     } catch (error) {
       throw error.response ? error.response.data : { error: 'Erro de conexão' };
@@ -288,7 +291,7 @@ export const pacientesService = {
     } catch (error) {
       throw error.response ? error.response.data : { error: 'Erro de conexão' };
     }
-  }
+  },
 };
 
 // Serviço de sintomas
@@ -333,7 +336,7 @@ export const sintomasService = {
     try {
       const response = await api.post('/sintomas/sintoma-personalizado', {
         nome_sintoma: nomeSintoma,
-        paciente_id: pacienteId
+        paciente_id: pacienteId,
       });
       return response.data;
     } catch (error) {
@@ -344,7 +347,7 @@ export const sintomasService = {
   excluirPersonalizado: async (nomeSintoma) => {
     try {
       const response = await api.delete(`/sintomas/sintoma-personalizado`, {
-        data: { nome_sintoma: nomeSintoma }
+        data: { nome_sintoma: nomeSintoma },
       });
       return response.data;
     } catch (error) {
@@ -368,7 +371,7 @@ export const sintomasService = {
     } catch (error) {
       throw error.response ? error.response.data : { error: 'Erro de conexão' };
     }
-  }
+  },
 };
 
 // Serviço de dosagens
@@ -403,24 +406,28 @@ export const dosagensService = {
   obterDadosGrafico: async (pacienteId, period = 'integral') => {
     try {
       const response = await api.get(`/dosagens/grafico/paciente/${pacienteId}`, {
-        params: { periodo: period }
+        params: { periodo: period },
       });
       return response.data;
     } catch (error) {
-      throw new Error(`Erro ao obter dados do gráfico: ${error.response?.data?.error || error.message}`);
+      throw new Error(
+        `Erro ao obter dados do gráfico: ${error.response?.data?.error || error.message}`,
+      );
     }
   },
 
   obterDadosGraficoNovo: async (pacienteId, period = 'integral') => {
     try {
       const response = await api.get(`/dosagens/grafico/paciente/${pacienteId}`, {
-        params: { periodo: period }
+        params: { periodo: period },
       });
       return response.data;
     } catch (error) {
-      throw new Error(`Erro ao obter dados do gráfico: ${error.response?.data?.error || error.message}`);
+      throw new Error(
+        `Erro ao obter dados do gráfico: ${error.response?.data?.error || error.message}`,
+      );
     }
-  }
+  },
 };
 
 // Serviço de exames
@@ -438,17 +445,16 @@ export const exameService = {
     try {
       const response = await api.post('/exames', formData, {
         headers: {
-          'Content-Type': 'multipart/form-data'
-        }
+          'Content-Type': 'multipart/form-data',
+        },
       });
 
       // Extrair dados do exame da resposta (ignorando email_status)
       const { email_status, ...examData } = response.data;
       return examData;
     } catch (error) {
-      const errorMessage = error.response?.data?.error ||
-        error.response?.data?.message ||
-        'Erro ao criar exame';
+      const errorMessage =
+        error.response?.data?.error || error.response?.data?.message || 'Erro ao criar exame';
       throw new Error(errorMessage);
     }
   },
@@ -458,9 +464,8 @@ export const exameService = {
       const response = await api.delete(`/exames/${id}`);
       return response.data; // Retorna o objeto de resposta completo
     } catch (error) {
-      const errorMessage = error.response?.data?.error ||
-        error.response?.data?.message ||
-        'Erro ao excluir exame';
+      const errorMessage =
+        error.response?.data?.error || error.response?.data?.message || 'Erro ao excluir exame';
       throw new Error(errorMessage);
     }
   },
@@ -492,9 +497,8 @@ export const exameService = {
       const response = await api.post(`/exames/${exameId}/ocr`);
       return response.data;
     } catch (error) {
-      const errorMessage = error.response?.data?.error ||
-        error.response?.data?.message ||
-        'Erro ao processar OCR';
+      const errorMessage =
+        error.response?.data?.error || error.response?.data?.message || 'Erro ao processar OCR';
       throw new Error(errorMessage);
     }
   },
@@ -505,13 +509,13 @@ export const exameService = {
       const exames = response.data;
 
       // Filtrar apenas exames numéricos
-      const examesNumericos = exames.filter(exame =>
-        exame.tipo_exame === 'numerico' && exame.valor !== null
+      const examesNumericos = exames.filter(
+        (exame) => exame.tipo_exame === 'numerico' && exame.valor !== null,
       );
 
       // Agrupar por título e ordenar por data
       const dadosGrafico = {};
-      examesNumericos.forEach(exame => {
+      examesNumericos.forEach((exame) => {
         const titulo = exame.titulo;
         if (!dadosGrafico[titulo]) {
           dadosGrafico[titulo] = [];
@@ -519,12 +523,12 @@ export const exameService = {
         dadosGrafico[titulo].push({
           data: exame.data_exame,
           valor: parseFloat(exame.valor),
-          unidade: exame.unidade || ''
+          unidade: exame.unidade || '',
         });
       });
 
       // Ordenar cada série por data
-      Object.keys(dadosGrafico).forEach(titulo => {
+      Object.keys(dadosGrafico).forEach((titulo) => {
         dadosGrafico[titulo].sort((a, b) => new Date(a.data) - new Date(b.data));
       });
 
@@ -541,7 +545,7 @@ export const exameService = {
     } catch (error) {
       throw error.response ? error.response.data : { error: 'Erro de conexão' };
     }
-  }
+  },
 };
 
 // Serviço de evoluções
@@ -621,7 +625,7 @@ export const evolucoesService = {
     } catch (error) {
       throw error.response ? error.response.data : { error: 'Erro de conexão' };
     }
-  }
+  },
 };
 
 // Serviço GAD-7
@@ -660,7 +664,7 @@ export const gad7Service = {
     } catch (error) {
       throw error.response ? error.response.data : { error: 'Erro de conexão' };
     }
-  }
+  },
 };
 
 // Serviço de LGPD
@@ -696,13 +700,13 @@ export const lgpdService = {
     try {
       const response = await api.post(`/lgpd/direitos-titular/${pacienteId}`, {
         tipo_solicitacao: tipoSolicitacao,
-        detalhes
+        detalhes,
       });
       return response.data;
     } catch (error) {
       throw error.response ? error.response.data : { error: 'Erro de conexão' };
     }
-  }
+  },
 };
 
 // Serviço de consultas
@@ -765,10 +769,8 @@ export const consultasService = {
     } catch (error) {
       throw error.response ? error.response.data : { error: 'Erro de conexão' };
     }
-  }
+  },
 };
-
-
 
 // Serviço de Configuração IA (SDR Multi-Tenant)
 export const configIaTenantService = {
@@ -788,7 +790,7 @@ export const configIaTenantService = {
     } catch (error) {
       throw error.response ? error.response.data : { error: 'Erro de conexão' };
     }
-  }
+  },
 };
 
 // Serviço de produtos
@@ -823,9 +825,11 @@ export const produtosService = {
   assistente: async (payload) => {
     try {
       const isFormData = payload instanceof FormData;
-      const config = isFormData ? {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      } : {};
+      const config = isFormData
+        ? {
+            headers: { 'Content-Type': 'multipart/form-data' },
+          }
+        : {};
       const response = await api.post('/produtos/assistente', payload, config);
       return response.data;
     } catch (error) {
@@ -849,7 +853,7 @@ export const produtosService = {
     } catch (error) {
       throw error.response ? error.response.data : { error: 'Erro de conexão' };
     }
-  }
+  },
 };
 
 // Serviço de billing/planos
@@ -925,7 +929,7 @@ export const billingService = {
     } catch (error) {
       throw error.response ? error.response.data : { error: 'Erro de conexão' };
     }
-  }
+  },
 };
 
 export const mercadopagoService = {
@@ -936,7 +940,7 @@ export const mercadopagoService = {
     } catch (error) {
       throw error.response ? error.response.data : { error: 'Erro de conexão' };
     }
-  }
+  },
 };
 
 // Serviço de importação e exportação
@@ -944,7 +948,7 @@ export const importExportService = {
   exportarPaciente: async (pacienteId, formato = 'json') => {
     try {
       const response = await api.get(`/import-export/export/patient/${pacienteId}`, {
-        responseType: 'blob'
+        responseType: 'blob',
       });
 
       // Criar URL para download
@@ -969,9 +973,12 @@ export const importExportService = {
 
   exportarCSV: async (pacienteId, tipo = 'all') => {
     try {
-      const response = await api.get(`/import-export/export/csv/patient/${pacienteId}?type=${tipo}`, {
-        responseType: 'blob'
-      });
+      const response = await api.get(
+        `/import-export/export/csv/patient/${pacienteId}?type=${tipo}`,
+        {
+          responseType: 'blob',
+        },
+      );
 
       // Criar URL para download
       const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -1008,8 +1015,6 @@ export const importExportService = {
       throw error.response ? error.response.data : { error: 'Erro de conexão' };
     }
   },
-
-
 };
 
 export const snapIVService = {
@@ -1047,7 +1052,7 @@ export const snapIVService = {
     } catch (error) {
       throw error.response ? error.response.data : { error: 'Erro de conexão' };
     }
-  }
+  },
 };
 
 // Serviço de chat multiagente (Crew)
@@ -1059,17 +1064,17 @@ export const crewAIService = {
         {
           mensagem,
           paciente_id,
-          contexto
+          contexto,
         },
         {
-          timeout: 120000
-        }
+          timeout: 120000,
+        },
       );
       return response.data;
     } catch (error) {
       throw error.response ? error.response.data : { error: 'Erro de conexão' };
     }
-  }
+  },
 };
 
 // Serviço de chat simples (funciona melhor com modelos locais pequenos)
@@ -1080,11 +1085,11 @@ export const chatSimplesService = {
         '/chat-simples',
         {
           mensagem,
-          paciente_id
+          paciente_id,
         },
         {
-          timeout: 120000 // 2 minutos
-        }
+          timeout: 120000, // 2 minutos
+        },
       );
       return response.data;
     } catch (error) {
@@ -1106,7 +1111,7 @@ export const chatSimplesService = {
     } catch (error) {
       throw error.response ? error.response.data : { error: 'Erro de síntese de voz' };
     }
-  }
+  },
 };
 
 export const beckDepressionService = {
@@ -1144,7 +1149,7 @@ export const beckDepressionService = {
     } catch (error) {
       throw error.response ? error.response.data : { error: 'Erro de conexão' };
     }
-  }
+  },
 };
 
 // Serviço de IA Management
@@ -1327,7 +1332,7 @@ export const aiManagementService = {
     } catch (error) {
       throw error.response ? error.response.data : { error: 'Erro de conexão' };
     }
-  }
+  },
 };
 
 // Serviço PHQ-9
@@ -1366,7 +1371,7 @@ export const phq9Service = {
     } catch (error) {
       throw error.response ? error.response.data : { error: 'Erro de conexão' };
     }
-  }
+  },
 };
 
 // Serviço de configuração geral de IA (provedor/modelo padrão)
@@ -1384,7 +1389,7 @@ export const aiConfigService = {
       const response = await api.post(`/ai-config/providers/${provider}`, {
         model,
         api_key,
-        base_url
+        base_url,
       });
       return response.data;
     } catch (error) {
@@ -1397,7 +1402,7 @@ export const aiConfigService = {
         provider,
         model,
         api_key,
-        base_url
+        base_url,
       });
       return response.data;
     } catch (error) {
@@ -1409,7 +1414,7 @@ export const aiConfigService = {
       const response = await api.post(`/ai-config/providers/vision/${provider}`, {
         model,
         api_key,
-        base_url
+        base_url,
       });
       return response.data;
     } catch (error) {
@@ -1421,7 +1426,7 @@ export const aiConfigService = {
       const response = await api.post(`/ai-config/providers/multimodal/${provider}`, {
         model,
         api_key,
-        base_url
+        base_url,
       });
       return response.data;
     } catch (error) {
@@ -1435,7 +1440,7 @@ export const aiConfigService = {
       const response = await api.post(`/ai-config/providers/chat/${provider}`, {
         model,
         api_key,
-        base_url
+        base_url,
       });
       return response.data;
     } catch (error) {
@@ -1448,7 +1453,7 @@ export const aiConfigService = {
       const response = await api.post(`/ai-config/providers/audio/${provider}`, {
         model,
         api_key,
-        base_url
+        base_url,
       });
       return response.data;
     } catch (error) {
@@ -1461,7 +1466,7 @@ export const aiConfigService = {
       const response = await api.post(`/ai-config/providers/spreadsheet/${provider}`, {
         model,
         api_key,
-        base_url
+        base_url,
       });
       return response.data;
     } catch (error) {
@@ -1474,13 +1479,13 @@ export const aiConfigService = {
       const response = await api.post(`/ai-config/providers/pdf/${provider}`, {
         model,
         api_key,
-        base_url
+        base_url,
       });
       return response.data;
     } catch (error) {
       throw error.response ? error.response.data : { error: 'Erro de conexão' };
     }
-  }
+  },
 };
 
 export const dashboardService = {
@@ -1491,7 +1496,7 @@ export const dashboardService = {
     } catch (error) {
       throw error.response ? error.response.data : { error: 'Erro de conexão' };
     }
-  }
+  },
 };
 
 export const prescricaoConfigService = {
@@ -1512,7 +1517,7 @@ export const prescricaoConfigService = {
     } catch (error) {
       throw error.response ? error.response.data : { error: 'Erro de conexão' };
     }
-  }
+  },
 };
 
 // Serviço de Onboarding
@@ -1540,7 +1545,7 @@ export const onboardingService = {
     } catch (error) {
       throw error.response ? error.response.data : { error: 'Erro de conexão' };
     }
-  }
+  },
 };
 
 // Serviço de Verificação de Email
@@ -1560,7 +1565,7 @@ export const emailVerificationService = {
     } catch (error) {
       throw error.response ? error.response.data : { error: 'Erro de conexão' };
     }
-  }
+  },
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -1606,7 +1611,7 @@ export const twinService = {
     } catch (error) {
       throw error.response ? error.response.data : { error: 'Erro de conexão' };
     }
-  }
+  },
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -1707,7 +1712,7 @@ export const cannabisService = {
     } catch (error) {
       throw error.response ? error.response.data : { error: 'Erro de conexão' };
     }
-  }
+  },
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -1761,7 +1766,9 @@ export const followupService = {
   },
   listarQuestionarios: async (programId = null) => {
     try {
-      const url = programId ? `/followup/questionnaires?program_id=${programId}` : '/followup/questionnaires';
+      const url = programId
+        ? `/followup/questionnaires?program_id=${programId}`
+        : '/followup/questionnaires';
       const response = await api.get(url);
       return response.data.data || response.data;
     } catch (error) {
@@ -1805,7 +1812,182 @@ export const followupService = {
     } catch (error) {
       throw error.response ? error.response.data : { error: 'Erro de conexão' };
     }
-  }
+  },
+};
+
+// ===========================================================================
+// FATURAMENTO CLÍNICO (convênios, serviços/tabela, percentuais, contas a receber)
+// ===========================================================================
+export const faturamentoService = {
+  // Convênios
+  listarConvenios: async (apenasAtivos = false) => {
+    try {
+      const response = await api.get(
+        `/faturamento/convenios${apenasAtivos ? '?apenas_ativos=true' : ''}`,
+      );
+      return response.data.convenios || [];
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  criarConvenio: async (data) => {
+    try {
+      const response = await api.post('/faturamento/convenios', data);
+      return response.data.convenio;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  atualizarConvenio: async (id, data) => {
+    try {
+      const response = await api.put(`/faturamento/convenios/${id}`, data);
+      return response.data.convenio;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  deletarConvenio: async (id) => {
+    try {
+      const response = await api.delete(`/faturamento/convenios/${id}`);
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+
+  // Serviços
+  listarServicos: async (apenasAtivos = false) => {
+    try {
+      const response = await api.get(
+        `/faturamento/servicos${apenasAtivos ? '?apenas_ativos=true' : ''}`,
+      );
+      return response.data.servicos || [];
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  criarServico: async (data) => {
+    try {
+      const response = await api.post('/faturamento/servicos', data);
+      return response.data.servico;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  atualizarServico: async (id, data) => {
+    try {
+      const response = await api.put(`/faturamento/servicos/${id}`, data);
+      return response.data.servico;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  deletarServico: async (id) => {
+    try {
+      const response = await api.delete(`/faturamento/servicos/${id}`);
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+
+  // Tabela de preços por convênio
+  listarTabela: async (convenioId) => {
+    try {
+      const response = await api.get(`/faturamento/convenios/${convenioId}/tabela`);
+      return response.data.itens || [];
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  upsertTabela: async (convenioId, data) => {
+    try {
+      const response = await api.post(`/faturamento/convenios/${convenioId}/tabela`, data);
+      return response.data.item;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  removerTabela: async (convenioId, servicoId) => {
+    try {
+      const response = await api.delete(`/faturamento/convenios/${convenioId}/tabela/${servicoId}`);
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+
+  // Percentuais de repasse por profissional
+  listarPercentuais: async (profissionalId) => {
+    try {
+      const response = await api.get(`/faturamento/profissionais/${profissionalId}/percentuais`);
+      return response.data.itens || [];
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  upsertPercentual: async (profissionalId, data) => {
+    try {
+      const response = await api.post(
+        `/faturamento/profissionais/${profissionalId}/percentuais`,
+        data,
+      );
+      return response.data.item;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  removerPercentual: async (profissionalId, itemId) => {
+    try {
+      const response = await api.delete(
+        `/faturamento/profissionais/${profissionalId}/percentuais/${itemId}`,
+      );
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+
+  // Lançamentos (contas a receber)
+  lancar: async (data) => {
+    try {
+      const response = await api.post('/faturamento/lancamentos', data);
+      return response.data.lancamento;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  listarLancamentos: async (params = {}) => {
+    try {
+      const query = new URLSearchParams();
+      if (params.status) query.append('status', params.status);
+      if (params.modalidade) query.append('modalidade', params.modalidade);
+      if (params.profissional_id) query.append('profissional_id', params.profissional_id);
+      if (params.convenio_id) query.append('convenio_id', params.convenio_id);
+      if (params.de) query.append('de', params.de);
+      if (params.ate) query.append('ate', params.ate);
+      const response = await api.get(`/faturamento/lancamentos?${query.toString()}`);
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  receber: async (lancamentoId, data) => {
+    try {
+      const response = await api.post(`/faturamento/lancamentos/${lancamentoId}/receber`, data);
+      return response.data.lancamento;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  estornar: async (lancamentoId) => {
+    try {
+      const response = await api.post(`/faturamento/lancamentos/${lancamentoId}/estornar`);
+      return response.data.lancamento;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
 };
 
 export default api;

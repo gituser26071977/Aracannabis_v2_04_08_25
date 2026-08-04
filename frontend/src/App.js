@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
-import { Create as CreateIcon, DarkMode, LightMode } from '@mui/icons-material';
+import { DarkMode, LightMode } from '@mui/icons-material';
 import { ThemeContextProvider, useColorMode } from './contexts/ThemeContext';
-import CssBaseline from '@mui/material/CssBaseline';
 import Container from '@mui/material/Container';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -11,29 +10,11 @@ import Toolbar from '@mui/material/Toolbar';
 import IconButton from '@mui/material/IconButton';
 import Button from '@mui/material/Button';
 import MenuIcon from '@mui/icons-material/Menu';
-import Drawer from '@mui/material/Drawer';
-import List from '@mui/material/List';
-import ListItem from '@mui/material/ListItem';
-import ListItemIcon from '@mui/material/ListItemIcon';
-import ListItemText from '@mui/material/ListItemText';
-import HomeIcon from '@mui/icons-material/Home';
-import PersonIcon from '@mui/icons-material/Person';
-import EventIcon from '@mui/icons-material/Event';
-import LoginIcon from '@mui/icons-material/Login';
-import LogoutIcon from '@mui/icons-material/Logout';
-import SecurityIcon from '@mui/icons-material/Security';
-import PersonAddIcon from '@mui/icons-material/PersonAdd';
-import PaymentIcon from '@mui/icons-material/Payment';
-import SmartToyIcon from '@mui/icons-material/SmartToy';
-import ChatIcon from '@mui/icons-material/Chat';
-import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
-import SpeedIcon from '@mui/icons-material/Speed';
-import SettingsIcon from '@mui/icons-material/Settings';
 import Paper from '@mui/material/Paper';
 import TextField from '@mui/material/TextField';
 import Alert from '@mui/material/Alert';
 import CircularProgress from '@mui/material/CircularProgress';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { useAuth } from './contexts/AuthContext';
 import { AssociationProvider } from './contexts/AssociationContext';
 import AssociationSelector from './components/AssociationSelector';
 
@@ -54,7 +35,7 @@ import InternalDashboard from './pages/InternalDashboard';
 import AIDashboard from './pages/AIDashboard';
 import AIChatPage from './pages/AIChatPage';
 import BillingPage from './pages/BillingPage';
-import AdBanner from './components/AdBanner';
+import FaturamentoPage from './pages/FaturamentoPage';
 import AIConfigPage from './pages/AIConfigPage';
 import PasswordSetupRequestPage from './pages/PasswordSetupRequestPage';
 import DefinePasswordPage from './pages/DefinePasswordPage';
@@ -73,6 +54,7 @@ import OnboardingPage from './pages/OnboardingPage';
 import TrialEndingPage from './pages/TrialEndingPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
 import ModulosPage from './pages/ModulosPage';
+import ClinicalPipelineExplorer from './pages/ClinicalPipelineExplorer';
 import TrialBanner from './components/TrialBanner';
 import ErrorBoundary from './components/ErrorBoundary';
 import NotFoundPage from './pages/NotFoundPage';
@@ -81,7 +63,6 @@ import ForbiddenPage from './pages/ForbiddenPage';
 import ServerErrorPage from './pages/ServerErrorPage';
 
 import NavigationMenu from './components/NavigationMenu';
-import BusinessIcon from '@mui/icons-material/Business';
 
 // Patient Portal Pages
 import PatientLogin from './pages/patient/PatientLogin';
@@ -89,8 +70,6 @@ import PatientRegister from './pages/patient/PatientRegister';
 import PatientDashboard from './pages/patient/PatientDashboard';
 
 const APP_TITLE = 'AraOS';
-const APP_SUBTITLE = 'Sistema de Prontuário Eletrônico para Pacientes em Tratamento com Cannabis Medicinal';
-
 // Tema personalizado
 // Theme removed from here as it is now managed by ThemeContext
 
@@ -130,25 +109,7 @@ function AdminRoute({ children }) {
   return children;
 }
 
-
-
 // ===== PAGE TRANSITION WRAPPER =====
-function PageTransition({ children }) {
-  return (
-    <Box
-      sx={{
-        animation: 'fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards',
-        '@keyframes fadeInUp': {
-          from: { opacity: 0, transform: 'translateY(16px)' },
-          to: { opacity: 1, transform: 'translateY(0)' },
-        },
-      }}
-    >
-      {children}
-    </Box>
-  );
-}
-
 function LoginPage() {
   const [usuario, setUsuario] = useState('');
   const [senha, setSenha] = useState('');
@@ -172,9 +133,10 @@ function LoginPage() {
 
   const { mode, toggleColorMode } = useColorMode();
 
-  const bgGradient = mode === 'dark'
-    ? 'radial-gradient(ellipse at 20% 0%, #0d2f28 0%, #0a1512 40%, #050a08 100%)'
-    : 'radial-gradient(ellipse at 20% 0%, #e0f2e9 0%, #f0f4f1 40%, #e8ecea 100%)';
+  const bgGradient =
+    mode === 'dark'
+      ? 'radial-gradient(ellipse at 20% 0%, #0d2f28 0%, #0a1512 40%, #050a08 100%)'
+      : 'radial-gradient(ellipse at 20% 0%, #e0f2e9 0%, #f0f4f1 40%, #e8ecea 100%)';
 
   return (
     <Box
@@ -211,9 +173,10 @@ function LoginPage() {
           width: 200,
           height: 200,
           borderRadius: '50%',
-          background: mode === 'dark'
-            ? 'radial-gradient(circle, rgba(0,212,170,0.08) 0%, transparent 70%)'
-            : 'radial-gradient(circle, rgba(13,115,119,0.06) 0%, transparent 70%)',
+          background:
+            mode === 'dark'
+              ? 'radial-gradient(circle, rgba(0,212,170,0.08) 0%, transparent 70%)'
+              : 'radial-gradient(circle, rgba(13,115,119,0.06) 0%, transparent 70%)',
           filter: 'blur(40px)',
           animation: 'float 6s ease-in-out infinite',
         }}
@@ -226,9 +189,10 @@ function LoginPage() {
           width: 300,
           height: 300,
           borderRadius: '50%',
-          background: mode === 'dark'
-            ? 'radial-gradient(circle, rgba(245,166,35,0.06) 0%, transparent 70%)'
-            : 'radial-gradient(circle, rgba(245,166,35,0.04) 0%, transparent 70%)',
+          background:
+            mode === 'dark'
+              ? 'radial-gradient(circle, rgba(245,166,35,0.06) 0%, transparent 70%)'
+              : 'radial-gradient(circle, rgba(245,166,35,0.04) 0%, transparent 70%)',
           filter: 'blur(50px)',
           animation: 'float 8s ease-in-out infinite reverse',
         }}
@@ -250,7 +214,7 @@ function LoginPage() {
           '&:hover': {
             bgcolor: mode === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)',
             transform: 'scale(1.1) rotate(15deg)',
-          }
+          },
         }}
       >
         {mode === 'dark' ? <LightMode /> : <DarkMode />}
@@ -264,16 +228,15 @@ function LoginPage() {
           maxWidth: 460,
           position: 'relative',
           zIndex: 2,
-          background: mode === 'dark'
-            ? 'rgba(26, 31, 29, 0.75)'
-            : 'rgba(255, 255, 255, 0.72)',
+          background: mode === 'dark' ? 'rgba(26, 31, 29, 0.75)' : 'rgba(255, 255, 255, 0.72)',
           backdropFilter: 'blur(24px) saturate(180%)',
           WebkitBackdropFilter: 'blur(24px) saturate(180%)',
           borderRadius: '24px',
           border: `1px solid ${mode === 'dark' ? 'rgba(0,212,170,0.1)' : 'rgba(13,115,119,0.1)'}`,
-          boxShadow: mode === 'dark'
-            ? '0 25px 50px rgba(0,0,0,0.35), 0 0 0 1px rgba(0,212,170,0.05)'
-            : '0 25px 50px rgba(0,0,0,0.08), 0 0 0 1px rgba(13,115,119,0.05)',
+          boxShadow:
+            mode === 'dark'
+              ? '0 25px 50px rgba(0,0,0,0.35), 0 0 0 1px rgba(0,212,170,0.05)'
+              : '0 25px 50px rgba(0,0,0,0.08), 0 0 0 1px rgba(13,115,119,0.05)',
           animation: 'scaleIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards',
           '@keyframes scaleIn': {
             from: { opacity: 0, transform: 'scale(0.95) translateY(10px)' },
@@ -288,9 +251,10 @@ function LoginPage() {
             gutterBottom
             fontWeight={800}
             sx={{
-              background: mode === 'dark'
-                ? 'linear-gradient(135deg, #00d4aa 0%, #33ddbf 50%, #ffd166 100%)'
-                : 'linear-gradient(135deg, #0d7377 0%, #14a085 50%, #f5a623 100%)',
+              background:
+                mode === 'dark'
+                  ? 'linear-gradient(135deg, #00d4aa 0%, #33ddbf 50%, #ffd166 100%)'
+                  : 'linear-gradient(135deg, #0d7377 0%, #14a085 50%, #f5a623 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
@@ -402,18 +366,21 @@ function LoginPage() {
               fontSize: '1.05rem',
               fontWeight: 700,
               borderRadius: '14px',
-              background: mode === 'dark'
-                ? 'linear-gradient(135deg, #00d4aa 0%, #33ddbf 100%)'
-                : 'linear-gradient(135deg, #0d7377 0%, #14a085 100%)',
-              boxShadow: mode === 'dark'
-                ? '0 4px 20px rgba(0,212,170,0.35)'
-                : '0 4px 20px rgba(13,115,119,0.30)',
+              background:
+                mode === 'dark'
+                  ? 'linear-gradient(135deg, #00d4aa 0%, #33ddbf 100%)'
+                  : 'linear-gradient(135deg, #0d7377 0%, #14a085 100%)',
+              boxShadow:
+                mode === 'dark'
+                  ? '0 4px 20px rgba(0,212,170,0.35)'
+                  : '0 4px 20px rgba(13,115,119,0.30)',
               transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
               '&:hover': {
                 transform: 'scale(1.02) translateY(-2px)',
-                boxShadow: mode === 'dark'
-                  ? '0 8px 30px rgba(0,212,170,0.45)'
-                  : '0 8px 30px rgba(13,115,119,0.40)',
+                boxShadow:
+                  mode === 'dark'
+                    ? '0 8px 30px rgba(0,212,170,0.45)'
+                    : '0 8px 30px rgba(13,115,119,0.40)',
               },
               '&:active': {
                 transform: 'scale(0.98)',
@@ -421,11 +388,7 @@ function LoginPage() {
             }}
             disabled={loading}
           >
-            {loading ? (
-              <CircularProgress size={24} sx={{ color: 'inherit' }} />
-            ) : (
-              '✨ Entrar'
-            )}
+            {loading ? <CircularProgress size={24} sx={{ color: 'inherit' }} /> : '✨ Entrar'}
           </Button>
         </form>
 
@@ -466,7 +429,6 @@ function LoginPage() {
   );
 }
 
-
 function App() {
   return (
     <ThemeContextProvider>
@@ -501,307 +463,373 @@ function AppContent() {
 
   return (
     <ErrorBoundary>
-    <AssociationProvider>
-      {showTrialBanner && <TrialBanner />}
-      {!isLoginPage && (
-        <AppBar
-          position="sticky"
-          elevation={scrolled ? 2 : 0}
-          sx={{
-            transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-            bgcolor: scrolled
-              ? (mode === 'dark' ? 'rgba(10,15,13,0.85)' : 'rgba(255,255,255,0.85)')
-              : (mode === 'dark' ? 'transparent' : 'transparent'),
-            backdropFilter: scrolled ? 'blur(20px) saturate(180%)' : 'none',
-            WebkitBackdropFilter: scrolled ? 'blur(20px) saturate(180%)' : 'none',
-            borderBottom: scrolled
-              ? `1px solid ${mode === 'dark' ? 'rgba(0,212,170,0.08)' : 'rgba(13,115,119,0.08)'}`
-              : '1px solid transparent',
-          }}
-        >
-          <Toolbar sx={{ minHeight: { xs: 56, sm: 64 } }}>
-            <IconButton
-              edge="start"
-              color="inherit"
-              aria-label="menu"
-              onClick={toggleMenu}
-              sx={{
-                mr: 2,
-                transition: 'all 0.2s ease',
-                '&:hover': {
-                  transform: 'scale(1.1)',
-                  bgcolor: (theme) => `${theme.palette.primary.main}14`,
-                },
-              }}
-            >
-              <MenuIcon />
-            </IconButton>
-
-            <Typography
-              variant="h6"
-              component="div"
-              sx={{
-                flexGrow: 1,
-                fontWeight: 800,
-                letterSpacing: '-0.02em',
-                background: mode === 'dark'
-                  ? 'linear-gradient(135deg, #00d4aa 0%, #ffd166 100%)'
-                  : 'linear-gradient(135deg, #0d7377 0%, #14a085 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
-                fontSize: { xs: '1.1rem', sm: '1.25rem' },
-              }}
-            >
-              🌿 {APP_TITLE}
-            </Typography>
-
-            {/* Association Selector for SaaS */}
-            {currentUser && <AssociationSelector />}
-
-            <IconButton
-              color="inherit"
-              onClick={toggleColorMode}
-              aria-label={mode === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'}
-              sx={{
-                transition: 'all 0.3s ease',
-                '&:hover': {
-                  transform: 'rotate(20deg) scale(1.1)',
-                  bgcolor: (theme) => `${theme.palette.primary.main}14`,
-                },
-              }}
-            >
-              {mode === 'dark' ? <LightMode /> : <DarkMode />}
-            </IconButton>
-
-            {currentUser && (
-              <Typography
-                variant="body2"
+      <AssociationProvider>
+        {showTrialBanner && <TrialBanner />}
+        {!isLoginPage && (
+          <AppBar
+            position="sticky"
+            elevation={scrolled ? 2 : 0}
+            sx={{
+              transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+              bgcolor: scrolled
+                ? mode === 'dark'
+                  ? 'rgba(10,15,13,0.85)'
+                  : 'rgba(255,255,255,0.85)'
+                : mode === 'dark'
+                  ? 'transparent'
+                  : 'transparent',
+              backdropFilter: scrolled ? 'blur(20px) saturate(180%)' : 'none',
+              WebkitBackdropFilter: scrolled ? 'blur(20px) saturate(180%)' : 'none',
+              borderBottom: scrolled
+                ? `1px solid ${mode === 'dark' ? 'rgba(0,212,170,0.08)' : 'rgba(13,115,119,0.08)'}`
+                : '1px solid transparent',
+            }}
+          >
+            <Toolbar sx={{ minHeight: { xs: 56, sm: 64 } }}>
+              <IconButton
+                edge="start"
+                color="inherit"
+                aria-label="menu"
+                onClick={toggleMenu}
                 sx={{
                   mr: 2,
-                  ml: 2,
-                  fontWeight: 600,
-                  opacity: 0.8,
-                  display: { xs: 'none', sm: 'block' },
+                  transition: 'all 0.2s ease',
+                  '&:hover': {
+                    transform: 'scale(1.1)',
+                    bgcolor: (theme) => `${theme.palette.primary.main}14`,
+                  },
                 }}
               >
-                👋 Olá, {currentUser.nome}
+                <MenuIcon />
+              </IconButton>
+
+              <Typography
+                variant="h6"
+                component="div"
+                sx={{
+                  flexGrow: 1,
+                  fontWeight: 800,
+                  letterSpacing: '-0.02em',
+                  background:
+                    mode === 'dark'
+                      ? 'linear-gradient(135deg, #00d4aa 0%, #ffd166 100%)'
+                      : 'linear-gradient(135deg, #0d7377 0%, #14a085 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                  fontSize: { xs: '1.1rem', sm: '1.25rem' },
+                }}
+              >
+                🌿 {APP_TITLE}
               </Typography>
-            )}
-            {currentUser ? (
-              <Button
+
+              {/* Association Selector for SaaS */}
+              {currentUser && <AssociationSelector />}
+
+              <IconButton
                 color="inherit"
-                onClick={() => window.open(`${process.env.REACT_APP_API_URL || ''}/api/status`, '_blank')}
-                target="_blank"
-                disabled={!process.env.REACT_APP_API_URL}
+                onClick={toggleColorMode}
+                aria-label={mode === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'}
                 sx={{
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  borderRadius: '10px',
-                  px: 2,
-                  display: { xs: 'none', sm: 'flex' },
+                  transition: 'all 0.3s ease',
                   '&:hover': {
+                    transform: 'rotate(20deg) scale(1.1)',
                     bgcolor: (theme) => `${theme.palette.primary.main}14`,
                   },
                 }}
               >
-                🔌 API
-              </Button>
-            ) : (
-              <Button
-                color="inherit"
-                component={Link}
-                to="/login"
-                sx={{
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  borderRadius: '10px',
-                  px: 2,
-                  '&:hover': {
-                    bgcolor: (theme) => `${theme.palette.primary.main}14`,
-                  },
-                }}
-              >
-                🔑 Login
-              </Button>
-            )}
-          </Toolbar>
-        </AppBar>
-      )}
-      <NavigationMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
-      <Container
-        maxWidth={isLoginPage ? false : "xl"}
-        sx={isLoginPage ? { p: 0, m: 0 } : { mt: { xs: 2, sm: 4 }, mb: { xs: 2, sm: 4 } }}
-      >
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
+                {mode === 'dark' ? <LightMode /> : <DarkMode />}
+              </IconButton>
 
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/dashboard" element={
-            <ProtectedRoute>
-              <InternalDashboard />
-            </ProtectedRoute>
-          } />
-          <Route path="/definir-senha/solicitar" element={<PasswordSetupRequestPage />} />
-          <Route path="/definir-senha" element={<DefinePasswordPage />} />
-          <Route path="/pagamento" element={<PagamentoPage />} />
-          <Route path="/planos" element={<PlanosPage />} />
-          <Route path="/cadastro-profissionais" element={<CadastroProfissionaisPage />} />
-          <Route path="/verificar-email" element={<VerifyEmailPage />} />
-          <Route path="/onboarding" element={
-            <ProtectedRoute>
-              <OnboardingPage />
-            </ProtectedRoute>
-          } />
-          <Route path="/trial-ending" element={
-            <ProtectedRoute>
-              <TrialEndingPage />
-            </ProtectedRoute>
-          } />
-          <Route path="/test-login" element={<SimpleLogin />} />
-          <Route path="/pagamento-sucesso" element={<PaymentStatusPage />} />
-          <Route path="/pagamento-erro" element={<PaymentStatusPage />} />
-          <Route path="/pagamento-pendente" element={<PaymentStatusPage />} />
-          <Route
-            path="/pacientes"
-            element={
-              <ProtectedRoute>
-                <PacientesPageComponent />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/pacientes/detail/:patientId"
-            element={
-              <ProtectedRoute>
-                <PatientDetailPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/pacientes/edit/:patientId"
-            element={
-              <ProtectedRoute>
-                <PatientEditPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/importar-prescricoes"
-            element={
-              <ProtectedRoute>
-                <BatchImportPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/consultas"
-            element={
-              <ProtectedRoute>
-                <ConsultasPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/assistente-ia"
-            element={
-              <ProtectedRoute>
-                <AIChatPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/billing"
-            element={
-              <ProtectedRoute>
-                <BillingPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin"
-            element={
-              <AdminRoute>
-                <AdminPage />
-              </AdminRoute>
-            }
-          />
-          <Route
-            path="/ai-dashboard"
-            element={
-              <AdminRoute>
-                <AIDashboard />
-              </AdminRoute>
-            }
-          />
-          <Route
-            path="/ai-config"
-            element={
-              <AdminRoute>
-                <AIConfigPage />
-              </AdminRoute>
-            }
-          />
-          <Route path="/mobile-upload/:token" element={<MobileUploadPage />} />
-          <Route path="/seguranca" element={<SecurityPage />} />
-          <Route
-            path="/configuracao-prescricao"
-            element={
-              <ProtectedRoute>
-                <ConfiguracaoPrescricaoPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/configuracao-ia"
-            element={
-              <ProtectedRoute>
-                <ConfiguracaoIAPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/catalogo"
-            element={
-              <ProtectedRoute>
-                <CatalogoPage />
-              </ProtectedRoute>
-            }
-          />
+              {currentUser && (
+                <Typography
+                  variant="body2"
+                  sx={{
+                    mr: 2,
+                    ml: 2,
+                    fontWeight: 600,
+                    opacity: 0.8,
+                    display: { xs: 'none', sm: 'block' },
+                  }}
+                >
+                  👋 Olá, {currentUser.nome}
+                </Typography>
+              )}
+              {currentUser ? (
+                <Button
+                  color="inherit"
+                  onClick={() =>
+                    window.open(`${process.env.REACT_APP_API_URL || ''}/api/status`, '_blank')
+                  }
+                  target="_blank"
+                  disabled={!process.env.REACT_APP_API_URL}
+                  sx={{
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    borderRadius: '10px',
+                    px: 2,
+                    display: { xs: 'none', sm: 'flex' },
+                    '&:hover': {
+                      bgcolor: (theme) => `${theme.palette.primary.main}14`,
+                    },
+                  }}
+                >
+                  🔌 API
+                </Button>
+              ) : (
+                <Button
+                  color="inherit"
+                  component={Link}
+                  to="/login"
+                  sx={{
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    borderRadius: '10px',
+                    px: 2,
+                    '&:hover': {
+                      bgcolor: (theme) => `${theme.palette.primary.main}14`,
+                    },
+                  }}
+                >
+                  🔑 Login
+                </Button>
+              )}
+            </Toolbar>
+          </AppBar>
+        )}
+        <NavigationMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
+        <Container
+          maxWidth={isLoginPage ? false : 'xl'}
+          sx={isLoginPage ? { p: 0, m: 0 } : { mt: { xs: 2, sm: 4 }, mb: { xs: 2, sm: 4 } }}
+        >
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
 
-          {/* Association Module Routes */}
-          <Route path="/association" element={<ProtectedRoute><AssociationPage /></ProtectedRoute>} />
-          <Route path="/association/members" element={<ProtectedRoute><MembersPage /></ProtectedRoute>} />
-          <Route path="/association/stock" element={<ProtectedRoute><StockPage /></ProtectedRoute>} />
-          <Route path="/association/dispensation" element={<ProtectedRoute><DispensationPage /></ProtectedRoute>} />
-          <Route path="/intelligent-import" element={<ProtectedRoute><IntelligentImportPage /></ProtectedRoute>} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <InternalDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="/definir-senha/solicitar" element={<PasswordSetupRequestPage />} />
+            <Route path="/definir-senha" element={<DefinePasswordPage />} />
+            <Route path="/pagamento" element={<PagamentoPage />} />
+            <Route path="/planos" element={<PlanosPage />} />
+            <Route path="/cadastro-profissionais" element={<CadastroProfissionaisPage />} />
+            <Route path="/verificar-email" element={<VerifyEmailPage />} />
+            <Route
+              path="/onboarding"
+              element={
+                <ProtectedRoute>
+                  <OnboardingPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/trial-ending"
+              element={
+                <ProtectedRoute>
+                  <TrialEndingPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="/test-login" element={<SimpleLogin />} />
+            <Route path="/pagamento-sucesso" element={<PaymentStatusPage />} />
+            <Route path="/pagamento-erro" element={<PaymentStatusPage />} />
+            <Route path="/pagamento-pendente" element={<PaymentStatusPage />} />
+            <Route
+              path="/pacientes"
+              element={
+                <ProtectedRoute>
+                  <PacientesPageComponent />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/pacientes/detail/:patientId"
+              element={
+                <ProtectedRoute>
+                  <PatientDetailPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/pacientes/edit/:patientId"
+              element={
+                <ProtectedRoute>
+                  <PatientEditPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/importar-prescricoes"
+              element={
+                <ProtectedRoute>
+                  <BatchImportPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/consultas"
+              element={
+                <ProtectedRoute>
+                  <ConsultasPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/assistente-ia"
+              element={
+                <ProtectedRoute>
+                  <AIChatPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/billing"
+              element={
+                <ProtectedRoute>
+                  <BillingPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/faturamento"
+              element={
+                <ProtectedRoute>
+                  <FaturamentoPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin"
+              element={
+                <AdminRoute>
+                  <AdminPage />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/ai-dashboard"
+              element={
+                <AdminRoute>
+                  <AIDashboard />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/ai-config"
+              element={
+                <AdminRoute>
+                  <AIConfigPage />
+                </AdminRoute>
+              }
+            />
+            <Route path="/mobile-upload/:token" element={<MobileUploadPage />} />
+            <Route path="/seguranca" element={<SecurityPage />} />
+            <Route
+              path="/configuracao-prescricao"
+              element={
+                <ProtectedRoute>
+                  <ConfiguracaoPrescricaoPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/configuracao-ia"
+              element={
+                <ProtectedRoute>
+                  <ConfiguracaoIAPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/catalogo"
+              element={
+                <ProtectedRoute>
+                  <CatalogoPage />
+                </ProtectedRoute>
+              }
+            />
 
-          {/* Specialty Modules */}
-          <Route
-            path="/modulos"
-            element={
-              <ProtectedRoute>
-                <ModulosPage />
-              </ProtectedRoute>
-            }
-          />
+            {/* Association Module Routes */}
+            <Route
+              path="/association"
+              element={
+                <ProtectedRoute>
+                  <AssociationPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/association/members"
+              element={
+                <ProtectedRoute>
+                  <MembersPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/association/stock"
+              element={
+                <ProtectedRoute>
+                  <StockPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/association/dispensation"
+              element={
+                <ProtectedRoute>
+                  <DispensationPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/intelligent-import"
+              element={
+                <ProtectedRoute>
+                  <IntelligentImportPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/clinical-pipeline"
+              element={
+                <ProtectedRoute>
+                  <ClinicalPipelineExplorer />
+                </ProtectedRoute>
+              }
+            />
 
-          {/* Patient Portal Routes (PUBLIC) */}
-          <Route path="/patient/login" element={<PatientLogin />} />
-          <Route path="/patient/register" element={<PatientRegister />} />
-          <Route path="/patient/dashboard" element={<PatientDashboard />} />
+            {/* Specialty Modules */}
+            <Route
+              path="/modulos"
+              element={
+                <ProtectedRoute>
+                  <ModulosPage />
+                </ProtectedRoute>
+              }
+            />
 
-          {/* Error Pages (MISSÃO 12) */}
-          <Route path="/401" element={<UnauthorizedPage />} />
-          <Route path="/403" element={<ForbiddenPage />} />
-          <Route path="/500" element={<ServerErrorPage />} />
+            {/* Patient Portal Routes (PUBLIC) */}
+            <Route path="/patient/login" element={<PatientLogin />} />
+            <Route path="/patient/register" element={<PatientRegister />} />
+            <Route path="/patient/dashboard" element={<PatientDashboard />} />
 
-          {/* Catch-all 404 */}
-          <Route path="*" element={<NotFoundPage />} />
+            {/* Error Pages (MISSÃO 12) */}
+            <Route path="/401" element={<UnauthorizedPage />} />
+            <Route path="/403" element={<ForbiddenPage />} />
+            <Route path="/500" element={<ServerErrorPage />} />
 
-        </Routes>
-      </Container>
-    </AssociationProvider>
+            {/* Catch-all 404 */}
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        </Container>
+      </AssociationProvider>
     </ErrorBoundary>
   );
 }
