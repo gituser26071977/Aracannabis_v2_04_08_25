@@ -388,6 +388,11 @@ def create_app(config_obj=None):
 
     app.register_blueprint(clinical_intake_bp)
 
+    # [NEW] Clinical Genome — leitura da projeção (Fase 0)
+    from routes.clinical_genome import clinical_genome_bp
+
+    app.register_blueprint(clinical_genome_bp)
+
     # [NEW] AI Clinical Pipeline
     from routes.ai_clinical import ai_clinical_bp
     from routes.hc_report import hc_report_bp
