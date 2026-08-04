@@ -383,6 +383,11 @@ def create_app(config_obj=None):
 
     app.register_blueprint(intelligent_import_bp, url_prefix="/api")
 
+    # [NEW] Ara Intake → AraOS (Clinical Events Fase 0)
+    from routes.clinical_intake import clinical_intake_bp
+
+    app.register_blueprint(clinical_intake_bp)
+
     # [NEW] AI Clinical Pipeline
     from routes.ai_clinical import ai_clinical_bp
     from routes.hc_report import hc_report_bp

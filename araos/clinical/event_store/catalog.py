@@ -89,6 +89,16 @@ CLINICAL_EVENT_CATALOG: Dict[str, ClinicalEventDefinition] = {
         consumers=["audit", "knowledge"],
     ),
 
+    # ─── PRÉ-CONSULTA (Ara Intake) ───────────────────────────────────
+    "INTAKE_INTERVIEW_COMPLETED": ClinicalEventDefinition(
+        event_type="INTAKE_INTERVIEW_COMPLETED",
+        domain="clinical",
+        producer=EventProducer.INTELLIGENCE.value,
+        description="Pré-consulta concluída no Ara Intake (anamnese + evidências)",
+        consumers=["timeline", "knowledge", "genome"],
+        sensitive=True,
+    ),
+
     # ─── DIAGNÓSTICO ─────────────────────────────────────────────────
     "DIAGNOSIS_ADDED": ClinicalEventDefinition(
         event_type="DIAGNOSIS_ADDED",

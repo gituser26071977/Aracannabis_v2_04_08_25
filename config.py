@@ -63,6 +63,9 @@ class Config:
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
+    # --- Ara Intake → AraOS (Fase 0): secret para validar eventos clínicos ---
+    CLINICAL_EVENT_SECRET = os.getenv("CLINICAL_EVENT_SECRET", "")
+
     # --- Engine options (P0-13 Production Readiness) ---
     # pool_size=20, max_overflow=40 → até 60 conexões concorrentes
     # pool_pre_ping=True → testa conexão antes de usar
