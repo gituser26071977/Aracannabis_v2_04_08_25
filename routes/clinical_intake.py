@@ -31,7 +31,16 @@ clinical_intake_bp = Blueprint(
 
 
 def _publisher() -> ClinicalEventPublisher:
-    """Retorna o publisher com store SQLAlchemy (db.session do Flask)."""
+    """Retorna o publisher com store SQLAlchemy.
+
+    Usa `CLINICAL_EVENT_SESSION_FACTORY` se injetada (testes/staging) ou
+    o `db.session` do Flask (produção).
+    """
+    sf = current_app.config.get("CLINICAL_EVENT_SESSION_FACTORY")
+    if sf is not None:
+        store = SqlAlchemyClinicalEventStore(sf())
+        return ClinicalEventPublisher(store=store, validate_payload=False)
+
     from models import db
 
     store = SqlAlchemyClinicalEventStore(db.session)
