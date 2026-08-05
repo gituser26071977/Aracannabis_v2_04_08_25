@@ -56,7 +56,6 @@ import OnboardingPage from './pages/OnboardingPage';
 import TrialEndingPage from './pages/TrialEndingPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
 import ModulosPage from './pages/ModulosPage';
-import ClinicalPipelineExplorer from './pages/ClinicalPipelineExplorer';
 import TrialBanner from './components/TrialBanner';
 import ErrorBoundary from './components/ErrorBoundary';
 import NotFoundPage from './pages/NotFoundPage';
@@ -815,14 +814,6 @@ function AppContent() {
               element={
                 <ProtectedRoute>
                   <IntelligentImportPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/clinical-pipeline"
-              element={
-                <ProtectedRoute>
-                  <ClinicalPipelineExplorer />
                 </ProtectedRoute>
               }
             />
