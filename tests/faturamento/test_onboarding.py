@@ -132,3 +132,31 @@ def test_sugestao_heuristica_de_texto(client, app):
     assert r.status_code == 200
     s = r.json["sugestao"]
     assert s.get("telefone") == "11955554444" or s.get("cpf") == "12345678901"
+
+
+def test_aprovacao_atribui_perfil(app):
+    """processar_aprovacao atribui perfil assistencial (clínico) / administrativo (staff)."""
+    from models import SolicitacoesCadastro
+    from routes.cadastro_profissionais import processar_aprovacao
+
+    with app.app_context():
+        clinico = SolicitacoesCadastro(
+            nome="Dra. Nova", email="nova@teste.local", crm="CRM12345", uf_crm="SE",
+            conselho_tipo="CRM", status="pendente",
+        )
+        staff = SolicitacoesCadastro(
+            nome="Recepcionista", email="recp@teste.local", conselho_tipo="NONE",
+            status="pendente",
+        )
+        db.session.add_all([clinico, staff])
+        db.session.commit()
+
+        result, code = processar_aprovacao(clinico.id)
+        assert code == 200, result
+        p1 = Profissional.query.filter_by(email="nova@teste.local").first()
+        assert p1.perfil_acesso == "assistencial"
+
+        result, code = processar_aprovacao(staff.id)
+        assert code == 200, result
+        p2 = Profissional.query.filter_by(email="recp@teste.local").first()
+        assert p2.perfil_acesso == "administrativo"

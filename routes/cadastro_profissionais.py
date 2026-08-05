@@ -206,6 +206,11 @@ def processar_aprovacao(solicitacao_id):
         role_inicial = (
             'secretary' if conselho_tipo == CONSELHO_NONE else 'profissional'
         )
+        # Perfil de acesso (SGA): staff/secretária → administrativo;
+        # profissionais clínicos → assistencial. Solo é derivado pelo plano.
+        perfil_inicial = (
+            'administrativo' if conselho_tipo == CONSELHO_NONE else 'assistencial'
+        )
 
         novo_profissional = Profissional(
             nome=solicitacao.nome,
@@ -216,6 +221,7 @@ def processar_aprovacao(solicitacao_id):
             email=solicitacao.email,
             senha=generate_password_hash(senha_temporaria),
             role=role_inicial,
+            perfil_acesso=perfil_inicial,
             data_expiracao=datetime.now() + timedelta(days=SubscriptionExpirationService.TRIAL_DAYS),
             status_cadastro='aprovado',
             aprovado_por='system',
