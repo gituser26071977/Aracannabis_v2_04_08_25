@@ -134,3 +134,52 @@ def solicitar_direitos_titular(paciente_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': f'Erro ao registrar solicitação: {str(e)}'}), 500
+
+
+@lgpd_bp.route('/exportar/<int:paciente_id>', methods=['GET'])
+@jwt_required()
+def exportar_dados_titular(paciente_id):
+    """Exporta todos os dados do paciente (LGPD art. 18 — acesso/portabilidade)."""
+    from services.lgpd_service import coletar_dados_paciente
+
+    current_user_id = get_jwt_identity()
+    try:
+        dados = coletar_dados_paciente(paciente_id)
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 404
+    except Exception as e:  # noqa: BLE001
+        return jsonify({'error': f'Erro ao exportar dados: {str(e)}'}), 500
+
+    db.session.add(LogAtividade(
+        profissional_id=int(current_user_id),
+        acao='Exportação LGPD',
+        detalhes=f'Exportação de dados do paciente ID {paciente_id}',
+    ))
+    db.session.commit()
+    return jsonify(dados), 200
+
+
+@lgpd_bp.route('/apagar/<int:paciente_id>', methods=['POST'])
+@jwt_required()
+def apagar_dados_titular(paciente_id):
+    """Elimina/anonimiza dados do titular (LGPD art. 18 § VI)."""
+    from services.lgpd_service import anonimizar_paciente
+
+    current_user_id = get_jwt_identity()
+    data = request.get_json(silent=True) or {}
+    if data.get('confirmacao') is not True:
+        return jsonify({'error': 'Confirmação necessária (confirmacao: true)'}), 400
+    try:
+        resultado = anonimizar_paciente(paciente_id)
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 404
+    except Exception as e:  # noqa: BLE001
+        return jsonify({'error': f'Erro ao anonimizar: {str(e)}'}), 500
+
+    db.session.add(LogAtividade(
+        profissional_id=int(current_user_id),
+        acao='Eliminação LGPD',
+        detalhes=f'Anonimização do paciente ID {paciente_id}',
+    ))
+    db.session.commit()
+    return jsonify(resultado), 200
