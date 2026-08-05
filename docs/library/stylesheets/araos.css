@@ -1,0 +1,275 @@
+/* ==========================================================================
+   AraOS Library — Stylesheet Institucional
+   Versão: 1.0 (2026-07-17)
+   Aplicado a todas as versões HTML dos AraOS Standards.
+   ========================================================================== */
+
+:root {
+  --araos-bg: #fafafa;
+  --araos-fg: #1a1a1a;
+  --araos-accent: #2e5a87;
+  --araos-accent-light: #e8f0fa;
+  --araos-rule: #d0d7de;
+  --araos-note-bg: #fff8e1;
+  --araos-note-fg: #5d4037;
+  --araos-warn-bg: #ffebee;
+  --araos-warn-fg: #b71c1c;
+  --araos-axiom-bg: #f3e5f5;
+  --araos-axiom-fg: #4a148c;
+  --araos-table-stripe: #f5f7fa;
+  --araos-code-bg: #f0f0f0;
+  --araos-blockquote-bg: #f8f9fa;
+  --araos-font-serif: "Charter", "Iowan Old Style", "Source Serif Pro", Georgia, serif;
+  --araos-font-sans: "Inter", "Helvetica Neue", "Segoe UI", sans-serif;
+  --araos-font-mono: "JetBrains Mono", "Fira Code", "SF Mono", Consolas, monospace;
+}
+
+@media print {
+  :root {
+    --araos-bg: #ffffff;
+    --araos-fg: #000000;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 11pt;
+}
+
+body {
+  margin: 0;
+  padding: 2.5em 3em;
+  background: var(--araos-bg);
+  color: var(--araos-fg);
+  font-family: var(--araos-font-serif);
+  line-height: 1.65;
+  max-width: 50em;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Cabeçalho institucional */
+body::before {
+  content: "AraOS Library · Clinical Knowledge Representation";
+  display: block;
+  text-align: center;
+  font-family: var(--araos-font-sans);
+  font-size: 0.65em;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--araos-accent);
+  margin-bottom: 2em;
+  padding-bottom: 1em;
+  border-bottom: 2px solid var(--araos-accent);
+}
+
+/* Títulos */
+h1 {
+  font-family: var(--araos-font-sans);
+  font-size: 1.9em;
+  color: var(--araos-accent);
+  margin-top: 1.5em;
+  margin-bottom: 0.6em;
+  line-height: 1.2;
+}
+
+h1:first-of-type {
+  margin-top: 0;
+}
+
+h2 {
+  font-family: var(--araos-font-sans);
+  font-size: 1.35em;
+  color: var(--araos-accent);
+  margin-top: 2em;
+  margin-bottom: 0.5em;
+  border-bottom: 1px solid var(--araos-rule);
+  padding-bottom: 0.25em;
+}
+
+h3 {
+  font-family: var(--araos-font-sans);
+  font-size: 1.1em;
+  color: #333;
+  margin-top: 1.5em;
+  margin-bottom: 0.4em;
+}
+
+h4, h5, h6 {
+  font-family: var(--araos-font-sans);
+  font-size: 1em;
+  margin-top: 1.2em;
+  margin-bottom: 0.3em;
+}
+
+/* Parágrafos */
+p {
+  margin: 0.7em 0;
+  text-align: justify;
+  hyphens: auto;
+}
+
+/* Blockquotes (NOTAs) */
+blockquote {
+  background: var(--araos-note-bg);
+  border-left: 4px solid var(--araos-accent);
+  padding: 0.6em 1em;
+  margin: 1em 0;
+  color: var(--araos-note-fg);
+  font-size: 0.95em;
+}
+
+blockquote p {
+  margin: 0.3em 0;
+}
+
+/* Axiomas (distingui-los de blockquotes normais) */
+h3 + blockquote,
+h4 + blockquote {
+  background: var(--araos-axiom-bg);
+  border-left: 4px solid var(--araos-axiom-fg);
+  color: var(--araos-axiom-fg);
+  font-style: normal;
+}
+
+/* Tabelas */
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+  font-size: 0.92em;
+  font-family: var(--araos-font-sans);
+}
+
+thead {
+  background: var(--araos-accent);
+  color: white;
+}
+
+th, td {
+  padding: 0.5em 0.7em;
+  text-align: left;
+  border: 1px solid var(--araos-rule);
+  vertical-align: top;
+}
+
+tbody tr:nth-child(even) {
+  background: var(--araos-table-stripe);
+}
+
+/* Código */
+code {
+  font-family: var(--araos-font-mono);
+  font-size: 0.88em;
+  background: var(--araos-code-bg);
+  padding: 0.1em 0.35em;
+  border-radius: 3px;
+}
+
+pre {
+  background: var(--araos-code-bg);
+  padding: 0.9em 1.1em;
+  border-radius: 4px;
+  overflow-x: auto;
+  font-size: 0.85em;
+  line-height: 1.4;
+  border-left: 3px solid var(--araos-accent);
+}
+
+pre code {
+  background: none;
+  padding: 0;
+}
+
+/* Listas */
+ul, ol {
+  margin: 0.5em 0;
+  padding-left: 1.5em;
+}
+
+li {
+  margin: 0.25em 0;
+}
+
+/* Regras horizontais */
+hr {
+  border: none;
+  border-top: 1px solid var(--araos-rule);
+  margin: 2em 0;
+}
+
+/* Ênfase */
+strong {
+  color: var(--araos-accent);
+  font-weight: 600;
+}
+
+em {
+  font-style: italic;
+  color: #555;
+}
+
+/* Links */
+a {
+  color: var(--araos-accent);
+  text-decoration: none;
+  border-bottom: 1px dotted var(--araos-accent);
+}
+
+a:hover {
+  border-bottom: 1px solid var(--araos-accent);
+}
+
+/* Tabela de conteúdos (TOC) */
+#TOC {
+  background: var(--araos-accent-light);
+  border: 1px solid var(--araos-rule);
+  border-radius: 4px;
+  padding: 1em 1.5em;
+  margin: 1.5em 0;
+  font-family: var(--araos-font-sans);
+  font-size: 0.9em;
+}
+
+#TOC ul {
+  list-style: none;
+  padding-left: 1em;
+}
+
+#TOC > ul {
+  padding-left: 0;
+}
+
+/* Cabeçalho do documento (header institucional) */
+body > p:first-of-type strong:first-child {
+  display: inline-block;
+  padding: 0.2em 0.6em;
+  background: var(--araos-accent);
+  color: white;
+  font-family: var(--araos-font-sans);
+  font-size: 0.85em;
+  letter-spacing: 0.05em;
+  border-radius: 3px;
+}
+
+/* Print styles */
+@media print {
+  body {
+    padding: 0;
+    max-width: none;
+  }
+  body::before {
+    color: #000;
+  }
+  blockquote, h3 + blockquote, h4 + blockquote {
+    background: none !important;
+    border-left: 2px solid #000;
+  }
+  a {
+    border-bottom: none;
+  }
+}

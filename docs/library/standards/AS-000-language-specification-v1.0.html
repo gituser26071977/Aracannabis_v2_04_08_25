@@ -1,0 +1,1579 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AS-000 — AraOS Language Specification</title>
+<link rel="stylesheet" href="../stylesheets/araos.css">
+</head>
+<body>
+<nav id="TOC" role="doc-toc" aria-label="Sumário">
+<div class="toc">
+<ul>
+<li><a href="#fontes-normativas-obrigatorias">Fontes Normativas Obrigatórias</a></li>
+<li><a href="#prefacio">Prefácio</a></li>
+<li><a href="#design-goals-objetivos-de-design">Design Goals (Objetivos de Design)</a></li>
+<li><a href="#non-goals-fora-do-escopo">Non-Goals (Fora do Escopo)</a></li>
+<li><a href="#1-escopo">1. Escopo</a></li>
+<li><a href="#2-referencias-normativas">2. Referências Normativas</a></li>
+<li><a href="#3-termos-e-definicoes">3. Termos e Definições</a><ul>
+<li><a href="#31-entity">3.1 Entity</a></li>
+<li><a href="#32-value-object">3.2 Value Object</a></li>
+<li><a href="#33-aggregate">3.3 Aggregate</a></li>
+<li><a href="#34-aggregate-root">3.4 Aggregate Root</a></li>
+<li><a href="#35-domain-event">3.5 Domain Event</a></li>
+<li><a href="#36-projection">3.6 Projection</a></li>
+<li><a href="#37-evidence">3.7 Evidence</a></li>
+<li><a href="#38-context">3.8 Context</a></li>
+<li><a href="#39-canonical-state">3.9 Canonical State</a></li>
+<li><a href="#310-derived-state">3.10 Derived State</a></li>
+<li><a href="#311-interpretation">3.11 Interpretation</a></li>
+<li><a href="#312-hypothesis">3.12 Hypothesis</a></li>
+<li><a href="#313-semantic-identity">3.13 Semantic Identity</a></li>
+<li><a href="#314-clinical-function">3.14 Clinical Function</a></li>
+<li><a href="#315-registry">3.15 Registry</a></li>
+<li><a href="#316-explainability">3.16 Explainability</a></li>
+<li><a href="#317-temporality">3.17 Temporality</a></li>
+<li><a href="#318-traceability">3.18 Traceability</a></li>
+<li><a href="#319-knowledge-representation">3.19 Knowledge Representation</a></li>
+<li><a href="#320-knowledge-evolution">3.20 Knowledge Evolution</a></li>
+</ul>
+</li>
+<li><a href="#4-axiomas-formais-formal-axioms">4. Axiomas Formais (Formal Axioms)</a><ul>
+<li><a href="#axiom-1-knowledge-precedes-data">Axiom 1 — Knowledge Precedes Data</a></li>
+<li><a href="#REDACTED">Axiom 2 — Language Governs Architecture</a></li>
+<li><a href="#REDACTED">Axiom 3 — Aggregate Roots Own Their Value Objects</a></li>
+<li><a href="#REDACTED">Axiom 4 — Value Objects Have No Semantic Identity</a></li>
+<li><a href="#REDACTED">Axiom 5 — Events Modify State, Not Identity</a></li>
+<li><a href="#REDACTED">Axiom 6 — Interpretations Are Projections</a></li>
+<li><a href="#REDACTED">Axiom 7 — Canonical State Must Be Reconstructable</a></li>
+<li><a href="#axiom-8-single-official-definition">Axiom 8 — Single Official Definition</a></li>
+<li><a href="#axiom-9-knowledge-is-temporal">Axiom 9 — Knowledge is Temporal</a></li>
+<li><a href="#axiom-10-knowledge-is-explainable">Axiom 10 — Knowledge is Explainable</a></li>
+<li><a href="#REDACTED">Axiom 11 — Knowledge is Probabilistic</a></li>
+<li><a href="#axiom-12-hypotheses-coexist">Axiom 12 — Hypotheses Coexist</a></li>
+</ul>
+</li>
+<li><a href="#REDACTED">5. Mapeamento DDD (DDD Classification)</a></li>
+<li><a href="#6-requisitos-normativos">6. Requisitos Normativos</a><ul>
+<li><a href="#61-proibicao-de-redefinicao">6.1 Proibição de Redefinição</a></li>
+<li><a href="#REDACTED">6.2 Uso Obrigatório dos Termos Canônicos</a></li>
+<li><a href="#63-mapeamento-ddd-obrigatorio">6.3 Mapeamento DDD Obrigatório</a></li>
+<li><a href="#64-axiomas-nao-negociaveis">6.4 Axiomas Não-Negociáveis</a></li>
+<li><a href="#65-conformidade-cross-standard">6.5 Conformidade Cross-Standard</a></li>
+<li><a href="#66-versionamento-da-linguagem">6.6 Versionamento da Linguagem</a></li>
+</ul>
+</li>
+<li><a href="#REDACTED">7. Compliance Levels (Níveis de Conformidade)</a></li>
+<li><a href="#8-hierarquia-canonica">8. Hierarquia Canônica</a></li>
+<li><a href="#9-conformidade-com-a-constituicao">9. Conformidade com a Constituição</a></li>
+<li><a href="#REDACTED">Apêndice A — Glossário de Referência Rápida</a></li>
+<li><a href="#apendice-b-dependency-graph">Apêndice B — Dependency Graph</a></li>
+<li><a href="#REDACTED">Apêndice C — Mapeamento para Fontes Normativas</a></li>
+<li><a href="#REDACTED">Apêndice D — Requisitos de Conformidade</a></li>
+<li><a href="#apendice-e-historico-de-versoes">Apêndice E — Histórico de Versões</a></li>
+<li><a href="#REDACTED">Apêndice F — Nota Editorial sobre Sequência de Publicação</a></li>
+<li><a href="#aviso-final">Aviso Final</a></li>
+</ul>
+</div>
+
+</nav>
+<h1 id="REDACTED">AS-000 — AraOS Language Specification</h1>
+<blockquote>
+<p><strong>Status:</strong> Draft
+<strong>Versão:</strong> 1.0
+<strong>Data:</strong> 2026-07-17
+<strong>Tipo:</strong> AraOS Standard (Normativo — Foundational)
+<strong>Autoria:</strong> AraOS Architecture
+<strong>Substitui:</strong> nenhum documento (primeira emissão da família AS-000)</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Identificador</strong></td>
+<td>AS-000</td>
+</tr>
+<tr>
+<td><strong>Título</strong></td>
+<td>AraOS Language Specification</td>
+</tr>
+<tr>
+<td><strong>Categoria</strong></td>
+<td>Foundational Standard (Language Specification)</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td>Normative</td>
+</tr>
+<tr>
+<td><strong>Maturity</strong></td>
+<td>Stable</td>
+</tr>
+<tr>
+<td><strong>Versão</strong></td>
+<td>1.0</td>
+</tr>
+<tr>
+<td><strong>Data de emissão</strong></td>
+<td>2026-07-17</td>
+</tr>
+<tr>
+<td><strong>Próxima revisão prevista</strong></td>
+<td>quando 3+ AraOS Standards adicionais forem Published</td>
+</tr>
+<tr>
+<td><strong>Norma superior</strong></td>
+<td>Constituição do AraOS v1.0 (Lex AraOS)</td>
+</tr>
+<tr>
+<td><strong>ADR governante</strong></td>
+<td>ADR-0005 (ACCEPTED)</td>
+</tr>
+<tr>
+<td><strong>Paper governante</strong></td>
+<td>Paper II — The Nature of Clinical Knowledge</td>
+</tr>
+<tr>
+<td><strong>Persistent Identifier</strong></td>
+<td><code>urn:araos:standard:000:1.0</code></td>
+</tr>
+<tr>
+<td><strong>Estado editorial</strong></td>
+<td>Draft (ver §6 da AraOS Library README)</td>
+</tr>
+<tr>
+<td><strong>Posição hierárquica</strong></td>
+<td>Acima de AS-001..AS-006; abaixo da Constituição</td>
+</tr>
+</tbody>
+</table>
+<h2 id="fontes-normativas-obrigatorias">Fontes Normativas Obrigatórias</h2>
+<p>Este AraOS Standard é derivado e materializa as seguintes fontes:</p>
+<table>
+<thead>
+<tr>
+<th>Fonte</th>
+<th>Status</th>
+<th>Papel</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Manifesto do AraOS</strong></td>
+<td>Manifesto v0.1</td>
+<td>Princípio fundacional</td>
+</tr>
+<tr>
+<td><strong>Constituição do AraOS (Lex AraOS)</strong></td>
+<td>Constituição v1.0, 17/07/2026</td>
+<td>Lei suprema do domínio</td>
+</tr>
+<tr>
+<td><strong>Paper II — The Nature of Clinical Knowledge</strong></td>
+<td>Paper II</td>
+<td>Distinção informação × conhecimento</td>
+</tr>
+<tr>
+<td><strong>Paper III — Clinical Genome</strong></td>
+<td>Paper III</td>
+<td>Origem dos conceitos clínicos</td>
+</tr>
+<tr>
+<td><strong>ADR-0001 — Clinical Event Engine</strong></td>
+<td>ADR-0001 (ACCEPTED)</td>
+<td>Origem de Domain Event</td>
+</tr>
+<tr>
+<td><strong>ADR-0005 — Sprint 4.3 Clinical Genome Engine</strong></td>
+<td>ADR-0005 (ACCEPTED)</td>
+<td>Origem de Clinical Gene/Expression</td>
+</tr>
+<tr>
+<td><strong>AS-001 — Clinical Gene Standard</strong></td>
+<td>AS-001 v1.0 (Published)</td>
+<td>Primeiro consumidor desta gramática</td>
+</tr>
+</tbody>
+</table>
+<p>Em caso de conflito, prevalece a <strong>Constituição do AraOS</strong> (Lex AraOS).
+Em caso de ambiguidade, prevalece a redação do ADR correspondente.</p>
+<hr />
+<h2 id="prefacio">Prefácio</h2>
+<p>O AraOS (Knowledge Infrastructure for Clinical Reasoning) é uma
+infraestrutura computacional para <strong>representação, evolução,
+inferência e interpretação do conhecimento clínico</strong>. A qualidade
+dessa representação depende, antes de qualquer tecnologia, da
+<strong>linguagem</strong> utilizada para descrevê-la.</p>
+<blockquote>
+<p><strong>Este Standard — AS-000 — define a gramática oficial do AraOS.</strong></p>
+</blockquote>
+<p>Ele <strong>não</strong> descreve conceitos clínicos. Descreve os termos
+arquiteturais e epistemológicos sobre os quais todos os AraOS
+Standards serão escritos.</p>
+<p>Após sua aprovação, <strong>nenhum Standard poderá redefinir</strong> um
+termo fixado por este documento; apenas <strong>referenciá-lo</strong>.</p>
+<blockquote>
+<p><strong>AS-000 ocupa o topo da pirâmide normativa técnica do AraOS</strong> —
+logo abaixo da Constituição (Lex AraOS) e acima de todos os
+AraOS Standards clínicos (AS-001..AS-006).</p>
+</blockquote>
+<hr />
+<h2 id="design-goals-objetivos-de-design">Design Goals (Objetivos de Design)</h2>
+<p>Este Standard foi concebido para satisfazer os seguintes
+objetivos:</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Goal</th>
+<th>Materializa</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>Language Stability</strong> — cada termo mantém significado estável entre versões.</td>
+<td>Constituição Art. 4</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>Single Definition</strong> — cada termo canônico possui exatamente uma definição oficial.</td>
+<td>Constituição Art. 4</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>Composability</strong> — Standards podem ser combinados sem ambiguidade.</td>
+<td>Constituição Art. 19</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>Traceability</strong> — todo termo é rastreável a Paper, ADR ou Constituição.</td>
+<td>Constituição Art. 9</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>Cross-Domain Reuse</strong> — termos aplicam-se a múltiplos domínios clínicos.</td>
+<td>Constituição Art. 1</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>DDD Compatibility</strong> — termos mapeiam-se a categorias DDD canônicas.</td>
+<td>Origem DDD (Evans, Vernon)</td>
+</tr>
+<tr>
+<td>7</td>
+<td><strong>Temporal Awareness</strong> — termos admitem evolução sem quebrar contratos.</td>
+<td>Constituição Art. 16</td>
+</tr>
+<tr>
+<td>8</td>
+<td><strong>Knowledge Centricity</strong> — termos priorizam conhecimento sobre dados.</td>
+<td>Manifesto + Constituição Art. 2</td>
+</tr>
+<tr>
+<td>9</td>
+<td><strong>Explainability Native</strong> — termos carregam responsabilidade de explicação.</td>
+<td>Constituição Art. 9</td>
+</tr>
+<tr>
+<td>10</td>
+<td><strong>Multi-Tenancy by Default</strong> — termos admitem isolamento por tenant.</td>
+<td>Constituição Art. 1</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="non-goals-fora-do-escopo">Non-Goals (Fora do Escopo)</h2>
+<p>Este Standard <strong>deliberadamente não define</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Item</th>
+<th>Razão</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>Conceitos clínicos específicos</strong> (Gene, Expression, Genome, Episode, Outcome).</td>
+<td>definidos em AS-001..AS-006.</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>Algoritmos de inferência ou interpretação.</strong></td>
+<td>definidos no AS-004 (Clinical Inference).</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>Regras de diagnóstico.</strong></td>
+<td>proibidas constitucionalmente (Art. 17).</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>Storage engines.</strong></td>
+<td>decisão técnica (ADR-0001, livre escolha de implementação).</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>Protocolos de serialização.</strong></td>
+<td>responsabilidade do transport layer.</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>Schemas SQL.</strong></td>
+<td>responsabilidade das migrations.</td>
+</tr>
+<tr>
+<td>7</td>
+<td><strong>Modelos de machine learning.</strong></td>
+<td>proibidos como entrada diagnóstica.</td>
+</tr>
+<tr>
+<td>8</td>
+<td><strong>Camada de apresentação (UI).</strong></td>
+<td>decisão arquitetural fora do escopo.</td>
+</tr>
+<tr>
+<td>9</td>
+<td><strong>Contratos de API.</strong></td>
+<td>definidos em blueprints Flask.</td>
+</tr>
+<tr>
+<td>10</td>
+<td><strong>Definições DDD originais.</strong></td>
+<td>este AS herda e referencia; não substitui Evans/Vernon.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="1-escopo">1. Escopo</h2>
+<p>Este AraOS Standard define a <strong>gramática oficial</strong> utilizada por
+todos os AraOS Standards clínicos e técnicos. Em particular:</p>
+<ol>
+<li>Os termos arquiteturais e epistemológicos canônicos do AraOS.</li>
+<li>As invariantes lógicas (axiomas) que governam o uso desses
+   termos.</li>
+<li>O mapeamento dos conceitos AraOS para categorias DDD.</li>
+<li>As regras que <strong>proíbem redefinição</strong> desses termos em outros
+   Standards.</li>
+<li>Os requisitos de conformidade que todo Standard deve atender
+   para ser considerado compatível com a linguagem oficial.</li>
+</ol>
+<p><strong>Fora do escopo</strong> (tratados em outros AraOS Standards):</p>
+<ul>
+<li>Estrutura interna da Clinical Expression → <strong>AS-002</strong>.</li>
+<li>Clinical Gene → <strong>AS-001</strong>.</li>
+<li>Clinical Genome → <strong>AS-003</strong>.</li>
+<li>Clinical Inference → <strong>AS-004</strong>.</li>
+<li>Clinical Interpretation → <strong>AS-005</strong>.</li>
+<li>Clinical Context → <strong>AS-006</strong>.</li>
+</ul>
+<hr />
+<h2 id="2-referencias-normativas">2. Referências Normativas</h2>
+<p>Os documentos a seguir são indispensáveis para a aplicação
+deste Standard. Para referências datadas, aplica-se somente a
+edição citada.</p>
+<ul>
+<li><strong>Constituição do AraOS</strong>, versão 1.0, 17 de julho de 2026.</li>
+<li><strong>Manifesto do AraOS</strong>, versão 0.1 — A Fundação.</li>
+<li><strong>Paper II — The Nature of Clinical Knowledge</strong>.</li>
+<li><strong>Paper III — Clinical Genome</strong>.</li>
+<li><strong>ADR-0001 — Clinical Event Engine (canonical reference)</strong>.</li>
+<li><strong>ADR-0005 — Clinical Genome Engine (Sprint 4.3)</strong>, ACCEPTED.</li>
+<li><strong>AS-001 — Clinical Gene Standard v1.0</strong>, Published.</li>
+</ul>
+<hr />
+<h2 id="3-termos-e-definicoes">3. Termos e Definições</h2>
+<p>Cada termo abaixo é <strong>oficial</strong> e <strong>imutável entre versões</strong>
+deste Standard, salvo emissão de nova versão major (SemVer).</p>
+<h3 id="31-entity">3.1 Entity</h3>
+<blockquote>
+<p>Uma Entity é qualquer objeto de domínio distinguível por
+<strong>identidade referencial</strong> estável ao longo do tempo.</p>
+</blockquote>
+<ul>
+<li><strong>Motivação:</strong> representar conceitos cujo ciclo de vida é
+  independente de seus atributos.</li>
+<li><strong>Responsabilidades:</strong> carregar identificador único; permitir
+  mutação ao longo do tempo.</li>
+<li><strong>Invariantes:</strong> igualdade referencial; ciclo de vida próprio.</li>
+<li><strong>Exemplos:</strong> Clinical Gene, Clinical Identity, Cohort.</li>
+<li><strong>Contraexemplos:</strong> Clinical Expression (não possui identidade
+  própria — é Value Object).</li>
+<li><strong>Relação:</strong> difere de Value Object (3.2) por possuir
+  identidade; difere de Aggregate Root (3.4) por não ser ponto de
+  entrada obrigatório.</li>
+<li><strong>Consequência para implementação:</strong> toda Entity <strong>shall</strong>
+  possuir campo <code>id</code> estável e operação de equality referencial.</li>
+<li><strong>Referências cruzadas:</strong> §3.2 Value Object; §3.4 Aggregate
+  Root; §3.13 Semantic Identity.</li>
+</ul>
+<h3 id="32-value-object">3.2 Value Object</h3>
+<blockquote>
+<p>Um Value Object é um objeto de domínio sem identidade
+referencial, cuja igualdade é <strong>estrutural</strong>.</p>
+</blockquote>
+<ul>
+<li><strong>Motivação:</strong> representar conceitos descritos inteiramente por
+  seus atributos, sem história própria.</li>
+<li><strong>Responsabilidades:</strong> carregar valores; produzir igualdade
+  estrutural; permanecer imutável.</li>
+<li><strong>Invariantes:</strong> sem <code>id</code>; imutável após construção;
+  substituível integralmente.</li>
+<li><strong>Exemplos:</strong> Clinical Expression, Clinical Context, Evidence,
+  Trajectory point.</li>
+<li><strong>Contraexemplos:</strong> Clinical Gene (é Aggregate Root, com
+  identidade estável).</li>
+<li><strong>Relação:</strong> pertence a um Aggregate (3.3); pode ser criado,
+  substituído ou removido sem afetar a identidade do Aggregate
+  hospedeiro.</li>
+<li><strong>Consequência para implementação:</strong> todo Value Object <strong>shall</strong>
+  ser imutável; equality <strong>shall</strong> ser estrutural (todos os
+  campos).</li>
+<li><strong>Referências cruzadas:</strong> §3.3 Aggregate; §3.4 Aggregate Root;
+  Axiom 4.</li>
+</ul>
+<h3 id="33-aggregate">3.3 Aggregate</h3>
+<blockquote>
+<p>Um Aggregate é um cluster de Entities e Value Objects tratados
+como uma <strong>unidade de consistência</strong>.</p>
+</blockquote>
+<ul>
+<li><strong>Motivação:</strong> delimitar fronteiras transacionais e de
+  invariantes.</li>
+<li><strong>Responsabilidades:</strong> agrupar; garantir consistência interna;
+  emitir Domain Events.</li>
+<li><strong>Invariantes:</strong> possui exatamente um Aggregate Root (3.4);
+  modificações externas <strong>shall</strong> passar pelo Root.</li>
+<li><strong>Exemplos:</strong> Clinical Genome (cluster de Genes de um paciente),
+  Clinical Context (com dependencies).</li>
+<li><strong>Contraexemplos:</strong> Clinical Event (não é Aggregate — é evento).</li>
+<li><strong>Relação:</strong> sempre contém um Aggregate Root; pode conter
+  Value Objects e Entities internas.</li>
+<li><strong>Consequência para implementação:</strong> transações <strong>shall</strong> afetar
+  apenas um Aggregate por vez.</li>
+<li><strong>Referências cruzadas:</strong> §3.4 Aggregate Root; §3.5 Domain Event.</li>
+</ul>
+<h3 id="34-aggregate-root">3.4 Aggregate Root</h3>
+<blockquote>
+<p>Um Aggregate Root é a Entity que serve como <strong>ponto de entrada
+único</strong> de um Aggregate.</p>
+</blockquote>
+<ul>
+<li><strong>Motivação:</strong> concentrar responsabilidade de invariantes do
+  cluster.</li>
+<li><strong>Responsabilidades:</strong> expor operações; proteger invariantes;
+  emitir Domain Events.</li>
+<li><strong>Invariantes:</strong> único caminho externo ao Aggregate; possui
+  identidade estável (3.13).</li>
+<li><strong>Exemplos:</strong> Clinical Gene (AR do Genome de um paciente).</li>
+<li><strong>Contraexemplos:</strong> Clinical Expression (não é AR — é VO).</li>
+<li><strong>Relação:</strong> governa Value Objects (3.2) e Entities internas do
+  Aggregate.</li>
+<li><strong>Consequência para implementação:</strong> somente o AR <strong>shall</strong>
+  publicar Domain Events do Aggregate.</li>
+<li><strong>Referências cruzadas:</strong> §3.3 Aggregate; Axiom 3.</li>
+</ul>
+<h3 id="35-domain-event">3.5 Domain Event</h3>
+<blockquote>
+<p>Um Domain Event é um <strong>fato passado</strong> relevante ao domínio,
+carregando identificação, momento e payload suficiente para
+reconstruir mudanças.</p>
+</blockquote>
+<ul>
+<li><strong>Motivação:</strong> representar a evolução do conhecimento como
+  sequência de fatos verificáveis.</li>
+<li><strong>Responsabilidades:</strong> carregar timestamp; identificar o
+  Aggregate afetado; preservar payload.</li>
+<li><strong>Invariantes:</strong> append-only; imutável; ordenado por sequence
+  per-tenant.</li>
+<li><strong>Exemplos:</strong> ClinicalEvent (Tabela <code>clinical_events</code>),
+  ClinicalGeneTrajectoryPoint.</li>
+<li><strong>Contraexemplos:</strong> Clinical Expression (não é evento — é
+  estado).</li>
+<li><strong>Relação:</strong> modifica o estado de Aggregates (3.3); consumido
+  por Projections (3.6); registrado em History (3.18).</li>
+<li><strong>Consequência para implementação:</strong> todo Domain Event <strong>shall</strong>
+  ser registrado no Event Store antes de ser refletido em
+  qualquer projeção (ADR-0001).</li>
+<li><strong>Referências cruzadas:</strong> §3.6 Projection; §3.18 Traceability;
+  Axiom 5.</li>
+</ul>
+<h3 id="36-projection">3.6 Projection</h3>
+<blockquote>
+<p>Uma Projection é um <strong>estado derivado</strong> construído a partir da
+sequência de Domain Events.</p>
+</blockquote>
+<ul>
+<li><strong>Motivação:</strong> oferecer visões otimizadas para leitura,
+  pesquisa e dashboard.</li>
+<li><strong>Responsabilidades:</strong> consumir eventos; materializar estado;
+  ser rebuildable.</li>
+<li><strong>Invariantes:</strong> rebuildable bit-identical; idempotente;
+  descartável.</li>
+<li><strong>Exemplos:</strong> Timeline Projection, Outcome Trajectory, Cohort
+  materialization.</li>
+<li><strong>Contraexemplos:</strong> Event Store (não é Projection — é source of
+  truth).</li>
+<li><strong>Relação:</strong> <strong>nunca é</strong> canonical state (3.9); sempre
+  derivado (3.10); consumido por Interpretation (3.11).</li>
+<li><strong>Consequência para implementação:</strong> toda Projection <strong>shall</strong>
+  ser reconstruível a partir do Event Store; <strong>shall not</strong> ser
+  tratada como source of truth.</li>
+<li><strong>Referências cruzadas:</strong> §3.5 Domain Event; §3.9 Canonical
+  State; §3.10 Derived State; Axiom 6, 7.</li>
+</ul>
+<h3 id="37-evidence">3.7 Evidence</h3>
+<blockquote>
+<p>Evidence é um <strong>item atômico</strong> de informação clínica que
+sustenta uma afirmação sobre o estado de um objeto de domínio.</p>
+</blockquote>
+<ul>
+<li><strong>Motivação:</strong> tornar afirmações rastreáveis, auditáveis e
+  refutáveis.</li>
+<li><strong>Responsabilidades:</strong> referenciar Domain Events (3.5); carregar
+  peso/confiança; preservar proveniência.</li>
+<li><strong>Invariantes:</strong> append-only; preservada para sempre; não
+  reduzível após escrita.</li>
+<li><strong>Exemplos:</strong> ClinicalEvent como Evidence de uma Expression,
+  Assessment score como Evidence de Trajectory.</li>
+<li><strong>Contraexemplos:</strong> Interpretation (não é Evidence — é leitura
+  agregada).</li>
+<li><strong>Relação:</strong> produzida por Domain Events; consumida por
+  Aggregate Roots para atualizar Expression.</li>
+<li><strong>Consequência para implementação:</strong> toda Evidence <strong>shall</strong>
+  preservar referência ao Domain Event que a produziu.</li>
+<li><strong>Referências cruzadas:</strong> §3.5 Domain Event; §3.18 Traceability;
+  Axiom 8.</li>
+</ul>
+<h3 id="38-context">3.8 Context</h3>
+<blockquote>
+<p>Context é um <strong>modulador semântico</strong> do estado de um objeto de
+domínio, sem o qual a interpretação é incompleta.</p>
+</blockquote>
+<ul>
+<li><strong>Motivação:</strong> modelar a dependência do conhecimento em
+  circunstâncias (medicação, ambiente, fase escolar, etc.).</li>
+<li><strong>Responsabilidades:</strong> carregar descrição canônica; modular
+  Expression; ser versionado.</li>
+<li><strong>Invariantes:</strong> referenciado por ContextDependencies;
+  removível; reavaliação obrigatória após mudança.</li>
+<li><strong>Exemplos:</strong> Clinical Context (ADR-0003), ClinicalEpisode,
+  MedicationContext.</li>
+<li><strong>Contraexemplos:</strong> Clinical Gene (não é Context — é unidade
+  fundamental).</li>
+<li><strong>Relação:</strong> modula Expression; não altera identidade do
+  Aggregate hospedeiro.</li>
+<li><strong>Consequência para implementação:</strong> remoção de Context <strong>shall</strong>
+  disparar reavaliação de Expression dependente (AS-004).</li>
+<li><strong>Referências cruzadas:</strong> §3.13 Semantic Identity; §3.17
+  Temporality.</li>
+</ul>
+<h3 id="39-canonical-state">3.9 Canonical State</h3>
+<blockquote>
+<p>Canonical State é o estado <strong>primário de verdade</strong> de um
+Aggregate, do qual todas as demais visões derivam.</p>
+</blockquote>
+<ul>
+<li><strong>Motivação:</strong> estabelecer uma única fonte de verdade.</li>
+<li><strong>Responsabilidades:</strong> ser reconstruível; ser durável; admitir
+  evolução temporal.</li>
+<li><strong>Invariantes:</strong> reconstruível bit-identical; imutável em sua
+  forma final; append-only para evolução.</li>
+<li><strong>Exemplos:</strong> Event Store como canonical state de todo o
+  sistema; Clinical Gene como canonical state do conhecimento
+  clínico de um paciente.</li>
+<li><strong>Contraexemplos:</strong> qualquer Projection (3.6).</li>
+<li><strong>Relação:</strong> oposto complementar de Derived State (3.10);
+  preservado por History (3.18).</li>
+<li><strong>Consequência para implementação:</strong> canonical state <strong>shall
+  not</strong> depender de Projeções; <strong>shall</strong> ser reconstruível.</li>
+<li><strong>Referências cruzadas:</strong> §3.6 Projection; §3.10 Derived State;
+  Axiom 7.</li>
+</ul>
+<h3 id="310-derived-state">3.10 Derived State</h3>
+<blockquote>
+<p>Derived State é qualquer estado <strong>calculado</strong> a partir do
+Canonical State.</p>
+</blockquote>
+<ul>
+<li><strong>Motivação:</strong> oferecer leituras especializadas sem duplicar a
+  verdade.</li>
+<li><strong>Responsabilidades:</strong> refletir o canonical state; ser
+  descartável; ser reconstruível.</li>
+<li><strong>Invariantes:</strong> rebuildable; consistente com canonical;
+  dispensável.</li>
+<li><strong>Exemplos:</strong> Timeline, Outcome Trajectory, Cohort list.</li>
+<li><strong>Contraexemplos:</strong> Event Store (canonical); Clinical Gene
+  (canonical para o paciente).</li>
+<li><strong>Relação:</strong> produzido por Processadores de Eventos; consumido
+  por APIs de leitura.</li>
+<li><strong>Consequência para implementação:</strong> derived state <strong>shall</strong> ser
+  regenerável sem perda; <strong>shall not</strong> alimentar decisões
+  clínicas sem passar por canonical state.</li>
+<li><strong>Referências cruzadas:</strong> §3.6 Projection; §3.9 Canonical
+  State.</li>
+</ul>
+<h3 id="311-interpretation">3.11 Interpretation</h3>
+<blockquote>
+<p>Interpretation é a <strong>leitura atual</strong> do estado de um objeto de
+  domínio, produzida pela integração de evidências e hipóteses.</p>
+</blockquote>
+<ul>
+<li><strong>Motivação:</strong> tornar o estado acessível ao julgamento clínico
+  humano, sem substituir o julgamento.</li>
+<li><strong>Responsabilidades:</strong> integrar Evidence; consolidar
+  Hypotheses; carregar confidence; referenciar Explanation.</li>
+<li><strong>Invariantes:</strong> referenciar Explanation (3.16); confidence
+  explícita; nunca canônica.</li>
+<li><strong>Exemplos:</strong> Clinical Interpretation de um Gene, Narrative
+  Interpretation, Risk Interpretation.</li>
+<li><strong>Contraexemplos:</strong> Clinical Expression (é estado; não é
+  leitura).</li>
+<li><strong>Relação:</strong> lê Expression e Hypotheses; <strong>nunca</strong> é fonte
+  primária de verdade.</li>
+<li><strong>Consequência para implementação:</strong> toda Interpretation
+  <strong>shall</strong> carregar <code>explanation_reference</code> não-vazio.</li>
+<li><strong>Referências cruzadas:</strong> §3.6 Projection; §3.12 Hypothesis;
+  §3.16 Explainability; Axiom 6.</li>
+</ul>
+<h3 id="312-hypothesis">3.12 Hypothesis</h3>
+<blockquote>
+<p>Hypothesis é uma <strong>interpretação alternativa concorrente</strong>
+  sobre o estado de um objeto de domínio.</p>
+</blockquote>
+<ul>
+<li><strong>Motivação:</strong> representar dúvida clínica legítima; permitir
+  múltiplas leituras coexistentes.</li>
+<li><strong>Responsabilidades:</strong> competir com outras Hypothesis; carregar
+  peso (<code>weight</code>); admitir Evidence própria.</li>
+<li><strong>Invariantes:</strong> coexistência obrigatória; exclusividade
+  proibida; peso no intervalo <code>[0.0, 1.0]</code>.</li>
+<li><strong>Exemplos:</strong> hipóteses diagnósticas concorrentes; hipóteses
+  etiológicas.</li>
+<li><strong>Contraexemplos:</strong> Interpretation única (que <strong>deveria</strong> ser
+  múltipla, conforme este padrão).</li>
+<li><strong>Relação:</strong> compõe Interpretation; sustentada por Evidence.</li>
+<li><strong>Consequência para implementação:</strong> nenhuma Hypothesis <strong>shall</strong>
+  sobrescrever outra diretamente; resolução <strong>shall</strong> ocorrer
+  por Evidence nova.</li>
+<li><strong>Referências cruzadas:</strong> §3.11 Interpretation; Axiom 6.</li>
+</ul>
+<h3 id="313-semantic-identity">3.13 Semantic Identity</h3>
+<blockquote>
+<p>Semantic Identity é a propriedade de um objeto de domínio de
+<strong>manter seu significado estável</strong> ao longo do tempo,
+independentemente da variação de seus atributos.</p>
+</blockquote>
+<ul>
+<li><strong>Motivação:</strong> preservar interpretabilidade longitudinal.</li>
+<li><strong>Responsabilidades:</strong> identificar o objeto sem ambiguidade;
+  sobreviver a mudanças de estado.</li>
+<li><strong>Invariantes:</strong> imutável durante o ciclo de vida do objeto;
+  única no escopo declarado.</li>
+<li><strong>Exemplos:</strong> <code>clinical_gene_id</code> identifica um Gene; <code>patient_id</code>
+  identifica um paciente.</li>
+<li><strong>Contraexemplos:</strong> timestamp (não é identidade semântica).</li>
+<li><strong>Relação:</strong> núcleo da estabilidade do Aggregate Root (3.4).</li>
+<li><strong>Consequência para implementação:</strong> nenhuma operação <strong>shall</strong>
+  alterar semantic identity de um objeto.</li>
+<li><strong>Referências cruzadas:</strong> §3.4 Aggregate Root; §3.5 Domain
+  Event; Axiom 5.</li>
+</ul>
+<h3 id="314-clinical-function">3.14 Clinical Function</h3>
+<blockquote>
+<p>Clinical Function é uma <strong>função semântica</strong> à qual um objeto
+clínico pode estar associado, usada para classificação, busca
+  e correlação.</p>
+</blockquote>
+<ul>
+<li><strong>Motivação:</strong> permitir categorização cross-cutting sem
+  reificar como identidade.</li>
+<li><strong>Responsabilidades:</strong> rotular; classificar; correlacionar.</li>
+<li><strong>Invariantes:</strong> não é identidade; pode ser compartilhada
+  entre múltiplos Genes.</li>
+<li><strong>Exemplos:</strong> <code>sleep</code>, <code>communication</code>, <code>anxiety</code>,
+  <code>self-regulation</code>.</li>
+<li><strong>Contraexemplos:</strong> <code>clinical_gene_id</code> (é identidade; não
+  função).</li>
+<li><strong>Relação:</strong> substitui terminologia legada <em>capability</em>;
+  nunca é chave primária.</li>
+<li><strong>Consequência para implementação:</strong> Clinical Function <strong>shall
+  not</strong> ser usada como identificador único.</li>
+<li><strong>Referências cruzadas:</strong> §3.13 Semantic Identity; §3.15
+  Registry.</li>
+</ul>
+<h3 id="315-registry">3.15 Registry</h3>
+<blockquote>
+<p>Registry é um <strong>catálogo versionado</strong> que define o conjunto
+fechado de identificadores válidos para uma classe de objetos.</p>
+</blockquote>
+<ul>
+<li><strong>Motivação:</strong> garantir vocabulário fechado e reprodutível.</li>
+<li><strong>Responsabilidades:</strong> validar; versionar; publicar.</li>
+<li><strong>Invariantes:</strong> versionamento SemVer; vocabulário fechado;
+  referências estáveis ao longo do tempo.</li>
+<li><strong>Exemplos:</strong> Clinical Gene Registry v1.0 (AS-001 Apêndice B).</li>
+<li><strong>Contraexemplos:</strong> lista de Clinical Events (não é Registry
+  — é catálogo extensível).</li>
+<li><strong>Relação:</strong> governa Semantic Identity (3.13) dos objetos que
+  registra.</li>
+<li><strong>Consequência para implementação:</strong> toda referência a um
+  identificador registrado <strong>shall</strong> carregar a versão do
+  Registry sob a qual foi criada.</li>
+<li><strong>Referências cruzadas:</strong> §3.13 Semantic Identity; §3.20
+  Knowledge Evolution.</li>
+</ul>
+<h3 id="316-explainability">3.16 Explainability</h3>
+<blockquote>
+<p>Explainability é a propriedade de um sistema de <strong>produzir e
+  referenciar justificativas</strong> para cada afirmação significativa.</p>
+</blockquote>
+<ul>
+<li><strong>Motivação:</strong> tornar o sistema auditável e responsável.</li>
+<li><strong>Responsabilidades:</strong> acompanhar cada afirmação com
+  justificação; referenciar Evidence e Hypothesis.</li>
+<li><strong>Invariantes:</strong> obrigatória em toda Interpretation (3.11);
+  não pode ser omitida.</li>
+<li><strong>Exemplos:</strong> Explanation (Sprint 4.1), explanation_reference
+  em Expression.</li>
+<li><strong>Contraexemplos:</strong> afirmação clínica sem proveniência.</li>
+<li><strong>Relação:</strong> required por Interpretation (3.11); produzida por
+  Domain Services.</li>
+<li><strong>Consequência para implementação:</strong> análises sem Explanation
+  <strong>shall</strong> ser rejeitadas pelo projection handler (DLQ +
+  métrica <code>unexplained_total</code>).</li>
+<li><strong>Referências cruzadas:</strong> §3.11 Interpretation; Constituição
+  Art. 9.</li>
+</ul>
+<h3 id="317-temporality">3.17 Temporality</h3>
+<blockquote>
+<p>Temporality é a propriedade de um objeto de domínio de
+<strong>carregar informação temporal bitemporal</strong> (valid_time +
+transaction_time).</p>
+</blockquote>
+<ul>
+<li><strong>Motivação:</strong> representar corretamente a evolução do
+  conhecimento clínico, onde passado pode ser reinterpretado.</li>
+<li><strong>Responsabilidades:</strong> carregar <code>valid_time</code>; carregar
+  <code>transaction_time</code>; preservar ordenação causal.</li>
+<li><strong>Invariantes:</strong> bitemporalidade; preservada na reconstrução.</li>
+<li><strong>Exemplos:</strong> Trajectory points (valid_time + transaction_time).</li>
+<li><strong>Contraexemplos:</strong> campo único <code>created_at</code> (não é
+  bitemporalidade).</li>
+<li><strong>Relação:</strong> complementa Traceability (3.18); sustenta
+  Knowledge Evolution (3.20).</li>
+<li><strong>Consequência para implementação:</strong> todo estado evolutivo
+  <strong>shall</strong> carregar ambos os timestamps.</li>
+<li><strong>Referências cruzadas:</strong> §3.18 Traceability; §3.20 Knowledge
+  Evolution; Constituição Art. 8.</li>
+</ul>
+<h3 id="318-traceability">3.18 Traceability</h3>
+<blockquote>
+<p>Traceability é a propriedade de um objeto de domínio de
+<strong>carregar referência rastreável</strong> ao Domain Event que o
+produziu.</p>
+</blockquote>
+<ul>
+<li><strong>Motivação:</strong> tornar toda afirmação reconstruível a partir do
+  Event Store.</li>
+<li><strong>Responsabilidades:</strong> carregar <code>source_event_ids</code>; permitir
+  auditoria completa.</li>
+<li><strong>Invariantes:</strong> preservada em todas as camadas; obrigatória
+  em Projections e Interpretations.</li>
+<li><strong>Exemplos:</strong> <code>source_event_ids</code> em Outcome, Interpretation,
+  Cohort.</li>
+<li><strong>Contraexemplos:</strong> resultado clínico sem proveniência.</li>
+<li><strong>Relação:</strong> implementa Explainability (3.16); complementada
+  por Temporality (3.17).</li>
+<li><strong>Consequência para implementação:</strong> todo objeto derivado
+  <strong>shall</strong> carregar proveniência.</li>
+<li><strong>Referências cruzadas:</strong> §3.5 Domain Event; §3.16
+  Explainability; Constituição Art. 9.</li>
+</ul>
+<h3 id="319-knowledge-representation">3.19 Knowledge Representation</h3>
+<blockquote>
+<p>Knowledge Representation é a <strong>codificação formal</strong> do
+conhecimento clínico, contemplando estrutura, relações,
+  contexto, temporalidade, evidências e explicações.</p>
+</blockquote>
+<ul>
+<li><strong>Motivação:</strong> ir além do armazenamento de dados, representando
+  o <strong>significado</strong> dos eventos clínicos.</li>
+<li><strong>Responsabilidades:</strong> preservar relações; preservar contexto;
+  preservar temporalidade.</li>
+<li><strong>Invariantes:</strong> representa conhecimento, não apenas dados;
+  sempre reconstruível.</li>
+<li><strong>Exemplos:</strong> Clinical Gene, Clinical Genome, Trajectory.</li>
+<li><strong>Contraexemplos:</strong> tabela relacional sem semântica associada.</li>
+<li><strong>Relação:</strong> domínio de aplicação do AraOS; abrange todos os
+  outros conceitos.</li>
+<li><strong>Consequência para implementação:</strong> Knowledge Representation
+  <strong>shall not</strong> ser confundida com persistência física; é
+  contrato lógico.</li>
+<li><strong>Referências cruzadas:</strong> todos os demais conceitos;
+  Constituição Art. 2.</li>
+</ul>
+<h3 id="320-knowledge-evolution">3.20 Knowledge Evolution</h3>
+<blockquote>
+<p>Knowledge Evolution é o processo contínuo de <strong>refinamento e
+  expansão</strong> do conhecimento clínico ao longo do tempo.</p>
+</blockquote>
+<ul>
+<li><strong>Motivação:</strong> capturar a natureza dinâmica, adaptativa e
+  probabilística do conhecimento médico.</li>
+<li><strong>Responsabilidades:</strong> admitir revisões; preservar histórico;
+  atribuir nova confiança.</li>
+<li><strong>Invariantes:</strong> append-only; versionada; explicável.</li>
+<li><strong>Exemplos:</strong> Trajectory, Hypothesis refinamento, Registry
+  versioning.</li>
+<li><strong>Contraexemplos:</strong> mutação destrutiva do conhecimento
+  registrado.</li>
+<li><strong>Relação:</strong> sustentada por Temporality (3.17) e Traceability
+  (3.18).</li>
+<li><strong>Consequência para implementação:</strong> evolução <strong>shall</strong> ocorrer
+  por Domain Events novos, não por mutação direta.</li>
+<li><strong>Referências cruzadas:</strong> §3.5 Domain Event; §3.17
+  Temporality; Constituição Art. 8.</li>
+</ul>
+<hr />
+<h2 id="4-axiomas-formais-formal-axioms">4. Axiomas Formais (Formal Axioms)</h2>
+<p>Os axiomas a seguir fundamentam a linguagem do AraOS. Toda
+implementação <strong>shall</strong> preservar sua validade.</p>
+<h3 id="axiom-1-knowledge-precedes-data">Axiom 1 — Knowledge Precedes Data</h3>
+<blockquote>
+<p><strong>Knowledge precedes Data.</strong></p>
+<p>Toda estrutura computacional no AraOS existe para representar
+conhecimento clínico, não para acumular dados. Dados são
+consequência do conhecimento, jamais o inverso.</p>
+</blockquote>
+<h3 id="REDACTED">Axiom 2 — Language Governs Architecture</h3>
+<blockquote>
+<p><strong>Language governs Architecture.</strong></p>
+<p>Decisões arquiteturais decorrem da clareza semântica da
+linguagem. Onde a linguagem falha, a arquitetura falha. Onde
+a linguagem é precisa, a arquitetura torna-se natural.</p>
+</blockquote>
+<h3 id="REDACTED">Axiom 3 — Aggregate Roots Own Their Value Objects</h3>
+<blockquote>
+<p><strong>Every Aggregate Root owns its Value Objects.</strong></p>
+<p>Um Value Object nunca existe comoAggregate independente; sempre
+pertence ao Aggregate cujo Root o expõe. A identidade do
+Value Object <strong>shall</strong> ser derivada da identidade do Aggregate.</p>
+</blockquote>
+<h3 id="REDACTED">Axiom 4 — Value Objects Have No Semantic Identity</h3>
+<blockquote>
+<p><strong>Value Objects have no semantic identity.</strong></p>
+<p>A igualdade de um Value Object é puramente estrutural. Duas
+instâncias com os mesmos campos são indistinguíveis, ainda
+que tenham sido construídas em momentos diferentes.</p>
+</blockquote>
+<h3 id="REDACTED">Axiom 5 — Events Modify State, Not Identity</h3>
+<blockquote>
+<p><strong>Events never modify identity. They modify state.</strong></p>
+<p>Domain Events alteram o estado de um Aggregate (Expression,
+  Trajectory, Hypothesis), jamais sua Semantic Identity.
+Identidade é permanente durante o ciclo de vida do objeto.</p>
+</blockquote>
+<h3 id="REDACTED">Axiom 6 — Interpretations Are Projections</h3>
+<blockquote>
+<p><strong>Interpretations are projections. Never canonical state.</strong></p>
+<p>Toda Interpretation é leitura derivada, jamais fonte de
+verdade. Nenhuma decisão clínica pode basear-se
+exclusivamente em uma Interpretation; <strong>shall</strong> sempre
+consultar o Canonical State.</p>
+</blockquote>
+<h3 id="REDACTED">Axiom 7 — Canonical State Must Be Reconstructable</h3>
+<blockquote>
+<p><strong>Canonical state must always be reconstructable.</strong></p>
+<p>O estado canônico de qualquer Aggregate <strong>shall</strong> ser
+reconstruível bit-identical a partir do Event Store. Esta
+propriedade <strong>shall</strong> ser testada por suite de conformidade
+(replay 1x / 2x / 50x / 100x, ordem aleatória).</p>
+</blockquote>
+<h3 id="axiom-8-single-official-definition">Axiom 8 — Single Official Definition</h3>
+<blockquote>
+<p><strong>Every normative concept must have exactly one official
+definition.</strong></p>
+<p>Cada termo fixado por este Standard possui <strong>uma única</strong>
+definição canônica. Nenhum outro Standard pode redefinir,
+ampliar ou restringir o termo; apenas referenciá-lo.
+Conflitos <strong>shall</strong> ser resolvidos em favor do AS-000.</p>
+</blockquote>
+<h3 id="axiom-9-knowledge-is-temporal">Axiom 9 — Knowledge is Temporal</h3>
+<blockquote>
+<p><strong>Knowledge is temporal.</strong></p>
+<p>Toda representação de conhecimento <strong>shall</strong> carregar
+informação temporal bitemporal (valid_time + transaction_time).
+Conhecimento sem temporalidade é informação incompleta.</p>
+</blockquote>
+<h3 id="axiom-10-knowledge-is-explainable">Axiom 10 — Knowledge is Explainable</h3>
+<blockquote>
+<p><strong>Knowledge is explainable.</strong></p>
+<p>Toda afirmação significativa <strong>shall</strong> poder ser explicada
+por referência às Evidence que a sustentam. Sistema sem
+Explainability <strong>shall not</strong> ser publicado em produção.</p>
+</blockquote>
+<h3 id="REDACTED">Axiom 11 — Knowledge is Probabilistic</h3>
+<blockquote>
+<p><strong>Knowledge is probabilistic.</strong></p>
+<p>O conhecimento clínico admite graus de confiança. Confidence
+explícita (<code>[0.0, 1.0]</code>) <strong>shall</strong> acompanhar toda Expression
+e toda Interpretation.</p>
+</blockquote>
+<h3 id="axiom-12-hypotheses-coexist">Axiom 12 — Hypotheses Coexist</h3>
+<blockquote>
+<p><strong>Hypotheses coexist.</strong></p>
+<p>Múltiplas Hypothesis podem coexistir sobre o mesmo objeto.
+Nenhuma Hypothesis <strong>shall</strong> suprimir outra por sobrescrita.
+Resolução <strong>shall</strong> ocorrer por Evidence nova.</p>
+<p><strong>NOTA</strong> — Axiomas são <strong>invariantes lógicas</strong>. Uma
+implementação que viole qualquer axioma <strong>shall</strong> ser declarada
+não-conforme, independentemente do atendimento a requisitos
+sintáticos.</p>
+</blockquote>
+<hr />
+<h2 id="REDACTED">5. Mapeamento DDD (DDD Classification)</h2>
+<p>Tabela oficial de classificação DDD dos conceitos do AraOS.
+Esta tabela é <strong>referência canônica</strong> para qualquer
+implementação.</p>
+<table>
+<thead>
+<tr>
+<th>Conceito AraOS</th>
+<th>Classificação DDD</th>
+<th>Justificativa</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Clinical Gene</strong></td>
+<td><strong>Aggregate Root</strong></td>
+<td>Identidade estável; hospeda Expression; emite eventos do Aggregate.</td>
+</tr>
+<tr>
+<td><strong>Clinical Expression</strong></td>
+<td><strong>Value Object</strong></td>
+<td>Igualdade estrutural; substituível integralmente; sem identidade.</td>
+</tr>
+<tr>
+<td><strong>Clinical Genome</strong></td>
+<td><strong>Aggregate</strong></td>
+<td>Cluster de Genes de um paciente sob uma raiz.</td>
+</tr>
+<tr>
+<td><strong>Clinical Event</strong></td>
+<td><strong>Domain Event</strong></td>
+<td>Fato passado; imutável; append-only.</td>
+</tr>
+<tr>
+<td><strong>Clinical Interpretation</strong></td>
+<td><strong>Projection</strong></td>
+<td>Leitura derivada do estado.</td>
+</tr>
+<tr>
+<td><strong>Clinical Context</strong></td>
+<td><strong>Value Object</strong></td>
+<td>Modulador semântico; substituível.</td>
+</tr>
+<tr>
+<td><strong>Evidence</strong></td>
+<td><strong>Value Object</strong></td>
+<td>Item atômico; imutável; estrutural.</td>
+</tr>
+<tr>
+<td><strong>Trajectory</strong></td>
+<td><strong>Value Object</strong></td>
+<td>Série temporal; estruturalmente igual se mesmo conteúdo.</td>
+</tr>
+<tr>
+<td><strong>History</strong></td>
+<td><strong>Event Log</strong></td>
+<td>Audit chain; append-only; não é objeto de domínio.</td>
+</tr>
+<tr>
+<td><strong>Clinical Identity</strong></td>
+<td><strong>Entity</strong></td>
+<td>Identidade referencial do paciente dentro do contexto clínico.</td>
+</tr>
+<tr>
+<td><strong>Phenotype / Assessment / Intervention</strong></td>
+<td><strong>Entity</strong></td>
+<td>Objetos com ciclo de vida próprio.</td>
+</tr>
+<tr>
+<td><strong>Cohort</strong></td>
+<td><strong>Entity / Aggregate</strong></td>
+<td>Cluster de pacientes definidos por critérios.</td>
+</tr>
+<tr>
+<td><strong>Explanation</strong></td>
+<td><strong>Value Object</strong></td>
+<td>Justificativa estrutural; imutável após escrita.</td>
+</tr>
+<tr>
+<td><strong>Hypothesis</strong></td>
+<td><strong>Value Object</strong></td>
+<td>Interpretação alternativa; coexistência; estrutural.</td>
+</tr>
+<tr>
+<td><strong>Registry Version</strong></td>
+<td><strong>Value Object</strong></td>
+<td>Marcador SemVer; imutável.</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>NOTA</strong> — Esta tabela é <strong>orientativa</strong> e pode ser ampliada
+em futuras versões deste Standard mediante justificativa
+arquitetural.</p>
+</blockquote>
+<hr />
+<h2 id="6-requisitos-normativos">6. Requisitos Normativos</h2>
+<p>Esta seção fixa as regras que regem o uso da linguagem do
+AraOS. Todo AraOS Standard <strong>shall</strong> observar estes requisitos.</p>
+<h3 id="61-proibicao-de-redefinicao">6.1 Proibição de Redefinição</h3>
+<blockquote>
+<p><strong>Requisito 6.1.1</strong> — Nenhum AraOS Standard,Paper, ADR ou
+implementação <strong>shall</strong> redefinir, ampliar ou restringir
+qualquer termo fixado em §3 deste Standard.</p>
+<p><strong>Requisito 6.1.2</strong> — Quando um Standard necessitar de um
+termo cujo significado esteja fixado por este AS, <strong>shall</strong>
+referenciar este AS pelo identificador (AS-000) e seção (§3.X).</p>
+</blockquote>
+<h3 id="REDACTED">6.2 Uso Obrigatório dos Termos Canônicos</h3>
+<blockquote>
+<p><strong>Requisito 6.2.1</strong> — Todo AraOS Standard <strong>shall</strong> utilizar
+exclusivamente os termos canônicos definidos em §3 para
+descrever seus conceitos.</p>
+<p><strong>Requisito 6.2.2</strong> — Termos legados (ex.: <em>capability</em>) <strong>shall
+not</strong> ser introduzidos em novos Standards; <strong>may</strong> apenas
+ser referenciados como sinônimos históricos em notas
+explicativas.</p>
+</blockquote>
+<h3 id="63-mapeamento-ddd-obrigatorio">6.3 Mapeamento DDD Obrigatório</h3>
+<blockquote>
+<p><strong>Requisito 6.3.1</strong> — Todo AraOS Standard <strong>shall</strong> declarar
+a classificação DDD de seus conceitos, observando a tabela
+canônica de §5 sempre que aplicável.</p>
+<p><strong>Requisito 6.3.2</strong> — Divergências da tabela canônica <strong>shall</strong>
+ser justificadas no próprio Standard e referenciadas em ADR
+específico.</p>
+</blockquote>
+<h3 id="64-axiomas-nao-negociaveis">6.4 Axiomas Não-Negociáveis</h3>
+<blockquote>
+<p><strong>Requisito 6.4.1</strong> — Todo AraOS Standard <strong>shall not</strong> violar
+nenhum dos axiomas definidos em §4.</p>
+<p><strong>Requisito 6.4.2</strong> — Toda aparente violação de axioma <strong>shall</strong>
+ser registrada como erro arquitetural e resultar em ADR de
+revisão.</p>
+</blockquote>
+<h3 id="65-conformidade-cross-standard">6.5 Conformidade Cross-Standard</h3>
+<blockquote>
+<p><strong>Requisito 6.5.1</strong> — A combinação de dois ou mais AraOS
+Standards <strong>shall</strong> preservar a coerência semântica dos
+termos compartilhados.</p>
+<p><strong>Requisito 6.5.2</strong> — Em caso de divergência entre Standards,
+prevalecerá a definição deste AS (AS-000).</p>
+</blockquote>
+<h3 id="66-versionamento-da-linguagem">6.6 Versionamento da Linguagem</h3>
+<blockquote>
+<p><strong>Requisito 6.6.1</strong> — Mudanças incompatíveis nos termos
+canônicos <strong>shall</strong> produzir nova versão major (SemVer) deste
+AS.</p>
+<p><strong>Requisito 6.6.2</strong> — Adições retrocompatíveis (novos termos)
+<strong>may</strong> produzir versão minor.</p>
+<p><strong>Requisito 6.6.3</strong> — Correções editoriais ou clarificações
+<strong>may</strong> produzir versão patch.</p>
+</blockquote>
+<hr />
+<h2 id="REDACTED">7. Compliance Levels (Níveis de Conformidade)</h2>
+<p>Uma implementação ou AraOS Standard pode declarar conformidade
+em <strong>três níveis cumulativos</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Nível</th>
+<th>Nome</th>
+<th>Requisitos</th>
+<th>Caso de Uso</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>0</strong></td>
+<td><strong>Vocabulary-Conformant</strong></td>
+<td>Utiliza os termos canônicos de §3 com o significado oficial.</td>
+<td>Documentação e nomenclatura.</td>
+</tr>
+<tr>
+<td><strong>1</strong></td>
+<td><strong>Axiom-Conformant</strong></td>
+<td><strong>0</strong> + respeita todos os axiomas de §4.</td>
+<td>Modelagem e design.</td>
+</tr>
+<tr>
+<td><strong>2</strong></td>
+<td><strong>Full AraOS Language Compliance</strong></td>
+<td><strong>1</strong> + mapeia conceitos ao DDD conforme §5 + respeita os requisitos de §6.</td>
+<td>Implementação e revisão por pares.</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Requisito 7.1</strong> — Todo AraOS Standard <strong>shall</strong> declarar
+o nível de conformidade reivindicado na seção "Compliance".</p>
+<p><strong>Requisito 7.2</strong> — Conformidade em nível <strong>N</strong> <strong>shall</strong>
+implicar conformidade em todos os níveis inferiores.</p>
+</blockquote>
+<hr />
+<h2 id="8-hierarquia-canonica">8. Hierarquia Canônica</h2>
+<pre><code>Constituição do AraOS (Lex AraOS)        ← Lei suprema do domínio
+        ↓
+AS-000 — AraOS Language Specification    ← Gramática oficial (este Standard)
+        ↓
+AS-001 — Clinical Gene Standard          ← First Domain Standard
+        ↓
+AS-002 — Clinical Expression Standard    ← Value Object do Gene
+        ↓
+AS-003 — Clinical Genome Standard        ← Aggregate (cluster de Genes)
+        ↓
+AS-004 — Clinical Inference Standard
+        ↓
+AS-005 — Clinical Interpretation Standard
+        ↓
+AS-006 — Clinical Context Standard
+        ↓
+Implementação (código + testes)
+</code></pre>
+<blockquote>
+<p><strong>Requisito 8.1</strong> — Standards publicados em posição inferior
+<strong>shall</strong> referenciar e respeitar os termos deste Standard.</p>
+<p><strong>Requisito 8.2</strong> — Standards publicados em posição superior
+<strong>shall not</strong> existir; este Standard é o topo da pilha técnica.</p>
+</blockquote>
+<hr />
+<h2 id="9-conformidade-com-a-constituicao">9. Conformidade com a Constituição</h2>
+<p>Este Standard observa integralmente a Constituição do AraOS. Em
+particular:</p>
+<ul>
+<li>Artigo 1 — O Domínio governa a Tecnologia.</li>
+<li>Artigo 2 — O Conhecimento precede os Dados.</li>
+<li>Artigo 4 — A Linguagem é o Principal Ativo.</li>
+<li>Artigo 8 — Todo Conhecimento é Temporal.</li>
+<li>Artigo 9 — Explicabilidade é Obrigatória.</li>
+<li>Artigo 16 — O Conhecimento é Versionado.</li>
+<li>Artigo 18 — Princípio da Coerência.</li>
+<li>Artigo 19 — Princípio da Simplicidade Conceitual.</li>
+</ul>
+<p>Em caso de conflito, a Constituição prevalece.</p>
+<hr />
+<h2 id="REDACTED">Apêndice A — Glossário de Referência Rápida</h2>
+<table>
+<thead>
+<tr>
+<th>Termo</th>
+<th>Definição Resumida</th>
+<th>§</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Entity</strong></td>
+<td>Objeto distinguível por identidade referencial.</td>
+<td>3.1</td>
+</tr>
+<tr>
+<td><strong>Value Object</strong></td>
+<td>Objeto sem identidade, com igualdade estrutural.</td>
+<td>3.2</td>
+</tr>
+<tr>
+<td><strong>Aggregate</strong></td>
+<td>Cluster de Entities + VOs sob um Root.</td>
+<td>3.3</td>
+</tr>
+<tr>
+<td><strong>Aggregate Root</strong></td>
+<td>Entity ponto de entrada do Aggregate.</td>
+<td>3.4</td>
+</tr>
+<tr>
+<td><strong>Domain Event</strong></td>
+<td>Fato passado relevante ao domínio.</td>
+<td>3.5</td>
+</tr>
+<tr>
+<td><strong>Projection</strong></td>
+<td>Estado derivado, rebuildable.</td>
+<td>3.6</td>
+</tr>
+<tr>
+<td><strong>Evidence</strong></td>
+<td>Item atômico de sustentação.</td>
+<td>3.7</td>
+</tr>
+<tr>
+<td><strong>Context</strong></td>
+<td>Modulador semântico do estado.</td>
+<td>3.8</td>
+</tr>
+<tr>
+<td><strong>Canonical State</strong></td>
+<td>Estado primário de verdade.</td>
+<td>3.9</td>
+</tr>
+<tr>
+<td><strong>Derived State</strong></td>
+<td>Estado calculado a partir do canonical.</td>
+<td>3.10</td>
+</tr>
+<tr>
+<td><strong>Interpretation</strong></td>
+<td>Leitura atual do estado.</td>
+<td>3.11</td>
+</tr>
+<tr>
+<td><strong>Hypothesis</strong></td>
+<td>Interpretação alternativa concorrente.</td>
+<td>3.12</td>
+</tr>
+<tr>
+<td><strong>Semantic Identity</strong></td>
+<td>Identidade semântica estável no tempo.</td>
+<td>3.13</td>
+</tr>
+<tr>
+<td><strong>Clinical Function</strong></td>
+<td>Função semântica associada, não-identidade.</td>
+<td>3.14</td>
+</tr>
+<tr>
+<td><strong>Registry</strong></td>
+<td>Catálogo versionado de identificadores válidos.</td>
+<td>3.15</td>
+</tr>
+<tr>
+<td><strong>Explainability</strong></td>
+<td>Capacidade de justificar afirmações.</td>
+<td>3.16</td>
+</tr>
+<tr>
+<td><strong>Temporality</strong></td>
+<td>Bitemporalidade (valid + transaction time).</td>
+<td>3.17</td>
+</tr>
+<tr>
+<td><strong>Traceability</strong></td>
+<td>Proveniência rastreável ao Domain Event.</td>
+<td>3.18</td>
+</tr>
+<tr>
+<td><strong>Knowledge Representation</strong></td>
+<td>Codificação formal do conhecimento.</td>
+<td>3.19</td>
+</tr>
+<tr>
+<td><strong>Knowledge Evolution</strong></td>
+<td>Refinamento contínuo do conhecimento.</td>
+<td>3.20</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="apendice-b-dependency-graph">Apêndice B — Dependency Graph</h2>
+<pre><code>                  ┌─────────────────────────┐
+                  │   Lex AraOS             │
+                  │   (Constituição v1.0)   │
+                  └────────────┬────────────┘
+                               │
+                               ▼
+                  ┌─────────────────────────┐
+                  │   AS-000                │
+                  │   AraOS Language Spec   │
+                  └────────────┬────────────┘
+                               │
+              ┌────────────────┼────────────────┐
+              │                │                │
+              ▼                ▼                ▼
+        ┌──────────┐    ┌──────────┐    ┌──────────────┐
+        │ AS-001   │    │ AS-002   │    │ Implementação│
+        │  Gene    │───▶│Expression│───▶│ AS-001+AS-002│
+        └──────────┘    └──────────┘    └──────┬───────┘
+              │                │               │
+              │       ┌────────┼────────┐     │
+              ▼       ▼        ▼        ▼     │
+        ┌──────────┐ ┌────────┐ ┌────────┐    │
+        │ AS-004   │ │AS-005  │ │AS-006  │    │
+        │Inference │ │Interpr.│ │Context │    │
+        └──────────┘ └────────┘ └────────┘    │
+                               │              │
+                               │   (aprendizado operacional)
+                               ▼              ▼
+                          ┌────────────────────┐
+                          │   AS-003           │
+                          │   Clinical Genome  │
+                          │   (escrito após    │
+                          │    implementação)  │
+                          └────────────────────┘
+                               │
+                               ▼
+                  ┌─────────────────────────┐
+                  │   Implementação        │
+                  │   (código + testes)     │
+                  └─────────────────────────┘
+</code></pre>
+<blockquote>
+<p><strong>NOTA</strong> — AS-003 é deliberadamente posicionado <strong>após</strong> a
+primeira implementação concreta de AS-001 (Aggregate Root) e
+AS-002 (Value Object). A teoria do Genome reflete a prática
+operacional, evitando especular arquitetura sem evidência.</p>
+</blockquote>
+<hr />
+<h2 id="REDACTED">Apêndice C — Mapeamento para Fontes Normativas</h2>
+<table>
+<thead>
+<tr>
+<th>Conceito</th>
+<th>Paper</th>
+<th>Constituição</th>
+<th>ADR</th>
+<th>AS Relacionado</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Entity (§3.1)</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>AS-001 (uso)</td>
+</tr>
+<tr>
+<td>Value Object (§3.2)</td>
+<td>Paper IV §3</td>
+<td>Art. 4</td>
+<td>ADR-0005</td>
+<td>AS-002 (Expression)</td>
+</tr>
+<tr>
+<td>Aggregate (§3.3)</td>
+<td>Paper III §5</td>
+<td>—</td>
+<td>ADR-0005</td>
+<td>AS-003 (Genome)</td>
+</tr>
+<tr>
+<td>Aggregate Root (§3.4)</td>
+<td>Paper III §3</td>
+<td>Art. 5</td>
+<td>ADR-0005</td>
+<td>AS-001 (Gene)</td>
+</tr>
+<tr>
+<td>Domain Event (§3.5)</td>
+<td>Paper II Cap. 7</td>
+<td>Art. 7</td>
+<td>ADR-0001</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Projection (§3.6)</td>
+<td>Paper II Cap. 5</td>
+<td>Art. 8</td>
+<td>ADR-0001</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Evidence (§3.7)</td>
+<td>Paper V §6</td>
+<td>Art. 11</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Context (§3.8)</td>
+<td>Paper IV §8</td>
+<td>Art. 10</td>
+<td>ADR-0003</td>
+<td>AS-006</td>
+</tr>
+<tr>
+<td>Canonical State (§3.9)</td>
+<td>Paper II Cap. 3</td>
+<td>Art. 2</td>
+<td>ADR-0001</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Derived State (§3.10)</td>
+<td>Paper II Cap. 5</td>
+<td>Art. 2</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Interpretation (§3.11)</td>
+<td>Paper VI §3</td>
+<td>Art. 9</td>
+<td>—</td>
+<td>AS-005</td>
+</tr>
+<tr>
+<td>Hypothesis (§3.12)</td>
+<td>Paper VI §4</td>
+<td>Art. 15</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Semantic Identity (§3.13)</td>
+<td>Paper III §4</td>
+<td>Art. 5</td>
+<td>ADR-0005</td>
+<td>AS-001</td>
+</tr>
+<tr>
+<td>Clinical Function (§3.14)</td>
+<td>Paper III §3</td>
+<td>Art. 4</td>
+<td>ADR-0005</td>
+<td>AS-001</td>
+</tr>
+<tr>
+<td>Registry (§3.15)</td>
+<td>Paper III §4</td>
+<td>Art. 13</td>
+<td>ADR-0005</td>
+<td>AS-001</td>
+</tr>
+<tr>
+<td>Explainability (§3.16)</td>
+<td>Paper IV §9</td>
+<td>Art. 9</td>
+<td>ADR-0001</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Temporality (§3.17)</td>
+<td>Paper II Cap. 3</td>
+<td>Art. 8</td>
+<td>ADR-0001</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Traceability (§3.18)</td>
+<td>Paper V §8</td>
+<td>Art. 9</td>
+<td>ADR-0001</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Knowledge Representation (§3.19)</td>
+<td>Paper II</td>
+<td>Art. 2</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Knowledge Evolution (§3.20)</td>
+<td>Paper II Cap. 5</td>
+<td>Art. 8</td>
+<td>ADR-0001</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="REDACTED">Apêndice D — Requisitos de Conformidade</h2>
+<p>Um novo AraOS Standard é considerado <strong>compatível com a
+linguagem oficial do AraOS</strong> quando:</p>
+<ol>
+<li><strong>D1</strong> — Utiliza exclusivamente os termos canônicos
+   definidos em §3, sem redefinição.</li>
+<li><strong>D2</strong> — Respeita todos os axiomas de §4.</li>
+<li><strong>D3</strong> — Declara classificação DDD de seus conceitos
+   conforme tabela de §5.</li>
+<li><strong>D4</strong> — Referencia este Standard pelo identificador
+   <code>AS-000</code> na seção "Fontes Normativas".</li>
+<li><strong>D5</strong> — Mapeia seus conceitos para Constitution/Papers/ADRs
+   (Apêndice C como modelo).</li>
+<li><strong>D6</strong> — Declara o nível de conformidade Language Compliance
+   (Vocabulary / Axiom / Full) conforme §7.</li>
+<li><strong>D7</strong> — Inclui matriz de testes rastreáveis por requisito
+   (mesmo que os testes ainda não existam).</li>
+<li><strong>D8</strong> — Não contradiz este Standard em nenhuma cláusula.</li>
+</ol>
+<blockquote>
+<p><strong>Requisito D.1</strong> — Standards não conformes <strong>shall not</strong> ser
+marcados como Published no AraOS Library.</p>
+</blockquote>
+<hr />
+<h2 id="apendice-e-historico-de-versoes">Apêndice E — Histórico de Versões</h2>
+<table>
+<thead>
+<tr>
+<th>Versão</th>
+<th>Data</th>
+<th>Mudança</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1.0</td>
+<td>2026-07-17</td>
+<td>Emissão inicial</td>
+<td>Draft</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="REDACTED">Apêndice F — Nota Editorial sobre Sequência de Publicação</h2>
+<blockquote>
+<p><strong>Sequência revisada em 2026-07-17 após decisão arquitetural.</strong></p>
+</blockquote>
+<p>O AS-003 (Clinical Genome) <strong>shall not</strong> ser publicado antes da
+primeira implementação concreta e testada do Aggregate Root
+(AS-001) e da Expression (AS-002).</p>
+<p><strong>Justificativa:</strong> a teoria do Genome como Aggregate que agrega
+múltiplos Genes <strong>deve</strong> ser informada pela experiência
+operacional de ter escrito e exercitado um Gene real + uma
+Expression real. Publicar o AS-003 antes da implementação
+convidaria a especular arquitetura sem evidência.</p>
+<p><strong>Sequência revisada:</strong></p>
+<ol>
+<li>AS-001 (Gene) → Aceito ✅</li>
+<li>AS-002 (Expression) → próximo</li>
+<li><strong>Implementação concreta</strong> de Gene + Expression com testes
+   ≥ 95% coverage</li>
+<li>AS-003 (Genome) → <strong>somente após</strong> o item 3</li>
+<li>AS-004 / AS-005 / AS-006 → após AS-003</li>
+</ol>
+<p>Esta decisão <strong>não</strong> altera nenhuma cláusula normativa deste
+Standard; ela governa apenas o <strong>roteiro editorial</strong> da AraOS
+Library.</p>
+<hr />
+<h2 id="aviso-final">Aviso Final</h2>
+<blockquote>
+<p>Este AraOS Standard define a <strong>gramática oficial</strong> do AraOS.</p>
+<p>Após sua aprovação, nenhum AraOS Standard <strong>shall</strong> redefinir,
+ampliar ou restringir qualquer termo aqui fixado; apenas
+<strong>referenciá-lo</strong>.</p>
+<p>Em caso de dúvida durante a redação de qualquer AS:</p>
+<p><em>"Este termo canônico está definido em AS-000 §3.X?"</em></p>
+<p>Se <strong>sim</strong> → <strong>shall</strong> referenciar AS-000, não redefinir.
+Se <strong>não</strong> → <strong>may</strong> definir localmente, mas <strong>shall</strong>
+propor a inclusão em AS-000 na próxima versão minor.</p>
+<p>Este é o <strong>padrão de padrões</strong> do AraOS. Cuide dele com o
+mesmo rigor da Constituição.</p>
+</blockquote>
+</body>
+</html>

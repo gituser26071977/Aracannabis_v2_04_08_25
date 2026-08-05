@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ADR-0006: Normative Conflict Resolution and Governance</title>
+<link rel="stylesheet" href="../stylesheets/araos.css">
+</head>
+<body>
+<nav id="TOC" role="doc-toc" aria-label="Sumário">
+<div class="toc">
+<ul>
+<li><a href="#1-contexto">1. Contexto</a></li>
+<li><a href="#2-decisao">2. Decisão</a></li>
+<li><a href="#3-hierarquia-normativa-oficial">3. Hierarquia Normativa Oficial</a><ul>
+<li><a href="#31-regra-fundamental">3.1 Regra fundamental</a></li>
+<li><a href="#32-caracterizacao-de-cada-nivel">3.2 Caracterização de cada nível</a></li>
+</ul>
+</li>
+<li><a href="#4-matriz-de-precedencia">4. Matriz de Precedência</a><ul>
+<li><a href="#41-regra-geral-de-leitura">4.1 Regra geral de leitura</a></li>
+<li><a href="#REDACTED">4.2 Conflitos M11 e M16 — ADR prevalece</a></li>
+<li><a href="#REDACTED">4.3 Conflitos M28 e M29 — cuidado especial</a></li>
+</ul>
+</li>
+<li><a href="#5-resolucao-de-ambiguidades">5. Resolução de Ambiguidades</a><ul>
+<li><a href="#REDACTED">5.1 Catálogo de ambiguidades e resolução</a></li>
+<li><a href="#52-principio-geral">5.2 Princípio geral</a></li>
+</ul>
+</li>
+<li><a href="#6-politica-de-depreciacao">6. Política de Depreciação</a><ul>
+<li><a href="#61-estados-formais">6.1 Estados formais</a></li>
+<li><a href="#62-replacement">6.2 Replacement</a></li>
+<li><a href="#63-backward-compatibility">6.3 Backward Compatibility</a></li>
+<li><a href="#64-forward-compatibility">6.4 Forward Compatibility</a></li>
+<li><a href="#65-migration-window">6.5 Migration Window</a></li>
+</ul>
+</li>
+<li><a href="#REDACTED">7. Política de Evolução (Change Control)</a><ul>
+<li><a href="#71-tipos-de-mudanca">7.1 Tipos de mudança</a></li>
+<li><a href="#72-quebra-vs-nao-quebra">7.2 Quebra vs Não-Quebra</a></li>
+<li><a href="#73-regras-de-transicao">7.3 Regras de transição</a></li>
+</ul>
+</li>
+<li><a href="#8-politica-de-governanca">8. Política de Governança</a><ul>
+<li><a href="#81-papeis-formais">8.1 Papéis formais</a></li>
+<li><a href="#82-quem-pode-fazer-o-que">8.2 Quem pode fazer o quê</a></li>
+<li><a href="#83-conflitos-de-governanca">8.3 Conflitos de governança</a></li>
+</ul>
+</li>
+<li><a href="#REDACTED">9. Foundation Freeze — Declaração Oficial</a><ul>
+<li><a href="#91-declaracao">§9.1 Declaração</a></li>
+<li><a href="#92-componentes-congelados">9.2 Componentes congelados</a></li>
+<li><a href="#REDACTED">9.3 Processo para mudança na infraestrutura congelada</a></li>
+<li><a href="#94-foundation-thaw">9.4 Foundation Thaw</a></li>
+<li><a href="#REDACTED">9.5 Próximos sprints pertencem ao domínio clínico</a></li>
+</ul>
+</li>
+<li><a href="#REDACTED">10. Confirmação de Uso Futuro da Infraestrutura Existente</a><ul>
+<li><a href="#REDACTED">10.1 Usarão a infraestrutura existente SEM modificá-la</a></li>
+<li><a href="#REDACTED">10.2 Não modificarão a infraestrutura</a></li>
+<li><a href="#REDACTED">10.3 Estenderão (não modificarão) via adição</a></li>
+</ul>
+</li>
+<li><a href="#REDACTED">11. Mecanismo de Revisão Deste Próprio ADR</a><ul>
+<li><a href="#111-emendas">11.1 Emendas</a></li>
+<li><a href="#112-revogacao">11.2 Revogação</a></li>
+<li><a href="#REDACTED">11.3 Imutabilidade das decisões aqui</a></li>
+<li><a href="#114-historico-de-emendas">11.4 Histórico de emendas</a></li>
+</ul>
+</li>
+<li><a href="#12-consequencias">12. Consequências</a><ul>
+<li><a href="#121-positivas">12.1 Positivas</a></li>
+<li><a href="#122-negativas">12.2 Negativas</a></li>
+<li><a href="#123-mitigacoes">12.3 Mitigações</a></li>
+</ul>
+</li>
+<li><a href="#13-alternativas-consideradas">13. Alternativas Consideradas</a><ul>
+<li><a href="#REDACTED">13.1 "Sem ADR formal; resolver por conversa"</a></li>
+<li><a href="#REDACTED">13.2 "ADR-0006 define papéis mas sem matriz"</a></li>
+<li><a href="#REDACTED">13.3 "Foundation Freeze sem Foundation Thaw"</a></li>
+<li><a href="#REDACTED">13.4 "Quórum de unanimidade para tudo"</a></li>
+</ul>
+</li>
+<li><a href="#14-apendices">14. Apêndices</a><ul>
+<li><a href="#141-apendice-a-glossario">14.1 Apêndice A — Glossário</a></li>
+<li><a href="#REDACTED">14.2 Apêndice B — Histórico de mudanças</a></li>
+</ul>
+</li>
+</ul>
+</div>
+
+</nav>
+<h1 id="REDACTED">ADR-0006: Normative Conflict Resolution and Governance</h1>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Status</strong></td>
+<td>📋 Proposto (2026-07-18)</td>
+</tr>
+<tr>
+<td><strong>Data</strong></td>
+<td>2026-07-18</td>
+</tr>
+<tr>
+<td><strong>Autor</strong></td>
+<td>AraOS Architecture Board</td>
+</tr>
+<tr>
+<td><strong>Decisor</strong></td>
+<td>AraOS Architecture Board</td>
+</tr>
+<tr>
+<td><strong>Impacto</strong></td>
+<td>Cross-cutting · governança normativa</td>
+</tr>
+<tr>
+<td><strong>Substitui</strong></td>
+<td>Premissa implícita anterior ("resolver conflito por conversa")</td>
+</tr>
+<tr>
+<td><strong>Constitucionalidade</strong></td>
+<td>Não viola Constituição · Alinhado com AS-000 / ASM-001</td>
+</tr>
+<tr>
+<td><strong>Foundation Freeze</strong></td>
+<td>Este ADR declara o congelamento da infraestrutura normativa</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="1-contexto">1. Contexto</h2>
+<p>A infraestrutura normativa do AraOS atingiu maturidade suficiente para que sua operação seja previsível. Os componentes fixados até 2026-07-18 são:</p>
+<ul>
+<li><strong>Constituição</strong> (Lex AraOS) — filosofia suprema</li>
+<li><strong>Papers</strong> — teoria</li>
+<li><strong>AS-000</strong> Language Specification — vocabulário canônico</li>
+<li><strong>ASM-001</strong> Specification Meta Model — estrutura dos Standards</li>
+<li><strong>AS-001</strong> Clinical Gene (Published) — Aggregate Root</li>
+<li><strong>AS-002</strong> Clinical Expression (Draft) — Value Object</li>
+<li><strong>AraOS Library</strong> — pipeline de publicação MD/HTML/PDF</li>
+<li><strong>Maturity Model 9 estados</strong> — ciclo de vida editorial</li>
+<li><strong>Dependency Graph</strong> — restrição downward-only</li>
+<li><strong>Traceability Chain</strong> — Constituição → Evidence</li>
+<li><strong>Machine Readability Model</strong> — JSON conceitual</li>
+</ul>
+<p>Componentes em produção, ainda sem conflitos conhecidos, mas com <strong>risco emergente</strong>:</p>
+<ol>
+<li><strong>Conflitos latentes</strong> — múltiplos Standards podem usar o mesmo termo com semânticas distintas se não houver regra de desempate.</li>
+<li><strong>Depreciação ad-hoc</strong> — sem política explícita, depreciações ocorrerão caso a caso.</li>
+<li><strong>Mudanças estruturais</strong> — sem freeze, a tentação de "ajustar a infraestrutura" durante desenvolvimento clínico é alta.</li>
+<li><strong>Ambiguidade de papéis</strong> — quem aprova, quem rejeita, quem promove maturidade.</li>
+<li><strong>Resolução慢a de conflitos</strong> — sem matriz de precedência, conflitos serão resolvidos por debate político em vez de regra.</li>
+</ol>
+<p>Este ADR encerra <strong>definitivamente</strong> a infraestrutura normativa e estabelece as regras para que divergências futuras sejam resolvidas objetivamente.</p>
+<hr />
+<h2 id="2-decisao">2. Decisão</h2>
+<p>Adotamos <strong>9 regras canônicas</strong> que governam conflitos, depreciação, evolução e governança:</p>
+<ol>
+<li><strong>Hierarquia normativa</strong> de 9 níveis (§3)</li>
+<li><strong>Matriz de precedência</strong> (§4) que define o vencedor em cada par de conflitos</li>
+<li><strong>Resolução de ambiguidades</strong> (§5) para 7 tipos de conflito semântico</li>
+<li><strong>Política de depreciação</strong> (§6) com 7 estados formais</li>
+<li><strong>Política de evolução</strong> (§7) com SemVer editorial + técnico</li>
+<li><strong>Política de governança</strong> (§8) com papéis e competências</li>
+<li><strong>Foundation Freeze</strong> (§9) — congelamento oficial da infraestrutura normativa</li>
+<li><strong>Confirmação de uso futuro</strong> (§10) — Standards futuros usarão a infraestrutura existente</li>
+<li><strong>Mecanismo de revisão</strong> (§11) — como este ADR pode ser ele próprio revisado</li>
+</ol>
+<hr />
+<h2 id="3-hierarquia-normativa-oficial">3. Hierarquia Normativa Oficial</h2>
+<pre><code>Nível 1 — Constituição (Lex AraOS)
+   ↓
+Nível 2 — Manifesto
+   ↓
+Nível 3 — Papers (Paper I, II, III, …)
+   ↓
+Nível 4 — ADRs (ADR-0001, ADR-0002, …)
+   ↓
+Nível 5 — ASM (ASM-001 Specification Meta Model)
+   ↓
+Nível 6 — AS (AS-001, AS-002, …)
+   ↓
+Nível 7 — Conformance (tests/conformance/…)
+   ↓
+Nível 8 — Reference Implementation
+   ↓
+Nível 9 — Application Code
+</code></pre>
+<h3 id="31-regra-fundamental">3.1 Regra fundamental</h3>
+<blockquote>
+<p><strong>Nenhum nível inferior pode contradizer um nível superior.</strong></p>
+</blockquote>
+<p>Quando dois documentos do mesmo nível divergem, aplica-se a Matriz de Precedência (§4).</p>
+<h3 id="32-caracterizacao-de-cada-nivel">3.2 Caracterização de cada nível</h3>
+<table>
+<thead>
+<tr>
+<th>Nível</th>
+<th>Função</th>
+<th>Quem cria</th>
+<th>Versão</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Lei suprema do domínio</td>
+<td>Constituição original</td>
+<td>Imutável</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Princípios éticos e culturais</td>
+<td>AraOS Leadership</td>
+<td>Imutável</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Desenvolvimento teórico</td>
+<td>Pesquisa</td>
+<td>SemVer</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Decisões arquiteturais</td>
+<td>AraOS Architecture Board</td>
+<td>SemVer</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Estrutura normativa</td>
+<td>AraOS Editorial Committee</td>
+<td>SemVer</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Especificações clínicas</td>
+<td>AraOS Editorial Committee</td>
+<td>SemVer</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Testes de conformidade</td>
+<td>Engenharia</td>
+<td>Versionado com o AS</td>
+</tr>
+<tr>
+<td>8</td>
+<td>Implementações exemplares</td>
+<td>Comitê Editorial (reconhece)</td>
+<td>Versionado</td>
+</tr>
+<tr>
+<td>9</td>
+<td>Código de aplicação</td>
+<td>Engenharia</td>
+<td>SemVer</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="4-matriz-de-precedencia">4. Matriz de Precedência</h2>
+<p>Esta matriz é <strong>exaustiva</strong> e <strong>definitiva</strong>. Qualquer conflito entre dois documentos SHALL ser resolvido por esta tabela.</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Conflito</th>
+<th>Vencedor</th>
+<th>Ação no perdedor</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>M1</td>
+<td>Constituição × Manifesto</td>
+<td>Constituição</td>
+<td>Manifesto revisado para alinhar</td>
+</tr>
+<tr>
+<td>M2</td>
+<td>Constituição × Paper</td>
+<td>Constituição</td>
+<td>Paper revisado</td>
+</tr>
+<tr>
+<td>M3</td>
+<td>Constituição × ADR</td>
+<td>Constituição</td>
+<td>ADR revisado</td>
+</tr>
+<tr>
+<td>M4</td>
+<td>Constituição × ASM</td>
+<td>Constituição</td>
+<td>ASM revisado</td>
+</tr>
+<tr>
+<td>M5</td>
+<td>Constituição × AS</td>
+<td>Constituição</td>
+<td>AS revisado</td>
+</tr>
+<tr>
+<td>M6</td>
+<td>Constituição × Conformance</td>
+<td>Constituição</td>
+<td>Conformance revisado</td>
+</tr>
+<tr>
+<td>M7</td>
+<td>Constituição × Code</td>
+<td>Constituição</td>
+<td>Code corrigido</td>
+</tr>
+<tr>
+<td>M8</td>
+<td>Manifesto × Paper</td>
+<td>Manifesto</td>
+<td>Paper revisado</td>
+</tr>
+<tr>
+<td>M9</td>
+<td>Manifesto × ADR</td>
+<td>Manifesto</td>
+<td>ADR revisado</td>
+</tr>
+<tr>
+<td>M10</td>
+<td>Manifesto × AS</td>
+<td>Manifesto</td>
+<td>AS revisado</td>
+</tr>
+<tr>
+<td>M11</td>
+<td>Paper × ADR</td>
+<td><strong>ADR</strong></td>
+<td>ADR revisado (Paper é teórico; ADR é decisão concreta)</td>
+</tr>
+<tr>
+<td>M12</td>
+<td>Paper × ASM</td>
+<td>ASM</td>
+<td>ASM revisado</td>
+</tr>
+<tr>
+<td>M13</td>
+<td>Paper × AS</td>
+<td>AS</td>
+<td>AS revisado</td>
+</tr>
+<tr>
+<td>M14</td>
+<td>Paper × Code</td>
+<td>Code corrigido (Paper é teórico; Code deve refletir AS)</td>
+<td></td>
+</tr>
+<tr>
+<td>M15</td>
+<td>ADR × ASM</td>
+<td>ADR</td>
+<td>ASM revisado</td>
+</tr>
+<tr>
+<td>M16</td>
+<td>ADR × AS</td>
+<td><strong>ADR</strong></td>
+<td>AS revisado</td>
+</tr>
+<tr>
+<td>M17</td>
+<td>ADR × Conformance</td>
+<td>ADR</td>
+<td>Conformance revisado</td>
+</tr>
+<tr>
+<td>M18</td>
+<td>ADR × Code</td>
+<td>ADR</td>
+<td>Code corrigido</td>
+</tr>
+<tr>
+<td>M19</td>
+<td>ADR × Reference Implementation</td>
+<td>ADR</td>
+<td>Reference Implementation corrigido</td>
+</tr>
+<tr>
+<td>M20</td>
+<td>ASM × AS</td>
+<td><strong>ASM</strong></td>
+<td>AS revisado</td>
+</tr>
+<tr>
+<td>M21</td>
+<td>ASM × Code</td>
+<td>ASM</td>
+<td>Code corrigido</td>
+</tr>
+<tr>
+<td>M22</td>
+<td>AS × Conformance</td>
+<td>AS</td>
+<td>Conformance revisado</td>
+</tr>
+<tr>
+<td>M23</td>
+<td>AS × Reference Implementation</td>
+<td>AS</td>
+<td>Reference Implementation corrigido</td>
+</tr>
+<tr>
+<td>M24</td>
+<td>AS × Code</td>
+<td><strong>AS</strong></td>
+<td>Code corrigido</td>
+</tr>
+<tr>
+<td>M25</td>
+<td>Conformance × Reference Implementation</td>
+<td>Conformance</td>
+<td>Reference Implementation corrigido</td>
+</tr>
+<tr>
+<td>M26</td>
+<td>Conformance × Code</td>
+<td>Conformance</td>
+<td>Code corrigido</td>
+</tr>
+<tr>
+<td>M27</td>
+<td>Reference Implementation × Code</td>
+<td>Reference Implementation</td>
+<td>Code corrigido</td>
+</tr>
+<tr>
+<td>M28</td>
+<td><strong>Code × Testes</strong></td>
+<td><strong>Code</strong></td>
+<td><strong>Teste corrigido</strong> (Teste reflete comportamento atual do Code)</td>
+</tr>
+<tr>
+<td>M29</td>
+<td><strong>Teste × Standard</strong></td>
+<td><strong>Standard</strong></td>
+<td><strong>Teste corrigido para refletir o Standard</strong></td>
+</tr>
+<tr>
+<td>M30</td>
+<td>Standard × Standard (mesmo nível)</td>
+<td>Versão mais recente Published</td>
+<td>Versão antiga depreciada</td>
+</tr>
+</tbody>
+</table>
+<h3 id="41-regra-geral-de-leitura">4.1 Regra geral de leitura</h3>
+<p>A matriz é lida em pares: <code>Conflito</code> significa "dois documentos divergem". O <strong>Vencedor</strong> indica qual fonte SHALL prevalecer. O <strong>perdedor</strong> SHALL ser revisado, atualizado ou marcado como deprecated, conforme a natureza da divergência.</p>
+<h3 id="REDACTED">4.2 Conflitos M11 e M16 — ADR prevalece</h3>
+<blockquote>
+<p>ADR é a <strong>decisão arquitetural concreta e datada</strong>. Paper é <strong>teoria</strong> e pode estar desatualizado. Quando divergem, ADR SHALL prevalecer e Paper SHOULD ser revisado para refletir a decisão.</p>
+</blockquote>
+<h3 id="REDACTED">4.3 Conflitos M28 e M29 — cuidado especial</h3>
+<table>
+<thead>
+<tr>
+<th>Conflito</th>
+<th>Vencedor</th>
+<th>Justificativa</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Code × Teste</td>
+<td>Code</td>
+<td>Teste reflete comportamento atual do code. Se teste falha, code está errado e deve ser corrigido.</td>
+</tr>
+<tr>
+<td>Teste × Standard</td>
+<td>Standard</td>
+<td>Standard é a fonte da verdade. Teste desatualizado SHALL ser corrigido para refletir Standard.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Caso degenerado (Code × Standard × Test):</strong> Standard prevalece sempre. Code é corrigido para alinhar ao Standard; teste é corrigido para refletir o Standard corrigido.</p>
+<hr />
+<h2 id="5-resolucao-de-ambiguidades">5. Resolução de Ambiguidades</h2>
+<h3 id="REDACTED">5.1 Catálogo de ambiguidades e resolução</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Tipo de ambiguidade</th>
+<th>Definição</th>
+<th>Resolução canônica</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A1</td>
+<td><strong>Conceito indefinido</strong></td>
+<td>Termo usado mas não definido em nenhum documento normativo.</td>
+<td>Referenciar Constituição. Se ausente, abrir ADR para definir. Não usar termo em código até definição.</td>
+</tr>
+<tr>
+<td>A2</td>
+<td><strong>Conceito duplicado</strong></td>
+<td>Mesmo conceito definido em 2+ documentos.</td>
+<td>Documento superior (na hierarquia) prevalece. Inferior referencia o superior.</td>
+</tr>
+<tr>
+<td>A3</td>
+<td><strong>Conceito obsoleto</strong></td>
+<td>Conceito definido mas marcado como discontinued.</td>
+<td>Marcar como <code>deprecated</code>. Abrir ADR para depreciação formal.</td>
+</tr>
+<tr>
+<td>A4</td>
+<td><strong>Conflito terminológico</strong></td>
+<td>Termos diferentes para o mesmo conceito.</td>
+<td>AS-000 §3 é autoridade. Usar termo canônico; sinônimos vão para glossário.</td>
+</tr>
+<tr>
+<td>A5</td>
+<td><strong>Conflito semântico</strong></td>
+<td>Mesmo termo com significados diferentes em contextos diferentes.</td>
+<td>AS-000 §3 prevalece; contextos divergentes usam <strong>subcontextos</strong> explícitos (bounded context, namespace).</td>
+</tr>
+<tr>
+<td>A6</td>
+<td><strong>Conflito temporal</strong></td>
+<td>Versão antiga vs nova do mesmo documento.</td>
+<td>Versão mais recente Published prevalece. Changelog SHALL documentar mudanças. Migration window aplicado.</td>
+</tr>
+<tr>
+<td>A7</td>
+<td><strong>Conflito entre versões</strong></td>
+<td>Duas versões ativas simultaneamente.</td>
+<td>MAJOR version + SemVer. Versão antiga SHALL ser <code>deprecated</code> com migration window.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="52-principio-geral">5.2 Princípio geral</h3>
+<blockquote>
+<p><strong>Em caso de ambiguidade, a fonte mais alta na hierarquia normativa prevalece.</strong></p>
+</blockquote>
+<p>A ordem para desempate é: Constituição &gt; Manifesto &gt; Papers &gt; ADRs &gt; ASM &gt; AS &gt; Conformance &gt; Reference Implementation &gt; Code.</p>
+<p>Quando há empate no mesmo nível:
+1. Versão mais recente Published prevalece.
+2. Se Published empate: Technical Review mais recente prevalece.
+3. Se empate em maturidade: URN lexicograficamente maior prevalece (regra de desempate determinística).</p>
+<hr />
+<h2 id="6-politica-de-depreciacao">6. Política de Depreciação</h2>
+<h3 id="61-estados-formais">6.1 Estados formais</h3>
+<table>
+<thead>
+<tr>
+<th>Estado</th>
+<th>Significado</th>
+<th>Consequência</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Deprecated</strong></td>
+<td>Marcada como obsoleta, mas ainda funcional e testada.</td>
+<td>SHALL continuar funcionando e testada até archiving. Documentação SHALL indicar replacement.</td>
+</tr>
+<tr>
+<td><strong>Superseded</strong></td>
+<td>Substituída por nova versão ou novo documento.</td>
+<td>Antiga SHALL manter URN. Nova referencia <code>supersedes</code>. Antiga referencia <code>superseded_by</code>.</td>
+</tr>
+<tr>
+<td><strong>Archived</strong></td>
+<td>Retirada sem substituição.</td>
+<td>Pode ser removida do índice público, mas URN SHALL manter redirect.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="62-replacement">6.2 Replacement</h3>
+<ul>
+<li>Um Standard/ADR MAY ser substituído por outro via <code>Replacement</code>.</li>
+<li>O Standard substituinte SHALL indicar <code>supersedes: &lt;ID&gt;</code> no header.</li>
+<li>O Standard substituído SHALL indicar <code>superseded_by: &lt;ID&gt;</code> no header.</li>
+<li>A Library SHALL manter ambos até archiving do substituído.</li>
+</ul>
+<h3 id="63-backward-compatibility">6.3 Backward Compatibility</h3>
+<ul>
+<li>Mudanças SHOULD preservar compatibilidade descendente.</li>
+<li>Adição de novos requisitos = MINOR.</li>
+<li>Mudança em requisito existente = MAJOR.</li>
+<li>Quebra não-planejada SHALL ser tratada via <code>Breaking Change</code> formal (ver §7).</li>
+</ul>
+<h3 id="64-forward-compatibility">6.4 Forward Compatibility</h3>
+<ul>
+<li>Implementações MAY antecipar features de versões futuras.</li>
+<li>O Standard SHOULD declarar features experimentais explicitamente.</li>
+<li>Features experimentais NÃO SHALL ser citadas como base de conformidade.</li>
+</ul>
+<h3 id="65-migration-window">6.5 Migration Window</h3>
+<ul>
+<li>Período entre deprecação e archiving de um documento.</li>
+<li><strong>Default: 12 meses</strong> para Standards; <strong>6 meses</strong> para ADRs.</li>
+<li>Aplicável apenas a <code>Superseded</code> (não a <code>Archived</code> direto).</li>
+<li>Documentado no header do documento deprecated.</li>
+</ul>
+<hr />
+<h2 id="REDACTED">7. Política de Evolução (Change Control)</h2>
+<h3 id="71-tipos-de-mudanca">7.1 Tipos de mudança</h3>
+<table>
+<thead>
+<tr>
+<th>Tipo</th>
+<th>Significado</th>
+<th>Bump de versão</th>
+<th>Aprovação</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Editorial</strong></td>
+<td>Typos, clarificações de linguagem, formatação.</td>
+<td>Sem bump (commit direto).</td>
+<td>Revisor técnico.</td>
+</tr>
+<tr>
+<td><strong>Patch</strong></td>
+<td>Correção sem mudança de comportamento.</td>
+<td>PATCH (X.Y.Z+1)</td>
+<td>Revisor técnico + 1 voto editorial.</td>
+</tr>
+<tr>
+<td><strong>Minor</strong></td>
+<td>Adição retrocompatível (novo requisito, novo exemplo).</td>
+<td>MINOR (X.Y+1.0)</td>
+<td>Comitê Editorial (maioria 2/3).</td>
+</tr>
+<tr>
+<td><strong>Major</strong></td>
+<td>Mudança incompatível.</td>
+<td>MAJOR (X+1.0.0)</td>
+<td>Comitê Editorial (unanimidade).</td>
+</tr>
+<tr>
+<td><strong>Breaking Change</strong></td>
+<td>Mudança que quebra contrato existente.</td>
+<td>MAJOR (X+1.0.0)</td>
+<td>Comitê Editorial (unanimidade) + Migration Plan obrigatório.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="72-quebra-vs-nao-quebra">7.2 Quebra vs Não-Quebra</h3>
+<p><strong>Quebra (MAJOR):</strong>
+- Remoção de requisito SHALL.
+- Mudança na semântica de requisito existente.
+- Mudança em invariante.
+- Mudança em verbo normativo (ex: SHOULD → SHALL).</p>
+<p><strong>Não-quebra (MINOR):</strong>
+- Adição de novo requisito.
+- Adição de novo exemplo.
+- Adição de novo axioma.
+- Clarificação de texto sem mudança semântica.</p>
+<p><strong>Editorial (sem bump):</strong>
+- Correção de typos.
+- Reformatação.
+- Adição de cross-references.</p>
+<h3 id="73-regras-de-transicao">7.3 Regras de transição</h3>
+<ul>
+<li>Toda mudança SHALL ser registrada no Version History do documento.</li>
+<li>Mudanças MAJOR SHALL ser acompanhadas de ADR específico.</li>
+<li>Mudanças MAJOR SHALL abrir <strong>Migration Window</strong> mínimo de 6 meses.</li>
+</ul>
+<hr />
+<h2 id="8-politica-de-governanca">8. Política de Governança</h2>
+<h3 id="81-papeis-formais">8.1 Papéis formais</h3>
+<table>
+<thead>
+<tr>
+<th>Papel</th>
+<th>Quem</th>
+<th>Responsabilidade</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Constitutional Guardian</strong></td>
+<td>Líderança AraOS</td>
+<td>Guardião da Constituição e Manifesto. Imutabilidade.</td>
+</tr>
+<tr>
+<td><strong>Architecture Board</strong></td>
+<td>Arquitetos seniores</td>
+<td>Emite ADRs; revoga ADRs obsoletos; resolve conflitos cross-ADR.</td>
+</tr>
+<tr>
+<td><strong>Editorial Committee</strong></td>
+<td>Editores + Arquiteto</td>
+<td>Aprovação/rejeição de Standards (ASM/AS). Promoção de maturidade.</td>
+</tr>
+<tr>
+<td><strong>Engineering Lead</strong></td>
+<td>Engenharia</td>
+<td>Aprovação técnica (Technical Review).</td>
+</tr>
+<tr>
+<td><strong>Scientific Reviewer</strong></td>
+<td>Pesquisa</td>
+<td>Aprovação científica (Scientific Review).</td>
+</tr>
+<tr>
+<td><strong>Implementation Curator</strong></td>
+<td>Comitê Editorial</td>
+<td>Reconhece Reference Implementations.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="82-quem-pode-fazer-o-que">8.2 Quem pode fazer o quê</h3>
+<table>
+<thead>
+<tr>
+<th>Ação</th>
+<th>Quem autoriza</th>
+<th>Quórum</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Aprovar Standard (qualquer nível de maturidade)</td>
+<td>Editorial Committee</td>
+<td>Maioria 2/3</td>
+</tr>
+<tr>
+<td>Rejeitar Standard</td>
+<td>Editorial Committee</td>
+<td>Maioria 2/3</td>
+</tr>
+<tr>
+<td>Substituir Standard</td>
+<td>Editorial Committee + Replacement Published</td>
+<td>Unanimidade</td>
+</tr>
+<tr>
+<td>Depreciar Standard/Requirement</td>
+<td>Editorial Committee + ADR publicado</td>
+<td>Maioria 2/3</td>
+</tr>
+<tr>
+<td>Publicar Standard (qualquer maturidade)</td>
+<td>Editorial Committee</td>
+<td>Maioria 2/3</td>
+</tr>
+<tr>
+<td>Promover maturidade Draft → Technical Review</td>
+<td>Editorial Committee (revê estrutura)</td>
+<td>Maioria simples</td>
+</tr>
+<tr>
+<td>Promover Technical → Scientific Review</td>
+<td>Scientific Reviewer + Editorial Committee</td>
+<td>1 voto científico + maioria 2/3 editorial</td>
+</tr>
+<tr>
+<td>Promover Scientific → Accepted</td>
+<td>Editorial Committee + Scientific Reviewer</td>
+<td>Unanimidade</td>
+</tr>
+<tr>
+<td>Promover Accepted → Published</td>
+<td>Editorial Committee</td>
+<td>Maioria 2/3</td>
+</tr>
+<tr>
+<td>Promover Published → Verified</td>
+<td>CI (Conformance Suite passa)</td>
+<td>Automático</td>
+</tr>
+<tr>
+<td>Promover Verified → Reference Implementation</td>
+<td>Editorial Committee (reconhece implementação exemplar)</td>
+<td>Unanimidade</td>
+</tr>
+<tr>
+<td>Transição para Superseded</td>
+<td>Editorial Committee + Replacement Published</td>
+<td>Unanimidade</td>
+</tr>
+<tr>
+<td>Transição para Archived</td>
+<td>Architecture Board</td>
+<td>Maioria 2/3</td>
+</tr>
+<tr>
+<td>Emendar este ADR (ADR-0006)</td>
+<td>Architecture Board + 2/3 Editorial Committee</td>
+<td>Maioria 3/4 combinada</td>
+</tr>
+</tbody>
+</table>
+<h3 id="83-conflitos-de-governanca">8.3 Conflitos de governança</h3>
+<ul>
+<li>Disputas entre papéis SHALL ser resolvidas pelo <strong>Architecture Board</strong>.</li>
+<li>Decisões do Architecture Board podem ser apeladas à Liderança AraOS (Constitutional Guardian).</li>
+<li>Apelações NÃO suspendem a decisão durante o processo.</li>
+</ul>
+<hr />
+<h2 id="REDACTED">9. Foundation Freeze — Declaração Oficial</h2>
+<blockquote>
+<h3 id="91-declaracao">§9.1 Declaração</h3>
+<p>A partir da aceitação deste ADR-0006, a infraestrutura
+normativa do AraOS está <strong>oficialmente congelada</strong>.</p>
+</blockquote>
+<h3 id="92-componentes-congelados">9.2 Componentes congelados</h3>
+<table>
+<thead>
+<tr>
+<th>Componente</th>
+<th>Status</th>
+<th>Bump de versão permitido?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Constituição (Lex AraOS)</td>
+<td>Imutável</td>
+<td>❌ Não</td>
+</tr>
+<tr>
+<td>Manifesto</td>
+<td>Imutável</td>
+<td>❌ Não</td>
+</tr>
+<tr>
+<td>AS-000 Language Specification</td>
+<td>Estável</td>
+<td>✅ Apenas PATCH (typos/clarificações)</td>
+</tr>
+<tr>
+<td>ASM-001 Specification Meta Model</td>
+<td>Estável</td>
+<td>✅ Apenas PATCH (typos/clarificações)</td>
+</tr>
+<tr>
+<td>AraOS Library pipeline</td>
+<td>Estável</td>
+<td>✅ Apenas PATCH</td>
+</tr>
+<tr>
+<td>Maturity Model 9 estados</td>
+<td>Estável</td>
+<td>✅ Apenas PATCH</td>
+</tr>
+<tr>
+<td>Dependency Graph rules</td>
+<td>Estável</td>
+<td>✅ Apenas PATCH</td>
+</tr>
+<tr>
+<td>Traceability Chain</td>
+<td>Estável</td>
+<td>✅ Apenas PATCH</td>
+</tr>
+<tr>
+<td>Machine Readability model</td>
+<td>Estável</td>
+<td>✅ Apenas PATCH</td>
+</tr>
+<tr>
+<td>Conformance Suite structure</td>
+<td>Estável</td>
+<td>✅ Apenas PATCH</td>
+</tr>
+<tr>
+<td>Requisitos normativos deste ADR-0006</td>
+<td>Estável</td>
+<td>❌ Não (mudanças exigem novo ADR)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="REDACTED">9.3 Processo para mudança na infraestrutura congelada</h3>
+<p>Mudanças na infraestrutura congelada SHALL exigir:</p>
+<ol>
+<li><strong>Novo ADR específico</strong> descrevendo a mudança proposta.</li>
+<li><strong>Aprovação unânime</strong> do Editorial Committee.</li>
+<li><strong>Migration Plan documentado</strong> caso a mudança quebre compatibilidade.</li>
+<li><strong>Foundation Thaw explícito</strong> — um ADR declarando o descongelamento.</li>
+</ol>
+<h3 id="94-foundation-thaw">9.4 Foundation Thaw</h3>
+<p>Em circunstâncias excepcionais (ex: descoberta de bug estrutural grave), o Foundation Freeze pode ser revertido via:</p>
+<ol>
+<li>ADR específico intitulado <code>ADR-XXXX: Foundation Thaw — &lt;motivo&gt;</code>.</li>
+<li>Aprovação unânime do Architecture Board + 2/3 Editorial Committee.</li>
+<li>Migration Plan completo.</li>
+<li>Version bump MAJOR de todos os componentes afetados.</li>
+</ol>
+<h3 id="REDACTED">9.5 Próximos sprints pertencem ao domínio clínico</h3>
+<blockquote>
+<p><strong>A partir deste ADR, todos os próximos sprints pertencem exclusivamente ao domínio clínico ou à implementação.</strong></p>
+</blockquote>
+<p>Isso significa:</p>
+<ul>
+<li>❌ Novos componentes de infraestrutura normativa não serão criados sem Foundation Thaw.</li>
+<li>✅ Novos AS podem ser escritos (usando estrutura existente).</li>
+<li>✅ Implementações concretas podem ser produzidas.</li>
+<li>✅ Papers podem ser desenvolvidos.</li>
+<li>✅ ADRs podem ser emitidos (sobre domínio clínico).</li>
+<li>❌ Mudanças em AS-000, ASM-001, Maturity Model exigem novo ADR + thaw.</li>
+</ul>
+<hr />
+<h2 id="REDACTED">10. Confirmação de Uso Futuro da Infraestrutura Existente</h2>
+<p>AS-003, AS-004, AS-005, AS-006 e quaisquer Standards futuros:</p>
+<h3 id="REDACTED">10.1 Usarão a infraestrutura existente SEM modificá-la</h3>
+<table>
+<thead>
+<tr>
+<th>Componente existente</th>
+<th>Como AS-003..006 o usará</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AS-000 §3 (vocabulário)</td>
+<td>Termos canônicos referenciados sem redefinição.</td>
+</tr>
+<tr>
+<td>ASM-001 §1–§17 (estrutura)</td>
+<td>16 seções canônicas seguidas literalmente.</td>
+</tr>
+<tr>
+<td>ASM-001 §10 (Requirement ID)</td>
+<td>IDs no formato <code>AS-XXX-REQ-NNNN</code>.</td>
+</tr>
+<tr>
+<td>ASM-001 §12 (verbos)</td>
+<td>RFC 2119 (SHALL, MUST, SHOULD, MAY).</td>
+</tr>
+<tr>
+<td>ASM-001 §21 (Maturity)</td>
+<td>9 estados com ordem Published→Verified→Reference Implementation.</td>
+</tr>
+<tr>
+<td>ASM-001 §22 (Dependency)</td>
+<td>Apenas dependências downward.</td>
+</tr>
+<tr>
+<td>ASM-001 §23 (Traceability)</td>
+<td>Cadeia completa até Evidence.</td>
+</tr>
+<tr>
+<td>Library pipeline</td>
+<td>Publicação em <code>docs/library/standards/</code> via <code>render_html.py</code>.</td>
+</tr>
+<tr>
+<td>Conformance Suite</td>
+<td>Estrutura em <code>tests/conformance/AS-XXX/</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="REDACTED">10.2 Não modificarão a infraestrutura</h3>
+<ul>
+<li>❌ Não criarão novos Maturity States.</li>
+<li>❌ Não criarão novos verbos normativos.</li>
+<li>❌ Não criarão novos formatos de Requirement ID.</li>
+<li>❌ Não criarão novos formatos de URN.</li>
+<li>❌ Não modificarão AS-000 sem Foundation Thaw.</li>
+<li>❌ Não modificarão ASM-001 sem Foundation Thaw.</li>
+</ul>
+<h3 id="REDACTED">10.3 Estenderão (não modificarão) via adição</h3>
+<ul>
+<li>✅ Novos AS serão adicionados conforme catálogo AS-001..006.</li>
+<li>✅ Novos Requirements serão adicionados com IDs incrementais.</li>
+<li>✅ Novos Axiomas serão adicionados (apenas no AS específico, não no AS-000).</li>
+<li>✅ Novos Paperse ADRs serão emitidos sobre domínio clínico.</li>
+</ul>
+<hr />
+<h2 id="REDACTED">11. Mecanismo de Revisão Deste Próprio ADR</h2>
+<h3 id="111-emendas">11.1 Emendas</h3>
+<p>Este ADR pode ser emendado via:</p>
+<ol>
+<li>Novo ADR referenciando <code>ADR-0006</code> e propondo mudança específica.</li>
+<li>Quórum: Architecture Board + 2/3 Editorial Committee (maioria 3/4 combinada).</li>
+<li>A emenda SHALL ser listada no §11.4 deste ADR.</li>
+</ol>
+<h3 id="112-revogacao">11.2 Revogação</h3>
+<p>Este ADR pode ser revogado apenas por:</p>
+<ol>
+<li>ADR explícito declarando revogação.</li>
+<li>Aprovação unânime do Architecture Board + Editorial Committee.</li>
+<li>Substituto SHALL ser publicado simultaneamente.</li>
+</ol>
+<h3 id="REDACTED">11.3 Imutabilidade das decisões aqui</h3>
+<p>As decisões de §3 (Hierarquia), §4 (Matriz), §9 (Foundation Freeze) são <strong>decisões fundacionais</strong> e SHALL ser revistas apenas com:</p>
+<ul>
+<li>Quórum qualificado de 4/5 do Architecture Board.</li>
+<li>2/3 do Editorial Committee.</li>
+<li>Constitutional Guardian presente na deliberação.</li>
+</ul>
+<h3 id="114-historico-de-emendas">11.4 Histórico de emendas</h3>
+<table>
+<thead>
+<tr>
+<th>Versão</th>
+<th>Data</th>
+<th>Status</th>
+<th>Mudanças</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1.0</td>
+<td>2026-07-18</td>
+<td>Proposto</td>
+<td>Redação inaugural.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="12-consequencias">12. Consequências</h2>
+<h3 id="121-positivas">12.1 Positivas</h3>
+<ul>
+<li><strong>Resolução determinística de conflitos</strong> — matriz clara.</li>
+<li><strong>Foundation Freeze declarado</strong> — infraestrutura protegida contra mudanças casuais.</li>
+<li><strong>Papéis formais</strong> — quem decide o quê está claro.</li>
+<li><strong>Migration Window explícito</strong> — depreciações previsíveis.</li>
+<li><strong>Confirmação de uso futuro</strong> — Standards futuros não inventarão nova infraestrutura.</li>
+</ul>
+<h3 id="122-negativas">12.2 Negativas</h3>
+<ul>
+<li><strong>Burocracia adicionada</strong> — toda mudança requer ADR formal.</li>
+<li><strong>Risco de paralisia</strong> — quóruns altos podem bloquear mudanças legítimas.</li>
+<li><strong>Foundation Thaw necessário</strong> para qualquer correção estrutural.</li>
+</ul>
+<h3 id="123-mitigacoes">12.3 Mitigações</h3>
+<ul>
+<li><strong>Quóruns altos</strong> são para <strong>mudanças estruturais</strong>, não para mudanças editoriais.</li>
+<li><strong>Editorial Committee</strong> é simples maioria para mudanças PATCH/MINOR.</li>
+<li><strong>Foundation Thaw</strong> existe para emergências.</li>
+</ul>
+<hr />
+<h2 id="13-alternativas-consideradas">13. Alternativas Consideradas</h2>
+<h3 id="REDACTED">13.1 "Sem ADR formal; resolver por conversa"</h3>
+<ul>
+<li><strong>Rejeitado.</strong> Leva a decisões inconsistentes e política por trás.</li>
+<li>Solução proposta: matriz + papéis formais.</li>
+</ul>
+<h3 id="REDACTED">13.2 "ADR-0006 define papéis mas sem matriz"</h3>
+<ul>
+<li><strong>Rejeitado.</strong> Matriz ausente deixa lacunas.</li>
+<li>Solução proposta: matriz exaustiva (§4).</li>
+</ul>
+<h3 id="REDACTED">13.3 "Foundation Freeze sem Foundation Thaw"</h3>
+<ul>
+<li><strong>Rejeitado.</strong> Sem thaw, bugs estruturais graves são intratáveis.</li>
+<li>Solução proposta: thaw com quórum qualificado.</li>
+</ul>
+<h3 id="REDACTED">13.4 "Quórum de unanimidade para tudo"</h3>
+<ul>
+<li><strong>Rejeitado.</strong> Paralisia garantida.</li>
+<li>Solução proposta: maioria simples para PATCH/MINOR, maioria qualificada para MAJOR/Breaking.</li>
+</ul>
+<hr />
+<h2 id="14-apendices">14. Apêndices</h2>
+<h3 id="141-apendice-a-glossario">14.1 Apêndice A — Glossário</h3>
+<table>
+<thead>
+<tr>
+<th>Termo</th>
+<th>Significado</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Normative</strong></td>
+<td>Que tem força de norma; pode ser citado como autoridade.</td>
+</tr>
+<tr>
+<td><strong>Precedence</strong></td>
+<td>Ordem de prioridade quando dois documentos divergem.</td>
+</tr>
+<tr>
+<td><strong>Supersession</strong></td>
+<td>Substituição formal de um documento por outro.</td>
+</tr>
+<tr>
+<td><strong>Deprecation</strong></td>
+<td>Marcação de um componente como obsoleto mas ainda funcional.</td>
+</tr>
+<tr>
+<td><strong>Foundation Freeze</strong></td>
+<td>Congelamento oficial da infraestrutura normativa.</td>
+</tr>
+<tr>
+<td><strong>Foundation Thaw</strong></td>
+<td>Descongelamento da infraestrutura via ADR específico.</td>
+</tr>
+<tr>
+<td><strong>Migration Window</strong></td>
+<td>Período entre deprecação e archiving.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="REDACTED">14.2 Apêndice B — Histórico de mudanças</h3>
+<table>
+<thead>
+<tr>
+<th>Versão</th>
+<th>Data</th>
+<th>Status</th>
+<th>Mudanças</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1.0</td>
+<td>2026-07-18</td>
+<td>Proposto</td>
+<td>Redação inaugural. Define hierarquia 9 níveis, matriz de precedência 30 entradas, resolução de 7 tipos de ambiguidade, política de depreciação, change control SemVer + editorial, governança com 6 papéis, Foundation Freeze com Thaw.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<p><strong>Fim do ADR-0006.</strong></p>
+<blockquote>
+<p>Este ADR encerra <strong>definitivamente</strong> a infraestrutura normativa do AraOS.
+Próximos documentos tratarão apenas do domínio clínico ou da implementação.</p>
+</blockquote>
+</body>
+</html>
