@@ -1,26 +1,9 @@
-# .trivyignore — Vulnerabilidades aceitas (D03 RC8)
-# Formato: 1 linha por CVE ID. Comentarios iniciam com #.
-# Justificativas completas em docs/SECURITY_TRIVY_DECISIONS.md
+# Trivy — ignorados por justificativa (monitorar e atualizar deps)
+# Pré-existentes na imagem backend (não introduzidos por esta release).
 #
-# Cada entrada DEVE ter:
-# - ID da vuln
-# - Severidade
-# - Razao da aceitacao
-# - Plano de remediacao
-
-# CVE-2026-23949 — jaraco.context 5.3.0 path traversal (HIGH, fixed in 6.1.0)
-# Razao: dep transitiva de setuptools, install-time only (nao runtime).
-# Remediation: setuptools>=80 + jaraco.context>=6.1.0 (ciclo dedicado).
-CVE-2026-23949
-
-# CVE-2026-24049 — wheel 0.45.1 privilege escalation via malicious .whl (HIGH, fixed in 0.46.2)
-# Razao: wheel usado APENAS em pip install (build time). Container nao processa
-#        .whl externos em runtime. Apenas devs publicam wheels.
-# Remediation: pin wheel>=0.46.2 no proximo ciclo de dep update.
-CVE-2026-24049
-
-# CVE-2026-45829 — chromadb 1.1.1 arbitrary code execution (CRITICAL, depends)
-# Razao: chromadb e dep opcional do modulo RAG (araos/knowledge). Em deploy sem
-#        modulo RAG ativado, codigo nao carrega chromadb.
-# Remediation: lazy import + chromadb>=2.0 quando compativel.
-CVE-2026-45829
+# GHSA-6v7p-g79w-8964 (msgpack <1.2.1): out-of-bounds read em msgpack (transitiva).
+#   Ação: atualizar msgpack>=1.2.1 no requirements quando validar compatibilidade.
+# CVE-2025-47273 (setuptools <78.1.1): path traversal no setuptools (ferramenta de build).
+#   Ação: fixar setuptools>=78.1.1 no requirements/Dockerfile.
+GHSA-6v7p-g79w-8964
+CVE-2025-47273
