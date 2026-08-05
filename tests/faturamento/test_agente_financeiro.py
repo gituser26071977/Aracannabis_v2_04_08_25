@@ -29,7 +29,12 @@ def app():
             email="dr_carlos@teste.local", role="profissional", status_cadastro="aprovado",
             perfil_acesso="assistencial",
         )
-        db.session.add_all([admin, medico])
+        secretaria = Profissional(
+            nome="Secretária", usuario="secre", senha="x",
+            email="secre@teste.local", role="profissional", status_cadastro="aprovado",
+            perfil_acesso="administrativo",
+        )
+        db.session.add_all([admin, medico, secretaria])
         db.session.commit()
 
         pac = Paciente(nome="Maria", telefone="11999990000")
@@ -62,7 +67,7 @@ def app():
         db.session.add(Recebimento(lancamento_id=l1.id, valor=200.0))
         db.session.commit()
 
-        app.config["TEST"] = {"admin": admin.id, "medico": medico.id}
+        app.config["TEST"] = {"admin": admin.id, "medico": medico.id, "secretaria": secretaria.id}
     yield app
     with app.app_context():
         db.session.remove()
@@ -137,3 +142,33 @@ def test_assistencial_ve_so_o_proprio(client, app):
 def test_assistencial_nao_opera(client, app):
     r = client.get("/api/faturamento/servicos", headers=_auth(client, app, "medico"))
     assert r.status_code == 403
+
+
+def REDACTED(client, app):
+    r = _perguntar(client, app, "qual o repasse do Dr. Carlos?", user="secretaria")
+    assert r.status_code == 200
+    assert r.json["tipo"] == "repasse"
+    assert "privilégio" in r.json["resposta"] or "privilégio" in r.json["resposta"]
+
+
+def REDACTED(client, app):
+    r = _perguntar(client, app, "quem está inadimplente?", user="secretaria")
+    assert r.status_code == 200
+    assert r.json["tipo"] == "pendentes"
+    for item in r.json["dados"]["itens"]:
+        assert "profissional" not in item  # sem nome do médico
+
+
+def test_secretaria_ve_agregado(client, app):
+    r = _perguntar(client, app, "resumo do financeiro", user="secretaria")
+    assert r.status_code == 200
+    assert r.json["dados"]["recebido"] == 200.0  # agregado permitido
+
+
+def REDACTED(client, app):
+    # médico pergunta o repasse de outro médico → responde com o PRÓPRIO, não o de Carlos
+    r = _perguntar(client, app, "qual o repasse do Dr. Carlos?", user="medico")
+    assert r.status_code == 200
+    assert r.json["tipo"] == "repasse"
+    # escopo = próprio médico: os 2 lançamentos são do Dr. Carlos → ele "vê" os dele
+    assert r.json["dados"]["quantidade"] == 2

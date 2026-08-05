@@ -82,12 +82,17 @@ AREA_ADMINISTRATIVA = [
 
 
 def area_da_rota(path: str) -> Optional[str]:
-    """Classifica o path em 'assistencial' | 'administrativo' | None."""
-    # Exceção controlada: o assistencial pode LER a própria situação financeira
-    # (endpoints read-only de faturamento do próprio profissional).
+    """Classifica o path em 'assistencial' | 'administrativo' | None.
+
+    Rotas de leitura financeira do próprio profissional (minha-situacao e
+    agente) são abertas a qualquer usuário autenticado — o escopo por perfil
+    é aplicado DENTRO do serviço (assistencial vê o próprio; gestor vê tudo;
+    secretária vê agregado). Retornam None (sem área) para não serem
+    bloqueadas por nenhum perfil.
+    """
     for prefixo in REDACTED:
         if path == prefixo or path.startswith(prefixo + "/"):
-            return PERFIL_ASSISTENCIAL
+            return None
     for prefixo in AREA_ASSISTENCIAL:
         if path == prefixo or path.startswith(prefixo + "/"):
             return PERFIL_ASSISTENCIAL
@@ -133,6 +138,22 @@ def tem_acesso(perfil: str, area: str) -> bool:
     if perfil == PERFIL_SOLO:
         return True
     return perfil == area
+
+
+def eh_gestor_financeiro(profissional: Profissional) -> bool:
+    """True se o usuário pode ver o financeiro individual de qualquer profissional.
+
+    Privilégio de GESTOR financeiro: admin/superadmin/manager ou perfil solo.
+    Secretárias/recepção (administrativo básico) NÃO têm — veem apenas
+    dados agregados, nunca o financeiro individual de um médico.
+    """
+    if profissional is None:
+        return False
+    if profissional.role in ("admin", "superadmin", "manager"):
+        return True
+    if resolver_perfil(profissional) == PERFIL_SOLO:
+        return True
+    return False
 
 
 def verificar_acesso(profissional: Profissional, path: str) -> bool:

@@ -178,10 +178,11 @@ def consultar_pendentes(profissional: Optional[Profissional]) -> Dict[str, Any]:
 def consultar_repasse(profissional: Optional[Profissional], nome: Optional[str]) -> Dict[str, Any]:
     q = _query_base(profissional)
     alvo = None
-    if nome:
+    if nome and profissional is None:
+        # escopo aberto (gestor): permite filtrar por outro profissional
         alvo = Profissional.query.filter(Profissional.nome.ilike(f"%{nome}%")).first()
-    if alvo:
-        q = q.filter(LancamentoFaturamento.profissional_id == alvo.id)
+        if alvo:
+            q = q.filter(LancamentoFaturamento.profissional_id == alvo.id)
     lancamentos = q.all()
     return {
         "profissional": alvo.nome if alvo else (profissional.nome if profissional else "geral"),
@@ -298,7 +299,18 @@ def responder(
     perfil: str,
     profissional: Optional[Profissional],
 ) -> Dict[str, Any]:
-    """Responde à pergunta financeira. Somente leitura."""
+    """Responde à pergunta financeira. Somente leitura.
+
+    Privilégios de visibilidade:
+    - gestor financeiro (admin/superadmin/manager/solo): vê o financeiro de
+      todos os profissionais (inclusive repasse individual).
+    - secretária/recepção (administrativo): vê apenas agregados — nunca o
+      repasse individual de um médico.
+    - assistencial (médico): apenas o próprio financeiro.
+    """
+    from services.perfil_acesso import eh_gestor_financeiro
+
+    gestor = eh_gestor_financeiro(profissional)
     escopo = None if perfil in ("administrativo", "solo") else profissional
 
     intencao = classificar_intencao(pergunta)
@@ -308,6 +320,18 @@ def responder(
         return {
             "tipo": tipo,
             "resposta": _formato_estruturado(tipo, {}, pergunta),
+        }
+
+    # Repasse individual de outro médico: somente gestor financeiro.
+    # Administrativo (secretária) → negado. Assistencial → sempre o próprio
+    # (ignora o nome citado na pergunta).
+    if tipo == "repasse" and perfil == "administrativo" and not gestor:
+        return {
+            "tipo": tipo,
+            "resposta": (
+                "Você não tem privilégio para ver o repasse individual dos "
+                "profissionais. Consulte o gestor financeiro."
+            ),
         }
 
     if tipo == "receita":
@@ -320,6 +344,11 @@ def responder(
         dados = consultar_por_convenio(escopo, intencao.get("convenio"))
     else:
         dados = consultar_resumo(escopo)
+
+    # Não-gestor (secretária/recepção): esconde o detalhe por profissional.
+    if not gestor and isinstance(dados.get("itens"), list):
+        for item in dados["itens"]:
+            item.pop("profissional", None)
 
     resposta = _formato_ia(pergunta, tipo, dados)
     return {"tipo": tipo, "dados": dados, "resposta": resposta}
