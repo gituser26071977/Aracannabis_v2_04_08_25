@@ -1,9 +1,14 @@
-# Trivy — ignorados por justificativa (monitorar e atualizar deps)
-# Pré-existentes na imagem backend (não introduzidos por esta release).
+# Trivy — ignorados por justificativa (monitorar; sem fix prático).
 #
-# GHSA-6v7p-g79w-8964 (msgpack <1.2.1): out-of-bounds read em msgpack (transitiva).
-#   Ação: atualizar msgpack>=1.2.1 no requirements quando validar compatibilidade.
-# CVE-2025-47273 (setuptools <78.1.1): path traversal no setuptools (ferramenta de build).
-#   Ação: fixar setuptools>=78.1.1 no requirements/Dockerfile.
+# GHSA-6v7p-g79w-8964 (msgpack): corrigido via requirements (>=1.2.1).
+# CVE-2025-47273 (setuptools): corrigido via requirements (>=78.1.1).
+#
+# CVE-2026-23949 (jaraco.context 5.3.0) e CVE-2026-24049 (wheel 0.45.1):
+#   ocorrencias VENDORED em `setuptools/_vendor/*` — embutidas pelo setuptools
+#   na toolchain de build; nao corrigiveis por pin de requirements e nao
+#   exploraveis em runtime (codigo de build). Mesmo padrao da nota D03 FASE 7
+#   do workflow (HIGHs acompanhados sem bloquear deploy). 0 CRITICALs.
 GHSA-6v7p-g79w-8964
 CVE-2025-47273
+CVE-2026-23949
+CVE-2026-24049
