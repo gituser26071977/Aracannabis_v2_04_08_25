@@ -3,7 +3,18 @@
 # Pastas de dependências e ambientes virtuais
 node_modules
 venv
-python_env
+venv/
+venv_local/
+venv_arac/
+venv_new/
+venv_multi_tenant/
+python_env/
+.venv/
+.venv-1/
+.venv-test/
+.venv_test/
+.venv_arac/
+.venv_new/
 "GAVETA DE DADOS"
 instance
 __pycache__
@@ -45,14 +56,6 @@ uploads/
 Backup/
 "GAVETA DE DADOS"/
 "GAVETA DE DADOS "/
-node_modules/
-frontend/node_modules/
-.venv/
-venv_local/
-venv_arac/
-venv_new/
-venv_multi_tenant/
-python_env/
 .pytest_cache/
 .ruff_cache/
 *.log
