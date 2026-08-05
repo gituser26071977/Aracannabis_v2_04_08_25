@@ -76,6 +76,7 @@ AREA_ADMINISTRATIVA = [
     "/api/import-export",
     "/api/usage",
     "/api/lgpd",
+    "/api/onboarding",
 ]
 
 

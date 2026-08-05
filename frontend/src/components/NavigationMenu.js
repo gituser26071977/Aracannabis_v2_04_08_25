@@ -103,6 +103,13 @@ const NavigationMenu = ({ open, onClose }) => {
       auth: true,
       area: 'administrativo',
     },
+    {
+      text: '🧩 Cadastro de pacientes',
+      icon: <PersonAddIcon />,
+      path: '/onboarding-pacientes',
+      auth: true,
+      area: 'administrativo',
+    },
   ];
 
   // Itens do módulo "Gestão da Clínica" (ex-"Associação" / SGAC).

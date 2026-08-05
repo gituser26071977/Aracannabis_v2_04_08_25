@@ -1409,6 +1409,56 @@ class PreConsulta(db.Model):
         }
 
 
+class OnboardingPaciente(db.Model):
+    """Item de onboarding/pendência de paciente (padrão SGA).
+
+    Criação: cadastro administrativo com dados incompletos ou duplicado de um
+    paciente existente. O administrativo confirma (cria/usa existente) ou
+    descarta na fila de pendências.
+    """
+
+    __tablename__ = "onboarding_pacientes"
+
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(200), nullable=True)
+    telefone = db.Column(db.String(32), nullable=True)
+    cpf = db.Column(db.String(20), nullable=True)
+    email = db.Column(db.String(200), nullable=True)
+    queixa = db.Column(db.Text, nullable=True)
+    origem = db.Column(db.String(20), default="admin", nullable=False)  # admin | manual | intake
+    dados_sugeridos = db.Column(db.JSON, nullable=True)
+    motivo = db.Column(db.String(30), default="dados_incompletos", nullable=False)
+    # dados_incompletos | duplicado | revisar
+    status = db.Column(db.String(20), default="pendente", nullable=False)  # pendente | aprovado | descartado
+    duplicado_de = db.Column(
+        db.Integer, db.ForeignKey("pacientes.id", ondelete="SET NULL"), nullable=True
+    )
+    criado_por = db.Column(db.String(120), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    duplicado = db.relationship("Paciente")
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "nome": self.nome,
+            "telefone": self.telefone,
+            "cpf": self.cpf,
+            "email": self.email,
+            "queixa": self.queixa,
+            "origem": self.origem,
+            "dados_sugeridos": self.dados_sugeridos,
+            "motivo": self.motivo,
+            "status": self.status,
+            "duplicado_de": self.duplicado_de,
+            "duplicado_nome": self.duplicado.nome if self.duplicado else None,
+            "criado_por": self.criado_por,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
 class SolicitacoesCadastro(db.Model):
     __tablename__ = "solicitacoes_cadastro"
 

@@ -37,6 +37,7 @@ import AIChatPage from './pages/AIChatPage';
 import BillingPage from './pages/BillingPage';
 import FaturamentoPage from './pages/FaturamentoPage';
 import DailyBoardPage from './pages/DailyBoardPage';
+import OnboardingPacientesPage from './pages/OnboardingPacientesPage';
 import AIConfigPage from './pages/AIConfigPage';
 import PasswordSetupRequestPage from './pages/PasswordSetupRequestPage';
 import DefinePasswordPage from './pages/DefinePasswordPage';
@@ -714,6 +715,14 @@ function AppContent() {
               element={
                 <ProtectedRoute>
                   <FaturamentoPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/onboarding-pacientes"
+              element={
+                <ProtectedRoute>
+                  <OnboardingPacientesPage />
                 </ProtectedRoute>
               }
             />
