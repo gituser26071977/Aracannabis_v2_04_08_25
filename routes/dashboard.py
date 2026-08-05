@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from models import db, Paciente, Dosagem, Evolucao, Profissional
+from models import db, Paciente, Dosagem, Evolucao, Profissional, PreConsulta
 from sqlalchemy import func
 from datetime import datetime, timedelta
 
@@ -92,3 +92,56 @@ def get_dashboard_stats():
         'dose_estavel_pct': round(dose_estavel_pct, 1),
         'principais_condicoes': condicoes_data
     }), 200
+
+
+@dashboard_bp.route('/pacientes-do-dia', methods=['GET'])
+@jwt_required()
+def pacientes_do_dia():
+    """Daily Board do profissional: consultas de hoje + queixa/status da pré-consulta.
+
+    Retorna os atendimentos do dia do usuário logado (não cancelados), com
+    dados do paciente e a pré-consulta mais recente (se houver).
+    """
+    from models import Consulta
+
+    current_user_id = get_jwt_identity()
+    hoje = datetime.utcnow().date()
+    inicio = datetime.combine(hoje, datetime.min.time())
+    fim = datetime.combine(hoje, datetime.max.time())
+
+    consultas = (
+        Consulta.query.filter(
+            Consulta.profissional_id == current_user_id,
+            Consulta.data_hora >= inicio,
+            Consulta.data_hora <= fim,
+            Consulta.status != 'cancelada',
+        )
+        .order_by(Consulta.data_hora.asc())
+        .all()
+    )
+
+    itens = []
+    for c in consultas:
+        pre = (
+            PreConsulta.query.filter_by(paciente_id=c.paciente_id)
+            .order_by(PreConsulta.data_pre_consulta.desc())
+            .first()
+        )
+        itens.append({
+            'consulta_id': c.id,
+            'hora': c.data_hora.strftime('%H:%M') if c.data_hora else None,
+            'status': c.status,
+            'tipo': c.tipo_consulta,
+            'paciente_id': c.paciente_id,
+            'paciente_nome': c.paciente.nome if c.paciente else None,
+            'telefone': c.paciente.telefone if c.paciente else None,
+            'pre_consulta': {
+                'feita': pre is not None,
+                'queixa_principal': pre.queixa_principal if pre else None,
+                'intensidade': pre.intensidade if pre else None,
+                'canal': pre.canal if pre else None,
+                'status': pre.status if pre else None,
+            } if pre else {'feita': False},
+        })
+
+    return jsonify({'data': hoje.isoformat(), 'total': len(itens), 'pacientes': itens}), 200

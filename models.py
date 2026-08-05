@@ -203,10 +203,10 @@ class Paciente(db.Model):
     profissional_responsavel_id = db.Column(
         db.Integer,
         db.ForeignKey("profissionais.id", ondelete="SET NULL"),
-        nullable=False,
+        nullable=True,  # autoregistro pelo intake pode não ter responsável ainda
     )
     nome = db.Column(db.String, nullable=False)
-    data_nascimento = db.Column(db.Date, nullable=False)
+    data_nascimento = db.Column(db.Date, nullable=True)  # opcional (autoregistro pelo intake)
     cpf = db.Column(db.String)
     genero = db.Column(db.String)
     telefone = db.Column(db.String)
@@ -1359,6 +1359,52 @@ class Recebimento(db.Model):
             "forma_pagamento": self.forma_pagamento,
             "data": self.data.isoformat() if self.data else None,
             "observacao": self.observacao,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class PreConsulta(db.Model):
+    """Pré-consulta coletada pelo Ara Intake e vinculada ao paciente (SIAP).
+
+    Criada automaticamente quando a pré-consulta é concluída no intake
+    (cadastro de paciente por autoregistro). Alimenta o Dashboard do médico
+    (queixa do dia, status da pré-consulta).
+    """
+
+    __tablename__ = "pre_consultas"
+
+    id = db.Column(db.Integer, primary_key=True)
+    paciente_id = db.Column(
+        db.Integer, db.ForeignKey("pacientes.id", ondelete="CASCADE"), nullable=False
+    )
+    queixa_principal = db.Column(db.Text, nullable=True)
+    intensidade = db.Column(db.String(20), nullable=True)
+    canal = db.Column(db.String(20), default="web", nullable=False)  # web | telegram
+    status = db.Column(
+        db.String(20), default="concluida", nullable=False
+    )  # concluida | revisada
+    intake_interview_id = db.Column(db.String(64), nullable=True, unique=True)
+    araos_patient_id = db.Column(db.String(64), nullable=True, index=True)
+    gene_expressions = db.Column(db.JSON, nullable=True)
+    data_pre_consulta = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    paciente = db.relationship("Paciente")
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "paciente_id": self.paciente_id,
+            "queixa_principal": self.queixa_principal,
+            "intensidade": self.intensidade,
+            "canal": self.canal,
+            "status": self.status,
+            "intake_interview_id": self.intake_interview_id,
+            "araos_patient_id": self.araos_patient_id,
+            "data_pre_consulta": self.data_pre_consulta.isoformat()
+            if self.data_pre_consulta
+            else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 

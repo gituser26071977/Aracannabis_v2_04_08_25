@@ -336,6 +336,9 @@ def create_app(config_obj=None):
     from routes.faturamento import faturamento_bp
 
     app.register_blueprint(faturamento_bp, url_prefix="/api/faturamento")
+    from routes.intake_integration import intake_integration_bp
+
+    app.register_blueprint(intake_integration_bp, url_prefix="/api")
     app.register_blueprint(webhooks_bp, url_prefix="/api/webhooks")
     app.register_blueprint(ai_chat_simples_bp, url_prefix="/api")
     from routes.utils import utils_bp

@@ -36,6 +36,7 @@ import AIDashboard from './pages/AIDashboard';
 import AIChatPage from './pages/AIChatPage';
 import BillingPage from './pages/BillingPage';
 import FaturamentoPage from './pages/FaturamentoPage';
+import DailyBoardPage from './pages/DailyBoardPage';
 import AIConfigPage from './pages/AIConfigPage';
 import PasswordSetupRequestPage from './pages/PasswordSetupRequestPage';
 import DefinePasswordPage from './pages/DefinePasswordPage';
@@ -107,6 +108,18 @@ function AdminRoute({ children }) {
   }
 
   return children;
+}
+
+// Home por perfil: assistencial = Daily Board (lista do dia); demais = dashboard.
+function HomeByProfile() {
+  const { currentUser } = useAuth();
+  const perfil =
+    currentUser?.perfil_efetivo ||
+    (currentUser?.role === 'admin' || currentUser?.role === 'superadmin' ? 'solo' : 'assistencial');
+  if (perfil === 'assistencial') {
+    return <DailyBoardPage />;
+  }
+  return <InternalDashboard />;
 }
 
 // ===== PAGE TRANSITION WRAPPER =====
@@ -610,7 +623,7 @@ function AppContent() {
               path="/dashboard"
               element={
                 <ProtectedRoute>
-                  <InternalDashboard />
+                  <HomeByProfile />
                 </ProtectedRoute>
               }
             />

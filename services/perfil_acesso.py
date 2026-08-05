@@ -32,6 +32,11 @@ PERFIL_SOLO = "solo"
 
 PERFIS_VALIDOS = {PERFIL_ASSISTENCIAL, PERFIL_ADMINISTRATIVO, PERFIL_SOLO}
 
+# Rotas de LEITURA financeira do próprio profissional (exceção p/ assistencial)
+REDACTED = [
+    "/api/faturamento/minha-situacao",
+]
+
 # Esfera ASSISTENCIAL — prontuário/atendimento clínico
 AREA_ASSISTENCIAL = [
     "/api/pacientes",
@@ -76,6 +81,11 @@ AREA_ADMINISTRATIVA = [
 
 def area_da_rota(path: str) -> Optional[str]:
     """Classifica o path em 'assistencial' | 'administrativo' | None."""
+    # Exceção controlada: o assistencial pode LER a própria situação financeira
+    # (endpoints read-only de faturamento do próprio profissional).
+    for prefixo in REDACTED:
+        if path == prefixo or path.startswith(prefixo + "/"):
+            return PERFIL_ASSISTENCIAL
     for prefixo in AREA_ASSISTENCIAL:
         if path == prefixo or path.startswith(prefixo + "/"):
             return PERFIL_ASSISTENCIAL

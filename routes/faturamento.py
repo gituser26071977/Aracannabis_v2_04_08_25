@@ -431,3 +431,48 @@ def estornar_lancamento_view(lancamento_id):
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
     return jsonify({"message": "Lançamento estornado", "lancamento": lancamento.to_dict()}), 200
+
+
+@faturamento_bp.route("/minha-situacao", methods=["GET"])
+@jwt_required()
+def minha_situacao_financeira():
+    """Situação financeira do próprio profissional (read-only, seus lançamentos).
+
+    Visível também ao perfil assistencial (exceção controlada): o médico
+    acompanha o financeiro dos próprios pacientes sem operar o faturamento.
+    """
+    user = _current_user()
+    if not user:
+        return jsonify({"error": "Usuário não encontrado"}), 404
+
+    lancamentos = LancamentoFaturamento.query.filter_by(
+        profissional_id=user.id
+    ).all()
+
+    a_receber = sum(l.valor_receber for l in lancamentos if l.status != "cancelado")
+    recebido = sum(
+        l.valor_receber for l in lancamentos if l.status in ("pago", "parcial")
+    )
+    pendente = sum(
+        (l.valor_receber - sum(r.valor for r in l.recebimentos))
+        for l in lancamentos if l.status in ("pendente", "parcial")
+    )
+    repasse_due = sum(
+        l.valor_repasse for l in lancamentos if l.status != "cancelado"
+    )
+
+    por_status = {"pendente": 0, "parcial": 0, "pago": 0, "cancelado": 0}
+    for l in lancamentos:
+        por_status[l.status] = por_status.get(l.status, 0) + 1
+
+    return jsonify({
+        "profissional_id": user.id,
+        "total_lancado": round(a_receber, 2),
+        "recebido": round(recebido, 2),
+        "pendente": round(max(pendente, 0.0), 2),
+        "repasse_due": round(repasse_due, 2),
+        "por_status": por_status,
+        "lancamentos": [l.to_dict() for l in sorted(
+            lancamentos, key=lambda x: x.data_lancamento, reverse=True
+        )[:50]],
+    }), 200

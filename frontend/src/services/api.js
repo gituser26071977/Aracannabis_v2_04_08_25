@@ -1497,6 +1497,14 @@ export const dashboardService = {
       throw error.response ? error.response.data : { error: 'Erro de conexão' };
     }
   },
+  pacientesDoDia: async () => {
+    try {
+      const response = await api.get('/dashboard/pacientes-do-dia');
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
 };
 
 export const prescricaoConfigService = {
