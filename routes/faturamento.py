@@ -55,13 +55,19 @@ def _is_admin(user: Profissional) -> bool:
 
 
 def admin_required(f):
-    """Requer role admin/superadmin (gestor do sistema)."""
+    """Requer gestor: role admin/superadmin OU perfil solo (acesso pleno)."""
     @wraps(f)
     def decorated(*args, **kwargs):
         user = _current_user()
-        if not user or not _is_admin(user):
-            return jsonify({"error": "Acesso negado. Requer privilégios de gestor."}), 403
-        return f(*args, **kwargs)
+        if not user:
+            return jsonify({"error": "Autenticação necessária."}), 401
+        if user.role in ("admin", "superadmin"):
+            return f(*args, **kwargs)
+        from services.perfil_acesso import resolver_perfil
+
+        if resolver_perfil(user) == "solo":
+            return f(*args, **kwargs)
+        return jsonify({"error": "Acesso negado. Requer perfil gestor/solo."}), 403
     return decorated
 
 

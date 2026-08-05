@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from flask import Flask, jsonify, redirect
+from flask import Flask, jsonify, redirect, request
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from flask_migrate import Migrate
@@ -449,6 +449,39 @@ def create_app(config_obj=None):
     @app.after_request
     def apply_security_headers(response):
         return add_security_headers(response)
+
+    # Controle de acesso por perfil (Assistencial × Administrativo × Solo).
+    # Aplica-se a usuários autenticados em rotas classificadas por área.
+    @app.before_request
+    def enforce_perfil_acesso():
+        if request.method == "OPTIONS":
+            return None
+        from flask_jwt_extended import get_jwt_identity, verify_jwt_in_request
+
+        try:
+            verify_jwt_in_request(optional=True)
+        except Exception:  # noqa: BLE001 — token inválido: deixa a rota retornar 401
+            return None
+        identity = get_jwt_identity()
+        if identity is None:
+            return None  # anônimo: deixa o @jwt_required da rota tratar
+        from models import Profissional
+        from services.perfil_acesso import verificar_acesso
+
+        profissional = Profissional.query.get(int(identity)) if str(identity).isdigit() else None
+        if profissional is None:
+            return jsonify({"error": "Perfil não encontrado"}), 404
+        if not verificar_acesso(profissional, request.path):
+            return (
+                jsonify(
+                    {
+                        "error": "Acesso negado",
+                        "message": "Seu perfil não tem acesso a esta área.",
+                    }
+                ),
+                403,
+            )
+        return None
 
     # Inicializar banco de dados e diretórios
     with app.app_context():

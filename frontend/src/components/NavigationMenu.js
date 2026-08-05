@@ -46,30 +46,63 @@ const NavigationMenu = ({ open, onClose }) => {
 
   const siapItems = [
     { text: '📊 Painel de Controle', icon: <SpeedIcon />, path: '/dashboard', auth: true },
-    { text: '👤 Pacientes', icon: <PersonIcon />, path: '/pacientes', auth: true },
-    { text: '📅 Consultas', icon: <EventIcon />, path: '/consultas', auth: true },
+    {
+      text: '👤 Pacientes',
+      icon: <PersonIcon />,
+      path: '/pacientes',
+      auth: true,
+      area: 'assistencial',
+    },
+    {
+      text: '📅 Consultas',
+      icon: <EventIcon />,
+      path: '/consultas',
+      auth: true,
+      area: 'assistencial',
+    },
     {
       text: '📝 Configurar Receituário',
       icon: <LocalHospitalIcon />,
       path: '/configuracao-prescricao',
       auth: true,
+      area: 'assistencial',
     },
     {
       text: '📥 Importar Documentos',
       icon: <PersonAddIcon />,
       path: '/importar-prescricoes',
       auth: true,
+      area: 'assistencial',
     },
-    { text: '🤖 Chat IA (LIA)', icon: <ChatIcon />, path: '/assistente-ia', auth: true },
+    {
+      text: '🤖 Chat IA (LIA)',
+      icon: <ChatIcon />,
+      path: '/assistente-ia',
+      auth: true,
+      area: 'assistencial',
+    },
     { text: '⚙️ Configurar IA SDR', icon: <SettingsIcon />, path: '/configuracao-ia', auth: true },
     {
       text: '📦 Catálogo → Importar por IA',
       icon: <LocalHospitalIcon />,
       path: '/catalogo',
       auth: true,
+      area: 'assistencial',
     },
-    { text: '🧩 Módulos de Especialidade', icon: <ExtensionIcon />, path: '/modulos', auth: true },
-    { text: '💳 Faturamento', icon: <ReceiptIcon />, path: '/faturamento', auth: true },
+    {
+      text: '🧩 Módulos de Especialidade',
+      icon: <ExtensionIcon />,
+      path: '/modulos',
+      auth: true,
+      area: 'assistencial',
+    },
+    {
+      text: '💳 Faturamento',
+      icon: <ReceiptIcon />,
+      path: '/faturamento',
+      auth: true,
+      area: 'administrativo',
+    },
   ];
 
   // Itens do módulo "Gestão da Clínica" (ex-"Associação" / SGAC).
@@ -131,7 +164,19 @@ const NavigationMenu = ({ open, onClose }) => {
   } else {
     // AraOS Section — remove [...commonItems, ...] (era redundante: ambos → /dashboard).
     // Mantemos apenas siapItems, cujo 1º item agora é "Painel de Controle".
-    const siapSectionItems = [...siapItems];
+    // Filtro por perfil de acesso: assistencial vê só o clínico; administrativo
+    // só o administrativo; solo (e admin) veem tudo.
+    const perfil =
+      currentUser?.perfil_efetivo ||
+      (currentUser?.role === 'admin' || currentUser?.role === 'superadmin'
+        ? 'solo'
+        : 'assistencial');
+    const podeVer = (item) => {
+      if (!item.area) return true;
+      if (perfil === 'solo') return true;
+      return perfil === item.area;
+    };
+    const siapSectionItems = siapItems.filter(podeVer);
     sections.push({ title: '📋 PRONTUÁRIO', items: siapSectionItems });
 
     // Gestão da Clínica — visível para qualquer usuário autenticado.

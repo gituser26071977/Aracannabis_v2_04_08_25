@@ -26,10 +26,12 @@ def app():
         prof = Profissional(
             nome="Dr. Teste", usuario="dr_t", senha="x",
             email="dr_t@teste.local", role="profissional", status_cadastro="aprovado",
+            perfil_acesso="solo",
         )
         prof2 = Profissional(
             nome="Dra. Teste2", usuario="dr_t2", senha="x",
             email="dr_t2@teste.local", role="profissional", status_cadastro="aprovado",
+            perfil_acesso="administrativo",
         )
         db.session.add_all([admin, prof, prof2])
         db.session.commit()
@@ -91,8 +93,9 @@ def REDACTED(app, client):
               {"servico_id": consulta_id, "valor": 150})
     assert r.status_code == 200, r.get_data()
 
-    # profissional NÃO pode configurar (403)
-    r = _post(client, "/api/faturamento/servicos", prof, {"nome": "X"})
+    # profissional com perfil ADMINISTRATIVO (secretária) NÃO pode configurar (403)
+    prof2 = _auth(client, app, "prof2")
+    r = _post(client, "/api/faturamento/servicos", prof2, {"nome": "X"})
     assert r.status_code == 403
 
     # ── lançamento PARTICULAR (sem convenio) — consulta R$200, %60

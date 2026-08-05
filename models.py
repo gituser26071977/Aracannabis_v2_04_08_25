@@ -24,6 +24,9 @@ class Profissional(db.Model):
     role = db.Column(
         db.String, default="profissional", nullable=False
     )  # 'admin', 'profissional', 'auxiliar'
+    perfil_acesso = db.Column(
+        db.String(20), nullable=True
+    )  # 'assistencial' | 'administrativo' | 'solo' (None = derivado por plano/role)
     data_expiracao = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -70,6 +73,7 @@ class Profissional(db.Model):
             "usuario": self.usuario,
             "email": self.email,
             "role": self.role,
+            "perfil_acesso": self.perfil_acesso,
             "status_cadastro": self.status_cadastro,
             "data_aprovacao": self.data_aprovacao.isoformat()
             if self.data_aprovacao

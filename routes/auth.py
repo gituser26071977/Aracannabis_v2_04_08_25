@@ -280,8 +280,12 @@ def get_profile():
     
     if not profissional:
         return jsonify({'error': 'Profissional não encontrado'}), 404
-    
-    return jsonify({'user': profissional.to_dict()}), 200
+
+    from services.perfil_acesso import resolver_perfil
+
+    data = profissional.to_dict()
+    data['perfil_efetivo'] = resolver_perfil(profissional)
+    return jsonify({'user': data}), 200
 
 @profissionais_bp.route('/profissionais/<int:prof_id>/assinatura', methods=['GET'])
 @jwt_required()
