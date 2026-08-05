@@ -42,6 +42,8 @@ import {
   Percent,
   ReceiptLong,
   AttachMoney,
+  SmartToy,
+  Send,
 } from '@mui/icons-material';
 import { faturamentoService, pacientesService } from '../services/api';
 import EmptyState from '../components/EmptyState';
@@ -71,11 +73,13 @@ function FaturamentoPage() {
         <Tab icon={<AttachMoney />} iconPosition="start" label="Serviços & Tabela" />
         <Tab icon={<Percent />} iconPosition="start" label="Repasse" />
         <Tab icon={<ReceiptLong />} iconPosition="start" label="Contas a receber" />
+        <Tab icon={<SmartToy />} iconPosition="start" label="Agente" />
       </Tabs>
       {tab === 0 && <ConveniosTab />}
       {tab === 1 && <ServicosTab />}
       {tab === 2 && <PercentuaisTab />}
       {tab === 3 && <LancamentosTab />}
+      {tab === 4 && <AgenteTab />}
     </Box>
   );
 }
@@ -1148,3 +1152,115 @@ function LancamentosTab() {
 }
 
 export default FaturamentoPage;
+
+// ===========================================================================
+// AGENTE FINANCEIRO (linguagem natural — somente leitura)
+// ===========================================================================
+function AgenteTab() {
+  const [mensagens, setMensagens] = useState([
+    {
+      role: 'agent',
+      texto:
+        'Olá! Sou o assistente financeiro. Pergunte, por exemplo: "quanto recebi neste mês?", "quem está inadimplente?" ou "qual o repasse do Dr. X?".',
+    },
+  ]);
+  const [pergunta, setPergunta] = useState('');
+  const [pensando, setPensando] = useState(false);
+  const [error, setError] = useState('');
+
+  const enviar = async () => {
+    const texto = pergunta.trim();
+    if (!texto || pensando) return;
+    setMensagens((m) => [...m, { role: 'user', texto }]);
+    setPergunta('');
+    setPensando(true);
+    setError('');
+    try {
+      const r = await faturamentoService.agente(texto);
+      setMensagens((m) => [...m, { role: 'agent', texto: r.resposta }]);
+    } catch (e) {
+      setError(e?.error || 'Erro ao consultar o agente');
+    } finally {
+      setPensando(false);
+    }
+  };
+
+  return (
+    <Grid container spacing={2}>
+      <Grid item xs={12}>
+        {error && (
+          <Alert severity="error" sx={{ mb: 1 }}>
+            {error}
+          </Alert>
+        )}
+        <Paper
+          sx={{
+            p: 2,
+            minHeight: 320,
+            maxHeight: 480,
+            overflowY: 'auto',
+            bgcolor: 'background.default',
+          }}
+        >
+          <Stack spacing={1.5}>
+            {mensagens.map((m, i) => (
+              <Box
+                key={i}
+                sx={{
+                  display: 'flex',
+                  justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start',
+                }}
+              >
+                <Paper
+                  elevation={0}
+                  sx={{
+                    maxWidth: '78%',
+                    p: 1.5,
+                    borderRadius: 2,
+                    bgcolor: m.role === 'user' ? 'primary.main' : 'background.paper',
+                    color: m.role === 'user' ? 'primary.contrastText' : 'inherit',
+                    border: m.role === 'agent' ? '1px solid' : 'none',
+                    borderColor: 'divider',
+                  }}
+                >
+                  <Typography variant="body2">{m.texto}</Typography>
+                </Paper>
+              </Box>
+            ))}
+            {pensando && (
+              <Box sx={{ display: 'flex' }}>
+                <Chip size="small" icon={<SmartToy />} label="Pensando…" variant="outlined" />
+              </Box>
+            )}
+          </Stack>
+        </Paper>
+      </Grid>
+      <Grid item xs={12}>
+        <Stack direction="row" spacing={1}>
+          <TextField
+            size="small"
+            fullWidth
+            placeholder="Pergunte sobre seu financeiro…"
+            value={pergunta}
+            onChange={(e) => setPergunta(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') enviar();
+            }}
+          />
+          <Button
+            variant="contained"
+            startIcon={<Send />}
+            onClick={enviar}
+            disabled={pensando || !pergunta.trim()}
+          >
+            Enviar
+          </Button>
+        </Stack>
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+          O agente consulta os dados (somente leitura). Ações de faturamento continuam manuais pelo
+          administrativo.
+        </Typography>
+      </Grid>
+    </Grid>
+  );
+}

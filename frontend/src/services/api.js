@@ -1996,6 +1996,24 @@ export const faturamentoService = {
       throw error.response ? error.response.data : { error: 'Erro de conexão' };
     }
   },
+  // Situação financeira do próprio profissional (read-only)
+  minhaSituacao: async () => {
+    try {
+      const response = await api.get('/faturamento/minha-situacao');
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  // Agente financeiro (linguagem natural, read-only)
+  agente: async (pergunta) => {
+    try {
+      const response = await api.post('/faturamento/agente', { pergunta });
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
 };
 
 export default api;

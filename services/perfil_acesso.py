@@ -35,6 +35,7 @@ PERFIS_VALIDOS = {PERFIL_ASSISTENCIAL, PERFIL_ADMINISTRATIVO, PERFIL_SOLO}
 # Rotas de LEITURA financeira do próprio profissional (exceção p/ assistencial)
 REDACTED = [
     "/api/faturamento/minha-situacao",
+    "/api/faturamento/agente",
 ]
 
 # Esfera ASSISTENCIAL — prontuário/atendimento clínico

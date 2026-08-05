@@ -476,3 +476,31 @@ def minha_situacao_financeira():
             lancamentos, key=lambda x: x.data_lancamento, reverse=True
         )[:50]],
     }), 200
+
+
+@faturamento_bp.route("/agente", methods=["POST"])
+@jwt_required()
+def agente_financeiro():
+    """Assistente financeiro por linguagem natural (somente leitura).
+
+    Perfil administrativo/solo: consulta toda a clínica.
+    Perfil assistencial: apenas os próprios lançamentos (read-only).
+    """
+    user = _current_user()
+    if not user:
+        return jsonify({"error": "Usuário não encontrado"}), 404
+    data = request.get_json(silent=True) or {}
+    pergunta = (data.get("pergunta") or "").strip()
+    if not pergunta:
+        return jsonify({"error": "informe a pergunta"}), 400
+
+    from services.faturamento_agente import responder
+    from services.perfil_acesso import resolver_perfil
+
+    perfil = resolver_perfil(user)
+    try:
+        resultado = responder(pergunta, perfil=perfil, profissional=user)
+    except Exception:  # noqa: BLE001
+        logger.exception("agente_financeiro_falhou")
+        return jsonify({"error": "erro ao processar a pergunta"}), 500
+    return jsonify(resultado), 200
