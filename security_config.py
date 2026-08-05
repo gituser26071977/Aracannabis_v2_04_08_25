@@ -79,6 +79,8 @@ def require_secret(name, min_length=32, allow_default=False, default=None):
     )
 
     if is_placeholder:
+        from config import is_production  # import local evita circular config↔security_config
+
         is_prod = is_production()
         if is_prod or not allow_default:
             raise RuntimeError(

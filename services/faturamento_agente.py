@@ -106,6 +106,8 @@ def classificar_intencao(pergunta: str) -> Dict[str, Any]:
             max_tokens=200,
         )
         content = response.get("content", "")
+        if response.get("error"):
+            raise ValueError("llm indisponível")
         content = re.sub(r"^```(?:json)?|```$", "", content.strip()).strip()
         dados = json.loads(content)
         if not isinstance(dados, dict) or dados.get("tipo") not in TIPOS:
@@ -285,9 +287,12 @@ def _formato_ia(pergunta: str, tipo: str, dados: Dict[str, Any]) -> str:
             temperature=0.3,
             max_tokens=300,
         )
+        if response.get("error"):
+            raise ValueError("llm indisponível")
         content = (response.get("content") or "").strip()
-        if content:
-            return content
+        if not content:
+            raise ValueError("resposta vazia")
+        return content
     except Exception:  # noqa: BLE001
         logger.warning("REDACTED")
     return _formato_estruturado(tipo, dados, pergunta)
