@@ -1300,9 +1300,15 @@ class LancamentoFaturamento(db.Model):
     profissional = db.relationship("Profissional")
     paciente = db.relationship("Paciente")
 
-    def to_dict(self):
+    def to_dict(self, privileged: bool = True):
         recebido = sum(r.valor for r in self.recebimentos) if self.recebimentos else 0.0
-        return {
+        status_label = {
+            "pendente": "EM ABERTO",
+            "parcial": "EM ABERTO (PARCIAL)",
+            "pago": "PAGO",
+            "cancelado": "RESTITUÍDO",
+        }.get(self.status, self.status.upper())
+        dados = {
             "id": self.id,
             "associacao_id": self.associacao_id,
             "paciente_id": self.paciente_id,
@@ -1315,20 +1321,25 @@ class LancamentoFaturamento(db.Model):
             "convenio_id": self.convenio_id,
             "convenio_nome": self.convenio.nome if self.convenio else None,
             "modalidade": "particular" if self.convenio_id is None else "convenio",
-            "valor_total": self.valor_total,
-            "desconto": self.desconto,
-            "valor_receber": self.valor_receber,
-            "percentual_repasse": self.percentual_repasse,
-            "valor_repasse": self.valor_repasse,
             "forma_pagamento": self.forma_pagamento,
             "status": self.status,
-            "valor_recebido": round(recebido, 2),
+            "status_label": status_label,
             "data_lancamento": self.data_lancamento.isoformat() if self.data_lancamento else None,
             "data_recebimento": self.data_recebimento.isoformat() if self.data_recebimento else None,
             "observacao": self.observacao,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
+        if privileged:
+            dados.update({
+                "valor_total": self.valor_total,
+                "desconto": self.desconto,
+                "valor_receber": self.valor_receber,
+                "percentual_repasse": self.percentual_repasse,
+                "valor_repasse": self.valor_repasse,
+                "valor_recebido": round(recebido, 2),
+            })
+        return dados
 
 
 class Recebimento(db.Model):

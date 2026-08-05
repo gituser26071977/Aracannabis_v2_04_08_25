@@ -137,11 +137,14 @@ def REDACTED(app, client):
     assert r.json["lancamento"]["status"] == "pago"
     assert r.json["lancamento"]["valor_recebido"] == 200.0
 
-    # ── visibilidade: Dr. Teste2 NÃO vê lançamentos do Dr. Teste
+    # ── visibilidade: secretária (administrativo, não-gestor) vê tudo MASCARADO
     prof2 = _auth(client, app, "prof2")
     r = client.get("/api/faturamento/lancamentos", headers=prof2)
     assert r.status_code == 200
-    assert r.json["total"] == 0
+    assert r.json["privileged"] is False
+    assert r.json["total"] == 3  # operacional: vê os lançamentos sem valores
+    for l in r.json["lancamentos"]:
+        assert "valor_receber" not in l and "valor_repasse" not in l
 
     # admin vê tudo (3 lançamentos) + filtros
     r = client.get("/api/faturamento/lancamentos", headers=admin)

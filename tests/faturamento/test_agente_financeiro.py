@@ -172,3 +172,32 @@ def REDACTED(client, app):
     assert r.json["tipo"] == "repasse"
     # escopo = próprio médico: os 2 lançamentos são do Dr. Carlos → ele "vê" os dele
     assert r.json["dados"]["quantidade"] == 2
+
+
+def REDACTED(client, app):
+    # secretária (administrativo, não-gestor) vê a listagem SEM valores/repasse
+    r = client.get("/api/faturamento/lancamentos", headers=_auth(client, app, "secretaria"))
+    assert r.status_code == 200
+    assert r.json["privileged"] is False
+    assert r.json["total"] >= 2  # vê os lançamentos (operacional)
+    for l in r.json["lancamentos"]:
+        assert "valor_receber" not in l
+        assert "valor_repasse" not in l
+        assert "valor_total" not in l
+        assert "status_label" in l  # flag PAGO/EM ABERTO/RESTITUÍDO
+
+
+def REDACTED(client, app):
+    r = client.get("/api/faturamento/lancamentos", headers=_auth(client, app, "admin"))
+    assert r.status_code == 200
+    assert r.json["privileged"] is True
+    assert r.json["total"] >= 2
+    for l in r.json["lancamentos"]:
+        assert "valor_receber" in l
+        assert "valor_repasse" in l
+
+
+def test_medico_listagem_bloqueada(client, app):
+    # assistencial NÃO lista lançamentos (área administrativa); usa minha-situacao
+    r = client.get("/api/faturamento/lancamentos", headers=_auth(client, app, "medico"))
+    assert r.status_code == 403

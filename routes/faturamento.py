@@ -370,14 +370,22 @@ def lancar_faturamento():
 @faturamento_bp.route("/lancamentos", methods=["GET"])
 @jwt_required()
 def listar_lancamentos_view():
-    """Lista contas a receber com filtros (status, modalidade, profissional, convenio, período)."""
+    """Lista contas a receber com filtros (status, modalidade, profissional, convenio, período).
+
+    Privilégio financeiro: gestor vê valores/repasse; secretária/recepção
+    (não-gestor) vê apenas os flags de status (PAGO/EM ABERTO/RESTITUÍDO).
+    """
     user = _current_user()
     if not user:
         return jsonify({"error": "Usuário não encontrado"}), 404
+    from services.perfil_acesso import eh_gestor_financeiro, resolver_perfil
+
+    privileged = eh_gestor_financeiro(user)
+    perfil = resolver_perfil(user)
     args = request.args
     profissional_id = args.get("profissional_id", type=int)
-    if not _is_admin(user) and profissional_id is None:
-        profissional_id = user.id  # profissional vê o próprio
+    if perfil == "assistencial":
+        profissional_id = user.id  # médico vê o próprio
     try:
         total, itens = listar_lancamentos(
             status=args.get("status"),
@@ -393,7 +401,8 @@ def listar_lancamentos_view():
         return jsonify({"error": str(exc)}), 400
     return jsonify({
         "total": total,
-        "lancamentos": [l.to_dict() for l in itens],
+        "privileged": privileged,
+        "lancamentos": [l.to_dict(privileged=privileged) for l in itens],
     }), 200
 
 

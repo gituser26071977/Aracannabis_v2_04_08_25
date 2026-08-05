@@ -784,6 +784,7 @@ function PercentuaisTab() {
 function LancamentosTab() {
   const [lancamentos, setLancamentos] = useState([]);
   const [total, setTotal] = useState(0);
+  const [privileged, setPrivileged] = useState(true);
   const [servicos, setServicos] = useState([]);
   const [convenios, setConvenios] = useState([]);
   const [filtros, setFiltros] = useState({ status: '', modalidade: '' });
@@ -807,6 +808,7 @@ function LancamentosTab() {
       const res = await faturamentoService.listarLancamentos(filtros);
       setLancamentos(res.lancamentos || []);
       setTotal(res.total || 0);
+      setPrivileged(res.privileged !== false);
     } catch (e) {
       setError(e?.error || 'Erro ao carregar lançamentos');
     } finally {
@@ -931,7 +933,8 @@ function LancamentosTab() {
           </Button>
         </Stack>
         <Typography variant="body2" color="text.secondary" mt={1}>
-          {total} lançamento(s) · <b>{money(recebidoTotal)}</b> a receber (não cancelados)
+          {total} lançamento(s)
+          {privileged ? ` · ${money(recebidoTotal)} a receber (não cancelados)` : ''}
         </Typography>
       </Grid>
 
