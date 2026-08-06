@@ -412,13 +412,14 @@ jobs:
             echo "→ Copiando scripts/d05b_patch_compose.py do remote (como untracked)..."
             git fetch origin fix/p0-stabilization-2026-06 2>/dev/null || true
             mkdir -p scripts
+            # Escreve em /tmp (sobrevive ao checkout -f do rc.10, que remove o
+            # arquivo untracked de scripts/ e quebrava o python3 abaixo).
             git show "origin/fix/p0-stabilization-2026-06:scripts/d05b_patch_compose.py" \
-              > scripts/d05b_patch_compose.py 2>/dev/null || true
-            ls -la scripts/d05b_patch_compose.py 2>/dev/null
+              > /tmp/d05b_patch_compose.py 2>/dev/null || true
+            ls -la /tmp/d05b_patch_compose.py 2>/dev/null
             echo "→ Checkout -f $DEPLOY_VERSION..."
             git checkout -f "$DEPLOY_VERSION"
-            # O arquivo continua untracked apos checkout -f; re-validar:
-            ls -la scripts/d05b_patch_compose.py 2>/dev/null || echo "ATENCAO: script ausente"
+            ls -la /tmp/d05b_patch_compose.py 2>/dev/null || echo "ATENCAO: patch ausente em /tmp"
 
             # 3. D05b — re-aplicar hardening D01 F2.4 (porta 5440 so localhost)
             #    que existe localmente mas NAO esta no commit rc.10. Sem isso
@@ -433,7 +434,7 @@ jobs:
             #      docker-compose pull ignora esses servicos, restart usa imagem
             #      antiga). Patch idempotente via script Python.
             echo "→ Patch compose: build: -> image: GHCR..."
-            python3 scripts/d05b_patch_compose.py
+            python3 /tmp/d05b_patch_compose.py
 
             # 4. Pull imagens do GHCR
             echo "→ Pull imagens do GHCR..."
