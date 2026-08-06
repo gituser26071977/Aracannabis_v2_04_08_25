@@ -310,13 +310,11 @@ jobs:
     timeout-minutes: 30
     needs: [security, playwright, lighthouse]
     steps:
-      # D05l — migrado para tailscale/github-action@v4 com OAuth client
-      # (authkey foi deprecado pela Tailscale; OAuth é o método recomendado)
-      # Secrets necessários: TS_OAUTH_CLIENT_ID + TS_OAUTH_SECRET
+      # D05l — tailscale/github-action@v4. OAuth client expirou (invalid key);
+      # migrado de volta para authkey (reusable). Secret: TS_AUTHKEY
       - uses: tailscale/github-action@v4
         with:
-          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
-          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          authkey: ${{ secrets.TS_AUTHKEY }}
           tags: tag:ci
       - uses: appleboy/ssh-action@v1
         with:
@@ -353,8 +351,7 @@ jobs:
         #      git checkout -f $DEPLOY_VERSION + restore HEAD no final.
         uses: tailscale/github-action@v4
         with:
-          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
-          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          authkey: ${{ secrets.TS_AUTHKEY }}
           tags: tag:ci
       - uses: appleboy/ssh-action@v1
         env:
@@ -460,8 +457,7 @@ jobs:
       - name: Post-deploy smoke
         uses: tailscale/github-action@v4
         with:
-          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
-          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          authkey: ${{ secrets.TS_AUTHKEY }}
           tags: tag:ci
       - uses: appleboy/ssh-action@v1
         with:
@@ -476,8 +472,7 @@ jobs:
         if: failure()
         uses: tailscale/github-action@v4
         with:
-          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
-          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          authkey: ${{ secrets.TS_AUTHKEY }}
           tags: tag:ci
       - uses: appleboy/ssh-action@v1
         with:
