@@ -43,7 +43,7 @@ check "/api/status" "200" "API status"
 check "/api/csrf-token" "200" "CSRF token"
 
 # 3. Login (espera 200 ou 401, nunca 500)
-check "/api/auth/login" "^(200|400|401)$" "Auth endpoint reachable"
+check "/api/auth/login" "^(200|400|401|405)$" "Auth endpoint reachable (405 = rota existe, GET sem auth)"
 
 # 4. Health interno (se exposto)
 check "/api/health" "^(200|404)$" "Health endpoint"
