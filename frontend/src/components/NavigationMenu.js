@@ -44,8 +44,8 @@ const NavigationMenu = ({ open, onClose }) => {
 
   // --- Menu Definitions with emojis ---
 
-  const siapItems = [
-    { text: '📊 Painel de Controle', icon: <SpeedIcon />, path: '/dashboard', auth: true },
+  const assistencialItems = [
+    { text: '📊 Lista do dia', icon: <SpeedIcon />, path: '/dashboard', auth: true },
     {
       text: '👤 Pacientes',
       icon: <PersonIcon />,
@@ -61,27 +61,12 @@ const NavigationMenu = ({ open, onClose }) => {
       area: 'assistencial',
     },
     {
-      text: '📝 Configurar Receituário',
-      icon: <LocalHospitalIcon />,
-      path: '/configuracao-prescricao',
-      auth: true,
-      area: 'assistencial',
-    },
-    {
       text: '📥 Importar Documentos',
       icon: <PersonAddIcon />,
       path: '/importar-prescricoes',
       auth: true,
       area: 'assistencial',
     },
-    {
-      text: '🤖 Chat IA (LIA)',
-      icon: <ChatIcon />,
-      path: '/assistente-ia',
-      auth: true,
-      area: 'assistencial',
-    },
-    { text: '⚙️ Configurar IA SDR', icon: <SettingsIcon />, path: '/configuracao-ia', auth: true },
     {
       text: '📦 Catálogo → Importar por IA',
       icon: <LocalHospitalIcon />,
@@ -95,6 +80,22 @@ const NavigationMenu = ({ open, onClose }) => {
       path: '/modulos',
       auth: true,
       area: 'assistencial',
+    },
+    {
+      text: '🤖 Chat IA (LIA)',
+      icon: <ChatIcon />,
+      path: '/assistente-ia',
+      auth: true,
+      area: 'assistencial',
+    },
+  ];
+
+  const gestaoItems = [
+    {
+      text: hasClinicaAccess ? '🏥 Gestão da Clínica' : '🔒 Gestão da Clínica',
+      icon: <BusinessIcon />,
+      path: '/association',
+      auth: true,
     },
     {
       text: '💳 Faturamento',
@@ -112,22 +113,21 @@ const NavigationMenu = ({ open, onClose }) => {
     },
   ];
 
-  // Itens do módulo "Gestão da Clínica" (ex-"Associação" / SGAC).
-  // O médico/gestor cadastra a clínica e dispara convites via /association.
-  // Os endpoints de convite (criar/listar/cancelar/reenviar/aceitar) vivem em
-  // routes/secretaria.py e são consumidos por AssociationPage.js.
-  // Item mostra 🔒 quando o user está em plano sem acesso (basico).
-  const gestaoClinicaItems = [
+  const configItems = [
     {
-      text: hasClinicaAccess ? '🏥 Gestão da Clínica' : '🔒 Gestão da Clínica',
-      icon: <BusinessIcon />,
-      path: '/association',
+      text: '📝 Configurar Receituário',
+      icon: <LocalHospitalIcon />,
+      path: '/configuracao-prescricao',
       auth: true,
+      area: 'assistencial',
     },
-  ];
-
-  const adminItems = [
-    { text: '🔐 Admin Geral', icon: <SecurityIcon />, path: '/admin', auth: true, adminOnly: true },
+    {
+      text: '⚙️ Configurar IA SDR',
+      icon: <SettingsIcon />,
+      path: '/configuracao-ia',
+      auth: true,
+      area: 'administrativo',
+    },
     {
       text: '🔧 Config IA',
       icon: <SettingsIcon />,
@@ -142,6 +142,10 @@ const NavigationMenu = ({ open, onClose }) => {
       auth: true,
       adminOnly: true,
     },
+  ];
+
+  const adminItems = [
+    { text: '🔐 Admin Geral', icon: <SecurityIcon />, path: '/admin', auth: true, adminOnly: true },
   ];
 
   const publicItems = [
@@ -169,33 +173,27 @@ const NavigationMenu = ({ open, onClose }) => {
   if (!currentUser) {
     sections.push({ title: '🌐 NAVEGAÇÃO', items: publicItems });
   } else {
-    // AraOS Section — remove [...commonItems, ...] (era redundante: ambos → /dashboard).
-    // Mantemos apenas siapItems, cujo 1º item agora é "Painel de Controle".
-    // Filtro por perfil de acesso: assistencial vê só o clínico; administrativo
-    // só o administrativo; solo (e admin) veem tudo.
-    const perfil =
-      currentUser?.perfil_efetivo ||
-      (currentUser?.role === 'admin' || currentUser?.role === 'superadmin'
-        ? 'solo'
-        : 'assistencial');
+    // Menu organizado por função: ASSISTENCIAL (atendimento), GESTÃO
+    // (operações), CONFIGURAÇÕES (setup) e ADMINISTRAÇÃO (superadmin).
+    // A visibilidade continua por perfil (item.area): assistencial vê só o
+    // clínico; administrativo vê gestão + configurações; solo vê tudo.
+    const ehAdmin = currentUser.role === 'admin' || currentUser.role === 'superadmin';
+    const perfil = currentUser?.perfil_efetivo || (ehAdmin ? 'solo' : 'assistencial');
     const podeVer = (item) => {
+      if (item.adminOnly && !ehAdmin) return false;
       if (!item.area) return true;
       if (perfil === 'solo') return true;
       return perfil === item.area;
     };
-    const siapSectionItems = siapItems.filter(podeVer);
-    sections.push({ title: '📋 PRONTUÁRIO', items: siapSectionItems });
-
-    // Gestão da Clínica — visível para qualquer usuário autenticado.
-    // O /association hospeda o cadastro da clínica E o diálogo de convite
-    // (criar/listar/cancelar/reenviar). Endpoints em routes/secretaria.py.
-    if (currentUser) {
-      sections.push({ title: '🏥 GESTÃO DA CLÍNICA', items: [...gestaoClinicaItems] });
-    }
-
-    // Admin Section
-    if (currentUser.role === 'admin') {
-      sections.push({ title: '⚙️ ADMINISTRAÇÃO', items: adminItems });
+    const grupos = [
+      { title: '📋 ASSISTENCIAL', items: assistencialItems },
+      { title: '🏥 GESTÃO', items: gestaoItems },
+      { title: '⚙️ CONFIGURAÇÕES', items: configItems },
+      { title: '🔐 ADMINISTRAÇÃO', items: adminItems },
+    ];
+    for (const g of grupos) {
+      const visiveis = g.items.filter(podeVer);
+      if (visiveis.length) sections.push({ title: g.title, items: visiveis });
     }
   }
 

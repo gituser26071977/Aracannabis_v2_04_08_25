@@ -26,8 +26,16 @@ import {
   DialogContent,
   DialogActions,
 } from '@mui/material';
-import { AutoAwesome, PersonAdd, PendingActions, Check, Delete, Merge } from '@mui/icons-material';
-import { onboardingService } from '../services/api';
+import {
+  AutoAwesome,
+  PersonAdd,
+  PendingActions,
+  Check,
+  Delete,
+  Merge,
+  UploadFile,
+} from '@mui/icons-material';
+import { pacienteOnboardingService as onboardingService } from '../services/api';
 import EmptyState from '../components/EmptyState';
 
 function OnboardingPacientesPage() {
@@ -65,6 +73,9 @@ function CadastroTab() {
   const [salvando, setSalvando] = useState(false);
   const [resultado, setResultado] = useState(null);
   const [error, setError] = useState('');
+  const [documentoId, setDocumentoId] = useState(null);
+  const [uploadNome, setUploadNome] = useState('');
+  const [uploadando, setUploadando] = useState(false);
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
@@ -81,12 +92,34 @@ function CadastroTab() {
     }
   };
 
+  const onUpload = async (file) => {
+    if (!file) return;
+    setUploadNome(file.name);
+    setUploadando(true);
+    setError('');
+    try {
+      const r = await onboardingService.uploadDocumento(file);
+      if (r.sugestao && Object.keys(r.sugestao).length) {
+        setForm((f) => ({ ...f, ...r.sugestao, nome: r.sugestao.nome || f.nome }));
+      }
+      if (r.texto_extraido) setTextoIA(r.texto_extraido);
+      if (r.documento_id) setDocumentoId(r.documento_id);
+    } catch (e) {
+      setError(e?.error || 'Erro ao processar o documento');
+    } finally {
+      setUploadando(false);
+    }
+  };
+
   const salvar = async () => {
     setSalvando(true);
     setError('');
     setResultado(null);
     try {
-      const r = await onboardingService.cadastrar(form);
+      const r = await onboardingService.cadastrar({
+        ...form,
+        documento_id: documentoId || undefined,
+      });
       setResultado(r);
     } catch (e) {
       setError(e?.error || 'Erro ao cadastrar');
@@ -103,6 +136,35 @@ function CadastroTab() {
             <Stack direction="row" spacing={1} alignItems="center" mb={1}>
               <AutoAwesome color="primary" />
               <Typography variant="h6">Cadastro rápido</Typography>
+            </Stack>
+            <Typography variant="subtitle2" color="text.secondary" mt={1} mb={0.5}>
+              Upload de documento (opcional) — imagem ou PDF
+            </Typography>
+            <Stack direction="row" spacing={1} alignItems="center" mb={1}>
+              <Button
+                component="label"
+                variant="outlined"
+                startIcon={<UploadFile />}
+                disabled={uploadando}
+              >
+                {uploadando ? 'Processando…' : 'Enviar documento'}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg,application/pdf"
+                  hidden
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) onUpload(f);
+                    e.target.value = '';
+                  }}
+                />
+              </Button>
+              {uploadNome && (
+                <Typography variant="body2" color="text.secondary">
+                  {uploadNome}
+                </Typography>
+              )}
+              {documentoId && <Chip size="small" color="success" label="Documento anexado" />}
             </Stack>
             <TextField
               size="small"

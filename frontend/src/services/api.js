@@ -2016,4 +2016,59 @@ export const faturamentoService = {
   },
 };
 
+export const pacienteOnboardingService = {
+  sugerir: async (texto) => {
+    try {
+      const response = await api.post('/onboarding/paciente/sugerir', { texto });
+      return response.data.sugestao || {};
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  uploadDocumento: async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const response = await api.post('/onboarding/paciente/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  cadastrar: async (dados) => {
+    try {
+      const response = await api.post('/onboarding/paciente', dados);
+      return response.data.resultado;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  listarPendentes: async () => {
+    try {
+      const response = await api.get('/onboarding/pendentes');
+      return response.data.pendentes || [];
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  confirmar: async (id, acao, dados) => {
+    try {
+      const response = await api.post(`/onboarding/pendentes/${id}/confirmar`, { acao, dados });
+      return response.data.resultado;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  descartar: async (id) => {
+    try {
+      const response = await api.post(`/onboarding/pendentes/${id}/descartar`);
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+};
+
 export default api;

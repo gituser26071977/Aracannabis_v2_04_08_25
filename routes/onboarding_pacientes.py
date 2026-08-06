@@ -11,6 +11,7 @@ Fluxo:
 from __future__ import annotations
 
 import logging
+import os
 
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
@@ -59,7 +60,12 @@ def cadastrar_paciente():
         return jsonify({"error": "Usuário não encontrado"}), 404
     data = request.get_json(silent=True) or {}
     try:
-        resultado = registrar_paciente(data, origem="admin", criado_por=str(user.id))
+        resultado = registrar_paciente(
+            data,
+            origem="admin",
+            criado_por=str(user.id),
+            documento_id=int(data["documento_id"]) if data.get("documento_id") else None,
+        )
     except Exception:  # noqa: BLE001
         logger.exception("onboarding_paciente_falhou")
         return jsonify({"error": "erro ao registrar paciente"}), 500
@@ -117,3 +123,73 @@ def descartar(onboarding_id):
         logger.exception("descartar_pendencia_falhou")
         return jsonify({"error": "erro ao descartar pendência"}), 500
     return jsonify({"message": "Pendência descartada"}), 200
+
+
+@onboarding_bp.route("/paciente/upload", methods=["POST"])
+@jwt_required()
+def upload_documento():
+    """Upload de documento (imagem/PDF) no onboarding → OCR → sugestão.
+
+    Salva o arquivo em uploads/onboarding/ e cria o registro
+    `onboarding_documentos` (paciente_id NULL até cadastrar).
+    """
+    user = _current_user()
+    if not user:
+        return jsonify({"error": "Usuário não encontrado"}), 404
+
+    from services.onboarding_pacientes import (
+        ALLOWED_EXTENSIONS,
+        _extensao,
+        salvar_documento,
+        sugerir_dados_de_documento,
+    )
+
+    arquivo = request.files.get("file")
+    if not arquivo or not arquivo.filename:
+        return jsonify({"error": "enviar o arquivo no campo 'file'"}), 400
+    ext = _extensao(arquivo.filename)
+    if ext not in ALLOWED_EXTENSIONS:
+        return jsonify({"error": f"formato inválido. Permitidos: {sorted(ALLOWED_EXTENSIONS)}"}), 400
+
+    conteudo = arquivo.read()
+    if not conteudo:
+        return jsonify({"error": "arquivo vazio"}), 400
+
+    try:
+        resultado = sugerir_dados_de_documento(conteudo, arquivo.filename)
+    except Exception:  # noqa: BLE001
+        logger.exception("upload_documento_ocr_falhou")
+        return jsonify({"error": "erro ao processar o documento"}), 500
+
+    try:
+        doc = salvar_documento(
+            conteudo,
+            arquivo.filename,
+            mime=arquivo.mimetype or "application/octet-stream",
+            texto_extraido=resultado["texto_extraido"],
+            confianca=resultado["confianca"],
+            criado_por=str(user.id),
+        )
+    except Exception:  # noqa: BLE001
+        logger.exception("upload_documento_salvar_falhou")
+        return jsonify({"error": "erro ao salvar o documento"}), 500
+
+    return jsonify({
+        "sugestao": resultado["sugestao"],
+        "texto_extraido": resultado["texto_extraido"],
+        "confianca": resultado["confianca"],
+        "documento_id": doc.id,
+    }), 200
+
+
+@onboarding_bp.route("/documentos/<int:documento_id>/arquivo", methods=["GET"])
+@jwt_required()
+def baixar_documento(documento_id):
+    """Download do documento enviado no onboarding."""
+    from models import OnboardingDocumento
+    from flask import send_file
+
+    doc = OnboardingDocumento.query.get(documento_id)
+    if not doc or not os.path.exists(doc.caminho_arquivo):
+        return jsonify({"error": "documento não encontrado"}), 404
+    return send_file(doc.caminho_arquivo, mimetype=doc.mime or "application/octet-stream", as_attachment=True, download_name=doc.nome_original)

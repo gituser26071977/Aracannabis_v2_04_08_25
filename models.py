@@ -1470,6 +1470,44 @@ class OnboardingPaciente(db.Model):
         }
 
 
+class OnboardingDocumento(db.Model):
+    """Documento enviado no onboarding de pacientes (upload → OCR).
+
+    Salvo em `uploads/onboarding/`. `paciente_id` é NULL até o paciente ser
+    cadastrado/confirmado — então o documento é vinculado ao prontuário.
+    """
+
+    __tablename__ = "onboarding_documentos"
+
+    id = db.Column(db.Integer, primary_key=True)
+    paciente_id = db.Column(
+        db.Integer, db.ForeignKey("pacientes.id", ondelete="SET NULL"), nullable=True
+    )
+    nome_original = db.Column(db.String(255), nullable=False)
+    caminho_arquivo = db.Column(db.String(500), nullable=False)
+    mime = db.Column(db.String(100), nullable=True)
+    texto_extraido = db.Column(db.Text, nullable=True)
+    confianca = db.Column(db.Float, nullable=True)
+    criado_por = db.Column(db.String(120), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    paciente = db.relationship("Paciente")
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "paciente_id": self.paciente_id,
+            "paciente_nome": self.paciente.nome if self.paciente else None,
+            "nome_original": self.nome_original,
+            "mime": self.mime,
+            "texto_extraido": self.texto_extraido,
+            "confianca": self.confianca,
+            "criado_por": self.criado_por,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
 class SolicitacoesCadastro(db.Model):
     __tablename__ = "solicitacoes_cadastro"
 

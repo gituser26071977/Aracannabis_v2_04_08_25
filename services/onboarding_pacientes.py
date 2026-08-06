@@ -2,6 +2,9 @@
 
 - `sugerir_dados(texto)`: extrai nome/telefone/cpf/email/queixa de texto livre
   via LLM (com fallback heurístico por regex).
+- `sugerir_dados_de_documento(arquivo, nome)`: OCR de imagem/PDF + sugestão.
+- `salvar_documento(...)` / `vincular_documento(...)`: guarda o documento e
+  vincula ao paciente quando cadastrado.
 - `detectar_duplicados(dados)`: busca pacientes por cpf, telefone e nome.
 - `registrar_paciente(dados)`: cria direto (sem duplicado e completo) ou abre
   pendência (duplicado / dados incompletos) para o administrativo confirmar.
@@ -9,14 +12,20 @@
 
 from __future__ import annotations
 
+import base64
 import json
 import logging
+import os
 import re
-from typing import Any, Dict, List, Optional
+import uuid
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Tuple
 
 from sqlalchemy import or_
 
-from models import db, Paciente, OnboardingPaciente
+from models import db, Paciente, OnboardingPaciente, OnboardingDocumento
+
+ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "pdf"}
 
 logger = logging.getLogger(__name__)
 
@@ -123,6 +132,7 @@ def registrar_paciente(
     *,
     origem: str = "admin",
     criado_por: Optional[str] = None,
+    documento_id: Optional[int] = None,
 ) -> Dict[str, Any]:
     """Cadastra paciente ou abre pendência.
 
@@ -143,7 +153,7 @@ def registrar_paciente(
             email=(dados.get("email") or "").strip() or None,
             queixa=dados.get("queixa"),
             origem=origem,
-            dados_sugeridos=dados,
+            dados_sugeridos={**dados, "documento_id": documento_id} if documento_id else dados,
             motivo=MOTIVO_DUPLICADO,
             status=STATUS_PENDENTE,
             duplicado_de=duplicados[0].id,
@@ -166,7 +176,7 @@ def registrar_paciente(
             email=(dados.get("email") or "").strip() or None,
             queixa=dados.get("queixa"),
             origem=origem,
-            dados_sugeridos=dados,
+            dados_sugeridos={**dados, "documento_id": documento_id} if documento_id else dados,
             motivo=MOTIVO_INCOMPLETO,
             status=STATUS_PENDENTE,
             criado_por=criado_por,
@@ -176,6 +186,8 @@ def registrar_paciente(
         return {"status": "pendente", "onboarding_id": pendente.id, "motivo": MOTIVO_INCOMPLETO}
 
     paciente = _criar_paciente(dados)
+    if documento_id:
+        vincular_documento(documento_id, paciente.id)
     return {"status": "criado", "paciente_id": paciente.id}
 
 
@@ -230,13 +242,21 @@ def confirmar_pendencia(
         db.session.commit()
         pendente.status = STATUS_APROVADO
         db.session.commit()
+        _vincular_doc_pendente(pendente, paciente.id)
         return {"status": "aprovado", "paciente_id": paciente.id, "usado_existente": True}
 
     paciente = _criar_paciente(payload)
     pendente.status = STATUS_APROVADO
     pendente.duplicado_de = None
     db.session.commit()
+    _vincular_doc_pendente(pendente, paciente.id)
     return {"status": "aprovado", "paciente_id": paciente.id, "usado_existente": False}
+
+
+def _vincular_doc_pendente(pendente: OnboardingPaciente, paciente_id: int) -> None:
+    doc_id = (pendente.dados_sugeridos or {}).get("documento_id")
+    if doc_id:
+        vincular_documento(int(doc_id), paciente_id)
 
 
 def descartar_pendencia(onboarding_id: int, *, criado_por: Optional[str] = None) -> None:
@@ -254,3 +274,115 @@ def listar_pendentes(limit: int = 100) -> List[OnboardingPaciente]:
         .limit(limit)
         .all()
     )
+
+
+# ────────────────────────────────────────────────────────────────────
+# Documentos (upload → OCR → sugestão)
+# ────────────────────────────────────────────────────────────────────
+
+def _extensao(filename: str) -> str:
+    return filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+
+
+def _ocr_imagem(arquivo_bytes: bytes) -> Tuple[str, float]:
+    """OCR de imagem via Tesseract (por+eng). Retorna (texto, confianca)."""
+    from services.ocr_service import OCRService
+
+    b64 = base64.b64encode(arquivo_bytes).decode("ascii")
+    resultado = OCRService().extract_text_from_base64(b64)
+    texto = (resultado.get("texto") or "").strip()
+    confianca = float(resultado.get("confianca") or 0)
+    return texto, confianca
+
+
+def _ocr_pdf(arquivo_bytes: bytes) -> Tuple[str, float]:
+    """OCR de PDF (cada página via pdf2image + Tesseract)."""
+    import tempfile
+
+    from pdf2image import convert_from_bytes
+
+    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+        tmp.write(arquivo_bytes)
+        tmp_path = tmp.name
+    try:
+        paginas = convert_from_bytes(arquivo_bytes, dpi=200)
+        textos: List[str] = []
+        confs: List[float] = []
+        for img in paginas:
+            import io
+
+            buf = io.BytesIO()
+            img.save(buf, format="PNG")
+            t, c = _ocr_imagem(buf.getvalue())
+            if t:
+                textos.append(t)
+            confs.append(c)
+        return "\n".join(textos), (sum(confs) / len(confs) if confs else 0)
+    finally:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+
+
+def extrair_texto_arquivo(arquivo_bytes: bytes, filename: str) -> Tuple[str, float]:
+    """Extrai texto de imagem ou PDF. Retorna (texto, confianca)."""
+    ext = _extensao(filename)
+    if ext == "pdf":
+        return _ocr_pdf(arquivo_bytes)
+    return _ocr_imagem(arquivo_bytes)
+
+
+def sugerir_dados_de_documento(arquivo_bytes: bytes, filename: str) -> Dict[str, Any]:
+    """OCR do documento + sugestão estruturada do paciente.
+
+    Returns:
+        {"sugestao": {...}, "texto_extraido": str, "confianca": float}
+    """
+    texto, confianca = extrair_texto_arquivo(arquivo_bytes, filename)
+    sugestao = sugerir_dados(texto) if texto else {}
+    return {"sugestao": sugestao, "texto_extraido": texto, "confianca": confianca}
+
+
+def salvar_documento(
+    arquivo_bytes: bytes,
+    filename: str,
+    *,
+    mime: str | None,
+    texto_extraido: str,
+    confianca: float,
+    criado_por: Optional[str] = None,
+) -> OnboardingDocumento:
+    """Salva o arquivo em uploads/onboarding/ e cria o registro."""
+    ext = _extensao(filename)
+    nome_salvo = f"{uuid.uuid4().hex[:16]}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.{ext}"
+    from werkzeug.utils import secure_filename
+
+    pasta = os.path.join(
+        os.getcwd(), "uploads", "onboarding"
+    )
+    os.makedirs(pasta, exist_ok=True)
+    caminho = os.path.join(pasta, nome_salvo)
+    with open(caminho, "wb") as f:
+        f.write(arquivo_bytes)
+
+    doc = OnboardingDocumento(
+        nome_original=secure_filename(filename) or filename,
+        caminho_arquivo=caminho,
+        mime=mime,
+        texto_extraido=texto_extraido[:5000] if texto_extraido else None,
+        confianca=round(confianca, 2) if confianca else None,
+        criado_por=criado_por,
+    )
+    db.session.add(doc)
+    db.session.commit()
+    return doc
+
+
+def vincular_documento(documento_id: int, paciente_id: int) -> None:
+    """Vincula o documento ao paciente (após cadastro/confirmação)."""
+    doc = OnboardingDocumento.query.get(documento_id)
+    if doc is None:
+        raise ValueError("documento inexistente")
+    doc.paciente_id = paciente_id
+    db.session.commit()
