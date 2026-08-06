@@ -111,7 +111,7 @@ def create_app(config_obj=None):
             "X-CSRF-Token",
         ],
         supports_credentials=True,
-        max_age=86400,
+        max_age=600,  # cache curto: mudanças de CORS propagam rápido
     )
 
     # Handler para arquivos muito grandes
