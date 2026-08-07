@@ -29,7 +29,8 @@ function CertificacaoDigitalPage() {
   });
   const [saving, setSaving] = useState(false);
   const [signing, setSigning] = useState(false);
-  const [result, setResult] = useState(null);
+  const [tx, setTx] = useState(null); // { tcn, status }
+  const [polling, setPolling] = useState(false);
   const [error, setError] = useState('');
   const [ok, setOk] = useState('');
   const [arquivo, setArquivo] = useState(null);
@@ -44,6 +45,7 @@ function CertificacaoDigitalPage() {
             provedor: r.data.config.provedor || 'birdid',
             client_id: r.data.config.client_id || '',
             client_secret: '',
+            certificate_alias: r.data.config.certificate_alias || '',
             base_url: r.data.config.base_url || '',
           });
         }
@@ -75,18 +77,35 @@ function CertificacaoDigitalPage() {
     }
     setSigning(true);
     setError('');
-    setResult(null);
+    setTx(null);
     const fd = new FormData();
     fd.append('file', arquivo);
     fd.append('provedor', form.provedor);
     try {
       const r = await api.post('/certificacao-digital/assinar', fd);
-      setResult(r.data);
+      setTx({ tcn: r.data.tcn, status: r.data.status });
+      iniciarPolling(r.data.tcn);
     } catch (e) {
-      setError(e.response?.data?.error || 'Erro ao assinar');
+      setError(e.response?.data?.error || 'Erro ao iniciar assinatura');
     } finally {
       setSigning(false);
     }
+  };
+
+  const iniciarPolling = async (tcn) => {
+    setPolling(true);
+    for (let i = 0; i < 60; i++) {
+      await new Promise((res) => setTimeout(res, 5000));
+      try {
+        const r = await api.get(`/certificacao-digital/assinatura/${tcn}`);
+        const st = r.data.status_documento || r.data.transacao_status;
+        setTx((t) => ({ ...t, status: st === 'SIGNED' ? 'assinado' : 'aguardando' }));
+        if (st === 'SIGNED' || st === 'ERROR') break;
+      } catch (e) {
+        break;
+      }
+    }
+    setPolling(false);
   };
 
   return (
@@ -177,12 +196,15 @@ function CertificacaoDigitalPage() {
                     hidden
                     onChange={(e) => {
                       setArquivo(e.target.files?.[0] || null);
-                      setResult(null);
                     }}
                   />
                 </Button>
-                <Button variant="contained" onClick={assinar} disabled={signing || !arquivo}>
-                  {signing ? 'Assinando…' : 'Assinar'}
+                <Button
+                  variant="contained"
+                  onClick={assinar}
+                  disabled={signing || polling || !arquivo}
+                >
+                  {signing ? 'Enviando…' : 'Assinar'}
                 </Button>
               </Stack>
               {arquivo && (
@@ -190,17 +212,18 @@ function CertificacaoDigitalPage() {
                   {arquivo.name}
                 </Typography>
               )}
-              {signing && <CircularProgress size={20} sx={{ mt: 1 }} />}
-              {result && (
-                <Alert severity="success" sx={{ mt: 1 }}>
-                  <b>Documento enviado para assinatura.</b>
+              {(signing || polling) && <CircularProgress size={20} sx={{ mt: 1 }} />}
+              {tx && (
+                <Alert severity={tx.status === 'assinado' ? 'success' : 'info'} sx={{ mt: 1 }}>
+                  <b>Assinatura {tx.status === 'assinado' ? 'concluída' : 'em andamento'}.</b>
                   <br />
-                  {result.url_assinatura && (
-                    <a href={result.url_assinatura} target="_blank" rel="noreferrer">
-                      Abrir plataforma de assinatura
+                  {tx.status === 'assinado' ? (
+                    <a href={`/api/certificacao-digital/assinatura/${tx.tcn}/download`}>
+                      Baixar PDF assinado
                     </a>
+                  ) : (
+                    'Valide no aplicativo Bird ID (push/QR) para concluir.'
                   )}
-                  {result.detalhe && <span> {result.detalhe}</span>}
                 </Alert>
               )}
               <Alert severity="info" sx={{ mt: 2 }}>

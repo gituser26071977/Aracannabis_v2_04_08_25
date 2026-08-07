@@ -1522,8 +1522,9 @@ class DigitalSignatureConfig(db.Model):
         db.Integer, db.ForeignKey("profissionais.id", ondelete="CASCADE"), nullable=False, unique=True
     )
     provedor = db.Column(db.String(30), default="birdid", nullable=False)  # birdid | valid | outro
-    client_id = db.Column(db.String(200), nullable=False)
-    client_secret = db.Column(db.String(500), nullable=False)
+    client_id = db.Column(db.String(200), nullable=True)
+    client_secret = db.Column(db.String(500), nullable=True)
+    certificate_alias = db.Column(db.String(300), nullable=True)  # alias do certificado do profissional
     base_url = db.Column(db.String(300), nullable=True)  # override p/ sandbox
     status = db.Column(db.String(20), default="pendente", nullable=False)  # pendente | ativo | erro
     criado_por = db.Column(db.String(120), nullable=True)
@@ -1539,8 +1540,44 @@ class DigitalSignatureConfig(db.Model):
             "provedor": self.provedor,
             "client_id": self.client_id,
             "client_secret_set": bool(self.client_secret),
+            "certificate_alias": self.certificate_alias,
             "base_url": self.base_url,
             "status": self.status,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+class SignatureTransaction(db.Model):
+    """Transação de assinatura digital (CESS/Bird ID) — rastreia o TCN."""
+
+    __tablename__ = "signature_transactions"
+
+    id = db.Column(db.Integer, primary_key=True)
+    config_id = db.Column(
+        db.Integer, db.ForeignKey("digital_signature_configs.id", ondelete="CASCADE"), nullable=False
+    )
+    tcn = db.Column(db.String(64), nullable=False, unique=True)
+    documento_nome = db.Column(db.String(255), nullable=True)
+    status = db.Column(db.String(20), default="aguardando", nullable=False)
+    # aguardando | assinado | erro
+    resultado_url = db.Column(db.String(500), nullable=True)
+    documento_assinado = db.Column(db.LargeBinary, nullable=True)
+    erro = db.Column(db.Text, nullable=True)
+    criado_por = db.Column(db.String(120), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    config = db.relationship("DigitalSignatureConfig")
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "tcn": self.tcn,
+            "documento_nome": self.documento_nome,
+            "status": self.status,
+            "resultado_url": self.resultado_url,
+            "erro": self.erro,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

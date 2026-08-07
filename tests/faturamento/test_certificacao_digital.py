@@ -1,4 +1,4 @@
-"""Testes da certificação digital (Bird ID) — config e assinatura."""
+"""Testes da certificação digital (Bird ID/CESS) — config e início de assinatura."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from flask_jwt_extended import create_access_token
 
 from app_cors_livre import create_app
 from config import TestingConfig
-from models import db, Profissional
+from models import db, Profissional, SignatureTransaction
 
 
 @pytest.fixture()
@@ -45,56 +45,50 @@ def _auth(client, app):
 def test_salvar_config(client, app):
     r = client.post("/api/certificacao-digital/config", json={
         "provedor": "birdid", "client_id": "cli-1", "client_secret": "sec-1",
+        "certificate_alias": "CERTIF:123",
     }, headers=_auth(client, app))
     assert r.status_code == 200, r.get_data()
+    assert r.json["config"]["certificate_alias"] == "CERTIF:123"
     assert r.json["config"]["status"] == "pendente"
 
     r = client.get("/api/certificacao-digital/config", headers=_auth(client, app))
     assert r.status_code == 200
-    assert r.json["config"]["client_id"] == "cli-1"
     assert r.json["config"]["client_secret_set"] is True
 
 
-def test_salvar_config_sem_credenciais(client, app):
-    r = client.post("/api/certificacao-digital/config", json={
-        "provedor": "birdid", "client_id": "", "client_secret": "",
-    }, headers=_auth(client, app))
-    assert r.status_code == 400
-
-
-def test_assinar_documento(client, app, monkeypatch):
+def test_iniciar_assinatura(client, app, monkeypatch):
     from routes import certificacao_digital as routes_mod
 
-    def fake_assinar(pdf_bytes, *, provedor, profissional_id, nome_assinante, cpf_assinante, motivo):
+    def fake_iniciar(pdf_bytes, *, provedor, profissional_id, nome_documento, motivo):
         assert pdf_bytes == b"%PDF-fake"
-        return {"status": "enviado", "provedor": "birdid", "assinatura_id": "abc",
-                "url_assinatura": "https://birdid.example/s/abc"}
+        tx = SignatureTransaction(config_id=1, tcn="tcn-test-123", status="aguardando")
+        return tx
 
-    monkeypatch.setattr(routes_mod, "service_assinar_pdf", fake_assinar)
+    monkeypatch.setattr(routes_mod, "iniciar_assinatura", fake_iniciar)
 
-    # config antes
     client.post("/api/certificacao-digital/config", json={
         "provedor": "birdid", "client_id": "cli-1", "client_secret": "sec-1",
+        "certificate_alias": "CERTIF:123",
     }, headers=_auth(client, app))
 
     r = client.post(
         "/api/certificacao-digital/assinar",
-        data={"file": (io.BytesIO(b"%PDF-fake"), "laudo.pdf"), "nome_assinante": "Dr. Assina"},
+        data={"file": (io.BytesIO(b"%PDF-fake"), "laudo.pdf")},
         content_type="multipart/form-data",
         headers=_auth(client, app),
     )
     assert r.status_code == 200, r.get_data()
-    assert r.json["assinatura_id"] == "abc"
-    assert r.json["url_assinatura"].startswith("https://")
+    assert r.json["tcn"] == "tcn-test-123"
+    assert r.json["status"] == "aguardando"
 
 
 def test_assinar_sem_config(client, app, monkeypatch):
     from routes import certificacao_digital as routes_mod
 
-    def fake_assinar(*args, **kwargs):
+    def fake_iniciar(*args, **kwargs):
         raise ValueError("certificação digital não configurada para este profissional")
 
-    monkeypatch.setattr(routes_mod, "service_assinar_pdf", fake_assinar)
+    monkeypatch.setattr(routes_mod, "iniciar_assinatura", fake_iniciar)
     r = client.post(
         "/api/certificacao-digital/assinar",
         data={"file": (io.BytesIO(b"%PDF-fake"), "laudo.pdf")},
@@ -102,3 +96,9 @@ def test_assinar_sem_config(client, app, monkeypatch):
         headers=_auth(client, app),
     )
     assert r.status_code == 400
+
+
+def REDACTED(client, app):
+    r = client.get("/api/certificacao-digital/assinatura/tcn-inexistente",
+                   headers=_auth(client, app))
+    assert r.status_code == 404
