@@ -226,7 +226,16 @@ const NavigationMenu = ({ open, onClose }) => {
         },
       }}
     >
-      <Box sx={{ width: 300 }} role="presentation">
+      <Box
+        sx={{
+          width: 300,
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100%',
+          overflow: 'hidden',
+        }}
+        role="presentation"
+      >
         {/* ===== USER HEADER ===== */}
         {currentUser && (
           <Box
@@ -332,7 +341,7 @@ const NavigationMenu = ({ open, onClose }) => {
         )}
 
         {/* ===== MENU SECTIONS ===== */}
-        <Box sx={{ py: 1 }}>
+        <Box sx={{ py: 1, flex: 1, overflowY: 'auto' }}>
           {sections.map((section, sectionIdx) => (
             <Box key={section.title}>
               <Typography
@@ -424,7 +433,7 @@ const NavigationMenu = ({ open, onClose }) => {
         <Divider sx={{ my: 1, mx: 2 }} />
 
         {/* ===== AUTH ITEMS ===== */}
-        <List dense sx={{ px: 1, pb: 2 }}>
+        <List dense sx={{ px: 1, pb: 2, flexShrink: 0 }}>
           {authItems.map((item) => (
             <ListItem
               button
