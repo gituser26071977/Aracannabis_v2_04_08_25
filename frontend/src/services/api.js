@@ -39,12 +39,6 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    // Adicionar ID da associação ativa para isolamento multi-tenant
-    const selectedAssocId = localStorage.getItem('selectedAssociationId');
-    if (selectedAssocId) {
-      config.headers['X-Association-ID'] = selectedAssocId;
-    }
-
     // P0-08: enviar CSRF em métodos mutáveis
     const method = (config.method || 'get').toLowerCase();
     if (['post', 'put', 'delete', 'patch'].includes(method)) {

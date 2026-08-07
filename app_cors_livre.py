@@ -100,10 +100,6 @@ def create_app(config_obj=None):
             "Authorization",
             "X-CSRF-Token",
             "X-Requested-With",
-            # X-Association-ID: o frontend (AssociationSelector) envia esse
-            # header. Re-adicionado porque as origens são RESTRITAS aos
-            # domínios confiáveis (ALLOWED_ORIGINS) — sem vetor spoof externo.
-            "X-Association-ID",
         ],
         expose_headers=[
             "Content-Type",
