@@ -18,20 +18,15 @@ import {
 import HomeIcon from '@mui/icons-material/Home';
 import PersonIcon from '@mui/icons-material/Person';
 import EventIcon from '@mui/icons-material/Event';
-import ReceiptIcon from '@mui/icons-material/ReceiptLong';
 import LoginIcon from '@mui/icons-material/Login';
 import LogoutIcon from '@mui/icons-material/Logout';
 import SecurityIcon from '@mui/icons-material/Security';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
-import SmartToyIcon from '@mui/icons-material/SmartToy';
 import ChatIcon from '@mui/icons-material/Chat';
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
-import SpeedIcon from '@mui/icons-material/Speed';
-import SettingsIcon from '@mui/icons-material/Settings';
 import BusinessIcon from '@mui/icons-material/Business';
 import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
 import VerifiedIcon from '@mui/icons-material/Verified';
-import ExtensionIcon from '@mui/icons-material/Extension';
 
 // ============================================
 // ============================================
@@ -40,12 +35,11 @@ import ExtensionIcon from '@mui/icons-material/Extension';
 
 const NavigationMenu = ({ open, onClose }) => {
   const location = useLocation();
-  const { currentUser, logout, hasClinicaAccess } = useAuth();
+  const { currentUser, logout } = useAuth();
 
   // --- Menu Definitions with emojis ---
 
   const assistencialItems = [
-    { text: '📊 Lista do dia', icon: <SpeedIcon />, path: '/dashboard', auth: true },
     {
       text: '👤 Pacientes',
       icon: <PersonIcon />,
@@ -54,66 +48,19 @@ const NavigationMenu = ({ open, onClose }) => {
       area: 'assistencial',
     },
     {
-      text: '📅 Consultas',
+      text: '📅 Consultas / Agenda',
       icon: <EventIcon />,
       path: '/consultas',
       auth: true,
       area: 'assistencial',
     },
     {
-      text: '📥 Importar Documentos',
-      icon: <PersonAddIcon />,
-      path: '/importar-prescricoes',
-      auth: true,
-      area: 'assistencial',
-    },
-    {
-      text: '📦 Catálogo → Importar por IA',
-      icon: <LocalHospitalIcon />,
-      path: '/catalogo',
-      auth: true,
-      area: 'assistencial',
-    },
-    {
-      text: '🧩 Módulos de Especialidade',
-      icon: <ExtensionIcon />,
-      path: '/modulos',
-      auth: true,
-      area: 'assistencial',
-    },
-    {
-      text: '🤖 Chat IA (LIA)',
+      text: '🤖 Agente IA',
       icon: <ChatIcon />,
       path: '/assistente-ia',
       auth: true,
       area: 'assistencial',
     },
-  ];
-
-  const gestaoItems = [
-    {
-      text: hasClinicaAccess ? '🏥 Gestão da Clínica' : '🔒 Gestão da Clínica',
-      icon: <BusinessIcon />,
-      path: '/association',
-      auth: true,
-    },
-    {
-      text: '💳 Faturamento',
-      icon: <ReceiptIcon />,
-      path: '/faturamento',
-      auth: true,
-      area: 'administrativo',
-    },
-    {
-      text: '🧩 Cadastro de pacientes',
-      icon: <PersonAddIcon />,
-      path: '/onboarding-pacientes',
-      auth: true,
-      area: 'administrativo',
-    },
-  ];
-
-  const configItems = [
     {
       text: '📝 Configurar Receituário',
       icon: <LocalHospitalIcon />,
@@ -121,32 +68,15 @@ const NavigationMenu = ({ open, onClose }) => {
       auth: true,
       area: 'assistencial',
     },
-    {
-      text: '⚙️ Configurar IA SDR',
-      icon: <SettingsIcon />,
-      path: '/configuracao-ia',
-      auth: true,
-      area: 'administrativo',
-    },
-    {
-      text: '🔧 Config IA',
-      icon: <SettingsIcon />,
-      path: '/ai-config',
-      auth: true,
-      adminOnly: true,
-    },
-    {
-      text: '🧠 Dashboard IA',
-      icon: <SmartToyIcon />,
-      path: '/ai-dashboard',
-      auth: true,
-      adminOnly: true,
-    },
   ];
 
-  const adminItems = [
-    { text: '🔐 Admin Geral', icon: <SecurityIcon />, path: '/admin', auth: true, adminOnly: true },
-  ];
+  const gestaoItem = {
+    text: '🏢 Gestão',
+    icon: <BusinessIcon />,
+    path: '/gestao',
+    auth: true,
+    area: 'administrativo',
+  };
 
   const publicItems = [
     { text: '🏠 Início', icon: <HomeIcon />, path: '/', auth: false },
@@ -187,9 +117,7 @@ const NavigationMenu = ({ open, onClose }) => {
     };
     const grupos = [
       { title: '📋 ASSISTENCIAL', items: assistencialItems },
-      { title: '🏥 GESTÃO', items: gestaoItems },
-      { title: '⚙️ CONFIGURAÇÕES', items: configItems },
-      { title: '🔐 ADMINISTRAÇÃO', items: adminItems },
+      { title: '🏢 GESTÃO', items: [gestaoItem] },
     ];
     for (const g of grupos) {
       const visiveis = g.items.filter(podeVer);
