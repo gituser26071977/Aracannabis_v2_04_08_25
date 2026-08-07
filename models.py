@@ -1508,6 +1508,44 @@ class OnboardingDocumento(db.Model):
         }
 
 
+class DigitalSignatureConfig(db.Model):
+    """Configuração de certificação digital por profissional (Bird ID e outros).
+
+    Credenciais de integração com a plataforma de assinatura digital usada
+    para prescrições, laudos e relatórios. (TODO: criptografar client_secret.)
+    """
+
+    __tablename__ = "digital_signature_configs"
+
+    id = db.Column(db.Integer, primary_key=True)
+    profissional_id = db.Column(
+        db.Integer, db.ForeignKey("profissionais.id", ondelete="CASCADE"), nullable=False, unique=True
+    )
+    provedor = db.Column(db.String(30), default="birdid", nullable=False)  # birdid | valid | outro
+    client_id = db.Column(db.String(200), nullable=False)
+    client_secret = db.Column(db.String(500), nullable=False)
+    base_url = db.Column(db.String(300), nullable=True)  # override p/ sandbox
+    status = db.Column(db.String(20), default="pendente", nullable=False)  # pendente | ativo | erro
+    criado_por = db.Column(db.String(120), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    profissional = db.relationship("Profissional")
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "profissional_id": self.profissional_id,
+            "provedor": self.provedor,
+            "client_id": self.client_id,
+            "client_secret_set": bool(self.client_secret),
+            "base_url": self.base_url,
+            "status": self.status,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
 class SolicitacoesCadastro(db.Model):
     __tablename__ = "solicitacoes_cadastro"
 

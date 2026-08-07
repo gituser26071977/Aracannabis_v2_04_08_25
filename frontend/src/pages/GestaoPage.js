@@ -10,6 +10,7 @@ import {
   Chip,
 } from '@mui/material';
 import {
+  VerifiedUser,
   PersonAdd,
   ReceiptLong,
   LocalHospital,
@@ -87,6 +88,11 @@ function GestaoPage() {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
   const ehAdmin = currentUser?.role === 'admin' || currentUser?.role === 'superadmin';
+  const ehAssistencial =
+    currentUser?.perfil_efetivo === 'assistencial' ||
+    (!currentUser?.perfil_efetivo && !ehAdmin && currentUser?.role !== 'profissional'
+      ? false
+      : (currentUser?.perfil_efetivo || 'assistencial') === 'assistencial');
 
   return (
     <Box p={3}>
@@ -97,62 +103,68 @@ function GestaoPage() {
         Rotinas administrativas da clínica, organizadas por área.
       </Typography>
 
-      <RoutineGroup title="PACIENTES">
-        <Grid item xs={12} sm={6} md={4}>
-          <RoutineCard
-            icon={<PersonAdd fontSize="large" />}
-            title="Cadastro de pacientes"
-            description="Cadastro com assistência de IA e upload de documentos (imagem/PDF)."
-            onClick={() => navigate('/onboarding-pacientes')}
-          />
-        </Grid>
-      </RoutineGroup>
+      {!ehAssistencial && (
+        <RoutineGroup title="PACIENTES">
+          <Grid item xs={12} sm={6} md={4}>
+            <RoutineCard
+              icon={<PersonAdd fontSize="large" />}
+              title="Cadastro de pacientes"
+              description="Cadastro com assistência de IA e upload de documentos (imagem/PDF)."
+              onClick={() => navigate('/onboarding-pacientes')}
+            />
+          </Grid>
+        </RoutineGroup>
+      )}
 
-      <RoutineGroup title="FINANCEIRO">
-        <Grid item xs={12} sm={6} md={4}>
-          <RoutineCard
-            icon={<ReceiptLong fontSize="large" />}
-            title="Financeiro"
-            description="Contas a receber, recebimentos, repasse dos profissionais e agente de consulta."
-            onClick={() => navigate('/faturamento')}
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={4}>
-          <RoutineCard
-            icon={<LocalHospital fontSize="large" />}
-            title="Convênios & Tabela"
-            description="Convênios, serviços e tabela de preços (particular e por convênio)."
-            onClick={() => navigate('/faturamento')}
-          />
-        </Grid>
-      </RoutineGroup>
+      {!ehAssistencial && (
+        <RoutineGroup title="FINANCEIRO">
+          <Grid item xs={12} sm={6} md={4}>
+            <RoutineCard
+              icon={<ReceiptLong fontSize="large" />}
+              title="Financeiro"
+              description="Contas a receber, recebimentos, repasse dos profissionais e agente de consulta."
+              onClick={() => navigate('/faturamento')}
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} md={4}>
+            <RoutineCard
+              icon={<LocalHospital fontSize="large" />}
+              title="Convênios & Tabela"
+              description="Convênios, serviços e tabela de preços (particular e por convênio)."
+              onClick={() => navigate('/faturamento')}
+            />
+          </Grid>
+        </RoutineGroup>
+      )}
 
-      <RoutineGroup title="OPERAÇÕES">
-        <Grid item xs={12} sm={6} md={4}>
-          <RoutineCard
-            icon={<Inventory2 fontSize="large" />}
-            title="Estoque"
-            description="Controle de produtos e medicamentos."
-            emBreve
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={4}>
-          <RoutineCard
-            icon={<Storefront fontSize="large" />}
-            title="Marketplace"
-            description="Venda de produtos e serviços da clínica."
-            emBreve
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={4}>
-          <RoutineCard
-            icon={<Groups fontSize="large" />}
-            title="Gestão da Clínica"
-            description="Cadastro da clínica, convites e membros da equipe."
-            onClick={() => navigate('/association')}
-          />
-        </Grid>
-      </RoutineGroup>
+      {!ehAssistencial && (
+        <RoutineGroup title="OPERAÇÕES">
+          <Grid item xs={12} sm={6} md={4}>
+            <RoutineCard
+              icon={<Inventory2 fontSize="large" />}
+              title="Estoque"
+              description="Controle de produtos, medicamentos e dispensação."
+              onClick={() => navigate('/association/stock')}
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} md={4}>
+            <RoutineCard
+              icon={<Storefront fontSize="large" />}
+              title="Marketplace"
+              description="Venda de produtos e serviços da clínica."
+              emBreve
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} md={4}>
+            <RoutineCard
+              icon={<Groups fontSize="large" />}
+              title="Gestão da Clínica"
+              description="Cadastro da clínica, convites e membros da equipe."
+              onClick={() => navigate('/association')}
+            />
+          </Grid>
+        </RoutineGroup>
+      )}
 
       <RoutineGroup title="CONFIGURAÇÕES">
         <Grid item xs={12} sm={6} md={4}>
@@ -187,9 +199,17 @@ function GestaoPage() {
             onClick={() => navigate('/configuracao-ia')}
           />
         </Grid>
+        <Grid item xs={12} sm={6} md={4}>
+          <RoutineCard
+            icon={<VerifiedUser fontSize="large" />}
+            title="Certificação Digital"
+            description="Assinatura digital de prescrições, laudos e relatórios (Bird ID e outros)."
+            onClick={() => navigate('/certificacao-digital')}
+          />
+        </Grid>
       </RoutineGroup>
 
-      {ehAdmin && (
+      {ehAdmin && !ehAssistencial && (
         <RoutineGroup title="ADMINISTRAÇÃO">
           <Grid item xs={12} sm={6} md={4}>
             <RoutineCard
