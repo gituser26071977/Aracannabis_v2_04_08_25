@@ -40,6 +40,7 @@ import DailyBoardPage from './pages/DailyBoardPage';
 import OnboardingPacientesPage from './pages/OnboardingPacientesPage';
 import GestaoPage from './pages/GestaoPage';
 import CertificacaoDigitalPage from './pages/CertificacaoDigitalPage';
+import RelatoriosFinanceirosPage from './pages/RelatoriosFinanceirosPage';
 import AIConfigPage from './pages/AIConfigPage';
 import PasswordSetupRequestPage from './pages/PasswordSetupRequestPage';
 import DefinePasswordPage from './pages/DefinePasswordPage';
@@ -740,6 +741,14 @@ function AppContent() {
               element={
                 <ProtectedRoute>
                   <CertificacaoDigitalPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/relatorios-financeiros"
+              element={
+                <ProtectedRoute>
+                  <RelatoriosFinanceirosPage />
                 </ProtectedRoute>
               }
             />

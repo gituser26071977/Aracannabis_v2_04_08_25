@@ -513,3 +513,97 @@ def agente_financeiro():
         logger.exception("agente_financeiro_falhou")
         return jsonify({"error": "erro ao processar a pergunta"}), 500
     return jsonify(resultado), 200
+
+
+# ════════════════════════════════════════════════════════════════════
+# Relatórios financeiros (Fase 2) — somente gestor financeiro
+# ════════════════════════════════════════════════════════════════════
+
+def _require_gestor_financeiro():
+    from services.perfil_acesso import eh_gestor_financeiro
+
+    user = _current_user()
+    if not user or not eh_gestor_financeiro(user):
+        return None
+    return user
+
+
+@faturamento_bp.route("/relatorios/resumo", methods=["GET"])
+@jwt_required()
+def relatorio_resumo():
+    user = _require_gestor_financeiro()
+    if user is None:
+        return jsonify({"error": "Acesso negado. Requer privilégio de gestor financeiro."}), 403
+    from services.relatorios_financeiros import resumo
+
+    args = request.args
+    try:
+        dados = resumo(
+            de=args.get("de"), ate=args.get("ate"),
+            profissional_id=args.get("profissional_id", type=int),
+            convenio_id=args.get("convenio_id", type=int),
+            modalidade=args.get("modalidade"),
+        )
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    return jsonify(dados), 200
+
+
+@faturamento_bp.route("/relatorios/receita", methods=["GET"])
+@jwt_required()
+def relatorio_receita():
+    user = _require_gestor_financeiro()
+    if user is None:
+        return jsonify({"error": "Acesso negado. Requer privilégio de gestor financeiro."}), 403
+    from services.relatorios_financeiros import receita_por
+
+    args = request.args
+    try:
+        dados = receita_por(
+            agrupar=args.get("agrupar_por", "profissional"),
+            de=args.get("de"), ate=args.get("ate"),
+            profissional_id=args.get("profissional_id", type=int),
+            convenio_id=args.get("convenio_id", type=int),
+            modalidade=args.get("modalidade"),
+        )
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    return jsonify({"itens": dados}), 200
+
+
+@faturamento_bp.route("/relatorios/repasse", methods=["GET"])
+@jwt_required()
+def relatorio_repasse():
+    user = _require_gestor_financeiro()
+    if user is None:
+        return jsonify({"error": "Acesso negado. Requer privilégio de gestor financeiro."}), 403
+    from services.relatorios_financeiros import repasse_por_profissional
+
+    args = request.args
+    try:
+        dados = repasse_por_profissional(
+            de=args.get("de"), ate=args.get("ate"),
+            profissional_id=args.get("profissional_id", type=int),
+        )
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    return jsonify({"itens": dados}), 200
+
+
+@faturamento_bp.route("/relatorios/inadimplencia", methods=["GET"])
+@jwt_required()
+def relatorio_inadimplencia():
+    user = _require_gestor_financeiro()
+    if user is None:
+        return jsonify({"error": "Acesso negado. Requer privilégio de gestor financeiro."}), 403
+    from services.relatorios_financeiros import inadimplencia
+
+    args = request.args
+    try:
+        dados = inadimplencia(
+            de=args.get("de"), ate=args.get("ate"),
+            profissional_id=args.get("profissional_id", type=int),
+        )
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    return jsonify(dados), 200

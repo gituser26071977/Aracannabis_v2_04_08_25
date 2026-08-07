@@ -23,6 +23,7 @@ import {
   Inventory2,
   Groups,
   AdminPanelSettings,
+  Assessment,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -132,6 +133,14 @@ function GestaoPage() {
               title="Convênios & Tabela"
               description="Convênios, serviços e tabela de preços (particular e por convênio)."
               onClick={() => navigate('/faturamento')}
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} md={4}>
+            <RoutineCard
+              icon={<Assessment fontSize="large" />}
+              title="Relatórios Financeiros"
+              description="Receita, repasse por profissional, inadimplência."
+              onClick={() => navigate('/relatorios-financeiros')}
             />
           </Grid>
         </RoutineGroup>
