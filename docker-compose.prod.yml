@@ -58,6 +58,10 @@ services:
       - ANONYMIZATION_SERVICE_URL=http://siap-anonymization:8000
       - OTEL_SDK_DISABLED=true
       - CREWAI_DISABLE_TELEMETRY=true
+      # Certificação Digital (Bird ID/CESS) — credenciais corporativas
+      - BIRD_ID_CLIENT_ID=${BIRD_ID_CLIENT_ID:-}
+      - BIRD_ID_CLIENT_SECRET=${BIRD_ID_CLIENT_SECRET:-}
+      - BIRD_ID_BASE_URL=${BIRD_ID_BASE_URL:-https://cess.lab.vaultid.com.br}
       # Visual Smart Flow Integration
       - VSF_BASE_URL=https://visualsmartflow.com.br/api
       - VSF_EMAIL=admin@arapath.com.br
