@@ -2,6 +2,8 @@ from flask import Blueprint, request, jsonify, send_from_directory, g
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, Paciente, LogAtividade, Profissional, CompartilhamentoPaciente
 from security_config import sanitize_input, is_valid_cpf
+from routes.auth_decorators import require_permission
+from araos.platform.identity.permissions import Permission
 from datetime import datetime, date
 import os
 import re
@@ -309,6 +311,7 @@ def obter_paciente(paciente_id):
 
 @pacientes_bp.route('/', methods=['POST'])
 @jwt_required()
+@require_permission(Permission.PATIENT_WRITE)
 def cadastrar_paciente():
     try:
         current_user_id = get_jwt_identity()
@@ -482,6 +485,7 @@ def cadastrar_paciente():
 
 @pacientes_bp.route('/<int:paciente_id>', methods=['PUT'])
 @jwt_required()
+@require_permission(Permission.PATIENT_WRITE)
 def atualizar_paciente(paciente_id):
     current_user_id = get_jwt_identity()
     profissional_id = int(current_user_id)
@@ -647,6 +651,7 @@ def atualizar_paciente(paciente_id):
 
 @pacientes_bp.route('/<int:paciente_id>', methods=['DELETE'])
 @jwt_required()
+@require_permission(Permission.PATIENT_DELETE)
 def excluir_paciente(paciente_id):
     current_user_id = get_jwt_identity()
     profissional_id = int(current_user_id)

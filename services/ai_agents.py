@@ -74,6 +74,7 @@ class AIProviderManager:
     
     def __init__(self):
         DEEPSEEK_AVAILABLE = OPENAI_AVAILABLE and bool(os.getenv('DEEPSEEK_API_KEY'))
+        OLLAMA_AVAILABLE_LOCAL = OLLAMA_AVAILABLE and bool(os.getenv('OLLAMA_BASE_URL'))
         
         self.providers = {
             'google': {
@@ -87,7 +88,51 @@ class AIProviderManager:
                 'client': None,
                 'models': ['deepseek-chat', 'deepseek-reasoner'],
                 'type': 'cloud'
-            }
+            },
+            # Demais provedores registrados para que routes/ai_config.py e
+            # get_available_providers() funcionem sem KeyError (F4).
+            'groq': {
+                'available': GROQ_AVAILABLE,
+                'client': None,
+                'models': ['llama-3.1-8b-instant'],
+                'type': 'cloud'
+            },
+            'openai': {
+                'available': OPENAI_AVAILABLE,
+                'client': None,
+                'models': ['gpt-4o-mini'],
+                'type': 'cloud'
+            },
+            'anthropic': {
+                'available': ANTHROPIC_AVAILABLE,
+                'client': None,
+                'models': ['claude-3-5-haiku-latest'],
+                'type': 'cloud'
+            },
+            'zhipu': {
+                'available': OPENAI_AVAILABLE,
+                'client': None,
+                'models': ['glm-4-plus'],
+                'type': 'cloud'
+            },
+            'maritaca': {
+                'available': OPENAI_AVAILABLE,
+                'client': None,
+                'models': ['sabia-3'],
+                'type': 'cloud'
+            },
+            'ollama': {
+                'available': OLLAMA_AVAILABLE,
+                'client': None,
+                'models': [],
+                'type': 'local'
+            },
+            'ollama_local': {
+                'available': OLLAMA_AVAILABLE_LOCAL,
+                'client': None,
+                'models': [],
+                'type': 'local'
+            },
         }
         
         # Padronizar no Gemini 2.5 Flash Lite
@@ -313,10 +358,21 @@ class AIProviderManager:
 
     def chat_completion(self, messages: List[Dict], provider: str = None, model: str = None, 
                        temperature: float = 0.7, max_tokens: int = 1000) -> Dict:
-        """Executa chat completion com fallback entre provedores"""
+        """Executa chat completion com fallback entre provedores.
+
+        Gateway-first (F4): se `LLM_GATEWAY_URL` estiver configurado, tenta o
+        LLM Gateway (egress auditado com rate-limit + custo). Em indisponibilidade,
+        cai no fallback in-process entre provedores. Assim o gateway se torna a
+        porta única de saída sem reescrever os ~20 consumidores.
+        """
         
         provider = provider or self.default_provider
         model = model or self.default_model
+        
+        # Gateway-first: única porta de egress auditada (F4)
+        gateway_result = self._try_gateway(messages, provider)
+        if gateway_result is not None:
+            return gateway_result
         
         # Tentar provedor solicitado primeiro
         if self._is_provider_available(provider):
@@ -343,6 +399,48 @@ class AIProviderManager:
             'model': 'none',
             'error': 'Todos os provedores de IA falharam'
         }
+
+    def _try_gateway(self, messages: List[Dict], provider: str) -> Dict | None:
+        """Tenta o LLM Gateway (egress auditado). Retorna None se indisponível.
+
+        Config-gated por `LLM_GATEWAY_URL`. O texto enviado é o conteúdo do
+        último message (role user) — em produção, anonimização é responsabilidade
+        do pipeline de chamada (ex.: ai_clinical) ou da camada de anonimização.
+        """
+        gateway_url = os.getenv("LLM_GATEWAY_URL", "").strip()
+        if not gateway_url:
+            return None
+        try:
+            import requests as _requests
+            text = ""
+            for m in reversed(messages):
+                if m.get("role") == "user" and m.get("content"):
+                    text = m["content"]
+                    break
+            resp = _requests.post(
+                f"{gateway_url.rstrip('/')}/generate",
+                json={
+                    "consultation_id": 0,
+                    "tenant_id": 0,
+                    "anonymized_text": text,
+                    "task": "chat",
+                    "provider": provider,
+                },
+                timeout=45,
+            )
+            if resp.status_code != 200:
+                logger.warning("llm_gateway_http_error: status=%s", resp.status_code)
+                return None
+            data = resp.json()
+            return {
+                'content': data.get('output', {}).get('text', ''),
+                'provider': data.get('provider', provider),
+                'model': 'gateway',
+                'via_gateway': True,
+            }
+        except Exception as e:
+            logger.warning(f"LLM Gateway indisponível, usando fallback in-process: {str(e)}")
+            return None
     
     def _is_provider_available(self, provider: str) -> bool:
         """Verifica se um provedor está disponível"""

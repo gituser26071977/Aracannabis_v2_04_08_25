@@ -7,6 +7,7 @@ Detecção automática via `conselho_tipo` no payload; default 'CRM' para
 compatibilidade com dados legados.
 """
 from flask import Blueprint, request, jsonify, current_app
+from flask_jwt_extended import jwt_required
 from werkzeug.security import generate_password_hash
 from models import db, Profissional, SolicitacoesCadastro
 from services.conselho_validator import (
@@ -20,6 +21,8 @@ from security_config import (
     SENSITIVE_ENDPOINTS_RATE_LIMIT,
     LOGIN_RATE_LIMIT,
 )
+from routes.auth_decorators import require_permission
+from araos.platform.identity.permissions import Permission
 import re
 import secrets
 import string
@@ -333,6 +336,8 @@ def processar_aprovacao(solicitacao_id):
         return {'success': False, 'error': str(e)}, 500
 
 @cadastro_profissionais_bp.route('/listar-solicitacoes', methods=['GET'])
+@jwt_required()
+@require_permission(Permission.PROFESSIONAL_READ)
 def listar_solicitacoes():
     try:
         solicitacoes = SolicitacoesCadastro.query.order_by(SolicitacoesCadastro.data_solicitacao.desc()).all()
@@ -342,12 +347,16 @@ def listar_solicitacoes():
         return jsonify({'success': False, 'error': 'Erro interno.'}), 500
 
 @cadastro_profissionais_bp.route('/aprovar-solicitacao/<int:solicitacao_id>', methods=['POST'])
+@jwt_required()
+@require_permission(Permission.PROFESSIONAL_WRITE)
 @limiter.limit(SENSITIVE_ENDPOINTS_RATE_LIMIT)
 def aprovar_solicitacao(solicitacao_id):
     result, status_code = processar_aprovacao(solicitacao_id)
     return jsonify(result), status_code
 
 @cadastro_profissionais_bp.route('/rejeitar-solicitacao/<int:solicitacao_id>', methods=['POST'])
+@jwt_required()
+@require_permission(Permission.PROFESSIONAL_WRITE)
 @limiter.limit(SENSITIVE_ENDPOINTS_RATE_LIMIT)
 def rejeitar_solicitacao(solicitacao_id):
     try:

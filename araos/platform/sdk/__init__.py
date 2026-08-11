@@ -144,6 +144,9 @@ from araos.platform.api.events import EventAPI
 from araos.intelligence.llm import LLMProvider, LLMMessage, LLMResponse, LLMRequest
 from araos.intelligence.embeddings import EmbeddingProvider, EmbeddingResult
 from araos.intelligence.vector import VectorStoreProvider, VectorSearchResult
+from araos.intelligence.providers.gateway_provider import GatewayLLMProvider
+from araos.intelligence.providers.router import LLMRouter
+from araos.intelligence.runtime.runtime import LLMRuntime
 
 # Trust Levels (Week 7B)
 from araos.intelligence.trust.levels import SourceType, TrustLevel, TrustedResponse
@@ -206,6 +209,59 @@ from araos.platform.shared.errors import (
 
 # Constantes
 from araos.platform.shared.constants import PLATFORM_NAME, PLATFORM_VERSION
+
+
+def build_intelligence_runtime(
+    tenant_id: Any = 0,
+    default_task: str = "chat",
+    preferred_provider: str = "deepseek",
+    fallback_provider: str | None = None,
+) -> LLMRuntime:
+    """Constrói o LLMRuntime da camada assíncrona (F4 — adoção).
+
+    Provider principal = `GatewayLLMProvider` (rota pelo LLM Gateway, a
+    única porta de egress auditada). Opcionalmente registra um fallback
+    in-process (`ai_manager`) para resiliência.
+
+    Uso:
+        runtime = build_intelligence_runtime(tenant_id=assoc_id)
+        trusted = await runtime.complete(messages=[...], source_type=...)
+    """
+    from araos.intelligence.providers.mock_provider import MockLLMProvider
+
+    router = LLMRouter()
+    router.register(
+        "gateway",
+        GatewayLLMProvider(tenant_id=tenant_id, default_task=default_task),
+        priority=100,
+    )
+    if fallback_provider:
+        # Fallback via ai_manager (in-process) — mesmo provider do gateway-first.
+        from services.ai_agents import ai_manager
+
+        class _InProcessProvider(GatewayLLMProvider):
+            async def complete(self, request):
+                text = self._messages_to_text(request.messages)
+                provider = self._provider_for_model(request.model)
+                result = ai_manager.chat_completion(
+                    messages=[{"role": "user", "content": text}],
+                    provider=provider,
+                )
+                canonical = {
+                    "output": {"text": result.get("content", "")},
+                    "tokens_used": 0,
+                    "provider": result.get("provider", provider),
+                    "status": "fallback",
+                    "via_gateway": False,
+                }
+                return self._to_response(canonical)
+
+        router.register(fallback_provider, _InProcessProvider(), priority=10)
+    else:
+        router.register("mock", MockLLMProvider(), priority=1)
+
+    return LLMRuntime(router=router)
+
 
 __all__ = [
     # Contexto

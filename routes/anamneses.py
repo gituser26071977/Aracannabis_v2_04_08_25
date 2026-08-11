@@ -3,7 +3,7 @@ Rotas para Anamnese no AraOS
 Permite CRUD de fichas de anamnese vinculadas ao paciente.
 """
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, Anamnese, Paciente, Profissional
 from sqlalchemy.exc import SQLAlchemyError
@@ -106,6 +106,30 @@ def criar_anamnese():
             paciente.diagnostico = data["condicao_principal"]
 
         db.session.commit()
+
+        # F2 — wrap: emite Clinical Event canônico (nunca bloqueia o fluxo)
+        try:
+            from services.araos_event_emitter import default_emitter
+
+            default_emitter().emit(
+                event_type="ANAMNESIS_RECORDED",
+                patient_id=paciente_id,
+                tenant_id=current_app.config.get("DEFAULT_TENANT_SLUG", "default"),
+                source_id=anamnese.id,
+                payload={
+                    "anamnesis_id": anamnese.id,
+                    "paciente_id": paciente_id,
+                    "condicao_principal": anamnese.condicao_principal,
+                    "sintomas_atuais": anamnese.sintomas_atuais,
+                    "medicamentos_uso": anamnese.medicamentos_uso,
+                    "peso": anamnese.peso,
+                    "altura": anamnese.altura,
+                    "fonte": anamnese.fonte,
+                },
+                metadata={"professional_id": str(profissional_id) if profissional_id else None},
+            )
+        except Exception as exc:  # noqa: BLE001 — wrap nunca quebra o fluxo
+            logger.warning("anamnese_event_emit_failed: %s", exc)
 
         return jsonify({
             "success": True,

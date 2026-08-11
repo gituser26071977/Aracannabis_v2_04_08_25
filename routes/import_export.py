@@ -15,7 +15,7 @@ def safe_ai_import_processing(text_content, patient_id, timeout=30):
     try:
         # Tentar usar versão otimizada primeiro
         try:
-            from services.ai_agents_optimized import process_evolution_input_optimized
+            from services.ai_agents import process_evolution_input_optimized
             result = process_evolution_input_optimized(
                 evolution_text_input=text_content,
                 timeout=timeout

@@ -74,21 +74,11 @@ neuro_registry_bp = Blueprint(
 
 
 def _resolve_tenant_id() -> str:
-    from_header = (
-        request.headers.get("X-Association-ID")
-        or request.headers.get("X-Tenant-ID")
-    )
-    if from_header:
-        return from_header
-    try:
-        identity = get_jwt_identity()
-        if isinstance(identity, dict):
-            tid = identity.get("tenant_id") or identity.get("organization_id")
-            if tid:
-                return str(tid)
-    except Exception:
-        pass
-    return ""
+    # Re-export do helper canônico (P0-12: tenant só do JWT/g.current_association,
+    # nunca de X-Association-ID/X-Tenant-ID — vetor de spoof cross-tenant).
+    from routes._helpers import _resolve_tenant_id as _canonical
+
+    return _canonical()
 
 
 def _get_actor_id() -> Optional[str]:

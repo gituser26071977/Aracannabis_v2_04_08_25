@@ -4,12 +4,13 @@ import requests
 import os
 import logging
 
+from services.llm_gateway_client import default_client
+
 logger = logging.getLogger(__name__)
 
 ai_clinical_bp = Blueprint('ai_clinical', __name__)
 
 ANONYMIZATION_SERVICE_URL = os.getenv('ANONYMIZATION_SERVICE_URL', 'http://anonymization_service:8000')
-LLM_GATEWAY_URL = os.getenv('LLM_GATEWAY_URL', 'http://llm_gateway:8000')
 
 @ai_clinical_bp.route('/generate-soap', methods=['POST'])
 @jwt_required()
@@ -52,37 +53,27 @@ def generate_soap():
             logger.error(f"Falha ao contatar Anonymization Service: {e}")
             return jsonify({'error': 'Serviço de anonimização indisponível'}), 503
 
-        # 2. Gerar com LLM Gateway
-        try:
-            # Carregar provedor preferencial das configurações
-            config_path = os.path.join(current_app.root_path, 'config', 'ai_settings.json')
-            provider = "zhipu" # Fallback
-            if os.path.exists(config_path):
-                import json
-                try:
-                    with open(config_path, 'r') as f:
-                        settings = json.load(f)
-                        provider = settings.get('chat_provider', 'zhipu')
-                except: pass
+        # 2. Gerar com LLM Gateway (cliente único; fallback in-process se gateway indisponível)
+        # Carregar provedor preferencial das configurações
+        config_path = os.path.join(current_app.root_path, 'config', 'ai_settings.json')
+        provider = "zhipu" # Fallback
+        if os.path.exists(config_path):
+            import json
+            try:
+                with open(config_path, 'r') as f:
+                    settings = json.load(f)
+                    provider = settings.get('chat_provider', 'zhipu')
+            except Exception:
+                pass
 
-            llm_resp = requests.post(f"{LLM_GATEWAY_URL}/generate", json={
-                "consultation_id": consultation_id or 0,
-                "tenant_id": tenant_id,
-                "anonymized_text": anonymized_text,
-                "task": task,
-                "provider": provider
-            }, timeout=45) # Timeout maior para LLM
-            
-            if llm_resp.status_code != 200:
-                logger.error(f"Erro no LLM Gateway: {llm_resp.text}")
-                return jsonify({'error': 'Falha na geração de IA'}), llm_resp.status_code
-            
-            llm_data = llm_resp.json()
-            soap_output = llm_data['output']
-            
-        except requests.RequestException as e:
-            logger.error(f"Falha ao contatar LLM Gateway: {e}")
-            return jsonify({'error': 'Gateway de IA indisponível'}), 503
+        llm_result = default_client().generate(
+            anonymized_text=anonymized_text,
+            tenant_id=tenant_id,
+            task=task,
+            provider=provider,
+            consultation_id=consultation_id or 0,
+        )
+        soap_output = llm_result['output']
 
         # 3. Reidratar (Opcional - mas recomendado para exibir dados coerentes)
         # Se o SOAP contiver tokens como [DATE_01], queremos restaurar?
@@ -100,7 +91,7 @@ def generate_soap():
                         rehydrated_soap[key] = rehydrate_resp.json()['original_text']
                     else:
                         rehydrated_soap[key] = value # Fallback
-                except:
+                except Exception:
                     rehydrated_soap[key] = value
             else:
                 rehydrated_soap[key] = value
@@ -108,9 +99,10 @@ def generate_soap():
         return jsonify({
             'soap': rehydrated_soap,
             'meta': {
-                'tokens_used': llm_data['tokens_used'],
-                'provider': llm_data['provider'],
-                'processing_time_ms': llm_data['processing_time_ms']
+                'tokens_used': llm_result['tokens_used'],
+                'provider': llm_result['provider'],
+                'processing_time_ms': llm_result['processing_time_ms'],
+                'via_gateway': llm_result['via_gateway'],
             }
         }), 200
 

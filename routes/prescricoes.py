@@ -2,6 +2,8 @@ from flask import Blueprint, request, jsonify, send_file, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import Prescricao
 from services.prescription_service import PrescriptionService
+from routes.auth_decorators import require_permission
+from araos.platform.identity.permissions import Permission
 import os
 
 prescricoes_bp = Blueprint('prescricoes', __name__)
@@ -9,6 +11,7 @@ service = PrescriptionService()
 
 @prescricoes_bp.route('/gerar', methods=['POST'])
 @jwt_required()
+@require_permission(Permission.PRESCRIPTION_WRITE)
 def gerar_prescricao():
     data = request.get_json()
     profissional_id = get_jwt_identity()

@@ -203,7 +203,31 @@ def registrar_evolucao(paciente_id):
         )
         db.session.add(log)
         db.session.commit()
-        
+
+        # F2 — wrap: emite Clinical Event canônico (nunca bloqueia o fluxo)
+        try:
+            from services.araos_event_emitter import default_emitter
+
+            default_emitter().emit(
+                event_type="EVOLUTION_RECORDED",
+                patient_id=paciente_id,
+                tenant_id=current_app.config.get("DEFAULT_TENANT_SLUG", "default"),
+                source_id=saved_evolucao_id,
+                payload={
+                    "evolucao_id": saved_evolucao_id,
+                    "paciente_id": paciente_id,
+                    "nota_evolucao": narrative_evolution,
+                    "data_evolucao": data_evolucao_str,
+                },
+                metadata={
+                    "professional_id": str(profissional_id),
+                    "ai_processed": ai_processed,
+                    "dosage_saved": bool(dosage_info and dosage_info.get('dosage_text')),
+                },
+            )
+        except Exception as exc:  # noqa: BLE001 — wrap nunca quebra o fluxo
+            current_app.logger.warning("evolucao_event_emit_failed: %s", exc)
+
         return jsonify({
             'message': 'Evolução registrada com sucesso. ' + saved_dosage_details_msg,
             'evolucao': nova_evolucao.to_dict() 

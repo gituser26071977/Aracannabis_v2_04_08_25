@@ -66,6 +66,18 @@ class Config:
     # --- Ara Intake → AraOS (Fase 0): secret para validar eventos clínicos ---
     CLINICAL_EVENT_SECRET = os.getenv("CLINICAL_EVENT_SECRET", "")
 
+    # --- SIAP → AraOS (F2): emitter de Clinical Events (wrap, env-gated) ---
+    # AROS_WEBHOOK_URL: POST /api/v1/clinical/events do AraOS
+    # AROS_EVENT_SECRET: assinatura HMAC-SHA256 do corpo
+    # CLINICAL_EVENTS_ENABLED: "true" liga a emissão em produção
+    AROS_WEBHOOK_URL = os.getenv("AROS_WEBHOOK_URL", "")
+    AROS_EVENT_SECRET = os.getenv("AROS_EVENT_SECRET", "")
+    CLINICAL_EVENTS_ENABLED = os.getenv("CLINICAL_EVENTS_ENABLED", "false").lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+
     # --- Engine options (P0-13 Production Readiness) ---
     # pool_size=20, max_overflow=40 → até 60 conexões concorrentes
     # pool_pre_ping=True → testa conexão antes de usar

@@ -49,30 +49,12 @@ neuro_scales_bp = Blueprint("neuro_scales", __name__, url_prefix="/api/neuro/sca
 
 def _resolve_tenant_id() -> str:
     """
-    Resolve `tenant_id` a partir de `X-Association-ID` header ou
-    identidade JWT. Fallback: `tenant_id` na identidade.
-
-    Sprint 1: implementação simples. Sprint 7 (hardening) integrará com
-    `TenantContextResolver` completo.
+    Re-export do helper canônico (P0-12): tenant só do JWT / g.current_association,
+    NUNCA de `X-Association-ID`/`X-Tenant-ID` (vetor de spoof cross-tenant).
     """
-    # Tenta header
-    from_header = request.headers.get("X-Association-ID") or request.headers.get(
-        "X-Tenant-ID"
-    )
-    if from_header:
-        return from_header
+    from routes._helpers import _resolve_tenant_id as _canonical
 
-    # Tenta identidade JWT (campo customizado injetado pelo SIAP)
-    try:
-        identity = get_jwt_identity()
-        if isinstance(identity, dict):
-            tid = identity.get("tenant_id") or identity.get("organization_id")
-            if tid:
-                return str(tid)
-    except Exception:  # noqa: BLE001
-        pass
-
-    return ""
+    return _canonical()
 
 
 def _get_actor_id() -> Optional[str]:
@@ -131,6 +113,27 @@ def _publish_scale_applied_event(
         logger.warning(
             "Falha ao publicar evento NEURODEVELOPMENTAL_SCALE_APPLIED: %s", e
         )
+
+    # F2/F5 — wrap: emite o ClinicalEvent canônico para o AraOS (event store)
+    # alimentando o Observatório (SCALE_APPLIED → observatory_etl).
+    # Never-throw: falha de integração não bloqueia a aplicação da escala.
+    try:
+        from services.araos_event_emitter import default_emitter
+
+        default_emitter().emit(
+            event_type="SCALE_APPLIED",
+            patient_id=patient_id,
+            tenant_id=tenant_id,
+            source_id=response_id,
+            payload={
+                "scale_code": scale_code,
+                "scale_version": "latest",
+                "response_id": response_id,
+            },
+            metadata={"actor_id": actor_id},
+        )
+    except Exception as e:  # noqa: BLE001
+        logger.warning("Falha ao emitir SCALE_APPLIED para o AraOS: %s", e)
 
 
 # ─── Endpoints ───────────────────────────────────────────────────────
