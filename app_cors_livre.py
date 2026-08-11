@@ -404,6 +404,11 @@ def create_app(config_obj=None):
 
     app.register_blueprint(clinical_genome_bp)
 
+    # [NEW] Replay histórico — bootstrap do genome (F2 retrofit)
+    from routes.historical_replay import replay_bp
+
+    app.register_blueprint(replay_bp)
+
     # [NEW] AI Clinical Pipeline
     from routes.ai_clinical import ai_clinical_bp
     from routes.hc_report import hc_report_bp
