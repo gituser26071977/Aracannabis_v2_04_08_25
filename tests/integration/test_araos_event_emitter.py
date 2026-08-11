@@ -41,9 +41,9 @@ class RecordingSession:
         self.posted: list[tuple[str, dict, bytes]] = []
         self._lock = threading.Lock()
 
-    def post(self, url: str, headers: dict, content: bytes, timeout: float) -> FakeResponse:
+    def post(self, url: str, headers: dict, data: bytes, timeout: float) -> FakeResponse:
         with self._lock:
-            self.posted.append((url, headers, content))
+            self.posted.append((url, headers, data))
         return FakeResponse(self.status)
 
 

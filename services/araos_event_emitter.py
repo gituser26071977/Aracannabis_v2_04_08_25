@@ -23,7 +23,7 @@ import hmac
 import json
 import logging
 import os
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import requests
@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 
 def _now_iso() -> str:
-    return datetime.now(UTC).isoformat()
+    return datetime.now(timezone.utc).isoformat()
 
 
 def build_event(
@@ -129,7 +129,7 @@ class AraOSEventEmitter:
 
         try:
             requester = self._session or requests
-            response = requester.post(self._url, headers=headers, content=raw, timeout=self._timeout)
+            response = requester.post(self._url, headers=headers, data=raw, timeout=self._timeout)
             response.raise_for_status()
             return True
         except Exception as exc:  # noqa: BLE001 — nunca bloqueia o clínico
