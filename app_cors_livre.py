@@ -414,6 +414,11 @@ def create_app(config_obj=None):
 
     app.register_blueprint(salas_ambientes_bp)
 
+    # [NEW] Convites de associação — onboarding de médicos em clínicas/grupos
+    from routes.convites import convites_bp
+
+    app.register_blueprint(convites_bp)
+
     # [NEW] AI Clinical Pipeline
     from routes.ai_clinical import ai_clinical_bp
     from routes.hc_report import hc_report_bp
