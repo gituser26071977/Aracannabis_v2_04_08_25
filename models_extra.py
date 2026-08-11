@@ -241,3 +241,88 @@ def create_audit_entry(tenant_id, user_id, action, resource_type=None, resource_
     except Exception:
         db.session.rollback()
         raise
+
+
+class ConviteAssociacao(db.Model):
+    """Convite para médico ingressar numa clínica/associação (tenant).
+
+    Fluxo: o admin da associação gera um convite (email e/ou código).
+    O médico convidado aceita (via link ou código) e vira membro da
+    associação (UsuarioAssociacao). Suporta convidar médicos que ainda
+    não têm conta (criam uma) ou que já têm (ingressam na clínica).
+    """
+
+    __tablename__ = 'convites_associacoes'
+
+    id = db.Column(db.Integer, primary_key=True)
+    associacao_id = db.Column(
+        db.Integer, db.ForeignKey('associacoes.id', ondelete='CASCADE'), nullable=False
+    )
+    email = db.Column(db.String, nullable=False)
+    # token único para aceite via link; codigo curto para aceite manual
+    token = db.Column(db.String(64), unique=True, nullable=False)
+    codigo = db.Column(db.String(12), unique=True, nullable=False)
+    role_convidado = db.Column(db.String, default='member')  # 'member', 'viewer'
+    status = db.Column(db.String, default='pendente')  # pendente, aceito, revogado, expirado
+    criado_por = db.Column(db.Integer, db.ForeignKey('profissionais.id'), nullable=True)
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow)
+    expira_em = db.Column(db.DateTime, nullable=True)
+    aceito_em = db.Column(db.DateTime, nullable=True)
+    aceito_por = db.Column(db.Integer, db.ForeignKey('profissionais.id'), nullable=True)
+
+    associacao = db.relationship('Associacao', backref='convites')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'associacao_id': self.associacao_id,
+            'email': self.email,
+            'token': self.token,
+            'codigo': self.codigo,
+            'role_convidado': self.role_convidado,
+            'status': self.status,
+            'criado_em': self.criado_em.isoformat() if self.criado_em else None,
+            'expira_em': self.expira_em.isoformat() if self.expira_em else None,
+            'aceito_em': self.aceito_em.isoformat() if self.aceito_em else None,
+        }
+
+
+class SalaAmbiente(db.Model):
+    """Espaço físico de uma clínica/associação (tenant).
+
+    Consultórios, salas de espera, ambientes de infusão, salas de
+    terapia, pré-atendimentos. Alimenta o agente de IA de gestão de
+    pessoas/espaços/insumos (conecta com o VSF de visão computacional
+    e o MESH de ocupação).
+
+    Tipos (extensível): consultorio, sala_espera, infusao, terapia,
+    pre_atendimento, recepcao, triagem, outro.
+    """
+
+    __tablename__ = 'salas_ambientes'
+
+    id = db.Column(db.Integer, primary_key=True)
+    associacao_id = db.Column(
+        db.Integer, db.ForeignKey('associacoes.id', ondelete='CASCADE'), nullable=False, index=True
+    )
+    nome = db.Column(db.String, nullable=False)
+    tipo = db.Column(db.String, default='consultorio', nullable=False)
+    capacidade = db.Column(db.Integer, default=1)
+    ativo = db.Column(db.Boolean, default=True)
+    # Integração VSF: identificador da sala no fluxo de visão computacional
+    vsf_room_key = db.Column(db.String, nullable=True)
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow)
+
+    associacao = db.relationship('Associacao', backref='salas_ambientes')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'associacao_id': self.associacao_id,
+            'nome': self.nome,
+            'tipo': self.tipo,
+            'capacidade': self.capacidade,
+            'ativo': self.ativo,
+            'vsf_room_key': self.vsf_room_key,
+            'criado_em': self.criado_em.isoformat() if self.criado_em else None,
+        }
