@@ -129,3 +129,48 @@ class TestEmit:
             enabled=True, webhook_url="https://araos.local/events", secret="s", session=BrokenSession()
         )
         assert emitter2.emit(event_type="X", patient_id=1, tenant_id="t", payload={}) is False
+
+
+class TestWrapEventTypes:
+    """F2 — wrap nos fluxos de exame/dosagem/prescrição: tipos canônicos."""
+
+    @pytest.mark.parametrize(
+        "event_type,payload",
+        [
+            (
+                "EXAM_RECORDED",
+                {"exame_id": 1, "paciente_id": 7, "tipo_exame": "texto", "titulo": "Hemograma"},
+            ),
+            (
+                "DOSAGE_RECORDED",
+                {"dosagem_id": 2, "paciente_id": 7, "dosage_text": "0.5ml", "drops": 15},
+            ),
+            (
+                "PRESCRIPTION_ISSUED",
+                {"prescricao_id": 3, "paciente_id": 7, "n_medicamentos": 2},
+            ),
+        ],
+    )
+    def test_wrap_emits_canonical_type(self, event_type, payload):
+        session = RecordingSession()
+        emitter = AraOSEventEmitter(
+            enabled=True,
+            webhook_url="https://araos.local/api/v1/clinical/events",
+            secret="s",
+            session=session,
+        )
+        ok = emitter.emit(
+            event_type=event_type,
+            patient_id=payload.get("paciente_id", 7),
+            tenant_id="t-vittalis",
+            payload=payload,
+            source_id=payload.get(f"{event_type.lower().split('_')[0]}_id"),
+        )
+        assert ok is True
+        body = json.loads(session.posted[-1][2])
+        assert body["type"] == event_type
+        assert body["tenant_id"] == "t-vittalis"
+        assert body["source"] == "siap"
+        # payload canônico preservado
+        for k, v in payload.items():
+            assert body.get(k) == v

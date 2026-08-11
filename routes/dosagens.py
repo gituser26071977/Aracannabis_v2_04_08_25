@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, Dosagem, Paciente, LogAtividade
 from datetime import datetime, timedelta
@@ -107,7 +107,31 @@ def registrar_dosagem(paciente_id):
         )
         db.session.add(log)
         db.session.commit()
-        
+
+        # F2 — wrap: emite Clinical Event canônico (nunca bloqueia o fluxo)
+        try:
+            from services.araos_event_emitter import default_emitter
+
+            default_emitter().emit(
+                event_type="DOSAGE_RECORDED",
+                patient_id=paciente_id,
+                tenant_id=str(paciente.associacao_id or "default"),
+                source_id=nova_dosagem.id,
+                payload={
+                    "dosagem_id": nova_dosagem.id,
+                    "paciente_id": paciente_id,
+                    "dosage_text": data['dosagem'],
+                    "drops": nova_dosagem.gotas,
+                    "daily_frequency": nova_dosagem.frequencia_diaria,
+                    "cbd_concentration_mg_ml": nova_dosagem.concentracao_cbd,
+                    "thc_concentration_mg_ml": nova_dosagem.concentracao_thc,
+                    "data": data_dosagem.isoformat() if data_dosagem else None,
+                },
+                metadata={"professional_id": str(profissional_id)},
+            )
+        except Exception as exc:  # noqa: BLE001 — wrap nunca quebra o fluxo
+            current_app.logger.warning("dosagem_event_emit_failed: %s", exc)
+
         return jsonify({
             'message': 'Dosagem registrada com sucesso',
             'dosagem': nova_dosagem.to_dict()

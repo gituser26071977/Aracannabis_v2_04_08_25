@@ -115,6 +115,30 @@ def criar_exame():
 
     db.session.commit()
     
+    # F2 — wrap: emite Clinical Event canônico (nunca bloqueia o fluxo)
+    try:
+        from services.araos_event_emitter import default_emitter
+
+        default_emitter().emit(
+            event_type="EXAM_RECORDED",
+            patient_id=paciente_id,
+            tenant_id=str(paciente.associacao_id or "default"),
+            source_id=novo_exame.id,
+            payload={
+                "exame_id": novo_exame.id,
+                "paciente_id": paciente_id,
+                "tipo_exame": tipo_exame,
+                "titulo": titulo,
+                "descricao": descricao,
+                "valor": valor,
+                "unidade": unidade,
+                "data_exame": data_exame.strftime("%Y-%m-%d") if data_exame else None,
+            },
+            metadata={"professional_id": str(profissional_id) if profissional_id else None},
+        )
+    except Exception as exc:  # noqa: BLE001 — wrap nunca quebra o fluxo
+        current_app.logger.warning("exame_event_emit_failed: %s", exc)
+
     # Enviar email com resultados do exame
     try:
         # Obter paciente para email

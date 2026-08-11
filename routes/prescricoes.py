@@ -57,6 +57,33 @@ def gerar_prescricao():
     
     try:
         prescricao = service.gerar_prescricao_pdf(profissional_id, paciente_id, dosagens_ids, observacoes)
+
+        # F2 — wrap: emite Clinical Event canônico (nunca bloqueia o fluxo)
+        try:
+            from models import Paciente
+            from services.araos_event_emitter import default_emitter
+
+            paciente = Paciente.query.get(paciente_id)
+            default_emitter().emit(
+                event_type="PRESCRIPTION_ISSUED",
+                patient_id=paciente_id,
+                tenant_id=str(paciente.associacao_id or "default") if paciente else "default",
+                source_id=prescricao.id if hasattr(prescricao, "id") else None,
+                payload={
+                    "prescricao_id": prescricao.id if hasattr(prescricao, "id") else None,
+                    "paciente_id": paciente_id,
+                    "n_medicamentos": len(dosagens_ids),
+                    "data_emissao": (
+                        prescricao.data_emissao.strftime("%Y-%m-%d")
+                        if hasattr(prescricao, "data_emissao") and prescricao.data_emissao
+                        else None
+                    ),
+                },
+                metadata={"professional_id": str(profissional_id)},
+            )
+        except Exception as exc:  # noqa: BLE001 — wrap nunca quebra o fluxo
+            current_app.logger.warning("prescricao_event_emit_failed: %s", exc)
+
         return jsonify({
             'success': True,
             'message': 'Prescrição gerada com sucesso',
