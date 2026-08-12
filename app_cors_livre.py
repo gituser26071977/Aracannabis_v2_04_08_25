@@ -90,6 +90,12 @@ def create_app(config_obj=None):
     # Inicializar rate limiter
     limiter = init_limiter(app)
 
+    # Em modo de teste, desativa o rate limiter: ele usa storage compartilhado
+    # (memory://) entre todos os testes da suíte e estoura limites globais
+    # (ex.: login 10/min) causando 429 falso-positivo em testes de integração.
+    if app.config.get("TESTING"):
+        limiter.enabled = False
+
     # CORS amplo para front (localhost:3000) e acessos externos; se quiser restringir, ajuste ALLOWED_ORIGINS em security_config
     CORS(
         app,
@@ -338,6 +344,14 @@ def create_app(config_obj=None):
     from routes.intake_integration import intake_integration_bp
 
     app.register_blueprint(intake_integration_bp, url_prefix="/api")
+    from routes.intelligent_catalog import icatalog_bp
+
+    app.register_blueprint(icatalog_bp)
+    from routes.inventory import inventory_bp
+    from routes.pharmacy import pharmacy_bp
+
+    app.register_blueprint(inventory_bp)
+    app.register_blueprint(pharmacy_bp)
     from routes.onboarding_pacientes import onboarding_bp
 
     app.register_blueprint(onboarding_bp, url_prefix="/api/onboarding")

@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, g
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, Profissional, Produto
 from models_extra import InventoryItem, create_audit_entry
@@ -14,6 +14,26 @@ def get_current_profissional():
     return Profissional.query.get(int(current_user_id))
 
 
+def _resolve_tenant(user):
+    """Resolve o tenant (associação) do usuário, seguindo o padrão P0-12."""
+    assoc = getattr(g, 'current_association', None)
+    if assoc is not None:
+        return getattr(assoc, 'id', None)
+    if user is not None:
+        # Legacy: associação direta no profissional (se existir)
+        direto = getattr(user, 'associacao_id', None) or getattr(user, 'tenant_id', None)
+        if direto:
+            return direto
+        # Multi-tenant: primeira vínculo ativo via UsuarioAssociacao
+        from models_extra import UsuarioAssociacao
+        vinculo = UsuarioAssociacao.query.filter_by(
+            profissional_id=user.id, status='active'
+        ).first()
+        if vinculo:
+            return vinculo.associacao_id
+    return None
+
+
 @inventory_bp.route('/', methods=['GET'])
 @jwt_required()
 def list_inventory():
@@ -21,7 +41,7 @@ def list_inventory():
     if not user:
         return jsonify({'error': 'Usuário não encontrado'}), 404
 
-    tenant_id = getattr(user, 'tenant_id', None)
+    tenant_id = _resolve_tenant(user)
     if tenant_id is None:
         # fallback: list all items if tenant is not defined (legacy)
         items = InventoryItem.query.order_by(InventoryItem.created_at.desc()).all()
@@ -52,7 +72,7 @@ def create_inventory_item():
     if not produto:
         return jsonify({'error': 'Produto não encontrado'}), 404
 
-    tenant_id = getattr(user, 'tenant_id', None)
+    tenant_id = _resolve_tenant(user)
 
     item = InventoryItem(
         tenant_id=tenant_id,
@@ -101,7 +121,7 @@ def adjust_inventory(item_id):
         return jsonify({'error': 'Item de inventário não encontrado'}), 404
 
     # Optionally check tenant
-    tenant_id = getattr(user, 'tenant_id', None)
+    tenant_id = _resolve_tenant(user)
     if tenant_id is not None and item.tenant_id != tenant_id:
         return jsonify({'error': 'Acesso negado ao item de inventário'}), 403
 

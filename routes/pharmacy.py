@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, g
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, Profissional
 from models_extra import InventoryItem, PharmacyDispense, create_audit_entry
@@ -12,6 +12,26 @@ def get_current_profissional():
     if not current_user_id:
         return None
     return Profissional.query.get(int(current_user_id))
+
+
+def _resolve_tenant(user):
+    """Resolve o tenant (associação) do usuário, seguindo o padrão P0-12."""
+    assoc = getattr(g, 'current_association', None)
+    if assoc is not None:
+        return getattr(assoc, 'id', None)
+    if user is not None:
+        # Legacy: associação direta no profissional (se existir)
+        direto = getattr(user, 'associacao_id', None) or getattr(user, 'tenant_id', None)
+        if direto:
+            return direto
+        # Multi-tenant: primeira vínculo ativo via UsuarioAssociacao
+        from models_extra import UsuarioAssociacao
+        vinculo = UsuarioAssociacao.query.filter_by(
+            profissional_id=user.id, status='active'
+        ).first()
+        if vinculo:
+            return vinculo.associacao_id
+    return None
 
 
 @pharmacy_bp.route('/dispense', methods=['POST'])
@@ -32,7 +52,7 @@ def dispense_prescription():
     if not itens or not isinstance(itens, list):
         return jsonify({'error': 'itens é obrigatório e deve ser uma lista'}), 400
 
-    tenant_id = getattr(user, 'tenant_id', None)
+    tenant_id = _resolve_tenant(user)
 
     # Begin transaction
     try:

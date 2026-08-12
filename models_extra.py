@@ -439,3 +439,57 @@ class AndarSetor(db.Model):
             'ativo': self.ativo,
             'criado_em': self.criado_em.isoformat() if self.criado_em else None,
         }
+
+
+class ICatalogProcess(db.Model):
+    """Fila de processamento inteligente de catálogo/estoque (cadastro inteligente).
+
+    Espelha o pipeline do SGAC (intelligent_onboarding) aplicado a
+    PRODUTOS e ESTOQUE: upload de documento (bula/nota/planilha) →
+    extração LLM → sugestão de cadastro → revisão humana → aplicar.
+
+    Status: processado | pendente_revisao | aplicado | duplicado | erro
+    """
+
+    __tablename__ = 'icatalog_processes'
+
+    id = db.Column(db.Integer, primary_key=True)
+    associacao_id = db.Column(
+        db.Integer, db.ForeignKey('associacoes.id', ondelete='CASCADE'), nullable=False, index=True
+    )
+    original_filename = db.Column(db.String)
+    document_type = db.Column(db.String, default='produto')
+    status = db.Column(db.String, default='processado', nullable=False)
+    # Dados extraídos pelo LLM (produto + estoque)
+    extracted_data = db.Column(db.JSON)
+    confidence = db.Column(db.Integer, default=0)
+    # Resultado do match/duplicidade
+    match_result = db.Column(db.JSON)  # {produto_id, motivo, acao_sugerida}
+    missing_fields = db.Column(db.JSON)
+    completeness_score = db.Column(db.Integer, default=0)
+    action_taken = db.Column(db.String)  # created | merged | skipped | pending
+    produto_id = db.Column(db.Integer, db.ForeignKey('produtos.id', ondelete='SET NULL'), nullable=True)
+    error_message = db.Column(db.Text)
+    criado_por = db.Column(db.Integer, db.ForeignKey('profissionais.id'), nullable=True)
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow)
+    revisado_em = db.Column(db.DateTime, nullable=True)
+    revisado_por = db.Column(db.Integer, db.ForeignKey('profissionais.id'), nullable=True)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'associacao_id': self.associacao_id,
+            'original_filename': self.original_filename,
+            'document_type': self.document_type,
+            'status': self.status,
+            'extracted_data': self.extracted_data,
+            'confidence': self.confidence,
+            'match_result': self.match_result,
+            'missing_fields': self.missing_fields,
+            'completeness_score': self.completeness_score,
+            'action_taken': self.action_taken,
+            'produto_id': self.produto_id,
+            'error_message': self.error_message,
+            'criado_em': self.criado_em.isoformat() if self.criado_em else None,
+            'revisado_em': self.revisado_em.isoformat() if self.revisado_em else None,
+        }
