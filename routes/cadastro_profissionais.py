@@ -15,6 +15,7 @@ from services.conselho_validator import (
     normalizar_tipo_conselho,
     CONSELHO_NONE,
     CONSELHO_LABELS,
+    listar_conselhos,
 )
 from security_config import (
     limiter,
@@ -51,6 +52,16 @@ def gerar_senha_temporaria():
     """Gerar senha temporária segura"""
     alphabet = string.ascii_letters + string.digits
     return ''.join(secrets.choice(alphabet) for _ in range(12))
+
+@cadastro_profissionais_bp.route('/conselhos', methods=['GET'])
+def listar_conselhos_route():
+    """Lista os conselhos/classes suportados (para o dropdown do cadastro).
+
+    Agnóstico de profissão: CRM (médico), CRP (psicólogo), COREN (enfermeiro),
+    CRN (nutricionista), CREFITO (fisioterapeuta), CRFa (fonoaudiólogo),
+    NONE (staff).
+    """
+    return jsonify({'success': True, 'conselhos': listar_conselhos()}), 200
 
 @cadastro_profissionais_bp.route('/solicitar-cadastro', methods=['POST'])
 @limiter.limit(SENSITIVE_ENDPOINTS_RATE_LIMIT)

@@ -29,6 +29,7 @@ CONSELHO_CRP = "CRP"           # Psicólogo
 CONSELHO_COREN = "COREN"       # Enfermeiro
 CONSELHO_CRN = "CRN"           # Nutricionista
 CONSELHO_CREFITO = "CREFITO"   # Fisioterapeuta
+CONSELHO_CRFA = "CRFa"         # Fonoaudiólogo
 CONSELHO_NONE = "NONE"         # Sem conselho (staff: secretária, gestor)
 
 CONSELHOS_SUPORTADOS = [
@@ -37,6 +38,7 @@ CONSELHOS_SUPORTADOS = [
     CONSELHO_COREN,
     CONSELHO_CRN,
     CONSELHO_CREFITO,
+    CONSELHO_CRFA,
     CONSELHO_NONE,
 ]
 
@@ -47,6 +49,7 @@ CONSELHO_LABELS = {
     CONSELHO_COREN: "Conselho Regional de Enfermagem",
     CONSELHO_CRN: "Conselho Regional de Nutricionistas",
     CONSELHO_CREFITO: "Conselho Regional de Fisioterapia",
+    CONSELHO_CRFA: "Conselho Regional de Fonoaudiologia",
     CONSELHO_NONE: "Sem conselho (staff administrativo)",
 }
 
@@ -59,6 +62,8 @@ CONSELHO_ALIASES = {
     "CREFITO": CONSELHO_CREFITO,
     "CREFITO-3": CONSELHO_CREFITO,  # variação com dígito regional
     "COFFITO": CONSELHO_CREFITO,   # nome do conselho federal
+    "CRFA": CONSELHO_CRFA,          # Fonoaudiologia
+    "CRF": CONSELHO_CRFA,           # alias comum para Fonoaudiólogo
     "": CONSELHO_NONE,
     "N/A": CONSELHO_NONE,
     "NENHUM": CONSELHO_NONE,
@@ -97,6 +102,12 @@ _CONSELHOS: Dict[str, Dict[str, Any]] = {
         "role": "profissional",
         "label": CONSELHO_LABELS[CONSELHO_CREFITO],
         "profissao": "Fisioterapeuta",
+    },
+    CONSELHO_CRFA: {
+        "regex": re.compile(r"^(\d{1,2}/\d{1,5}|\d{4,7})$"),
+        "role": "profissional",
+        "label": CONSELHO_LABELS[CONSELHO_CRFA],
+        "profissao": "Fonoaudiólogo",
     },
     CONSELHO_NONE: {
         "regex": re.compile(r"^$|^None$|^null$|^N/A$", re.IGNORECASE),
