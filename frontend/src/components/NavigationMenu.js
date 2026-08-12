@@ -78,6 +78,14 @@ const NavigationMenu = ({ open, onClose }) => {
     area: 'administrativo',
   };
 
+  const unidadeItem = {
+    text: '🏬 Configurar Unidade',
+    icon: <LocalHospitalIcon />,
+    path: '/configurar-unidade',
+    auth: true,
+    area: 'administrativo',
+  };
+
   const publicItems = [
     { text: '🏠 Início', icon: <HomeIcon />, path: '/', auth: false },
     {
@@ -117,7 +125,7 @@ const NavigationMenu = ({ open, onClose }) => {
     };
     const grupos = [
       { title: '📋 ASSISTENCIAL', items: assistencialItems },
-      { title: '🏢 GESTÃO', items: [gestaoItem] },
+      { title: '🏢 GESTÃO', items: [gestaoItem, unidadeItem] },
     ];
     for (const g of grupos) {
       const visiveis = g.items.filter(podeVer);

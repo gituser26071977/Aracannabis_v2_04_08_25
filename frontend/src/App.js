@@ -55,6 +55,7 @@ import DispensationPage from './pages/association/DispensationPage';
 import ConfiguracaoPrescricaoPage from './pages/ConfiguracaoPrescricaoPage';
 import ConfiguracaoIAPage from './pages/ConfiguracaoIAPage';
 import CatalogoPage from './pages/CatalogoPage';
+import ConfigurarUnidadePage from './pages/ConfigurarUnidadePage';
 import OnboardingPage from './pages/OnboardingPage';
 import TrialEndingPage from './pages/TrialEndingPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
@@ -791,6 +792,14 @@ function AppContent() {
               element={
                 <ProtectedRoute>
                   <ConfiguracaoIAPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/configurar-unidade"
+              element={
+                <ProtectedRoute>
+                  <ConfigurarUnidadePage />
                 </ProtectedRoute>
               }
             />
