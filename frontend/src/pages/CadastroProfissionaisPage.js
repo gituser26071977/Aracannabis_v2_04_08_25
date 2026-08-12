@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Container,
   Paper,
@@ -15,20 +15,43 @@ import {
   Step,
   StepLabel,
   CircularProgress,
-  Chip,
-  Divider
+  Divider,
 } from '@mui/material';
 import {
   PersonAdd as PersonAddIcon,
   Email as EmailIcon,
-  CheckCircle as CheckCircleIcon
+  CheckCircle as CheckCircleIcon,
 } from '@mui/icons-material';
 import api from '../services/api';
 
 const ESTADOS_BRASIL = [
-  'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
-  'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN',
-  'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
+  'AC',
+  'AL',
+  'AP',
+  'AM',
+  'BA',
+  'CE',
+  'DF',
+  'ES',
+  'GO',
+  'MA',
+  'MT',
+  'MS',
+  'MG',
+  'PA',
+  'PB',
+  'PR',
+  'PE',
+  'PI',
+  'RJ',
+  'RN',
+  'RS',
+  'RO',
+  'RR',
+  'SC',
+  'SP',
+  'SE',
+  'TO',
 ];
 
 const ESPECIALIDADES = [
@@ -54,7 +77,7 @@ const ESPECIALIDADES = [
   'Anestesiologia',
   'Medicina da Dor',
   'Medicina Paliativa',
-  'Outras'
+  'Outras',
 ];
 
 // rc.15 — Stepper reduzido de 5 para 4 passos.
@@ -64,12 +87,7 @@ const ESPECIALIDADES = [
 // caso queiram antecipar a escolha.
 // O `plano_slug` continua no formData por compatibilidade do backend
 // (que aceita e ignora) mas seu valor default agora é null.
-const steps = [
-  'Dados Pessoais',
-  'Dados Profissionais',
-  'Confirmação',
-  'Aguardar Aprovação'
-];
+const steps = ['Dados Pessoais', 'Dados Profissionais', 'Confirmação', 'Aguardar Aprovação'];
 
 // rc.15 — PLANOS_CADASTRO removido. Plano agora é escolha voluntária
 // em /planos após aprovação. Cadastro entra direto em trial 14d.
@@ -85,16 +103,18 @@ const CadastroProfissionaisPage = () => {
     nome: '',
     email: '',
     telefone: '',
+    conselho_tipo: 'CRM', // CRM, CRP, COREN, CRN, CREFITO, CRFa, NONE
     crm: '',
     uf_crm: '',
     especialidade: '',
     instituicao: '',
     tipo_vinculo: 'pessoal', // 'pessoal' ou 'existente'
     associacao_id: '',
-    plano_slug: null,        // rc.15: trial 14d é o padrão. Plano vira escolha voluntária em /planos.
+    plano_slug: null, // rc.15: trial 14d é o padrão. Plano vira escolha voluntária em /planos.
   });
 
   const [associacoes, setAssociacoes] = React.useState([]);
+  const [conselhos, setConselhos] = React.useState([]);
 
   React.useEffect(() => {
     const fetchAssociacoes = async () => {
@@ -104,10 +124,26 @@ const CadastroProfissionaisPage = () => {
           setAssociacoes(response.data.associacoes);
         }
       } catch (err) {
-        if(process.env.NODE_ENV!=='production')console.error('Erro ao buscar associações:', err);
+        if (process.env.NODE_ENV !== 'production')
+          console.error('Erro ao buscar associações:', err);
       }
     };
     fetchAssociacoes();
+  }, []);
+
+  React.useEffect(() => {
+    // Lista de conselhos/classes profissionais (agnóstico de profissão)
+    const fetchConselhos = async () => {
+      try {
+        const response = await api.get('/cadastro_profissionais/conselhos');
+        if (response.data.success) {
+          setConselhos(response.data.conselhos);
+        }
+      } catch (err) {
+        if (process.env.NODE_ENV !== 'production') console.error('Erro ao buscar conselhos:', err);
+      }
+    };
+    fetchConselhos();
   }, []);
 
   // rc.15 — Removido fetch de /planos/. Cadastro é livre (trial 14d grátis).
@@ -115,9 +151,9 @@ const CadastroProfissionaisPage = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
     setError('');
   };
@@ -164,12 +200,12 @@ const CadastroProfissionaisPage = () => {
 
   const handleNext = () => {
     if (validateStep(activeStep)) {
-      setActiveStep(prev => prev + 1);
+      setActiveStep((prev) => prev + 1);
     }
   };
 
   const handleBack = () => {
-    setActiveStep(prev => prev - 1);
+    setActiveStep((prev) => prev - 1);
   };
 
   const handleSubmit = async () => {
@@ -193,7 +229,7 @@ const CadastroProfissionaisPage = () => {
         setError(response.data.error || 'Erro ao enviar solicitação');
       }
     } catch (err) {
-      if(process.env.NODE_ENV!=='production')console.error('Erro ao solicitar cadastro:', err);
+      if (process.env.NODE_ENV !== 'production') console.error('Erro ao solicitar cadastro:', err);
       if (err.response?.data?.error) {
         setError(err.response.data.error);
       } else {
@@ -260,8 +296,26 @@ const CadastroProfissionaisPage = () => {
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
+                name="conselho_tipo"
+                label="Conselho de Classe"
+                select
+                value={formData.conselho_tipo}
+                onChange={handleInputChange}
+                fullWidth
+                required
+                helperText="Selecione sua classe profissional"
+              >
+                {conselhos.map((c) => (
+                  <MenuItem key={c.tipo} value={c.tipo}>
+                    {c.profissao} ({c.tipo})
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
                 name="crm"
-                label="Número do Registro (Ex: CRM, COREN, CRP)"
+                label="Número do Registro"
                 value={formData.crm}
                 onChange={handleInputChange}
                 fullWidth
@@ -327,7 +381,9 @@ const CadastroProfissionaisPage = () => {
                 required
                 helperText="Escolha entre criar seu próprio consultório ou se vincular a uma clínica existente."
               >
-                <MenuItem value="pessoal">Meu Consultório Virtual (Novo Espaço Personalizado)</MenuItem>
+                <MenuItem value="pessoal">
+                  Meu Consultório Virtual (Novo Espaço Personalizado)
+                </MenuItem>
                 <MenuItem value="existente">Vincular a uma Clínica/Associação Existente</MenuItem>
               </TextField>
             </Grid>
@@ -361,50 +417,61 @@ const CadastroProfissionaisPage = () => {
       // viraram case 2 e 3 respectivamente.
 
       case 2: {
-          return (
-            <Grid container spacing={3}>
-              <Grid item xs={12}>
-                <Typography variant="h6" gutterBottom>
-                  Confirme seus dados
-                </Typography>
-              </Grid>
-              <Grid item xs={12}>
-                <Card variant="outlined">
-                  <CardContent>
-                    <Typography variant="subtitle1" gutterBottom>
-                      <strong>Dados Pessoais:</strong>
-                    </Typography>
-                    <Typography>Nome: {formData.nome}</Typography>
-                    <Typography>Email: {formData.email}</Typography>
-                    {formData.telefone && <Typography>Telefone: {formData.telefone}</Typography>}
-
-                    <Typography variant="subtitle1" gutterBottom sx={{ mt: 2 }}>
-                      <strong>Dados Profissionais:</strong>
-                    </Typography>
-                    <Typography>Registro (CRM/COREN/etc): {formData.crm}/{formData.uf_crm}</Typography>
-                    <Typography>Especialidade/Profissão: {formData.especialidade}</Typography>
-                    {formData.instituicao && <Typography>Instituição: {formData.instituicao}</Typography>}
-
-                    <Typography variant="subtitle2" sx={{ mt: 1 }}>
-                      Vínculo: {formData.tipo_vinculo === 'pessoal'
-                        ? 'Novo Consultório Virtual'
-                        : `Vincular a ${associacoes.find(a => a.id === formData.associacao_id)?.nome || 'Associação'}`}
-                    </Typography>
-
-                    <Divider sx={{ my: 2 }} />
-                    <Typography variant="subtitle1" gutterBottom>
-                      <strong>Acesso Inicial:</strong>
-                    </Typography>
-                    <Typography variant="body2">
-                      Após aprovação, você terá <strong>14 dias de trial gratuito</strong> com todas as funcionalidades
-                      (CRM, prontuário, agenda, módulos). Você poderá assinar um plano a qualquer momento em /planos.
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
+        return (
+          <Grid container spacing={3}>
+            <Grid item xs={12}>
+              <Typography variant="h6" gutterBottom>
+                Confirme seus dados
+              </Typography>
             </Grid>
-          );
-        }
+            <Grid item xs={12}>
+              <Card variant="outlined">
+                <CardContent>
+                  <Typography variant="subtitle1" gutterBottom>
+                    <strong>Dados Pessoais:</strong>
+                  </Typography>
+                  <Typography>Nome: {formData.nome}</Typography>
+                  <Typography>Email: {formData.email}</Typography>
+                  {formData.telefone && <Typography>Telefone: {formData.telefone}</Typography>}
+
+                  <Typography variant="subtitle1" gutterBottom sx={{ mt: 2 }}>
+                    <strong>Dados Profissionais:</strong>
+                  </Typography>
+                  <Typography>
+                    Profissão:{' '}
+                    {conselhos.find((c) => c.tipo === formData.conselho_tipo)?.profissao ||
+                      formData.conselho_tipo}
+                  </Typography>
+                  <Typography>
+                    Registro: {formData.crm}/{formData.uf_crm} ({formData.conselho_tipo})
+                  </Typography>
+                  <Typography>Especialidade: {formData.especialidade}</Typography>
+                  {formData.instituicao && (
+                    <Typography>Instituição: {formData.instituicao}</Typography>
+                  )}
+
+                  <Typography variant="subtitle2" sx={{ mt: 1 }}>
+                    Vínculo:{' '}
+                    {formData.tipo_vinculo === 'pessoal'
+                      ? 'Novo Consultório Virtual'
+                      : `Vincular a ${associacoes.find((a) => a.id === formData.associacao_id)?.nome || 'Associação'}`}
+                  </Typography>
+
+                  <Divider sx={{ my: 2 }} />
+                  <Typography variant="subtitle1" gutterBottom>
+                    <strong>Acesso Inicial:</strong>
+                  </Typography>
+                  <Typography variant="body2">
+                    Após aprovação, você terá <strong>14 dias de trial gratuito</strong> com todas
+                    as funcionalidades (CRM, prontuário, agenda, módulos). Você poderá assinar um
+                    plano a qualquer momento em /planos.
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+        );
+      }
 
       case 3:
         return (
@@ -426,9 +493,12 @@ const CadastroProfissionaisPage = () => {
                   Próximos passos:
                 </Typography>
                 <Typography variant="body2">
-                  1. Nossa equipe irá analisar sua solicitação<br />
-                  2. Verificaremos seus dados profissionais<br />
-                  3. Após aprovação, você receberá um email com suas credenciais temporárias<br />
+                  1. Nossa equipe irá analisar sua solicitação
+                  <br />
+                  2. Verificaremos seus dados profissionais
+                  <br />
+                  3. Após aprovação, você receberá um email com suas credenciais temporárias
+                  <br />
                   4. As credenciais serão válidas por 14 dias para avaliação do sistema
                 </Typography>
               </Alert>
@@ -442,6 +512,7 @@ const CadastroProfissionaisPage = () => {
                       nome: '',
                       email: '',
                       telefone: '',
+                      conselho_tipo: 'CRM',
                       crm: '',
                       uf_crm: '',
                       especialidade: '',
@@ -502,10 +573,7 @@ const CadastroProfissionaisPage = () => {
         {renderStepContent(activeStep)}
 
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
-          <Button
-            disabled={activeStep === 0 || activeStep === 3}
-            onClick={handleBack}
-          >
+          <Button disabled={activeStep === 0 || activeStep === 3} onClick={handleBack}>
             Voltar
           </Button>
 
@@ -520,10 +588,7 @@ const CadastroProfissionaisPage = () => {
                 {loading ? 'Enviando...' : 'Enviar Solicitação'}
               </Button>
             ) : activeStep < steps.length - 2 ? (
-              <Button
-                variant="contained"
-                onClick={handleNext}
-              >
+              <Button variant="contained" onClick={handleNext}>
                 Próximo
               </Button>
             ) : null}
@@ -536,10 +601,15 @@ const CadastroProfissionaisPage = () => {
               Informações importantes:
             </Typography>
             <Typography variant="body2">
-              • Apenas profissionais de saúde com registro ativo (CRM, COREN, CRP, etc) podem se cadastrar<br />
-              • Todas as informações serão verificadas junto aos respectivos Conselhos de Classe antes da aprovação<br />
-              • Após aprovação, você receberá credenciais temporárias válidas por 14 dias<br />
-              • O sistema é destinado ao acompanhamento de pacientes em tratamento com cannabis medicinal
+              • Apenas profissionais de saúde com registro ativo (CRM, COREN, CRP, etc) podem se
+              cadastrar
+              <br />
+              • Todas as informações serão verificadas junto aos respectivos Conselhos de Classe
+              antes da aprovação
+              <br />
+              • Após aprovação, você receberá credenciais temporárias válidas por 14 dias
+              <br />• O sistema é destinado ao acompanhamento de pacientes em tratamento com
+              cannabis medicinal
             </Typography>
           </Alert>
         )}
