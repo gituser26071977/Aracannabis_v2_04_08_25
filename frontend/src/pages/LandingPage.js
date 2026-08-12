@@ -105,14 +105,7 @@ const HeroIllustration = () => (
     <g transform="translate(310,90)">
       <rect width="110" height="60" rx="12" fill="#f5a623" />
       <circle cx="22" cy="30" r="12" fill="#fff" />
-      <text
-        x="22"
-        y="35"
-        textAnchor="middle"
-        fontSize="14"
-        fontWeight="700"
-        fill="#f5a623"
-      >
+      <text x="22" y="35" textAnchor="middle" fontSize="14" fontWeight="700" fill="#f5a623">
         IA
       </text>
       <text x="42" y="26" fontSize="11" fontWeight="700" fill="#1a1a1a">
@@ -220,10 +213,7 @@ const PlanCard = ({ plan, popular }) => {
         />
       )}
       <CardContent sx={{ p: 4 }}>
-        <Typography
-          variant="overline"
-          sx={{ color, fontWeight: 700, letterSpacing: 1.5 }}
-        >
+        <Typography variant="overline" sx={{ color, fontWeight: 700, letterSpacing: 1.5 }}>
           {plan.nome}
         </Typography>
         <Box sx={{ display: 'flex', alignItems: 'baseline', mt: 1, mb: 2 }}>
@@ -241,9 +231,7 @@ const PlanCard = ({ plan, popular }) => {
         <Stack spacing={1.2}>
           {[
             `${plan.limite_pacientes >= 99999 ? 'Pacientes ilimitados' : `Até ${plan.limite_pacientes} pacientes`}`,
-            plan.permite_agentes_sdr
-              ? `${plan.limite_agentes_ia} agentes de IA`
-              : 'Sem IA',
+            plan.permite_agentes_sdr ? `${plan.limite_agentes_ia} agentes de IA` : 'Sem IA',
             `${Math.round(plan.limite_armazenamento_mb / 1024)} GB de armazenamento`,
             plan.permite_gestao_clinica ? 'Gestão da clínica' : 'Prontuário digital',
             plan.slug === 'enterprise' ? 'Onboarding dedicado' : 'Suporte por e-mail',
@@ -480,8 +468,9 @@ const LandingPage = () => {
                 variant="h6"
                 sx={{ mt: 3, mb: 4, opacity: 0.92, maxWidth: 580, fontWeight: 400 }}
               >
-                O AraOS conecta clínicos, agentes de IA e fluxos operacionais em uma plataforma
-                auditável, em conformidade com a LGPD e desenhada para o dia a dia da sua clínica.
+                O AraOS conecta profissionais de saúde, agentes de IA e fluxos operacionais em uma
+                plataforma auditável, em conformidade com a LGPD e desenhada para o dia a dia da sua
+                clínica.
               </Typography>
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
                 <Button
@@ -527,10 +516,7 @@ const LandingPage = () => {
                   Ver planos
                 </Button>
               </Stack>
-              <Typography
-                variant="caption"
-                sx={{ display: 'block', mt: 2, opacity: 0.8 }}
-              >
+              <Typography variant="caption" sx={{ display: 'block', mt: 2, opacity: 0.8 }}>
                 14 dias de trial · sem cartão · cancele quando quiser
               </Typography>
             </Grid>
@@ -575,12 +561,7 @@ const LandingPage = () => {
         <Container maxWidth="lg">
           <Box sx={{ textAlign: 'center', mb: 8 }}>
             <SectionDivider />
-            <Typography
-              variant="overline"
-              color="primary"
-              fontWeight={700}
-              letterSpacing={2}
-            >
+            <Typography variant="overline" color="primary" fontWeight={700} letterSpacing={2}>
               O QUE O ARAOS FAZ
             </Typography>
             <Typography
@@ -678,7 +659,10 @@ const LandingPage = () => {
       </Box>
 
       {/* ─── PRICING ───────────────────────────────────────── */}
-      <Box ref={planosRef} sx={{ py: { xs: 8, md: 12 }, bgcolor: alpha(theme.palette.primary.main, 0.04) }}>
+      <Box
+        ref={planosRef}
+        sx={{ py: { xs: 8, md: 12 }, bgcolor: alpha(theme.palette.primary.main, 0.04) }}
+      >
         <Container maxWidth="lg">
           <Box sx={{ textAlign: 'center', mb: 6 }}>
             <SectionDivider />
@@ -689,8 +673,8 @@ const LandingPage = () => {
               Comece grátis. Cresça quando precisar.
             </Typography>
             <Typography variant="body1" color="text.secondary" sx={{ mt: 2 }}>
-              Todos os planos incluem prontuário, agenda, prescrição e suporte LGPD.
-              Faça upgrade a qualquer momento.
+              Todos os planos incluem prontuário, agenda, prescrição e suporte LGPD. Faça upgrade a
+              qualquer momento.
             </Typography>
           </Box>
           {planos.length === 0 ? (
@@ -759,9 +743,9 @@ const LandingPage = () => {
                     Segurança e LGPD desde o design
                   </Typography>
                   <Typography variant="body1" color="text.secondary" sx={{ lineHeight: 1.7 }}>
-                    Dados criptografados em repouso e em trânsito, anonimização de campos
-                    sensíveis, controle granular de consentimento, retenção configurável por
-                    tenant e trilha de auditoria completa para fiscalizações do CFM e ANVISA.
+                    Dados criptografados em repouso e em trânsito, anonimização de campos sensíveis,
+                    controle granular de consentimento, retenção configurável por tenant e trilha de
+                    auditoria completa para fiscalizações do CFM e ANVISA.
                   </Typography>
                 </Grid>
                 <Grid item xs={12} md={3} sx={{ textAlign: { xs: 'left', md: 'right' } }}>
@@ -791,17 +775,18 @@ const LandingPage = () => {
         }}
       >
         <Container maxWidth="md">
-          <Typography variant="h3" fontWeight={800} gutterBottom sx={{ fontSize: { xs: '2rem', md: '2.6rem' } }}>
+          <Typography
+            variant="h3"
+            fontWeight={800}
+            gutterBottom
+            sx={{ fontSize: { xs: '2rem', md: '2.6rem' } }}
+          >
             Pronto para operar sua clínica com IA?
           </Typography>
           <Typography variant="h6" sx={{ opacity: 0.9, mb: 4, fontWeight: 400 }}>
             14 dias de trial gratuito. Sem cartão, sem instalação, sem complicação.
           </Typography>
-          <Stack
-            direction={{ xs: 'column', sm: 'row' }}
-            spacing={2}
-            justifyContent="center"
-          >
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="center">
             <Button
               component={RouterLink}
               to="/cadastro-profissionais"
@@ -844,8 +829,8 @@ const LandingPage = () => {
                 AraOS
               </Typography>
               <Typography variant="caption" sx={{ display: 'block', mt: 0.5, opacity: 0.7 }}>
-                Operational Intelligence Infrastructure for Healthcare · parte do
-                ecossistema VisualSmartFlow Platform
+                Operational Intelligence Infrastructure for Healthcare · parte do ecossistema
+                VisualSmartFlow Platform
               </Typography>
             </Grid>
             <Grid item xs={12} md={6} sx={{ textAlign: { xs: 'left', md: 'right' } }}>
