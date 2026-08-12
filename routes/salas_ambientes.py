@@ -80,6 +80,8 @@ def criar_sala():
         andar=data.get("andar"),
         ala=data.get("ala"),
         recursos=data.get("recursos"),
+        unidade_id=data.get("unidade_id"),
+        andar_setor_id=data.get("andar_setor_id"),
         vsf_room_key=data.get("vsf_room_key"),
     )
     db.session.add(sala)
@@ -119,6 +121,10 @@ def atualizar_sala(sala_id):
         sala.ala = data["ala"]
     if "recursos" in data:
         sala.recursos = data["recursos"] or None
+    if "unidade_id" in data:
+        sala.unidade_id = data["unidade_id"] or None
+    if "andar_setor_id" in data:
+        sala.andar_setor_id = data["andar_setor_id"] or None
 
     db.session.commit()
     return jsonify({"success": True, "sala": sala.to_dict()}), 200

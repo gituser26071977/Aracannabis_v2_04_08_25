@@ -414,6 +414,11 @@ def create_app(config_obj=None):
 
     app.register_blueprint(salas_ambientes_bp)
 
+    # [NEW] Hierarquia física da unidade — instalação → andar/setor → espaço
+    from routes.unidade_fisica import unidade_bp
+
+    app.register_blueprint(unidade_bp)
+
     # [NEW] Convites de associação — onboarding de médicos em clínicas/grupos
     from routes.convites import convites_bp
 

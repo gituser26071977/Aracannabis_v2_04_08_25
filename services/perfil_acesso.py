@@ -82,6 +82,7 @@ AREA_ADMINISTRATIVA = [
     "/api/onboarding",
     "/api/salas/ambientes",
     "/api/salas/unidade",
+    "/api/unidade",
 ]
 
 

@@ -316,11 +316,19 @@ class SalaAmbiente(db.Model):
     ala = db.Column(db.String(40))
     recursos = db.Column(db.Text)  # ex.: "macas=2,balanca,computador"
     ativo = db.Column(db.Boolean, default=True)
+    # Hierarquia física (Facility → Sector → Bed): referência ao andar/setor
+    unidade_id = db.Column(
+        db.Integer, db.ForeignKey('unidades_fisicas.id', ondelete='SET NULL'), nullable=True, index=True
+    )
+    andar_setor_id = db.Column(
+        db.Integer, db.ForeignKey('andares_setores.id', ondelete='SET NULL'), nullable=True, index=True
+    )
     # Integração VSF: identificador da sala no fluxo de visão computacional
     vsf_room_key = db.Column(db.String, nullable=True)
     criado_em = db.Column(db.DateTime, default=datetime.utcnow)
 
     associacao = db.relationship('Associacao', backref='salas_ambientes')
+    andar_setor = db.relationship('AndarSetor', back_populates='espacos')
 
     def to_dict(self):
         return {
@@ -333,6 +341,101 @@ class SalaAmbiente(db.Model):
             'ala': self.ala,
             'recursos': self.recursos,
             'ativo': self.ativo,
+            'unidade_id': self.unidade_id,
+            'andar_setor_id': self.andar_setor_id,
             'vsf_room_key': self.vsf_room_key,
+            'criado_em': self.criado_em.isoformat() if self.criado_em else None,
+        }
+
+
+class UnidadeFisica(db.Model):
+    """Instalação física (clínica, consultório, hospital, home care).
+
+    Nível raiz da hierarquia canônica (espelha o Facility do CareOS):
+        UnidadeFisica → AndarSetor (andares, alas, UTIs) → SalaAmbiente (espaços/leitos)
+
+    `tipo`: clinica | consultorio | hospital | home_care
+    `possui_uti` / `possui_centro_cirurgico`: flags para o agente IA e VSF.
+    Compatível com o VSF via `vsf_facility_key` (Location.facility_id).
+    """
+
+    __tablename__ = 'unidades_fisicas'
+
+    id = db.Column(db.Integer, primary_key=True)
+    associacao_id = db.Column(
+        db.Integer, db.ForeignKey('associacoes.id', ondelete='CASCADE'), nullable=False, index=True
+    )
+    nome = db.Column(db.String, nullable=False)
+    tipo = db.Column(db.String, default='clinica', nullable=False)  # clinica|consultorio|hospital|home_care
+    endereco = db.Column(db.String)
+    cidade = db.Column(db.String)
+    uf = db.Column(db.String(2))
+    possui_uti = db.Column(db.Boolean, default=False)
+    possui_centro_cirurgico = db.Column(db.Boolean, default=False)
+    ativo = db.Column(db.Boolean, default=True)
+    # Integração VSF: identificador da instalação no fluxo de visão computacional
+    vsf_facility_key = db.Column(db.String, nullable=True)
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow)
+
+    associacao = db.relationship('Associacao', backref='unidades_fisicas')
+    andares = db.relationship(
+        'AndarSetor', back_populates='unidade', lazy=True, cascade='all, delete-orphan'
+    )
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'associacao_id': self.associacao_id,
+            'nome': self.nome,
+            'tipo': self.tipo,
+            'endereco': self.endereco,
+            'cidade': self.cidade,
+            'uf': self.uf,
+            'possui_uti': self.possui_uti,
+            'possui_centro_cirurgico': self.possui_centro_cirurgico,
+            'ativo': self.ativo,
+            'vsf_facility_key': self.vsf_facility_key,
+            'criado_em': self.criado_em.isoformat() if self.criado_em else None,
+        }
+
+
+class AndarSetor(db.Model):
+    """Andar/ala/setor dentro de uma instalação (espelha o Sector do CareOS).
+
+    Suporta sub-setores via `parent_id` (ex.: Andar 2 → Ala Norte → UTI 1).
+    `tipo`: andar | ala | setor | uti | centro_cirurgico | recepcao | outro
+    Compatível com o VSF via `unit`/`floor` (Location).
+    """
+
+    __tablename__ = 'andares_setores'
+
+    id = db.Column(db.Integer, primary_key=True)
+    associacao_id = db.Column(
+        db.Integer, db.ForeignKey('associacoes.id', ondelete='CASCADE'), nullable=False, index=True
+    )
+    unidade_id = db.Column(
+        db.Integer, db.ForeignKey('unidades_fisicas.id', ondelete='CASCADE'), nullable=False, index=True
+    )
+    nome = db.Column(db.String, nullable=False)
+    tipo = db.Column(db.String, default='andar', nullable=False)  # andar|ala|setor|uti|centro_cirurgico|recepcao|outro
+    parent_id = db.Column(db.Integer, db.ForeignKey('andares_setores.id'), nullable=True)
+    ordem = db.Column(db.Integer, default=0)
+    ativo = db.Column(db.Boolean, default=True)
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow)
+
+    unidade = db.relationship('UnidadeFisica', back_populates='andares')
+    parent = db.relationship('AndarSetor', remote_side=[id], backref='sub_setores')
+    espacos = db.relationship('SalaAmbiente', back_populates='andar_setor', lazy=True)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'associacao_id': self.associacao_id,
+            'unidade_id': self.unidade_id,
+            'nome': self.nome,
+            'tipo': self.tipo,
+            'parent_id': self.parent_id,
+            'ordem': self.ordem,
+            'ativo': self.ativo,
             'criado_em': self.criado_em.isoformat() if self.criado_em else None,
         }
