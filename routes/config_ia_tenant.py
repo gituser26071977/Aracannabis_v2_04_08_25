@@ -1,8 +1,16 @@
-from flask import Blueprint, request, jsonify
+from flask import g, Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, ConfiguracaoIA, LogAtividade
 
 config_ia_tenant_bp = Blueprint('config_ia_tenant', __name__)
+
+def _assoc_id():
+    """Resolve o associacao_id atual (tenant) via middleware (P0-12)."""
+    from flask import g
+    assoc = getattr(g, "current_association", None)
+    return getattr(assoc, "id", None)
+
+
 
 @config_ia_tenant_bp.route('/ia', methods=['GET'])
 @jwt_required()
@@ -71,6 +79,7 @@ def salvar_configuracao_ia():
         # Registrar atividade
         log = LogAtividade(
             profissional_id=profissional_id,
+            associacao_id=_assoc_id(),
             acao=f'{acao} Configuração IA SDR',
             detalhes=f'Configurações do assistente atualizadas. Status: {"Ativo" if config.ativo else "Inativo"}'
         )

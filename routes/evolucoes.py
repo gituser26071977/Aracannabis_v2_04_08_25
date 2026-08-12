@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, current_app
+from flask import g, Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, Evolucao, Paciente, Profissional, LogAtividade, Exame
 from datetime import datetime, date
@@ -21,6 +21,14 @@ def safe_ai_processing(text_input, llm_provider=None, llm_model_name=None, timeo
     }
 
 evolucoes_bp = Blueprint('evolucoes', __name__)
+
+def _assoc_id():
+    """Resolve o associacao_id atual (tenant) via middleware (P0-12)."""
+    from flask import g
+    assoc = getattr(g, "current_association", None)
+    return getattr(assoc, "id", None)
+
+
 
 @evolucoes_bp.route('/paciente/<int:paciente_id>', methods=['GET'])
 @jwt_required()
@@ -53,6 +61,7 @@ def listar_evolucoes(paciente_id):
     # Registrar atividade
     log = LogAtividade(
         profissional_id=profissional_id,
+        associacao_id=_assoc_id(),
         acao='Consulta',
         detalhes=f'Listagem de evoluções e exames do paciente ID {paciente_id}'
     )
@@ -198,6 +207,7 @@ def registrar_evolucao(paciente_id):
         # Registrar atividade de log principal para a evolução
         log = LogAtividade(
             profissional_id=profissional_id,
+            associacao_id=_assoc_id(),
             acao='Registro',
             detalhes=f'Nova evolução registrada para paciente ID {paciente_id}. IA processou: {"Sim" if ai_processed else "Não"}. {saved_dosage_details_msg}'
         )
@@ -254,6 +264,7 @@ def obter_evolucao(evolucao_id):
     # Registrar atividade
     log = LogAtividade(
         profissional_id=profissional_id,
+        associacao_id=_assoc_id(),
         acao='Consulta',
         detalhes=f'Visualização da evolução ID {evolucao_id}'
     )
@@ -293,6 +304,7 @@ def atualizar_evolucao(evolucao_id):
         # Registrar atividade
         log = LogAtividade(
             profissional_id=profissional_id,
+            associacao_id=_assoc_id(),
             acao='Atualização',
             detalhes=f'Evolução atualizada: ID {evolucao_id}'
         )
@@ -331,6 +343,7 @@ def excluir_evolucao(evolucao_id):
         # Registrar atividade antes de confirmar a exclusão
         log = LogAtividade(
             profissional_id=profissional_id,
+            associacao_id=_assoc_id(),
             acao='Exclusão',
             detalhes=f'Evolução excluída: ID {evolucao_id} do paciente ID {paciente_id}'
         )
@@ -366,6 +379,7 @@ def buscar_evolucoes():
     # Registrar atividade
     log = LogAtividade(
         profissional_id=profissional_id,
+        associacao_id=_assoc_id(),
         acao='Busca',
         detalhes=f'Busca por evoluções com o termo: "{termo_busca}"'
     )
@@ -456,6 +470,7 @@ def processar_texto_ia():
         # Registrar atividade
         log = LogAtividade(
             profissional_id=profissional_id,
+            associacao_id=_assoc_id(),
             acao='Processamento IA',
             detalhes=f'Texto processado com IA para paciente ID {paciente_id}'
         )
@@ -563,6 +578,7 @@ def upload_arquivo():
         # Registrar atividade
         log = LogAtividade(
             profissional_id=profissional_id,
+            associacao_id=_assoc_id(),
             acao='Upload e Processamento IA',
             detalhes=f'Arquivo {filename} ({file_type}) processado com IA para paciente ID {paciente_id}'
         )

@@ -12,6 +12,7 @@ catalogo_bp = Blueprint('catalogo', __name__, url_prefix='/api/catalogo')
 # Importa serviços
 from services.catalogo_agent_service import catalogo_service
 from services.catalogo_document_processor import document_processor
+from models import db
 from models_produto import ProdutoCannabis, CatalogoImportacao, SugestaoPrescricao
 
 
@@ -229,7 +230,8 @@ def criar_produto():
             registro_anvisa=data.get('registro_anvisa'),
             preco_referencia=data.get('preco_referencia'),
             created_by=profissional_id,
-            fonte_dados='Manual'
+            fonte_dados='Manual',
+            associacao_id=getattr(getattr(g, 'current_association', None), 'id', None)
         )
         
         from models import db

@@ -2,7 +2,7 @@
 Rotas administrativas do sistema AraOS.
 Acesso restrito a usuários com role 'admin'.
 """
-from flask import Blueprint, request, jsonify, current_app
+from flask import g, Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from sqlalchemy import desc
 import datetime
@@ -13,6 +13,14 @@ from models_extra import UsuarioAssociacao
 from security_config import mask_sensitive_data
 
 admin_bp = Blueprint('admin', __name__)
+
+def _assoc_id():
+    """Resolve o associacao_id atual (tenant) via middleware (P0-12)."""
+    from flask import g
+    assoc = getattr(g, "current_association", None)
+    return getattr(assoc, "id", None)
+
+
 
 # Middleware para verificar permissões de admin
 def admin_required(f):
@@ -370,6 +378,7 @@ def atualizar_role_usuario(usuario_id):
         # Registrar log
         log = LogAtividade(
             profissional_id=current_user_id,
+            associacao_id=_assoc_id(),
             acao='ALTERAR_ROLE',
             detalhes=f'Role alterada de {old_role} para {role} para usuário {usuario.usuario} (ID: {usuario_id})'
         )
@@ -453,6 +462,7 @@ def deletar_usuario(usuario_id):
         # Registrar log antes de deletar globalmente
         log = LogAtividade(
             profissional_id=current_user_id,
+            associacao_id=_assoc_id(),
             acao='REMOVER_USUARIO_GLOBAL',
             detalhes=f'Usuário {usuario.usuario} (ID: {usuario_id}) removido permanentemente do sistema'
         )

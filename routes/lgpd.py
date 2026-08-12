@@ -1,9 +1,17 @@
-from flask import Blueprint, request, jsonify
+from flask import g, Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, Paciente, LogAtividade
 from datetime import datetime
 
 lgpd_bp = Blueprint('lgpd', __name__)
+
+def _assoc_id():
+    """Resolve o associacao_id atual (tenant) via middleware (P0-12)."""
+    from flask import g
+    assoc = getattr(g, "current_association", None)
+    return getattr(assoc, "id", None)
+
+
 
 @lgpd_bp.route('/consentimento/<int:paciente_id>', methods=['GET'])
 @jwt_required()
@@ -20,6 +28,7 @@ def obter_consentimento(paciente_id):
     # Registrar atividade
     log = LogAtividade(
         profissional_id=profissional_id,
+        associacao_id=_assoc_id(),
         acao='Consulta',
         detalhes=f'Consulta de status de consentimento LGPD do paciente ID {paciente_id}'
     )
@@ -63,6 +72,7 @@ def registrar_consentimento(paciente_id):
         # Registrar atividade
         log = LogAtividade(
             profissional_id=profissional_id,
+            associacao_id=_assoc_id(),
             acao='Atualização',
             detalhes=f'Atualização de consentimento LGPD do paciente ID {paciente_id}: {"Concedido" if data["consentimento"] else "Revogado"}'
         )
@@ -116,6 +126,7 @@ def solicitar_direitos_titular(paciente_id):
         # Registrar atividade
         log = LogAtividade(
             profissional_id=profissional_id,
+            associacao_id=_assoc_id(),
             acao='Solicitação LGPD',
             detalhes=f'Solicitação de {data["tipo_solicitacao"]} para paciente ID {paciente_id}: {data["detalhes"]}'
         )
@@ -152,6 +163,7 @@ def exportar_dados_titular(paciente_id):
 
     db.session.add(LogAtividade(
         profissional_id=int(current_user_id),
+        associacao_id=_assoc_id(),
         acao='Exportação LGPD',
         detalhes=f'Exportação de dados do paciente ID {paciente_id}',
     ))
@@ -178,6 +190,7 @@ def apagar_dados_titular(paciente_id):
 
     db.session.add(LogAtividade(
         profissional_id=int(current_user_id),
+        associacao_id=_assoc_id(),
         acao='Eliminação LGPD',
         detalhes=f'Anonimização do paciente ID {paciente_id}',
     ))

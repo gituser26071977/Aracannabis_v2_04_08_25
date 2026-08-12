@@ -1,10 +1,18 @@
-from flask import Blueprint, request, jsonify
+from flask import g, Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, Sintoma, Paciente, LogAtividade, SnapIVTeste, PHQ9Teste, GAD7Teste
 from datetime import datetime, timedelta
 from collections import defaultdict
 
 sintomas_bp = Blueprint('sintomas', __name__)
+
+def _assoc_id():
+    """Resolve o associacao_id atual (tenant) via middleware (P0-12)."""
+    from flask import g
+    assoc = getattr(g, "current_association", None)
+    return getattr(assoc, "id", None)
+
+
 
 @sintomas_bp.route('/paciente/<int:paciente_id>', methods=['GET'])
 @jwt_required()
@@ -48,6 +56,7 @@ def listar_sintomas(paciente_id):
     # Registrar atividade
     log = LogAtividade(
         profissional_id=profissional_id,
+        associacao_id=_assoc_id(),
         acao='Consulta',
         detalhes=f'Listagem de sintomas do paciente ID {paciente_id}'
     )
@@ -99,6 +108,7 @@ def registrar_sintoma(paciente_id):
             # Registrar atividade
             log = LogAtividade(
                 profissional_id=profissional_id,
+                associacao_id=_assoc_id(),
                 acao='Atualização',
                 detalhes=f'Sintoma atualizado: {data["sintoma"]} para paciente ID {paciente_id}'
             )
@@ -124,6 +134,7 @@ def registrar_sintoma(paciente_id):
             # Registrar atividade
             log = LogAtividade(
                 profissional_id=profissional_id,
+                associacao_id=_assoc_id(),
                 acao='Registro',
                 detalhes=f'Novo sintoma registrado: {data["sintoma"]} para paciente ID {paciente_id}'
             )
@@ -161,6 +172,7 @@ def excluir_sintoma(sintoma_id):
         # Registrar atividade antes de confirmar a exclusão
         log = LogAtividade(
             profissional_id=profissional_id,
+            associacao_id=_assoc_id(),
             acao='Exclusão',
             detalhes=f'Sintoma excluído: {sintoma_nome} (ID {sintoma_id}) do paciente ID {paciente_id}'
         )
@@ -262,6 +274,7 @@ def registrar_sintoma_personalizado():
         # Registrar atividade
         log = LogAtividade(
             profissional_id=profissional_id,
+            associacao_id=_assoc_id(),
             acao='Registro',
             detalhes=f'Novo sintoma personalizado registrado: {nome_sintoma}'
         )
@@ -316,6 +329,7 @@ def remover_sintoma_personalizado(sintoma_id):
         # Registrar atividade
         log = LogAtividade(
             profissional_id=profissional_id,
+            associacao_id=_assoc_id(),
             acao='Exclusão',
             detalhes=f'Sintoma personalizado removido: {nome_sintoma}'
         )
@@ -376,6 +390,7 @@ def REDACTED():
         # Registrar atividade
         log = LogAtividade(
             profissional_id=profissional_id,
+            associacao_id=_assoc_id(),
             acao='Exclusão',
             detalhes=f'Sintoma personalizado removido: {nome_sintoma}'
         )

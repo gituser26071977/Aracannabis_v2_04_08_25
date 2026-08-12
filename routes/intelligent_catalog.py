@@ -18,8 +18,10 @@ import logging
 from typing import Optional
 
 from flask import Blueprint, g, jsonify, request
+from flask_jwt_extended import verify_jwt_in_request
 from werkzeug.utils import secure_filename
 
+from models import db
 from models_extra import ICatalogProcess, create_audit_entry
 from services.catalogo_document_processor import document_processor
 from services.intelligent_catalog import intelligent_catalog_service as icatalog
@@ -49,8 +51,6 @@ def _get_associacao_id() -> Optional[int]:
 @icatalog_bp.route("/upload", methods=["POST"])
 def upload_e_processar():
     """Processa documento (PDF/XLSX/imagem) e cria registros na fila."""
-    from flask_jwt_extended import verify_jwt_in_request
-
     try:
         verify_jwt_in_request()
         profissional_id = _get_profissional_id()
@@ -129,7 +129,7 @@ def obter_revisao(process_id: int):
     except Exception:
         return jsonify({"error": "Token inválido ou expirado"}), 401
 
-    proc = ICatalogProcess.query.get(process_id)
+    proc = db.session.get(ICatalogProcess, process_id)
     if not proc:
         return jsonify({"error": "Registro não encontrado"}), 404
     return jsonify(proc.to_dict())
@@ -156,7 +156,7 @@ def aplicar_acao(process_id: int):
     if not resultado.get("success"):
         return jsonify(resultado), 400
 
-    proc = ICatalogProcess.query.get(process_id)
+    proc = db.session.get(ICatalogProcess, process_id)
     create_audit_entry(
         tenant_id=proc.associacao_id if proc else 1,
         user_id=profissional_id,

@@ -1,12 +1,18 @@
 import os
 from datetime import datetime
-from flask import current_app
+from flask import current_app, g
 from models import db, Prescricao, Paciente, Profissional, Dosagem, ConfiguracaoPrescricao
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Image, KeepTogether
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import cm
+
+
+def _resolve_assoc_id():
+    """Resolve o associacao_id do tenant atual (P0-12)."""
+    assoc = getattr(g, "current_association", None)
+    return getattr(assoc, "id", None)
 
 class PrescriptionService:
     
@@ -193,6 +199,7 @@ class PrescriptionService:
         prescricao = Prescricao(
             paciente_id=paciente.id,
             profissional_id=profissional.id,
+            associacao_id=_resolve_assoc_id(),
             data_emissao=datetime.utcnow(),
             arquivo_path=pdf_filename,
             conteudo_json={'medicamentos': medicamentos_list},

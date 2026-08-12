@@ -2,7 +2,7 @@
 Rotas para gerenciamento de agentes CrewAI, LLMs e prompts
 """
 
-from flask import Blueprint, request, jsonify
+from flask import g, Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy import desc, or_
 import datetime
@@ -16,6 +16,14 @@ from security_config import sanitize_input
 from services.ai_agents import ai_manager
 
 ai_management_bp = Blueprint('ai_management', __name__)
+
+def _assoc_id():
+    """Resolve o associacao_id atual (tenant) via middleware (P0-12)."""
+    from flask import g
+    assoc = getattr(g, "current_association", None)
+    return getattr(assoc, "id", None)
+
+
 
 # Middleware para verificar permissões
 def ai_management_required(f):
@@ -172,6 +180,7 @@ def create_llm_config():
         # Registrar log
         log = LogAtividade(
             profissional_id=current_user_id,
+            associacao_id=_assoc_id(),
             acao='CRIAR_LLM_CONFIG',
             detalhes=f'Configuração de LLM criada: {llm_config.nome} ({llm_config.provider}/{llm_config.model})'
         )
@@ -228,6 +237,7 @@ def update_llm_config(config_id):
         # Registrar log
         log = LogAtividade(
             profissional_id=current_user_id,
+            associacao_id=_assoc_id(),
             acao='ATUALIZAR_LLM_CONFIG',
             detalhes=f'Configuração de LLM atualizada: {llm_config.nome} (ID: {config_id})'
         )
@@ -269,6 +279,7 @@ def delete_llm_config(config_id):
         # Registrar log antes de deletar
         log = LogAtividade(
             profissional_id=current_user_id,
+            associacao_id=_assoc_id(),
             acao='REMOVER_LLM_CONFIG',
             detalhes=f'Configuração de LLM removida: {llm_config.nome} (ID: {config_id})'
         )
@@ -360,6 +371,7 @@ def create_agent():
         # Registrar log
         log = LogAtividade(
             profissional_id=current_user_id,
+            associacao_id=_assoc_id(),
             acao='CRIAR_AGENTE_IA',
             detalhes=f'Agente de IA criado: {agent.nome} (Role: {agent.role})'
         )
@@ -407,6 +419,7 @@ def update_agent(agent_id):
         # Registrar log
         log = LogAtividade(
             profissional_id=current_user_id,
+            associacao_id=_assoc_id(),
             acao='ATUALIZAR_AGENTE_IA',
             detalhes=f'Agente de IA atualizado: {agent.nome} (ID: {agent_id})'
         )
@@ -448,6 +461,7 @@ def delete_agent(agent_id):
         # Registrar log antes de deletar
         log = LogAtividade(
             profissional_id=current_user_id,
+            associacao_id=_assoc_id(),
             acao='REMOVER_AGENTE_IA',
             detalhes=f'Agente de IA removido: {agent.nome} (ID: {agent_id})'
         )
@@ -534,6 +548,7 @@ def create_prompt():
         # Registrar log
         log = LogAtividade(
             profissional_id=current_user_id,
+            associacao_id=_assoc_id(),
             acao='CRIAR_PROMPT_IA',
             detalhes=f'Prompt de IA criado: {prompt.nome} (Categoria: {prompt.categoria})'
         )
@@ -580,6 +595,7 @@ def update_prompt(prompt_id):
         # Registrar log
         log = LogAtividade(
             profissional_id=current_user_id,
+            associacao_id=_assoc_id(),
             acao='ATUALIZAR_PROMPT_IA',
             detalhes=f'Prompt de IA atualizado: {prompt.nome} (ID: {prompt_id})'
         )
@@ -621,6 +637,7 @@ def delete_prompt(prompt_id):
         # Registrar log antes de deletar
         log = LogAtividade(
             profissional_id=current_user_id,
+            associacao_id=_assoc_id(),
             acao='REMOVER_PROMPT_IA',
             detalhes=f'Prompt de IA removido: {prompt.nome} (ID: {prompt_id})'
         )
@@ -713,6 +730,7 @@ def create_crew():
         # Registrar log
         log = LogAtividade(
             profissional_id=current_user_id,
+            associacao_id=_assoc_id(),
             acao='CRIAR_CREW_IA',
             detalhes=f'Crew de IA criada: {crew.nome} com {len(agent_ids)} agentes'
         )
@@ -777,6 +795,7 @@ def update_crew(crew_id):
         # Registrar log
         log = LogAtividade(
             profissional_id=current_user_id,
+            associacao_id=_assoc_id(),
             acao='ATUALIZAR_CREW_IA',
             detalhes=f'Crew de IA atualizada: {crew.nome} (ID: {crew_id})'
         )
@@ -810,6 +829,7 @@ def delete_crew(crew_id):
         # Registrar log antes de deletar
         log = LogAtividade(
             profissional_id=current_user_id,
+            associacao_id=_assoc_id(),
             acao='REMOVER_CREW_IA',
             detalhes=f'Crew de IA removida: {crew.nome} (ID: {crew_id})'
         )
@@ -903,6 +923,7 @@ def create_crew_task(crew_id):
         # Registrar log
         log = LogAtividade(
             profissional_id=current_user_id,
+            associacao_id=_assoc_id(),
             acao='CRIAR_TAREFA_CREW',
             detalhes=f'Tarefa criada para crew {crew.nome}: {task.nome}'
         )
@@ -950,6 +971,7 @@ def update_crew_task(task_id):
         # Registrar log
         log = LogAtividade(
             profissional_id=current_user_id,
+            associacao_id=_assoc_id(),
             acao='ATUALIZAR_TAREFA_CREW',
             detalhes=f'Tarefa de crew atualizada: {task.nome} (ID: {task_id})'
         )
@@ -984,6 +1006,7 @@ def delete_crew_task(task_id):
         # Registrar log antes de deletar
         log = LogAtividade(
             profissional_id=current_user_id,
+            associacao_id=_assoc_id(),
             acao='REMOVER_TAREFA_CREW',
             detalhes=f'Tarefa de crew removida: {task.nome} (ID: {task_id})'
         )
@@ -1046,6 +1069,7 @@ def execute_crew(crew_id):
         # Registrar log de atividade
         log = LogAtividade(
             profissional_id=current_user_id,
+            associacao_id=_assoc_id(),
             acao='EXECUTAR_CREW_IA',
             detalhes=f'Crew de IA executada: {crew.nome} (ID: {crew_id})'
         )
@@ -1108,6 +1132,7 @@ def execute_agent(agent_id):
         # Registrar log de atividade
         log = LogAtividade(
             profissional_id=current_user_id,
+            associacao_id=_assoc_id(),
             acao='EXECUTAR_AGENTE_IA',
             detalhes=f'Agente de IA executado: {agent.nome} (ID: {agent_id})'
         )

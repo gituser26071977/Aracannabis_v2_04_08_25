@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, g
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, Consulta, Paciente, LogAtividade
 from datetime import datetime, timedelta
@@ -9,6 +9,13 @@ from email.mime.multipart import MIMEMultipart
 import requests
 
 consultas_bp = Blueprint('consultas', __name__)
+
+
+def _assoc_id():
+    """Resolve o associacao_id atual (tenant) via middleware (P0-12)."""
+    assoc = getattr(g, 'current_association', None)
+    return getattr(assoc, 'id', None)
+
 
 @consultas_bp.route('/', methods=['GET'])
 @jwt_required()
@@ -54,6 +61,7 @@ def listar_consultas():
     # Registrar atividade
     log = LogAtividade(
         profissional_id=profissional_id,
+        associacao_id=_assoc_id(),
         acao='Consulta',
         detalhes='Listagem de consultas'
     )
@@ -112,6 +120,7 @@ def agendar_consulta():
         # Registrar atividade
         log = LogAtividade(
             profissional_id=profissional_id,
+            associacao_id=_assoc_id(),
             acao='Agendamento',
             detalhes=f'Nova consulta agendada para {paciente.nome} em {data_hora.strftime("%d/%m/%Y %H:%M")}'
         )
@@ -179,6 +188,7 @@ def atualizar_consulta(consulta_id):
         # Registrar atividade
         log = LogAtividade(
             profissional_id=profissional_id,
+            associacao_id=_assoc_id(),
             acao='Atualização',
             detalhes=f'Consulta ID {consulta_id} atualizada'
         )
@@ -217,6 +227,7 @@ def cancelar_consulta(consulta_id):
         # Registrar atividade
         log = LogAtividade(
             profissional_id=profissional_id,
+            associacao_id=_assoc_id(),
             acao='Cancelamento',
             detalhes=f'Consulta ID {consulta_id} cancelada'
         )
@@ -316,6 +327,7 @@ def enviar_lembretes():
         # Registrar atividade
         log = LogAtividade(
             profissional_id=profissional_id,
+            associacao_id=_assoc_id(),
             acao='Lembretes',
             detalhes=f'{lembretes_enviados} lembretes enviados'
         )

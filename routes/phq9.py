@@ -1,9 +1,16 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, g
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, PHQ9Teste, Paciente, LogAtividade, Evolucao
 from security_config import sanitize_input
 
 phq9_bp = Blueprint('phq9', __name__)
+
+
+def _assoc_id():
+    """Resolve o associacao_id atual (tenant) via middleware (P0-12)."""
+    assoc = getattr(g, 'current_association', None)
+    return getattr(assoc, 'id', None)
+
 
 @phq9_bp.route('/paciente/<int:paciente_id>', methods=['GET'])
 @jwt_required()
@@ -112,6 +119,7 @@ def criar_teste(paciente_id):
         nova_evolucao = Evolucao(
             paciente_id=paciente_id,
             profissional_id=profissional_id,
+            associacao_id=_assoc_id(),
             data_evolucao=novo_teste.data_realizacao,
             nota_evolucao=texto_evolucao
         )
@@ -121,6 +129,7 @@ def criar_teste(paciente_id):
         # Registrar atividade
         log = LogAtividade(
             profissional_id=profissional_id,
+            associacao_id=_assoc_id(),
             acao='Teste PHQ-9',
             detalhes=f'Teste PHQ-9 realizado para paciente {paciente.nome}. Pontuação: {novo_teste.pontuacao_total}. Risco suicida: {"Sim" if novo_teste.risco_suicida else "Não"}'
         )
@@ -218,6 +227,7 @@ def excluir_teste(teste_id):
         # Registrar atividade antes da exclusão
         log = LogAtividade(
             profissional_id=profissional_id,
+            associacao_id=_assoc_id(),
             acao='Exclusão Teste PHQ-9',
             detalhes=f'Teste PHQ-9 excluído para paciente {paciente.nome}. Pontuação: {teste.pontuacao_total}'
         )

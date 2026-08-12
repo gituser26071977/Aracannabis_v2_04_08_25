@@ -1,9 +1,17 @@
-from flask import Blueprint, request, jsonify, current_app
+from flask import g, Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, Dosagem, Paciente, LogAtividade
 from datetime import datetime, timedelta
 
 dosagens_bp = Blueprint('dosagens', __name__)
+
+def _assoc_id():
+    """Resolve o associacao_id atual (tenant) via middleware (P0-12)."""
+    from flask import g
+    assoc = getattr(g, "current_association", None)
+    return getattr(assoc, "id", None)
+
+
 
 @dosagens_bp.route('/paciente/<int:paciente_id>', methods=['GET'])
 @jwt_required()
@@ -43,6 +51,7 @@ def listar_dosagens(paciente_id):
     # Registrar atividade
     log = LogAtividade(
         profissional_id=profissional_id,
+        associacao_id=_assoc_id(),
         acao='Consulta',
         detalhes=f'Listagem de dosagens do paciente ID {paciente_id}'
     )
@@ -102,6 +111,7 @@ def registrar_dosagem(paciente_id):
         # Registrar atividade
         log = LogAtividade(
             profissional_id=profissional_id,
+            associacao_id=_assoc_id(),
             acao='Registro',
             detalhes=f'Nova dosagem registrada para paciente ID {paciente_id}: {data["dosagem"]}'
         )
@@ -163,6 +173,7 @@ def excluir_dosagem(dosagem_id):
         # Registrar atividade antes de confirmar a exclusão
         log = LogAtividade(
             profissional_id=profissional_id,
+            associacao_id=_assoc_id(),
             acao='Exclusão',
             detalhes=f'Dosagem excluída: {dosagem_valor} (ID {dosagem_id}) do paciente ID {paciente_id}'
         )

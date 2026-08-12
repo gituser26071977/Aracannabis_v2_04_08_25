@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, current_app
+from flask import g, Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, Produto, LogAtividade
 from datetime import datetime
@@ -8,6 +8,14 @@ import tempfile
 from services.product_intake import product_intake_service
 
 produtos_bp = Blueprint('produtos', __name__)
+
+def _assoc_id():
+    """Resolve o associacao_id atual (tenant) via middleware (P0-12)."""
+    from flask import g
+    assoc = getattr(g, "current_association", None)
+    return getattr(assoc, "id", None)
+
+
 
 @produtos_bp.route('/produtos', methods=['GET'])
 @jwt_required()
@@ -187,6 +195,7 @@ def cadastrar_produto_com_ia():
             # Registrar log
             log = LogAtividade(
                 profissional_id=current_user_id,
+                associacao_id=_assoc_id(),
                 acao='CADASTRAR_PRODUTO_IA',
                 detalhes=f"Produto criado via IA: {novo_produto.nome}"
             )

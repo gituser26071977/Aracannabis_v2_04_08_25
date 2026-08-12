@@ -3,7 +3,7 @@ Rotas para o sistema multi-agente CrewAI do AraOS
 """
 
 import os
-from flask import Blueprint, request, jsonify
+from flask import g, Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 import logging
 from datetime import datetime
@@ -14,6 +14,14 @@ from services.email_service import EmailService
 from security_config import sanitize_input
 
 crew_ai_bp = Blueprint('crew_ai', __name__)
+
+def _assoc_id():
+    """Resolve o associacao_id atual (tenant) via middleware (P0-12)."""
+    from flask import g
+    assoc = getattr(g, "current_association", None)
+    return getattr(assoc, "id", None)
+
+
 logger = logging.getLogger(__name__)
 
 # Middleware para verificar permissões
@@ -75,6 +83,7 @@ def processar_solicitacao():
         # Registrar log de atividade
         log = LogAtividade(
             profissional_id=current_user_id,
+            associacao_id=_assoc_id(),
             acao='PROCESSAR_SOLICITACAO_AGENTES',
             detalhes=f"Solicitação processada por sistema multi-agente: {solicitacao[:100]}..."
         )
@@ -114,6 +123,7 @@ def gerar_relatorio():
         # Registrar log de atividade
         log = LogAtividade(
             profissional_id=current_user_id,
+            associacao_id=_assoc_id(),
             acao='GERAR_RELATORIO_AGENTES',
             detalhes=f"Relatório gerado para paciente {paciente.nome} (ID: {paciente_id})"
         )
@@ -158,6 +168,7 @@ def analisar_exame():
         # Registrar log de atividade
         log = LogAtividade(
             profissional_id=current_user_id,
+            associacao_id=_assoc_id(),
             acao='ANALISAR_EXAME_AGENTES',
             detalhes=f"Exame analisado por agente biomédico (Paciente ID: {paciente_id or 'N/A'})"
         )
@@ -201,6 +212,7 @@ def sugerir_ajuste_tratamento():
         # Registrar log de atividade
         log = LogAtividade(
             profissional_id=current_user_id,
+            associacao_id=_assoc_id(),
             acao='SUGERIR_AJUSTE_TRATAMENTO',
             detalhes=f"Ajuste de tratamento sugerido para paciente {paciente.nome} - Medicamento: {medicamento}"
         )
@@ -306,6 +318,7 @@ def enviar_relatorio_email():
             # Registrar log de atividade
             log = LogAtividade(
                 profissional_id=current_user_id,
+                associacao_id=_assoc_id(),
                 acao='ENVIAR_RELATORIO_EMAIL',
                 detalhes=f"Relatório enviado por email para {destinatario} (Paciente: {paciente.nome})"
             )
@@ -356,6 +369,7 @@ def chat():
         # Registrar log de atividade
         log = LogAtividade(
             profissional_id=current_user_id,
+            associacao_id=_assoc_id(),
             acao='CHAT_MULTIAGENTE',
             detalhes=f'Chat multiagente iniciado (paciente: {paciente_id or "N/A"})'
         )
