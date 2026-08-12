@@ -291,12 +291,16 @@ class SalaAmbiente(db.Model):
     """Espaço físico de uma clínica/associação (tenant).
 
     Consultórios, salas de espera, ambientes de infusão, salas de
-    terapia, pré-atendimentos. Alimenta o agente de IA de gestão de
-    pessoas/espaços/insumos (conecta com o VSF de visão computacional
-    e o MESH de ocupação).
+    procedimento/exames, banheiros, terapia, pré-atendimentos. Alimenta
+    o agente de IA de gestão de pessoas/espaços/insumos (conecta com o
+    VSF de visão computacional e o MESH de ocupação).
 
-    Tipos (extensível): consultorio, sala_espera, infusao, terapia,
-    pre_atendimento, recepcao, triagem, outro.
+    Tipos (canônicos): consultorio, sala_espera, infusao, procedimento,
+    banheiro, terapia, pre_atendimento, recepcao, triagem, outro.
+
+    `capacidade` = lugares/poltronas do espaço (ex.: infusao com 2
+    poltronas → capacidade=2). `vsf_room_key` = identificador usado pelo
+    VSF nos eventos ROOM_ENTERED/ROOM_EXITED (RoomRef.room_id).
     """
 
     __tablename__ = 'salas_ambientes'
@@ -308,6 +312,9 @@ class SalaAmbiente(db.Model):
     nome = db.Column(db.String, nullable=False)
     tipo = db.Column(db.String, default='consultorio', nullable=False)
     capacidade = db.Column(db.Integer, default=1)
+    andar = db.Column(db.String(40))
+    ala = db.Column(db.String(40))
+    recursos = db.Column(db.Text)  # ex.: "macas=2,balanca,computador"
     ativo = db.Column(db.Boolean, default=True)
     # Integração VSF: identificador da sala no fluxo de visão computacional
     vsf_room_key = db.Column(db.String, nullable=True)
@@ -322,6 +329,9 @@ class SalaAmbiente(db.Model):
             'nome': self.nome,
             'tipo': self.tipo,
             'capacidade': self.capacidade,
+            'andar': self.andar,
+            'ala': self.ala,
+            'recursos': self.recursos,
             'ativo': self.ativo,
             'vsf_room_key': self.vsf_room_key,
             'criado_em': self.criado_em.isoformat() if self.criado_em else None,

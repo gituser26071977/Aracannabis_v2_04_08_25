@@ -117,3 +117,35 @@ class TestSalaAmbiente:
         db.session.commit()
         assert SalaAmbiente.query.filter_by(associacao_id=a1.id).count() == 1
         assert SalaAmbiente.query.filter_by(associacao_id=a2.id).count() == 1
+
+    def test_sala_procedimento_e_banheiro(self, app):
+        """Tipos novos: procedimento e banheiro (capacidade = lugares/poltronas)."""
+        from models_extra import SalaAmbiente
+
+        assoc = _nova_associacao()
+        db.session.add_all([
+            SalaAmbiente(associacao_id=assoc.id, nome="Sala Procedimento", tipo="procedimento", capacidade=2),
+            SalaAmbiente(associacao_id=assoc.id, nome="Banheiro 1", tipo="banheiro", capacidade=1),
+        ])
+        db.session.commit()
+        tipos = {s.tipo for s in SalaAmbiente.query.filter_by(associacao_id=assoc.id).all()}
+        assert "procedimento" in tipos
+        assert "banheiro" in tipos
+
+    def REDACTED(self, app):
+        """Campos de localização (andar/ala) e recursos para o VSF."""
+        from models_extra import SalaAmbiente
+
+        assoc = _nova_associacao()
+        sala = SalaAmbiente(
+            associacao_id=assoc.id,
+            nome="Consultório 1", tipo="consultorio", capacidade=2,
+            andar="1º", ala="Norte", recursos="macas=2,computador",
+            vsf_room_key="room-consultorio-1",
+        )
+        db.session.add(sala)
+        db.session.commit()
+        d = sala.to_dict()
+        assert d["andar"] == "1º"
+        assert d["ala"] == "Norte"
+        assert d["recursos"] == "macas=2,computador"

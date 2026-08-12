@@ -26,8 +26,8 @@ logger = logging.getLogger(__name__)
 salas_ambientes_bp = Blueprint("salas_ambientes", __name__)
 
 TIPOS_VALIDOS = {
-    "consultorio", "sala_espera", "infusao", "terapia",
-    "pre_atendimento", "recepcao", "triagem", "outro",
+    "consultorio", "sala_espera", "infusao", "procedimento", "banheiro",
+    "terapia", "pre_atendimento", "recepcao", "triagem", "outro",
 }
 
 
@@ -77,6 +77,9 @@ def criar_sala():
         nome=nome,
         tipo=tipo,
         capacidade=max(1, capacidade),
+        andar=data.get("andar"),
+        ala=data.get("ala"),
+        recursos=data.get("recursos"),
         vsf_room_key=data.get("vsf_room_key"),
     )
     db.session.add(sala)
@@ -110,6 +113,12 @@ def atualizar_sala(sala_id):
         sala.ativo = bool(data["ativo"])
     if "vsf_room_key" in data:
         sala.vsf_room_key = data["vsf_room_key"] or None
+    if "andar" in data:
+        sala.andar = data["andar"]
+    if "ala" in data:
+        sala.ala = data["ala"]
+    if "recursos" in data:
+        sala.recursos = data["recursos"] or None
 
     db.session.commit()
     return jsonify({"success": True, "sala": sala.to_dict()}), 200
@@ -159,4 +168,61 @@ def visao_ocupacao():
         "salas": [s.to_dict() for s in salas],
         "resumo_por_tipo": resumo,
         "total_salas": len(salas),
+    }), 200
+
+
+@salas_ambientes_bp.route("/api/salas/unidade", methods=["GET"])
+@jwt_required()
+def visao_unidade():
+    """Configuração consolidada da unidade (para UI e agente de IA).
+
+    Formato pensado para o VSF (visão computacional): cada espaço expõe
+    `vsf_room_key` (RoomRef.room_id) + localização (andar/ala), para os
+    eventos ROOM_ENTERED/ROOM_EXITED serem correlacionados.
+
+    Retorna:
+        unidade: {nome, total_salas, total_capacidade, resumo_por_tipo}
+        salas: lista completa (com andar/ala/capacidade/vsf_room_key)
+        total_profissionais: nº de profissionais vinculados à associação
+    """
+    assoc_id = _associacao_id()
+    if not assoc_id:
+        return jsonify({"error": "associação não identificada"}), 400
+
+    from association.models import Associacao
+    from models_extra import UsuarioAssociacao
+
+    assoc = db.session.get(Associacao, assoc_id)
+    salas = (
+        SalaAmbiente.query.filter_by(associacao_id=assoc_id)
+        .order_by(SalaAmbiente.tipo, SalaAmbiente.nome)
+        .all()
+    )
+    ativas = [s for s in salas if s.ativo]
+
+    resumo: dict[str, dict] = {}
+    for s in ativas:
+        entry = resumo.setdefault(
+            s.tipo,
+            {"quantidade": 0, "capacidade_total": 0, "capacidade_por_espaco": []},
+        )
+        entry["quantidade"] += 1
+        entry["capacidade_total"] += s.capacidade or 0
+        entry["capacidade_por_espaco"].append({"nome": s.nome, "lugares": s.capacidade})
+
+    total_profissionais = (
+        UsuarioAssociacao.query.filter_by(associacao_id=assoc_id, status="active").count()
+    )
+
+    return jsonify({
+        "success": True,
+        "associacao_id": assoc_id,
+        "unidade": {
+            "nome": assoc.nome if assoc else None,
+            "total_salas": len(ativas),
+            "total_capacidade": sum(s.capacidade or 0 for s in ativas),
+            "total_profissionais": total_profissionais,
+            "resumo_por_tipo": resumo,
+        },
+        "salas": [s.to_dict() for s in salas],
     }), 200

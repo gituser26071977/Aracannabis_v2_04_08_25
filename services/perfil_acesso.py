@@ -36,6 +36,8 @@ PERFIS_VALIDOS = {PERFIL_ASSISTENCIAL, PERFIL_ADMINISTRATIVO, PERFIL_SOLO}
 REDACTED = [
     "/api/faturamento/minha-situacao",
     "/api/faturamento/agente",
+    # Visão de ocupação: consumida pelo agente IA e pelo assistencial
+    "/api/salas/ocupacao",
 ]
 
 # Esfera ASSISTENCIAL — prontuário/atendimento clínico
@@ -78,6 +80,8 @@ AREA_ADMINISTRATIVA = [
     "/api/usage",
     "/api/lgpd",
     "/api/onboarding",
+    "/api/salas/ambientes",
+    "/api/salas/unidade",
 ]
 
 
