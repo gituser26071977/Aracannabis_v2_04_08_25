@@ -132,6 +132,10 @@ ALLOWED_ORIGINS = [
     'https://visualsmartflow.com.br',
     'https://www.visualsmartflow.com.br',
     'https://araos.visualsmartflow.com.br',
+    # Tenant Vittalis (prontuário + API)
+    'https://siap.vittalis.site',
+    'https://api.vittalis.site',
+    'https://vittalis.site',
     'http://192.168.0.104:3000',
     'http://192.168.0.104:3000',
     'http://192.168.0.104:5002',
