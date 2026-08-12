@@ -122,10 +122,12 @@ def resolver_perfil(profissional: Profissional) -> str:
     """Resolve o perfil de acesso efetivo do usuário."""
     if profissional is None:
         return PERFIL_ASSISTENCIAL
-    if profissional.perfil_acesso in PERFIS_VALIDOS:
-        return profissional.perfil_acesso
+    # Admin/superadmin SEMPRE têm acesso pleno (solo), independente do
+    # perfil_acesso declarado — são gestores do sistema/clínica.
     if profissional.role in ("admin", "superadmin"):
         return PERFIL_SOLO
+    if profissional.perfil_acesso in PERFIS_VALIDOS:
+        return profissional.perfil_acesso
     if profissional.role == "auxiliar":
         return PERFIL_ADMINISTRATIVO
     if _tem_plano_solo(profissional):
