@@ -11,6 +11,13 @@ from werkzeug.utils import secure_filename
 
 pacientes_bp = Blueprint('pacientes', __name__)
 
+
+def _assoc_id():
+    """Resolve o associacao_id atual (tenant) via middleware (P0-12)."""
+    assoc = getattr(g, 'current_association', None)
+    return getattr(assoc, 'id', None)
+
+
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 UPLOAD_FOLDER = 'uploads/pacientes'
 
@@ -249,8 +256,10 @@ def listar_pacientes():
             pacientes_com_acesso.append(paciente_dict)
         
         # Registrar atividade
+        _assoc_id = getattr(g, 'current_association', None)
         log = LogAtividade(
             profissional_id=profissional_id,
+            associacao_id=getattr(_assoc_id, 'id', None),
             acao='Consulta',
             detalhes=f'Listagem de pacientes - {len(pacientes)} encontrados'
         )
@@ -299,6 +308,7 @@ def obter_paciente(paciente_id):
     # Registrar atividade
     log = LogAtividade(
         profissional_id=profissional_id,
+        associacao_id=_assoc_id(),
         acao='Consulta',
         detalhes=f'Visualização do paciente ID {paciente_id}'
     )
@@ -439,6 +449,7 @@ def cadastrar_paciente():
             # Registrar atividade
             log = LogAtividade(
                 profissional_id=profissional_id,
+                associacao_id=_assoc_id(),
                 acao='Cadastro',
                 detalhes=f'Novo paciente cadastrado: {novo_paciente.nome} (ID {novo_paciente.id})'
             )
@@ -615,6 +626,7 @@ def atualizar_paciente(paciente_id):
         # Registrar atividade
         log = LogAtividade(
             profissional_id=profissional_id,
+            associacao_id=_assoc_id(),
             acao='Atualização',
             detalhes=f'Paciente atualizado: ID {paciente_id}'
         )
@@ -677,6 +689,7 @@ def excluir_paciente(paciente_id):
         # Registrar atividade antes de confirmar a exclusão
         log = LogAtividade(
             profissional_id=profissional_id,
+            associacao_id=_assoc_id(),
             acao='Exclusão',
             detalhes=f'Paciente excluído: {nome_paciente} (ID {paciente_id})'
         )
@@ -756,6 +769,7 @@ def compartilhar_paciente(paciente_id):
         # Registrar atividade
         log = LogAtividade(
             profissional_id=profissional_id,
+            associacao_id=_assoc_id(),
             acao='Compartilhamento',
             detalhes=f'Paciente ID {paciente_id} compartilhado com {profissional_destino.nome} (nível: {nivel_acesso_novo})'
         )
@@ -822,6 +836,7 @@ def remover_compartilhamento(paciente_id, compartilhamento_id):
         # Registrar atividade
         log = LogAtividade(
             profissional_id=profissional_id,
+            associacao_id=_assoc_id(),
             acao='Remoção de Compartilhamento',
             detalhes=f'Compartilhamento removido: Paciente ID {paciente_id} com {compartilhamento.profissional.nome}'
         )
