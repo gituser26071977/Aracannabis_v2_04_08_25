@@ -101,7 +101,11 @@ def solicitar_cadastro():
             }), 400
 
         if SolicitacoesCadastro.query.filter_by(email=email).first():
-            return jsonify({'success': False, 'error': 'Email já cadastrado'}), 409
+            return jsonify({
+                'success': False,
+                'error': 'Este email já possui uma solicitação de cadastro em análise. '
+                         'Aguarde a aprovação ou fale com a clínica.'
+            }), 409
 
         # Staff (conselho_tipo='NONE') não tem CRM/UF — não checar duplicidade por registro
         is_staff = _is_staff_request(tipo_norm)

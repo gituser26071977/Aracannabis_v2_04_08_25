@@ -355,6 +355,23 @@ def request_password_setup():
 
     profissional = Profissional.query.filter_by(email=email).first()
     if not profissional:
+        # Pode ser uma solicitação de cadastro ainda pendente de aprovação
+        from models import SolicitacoesCadastro
+
+        solicitacao = SolicitacoesCadastro.query.filter_by(email=email).first()
+        if solicitacao:
+            if solicitacao.status == "pendente":
+                return jsonify({
+                    "error": "Seu cadastro está aguardando aprovação.",
+                    "status": "pending",
+                    "message": "Ainda não é possível definir a senha — sua solicitação aguarda aprovação da clínica.",
+                }), 409
+            if solicitacao.status in ("rejeitada", "rejeitado"):
+                return jsonify({
+                    "error": "Seu cadastro foi recusado.",
+                    "status": "rejected",
+                    "message": "Entre em contato com a clínica para mais informações.",
+                }), 409
         logger.info("PASSWORD SETUP: Email não encontrado")
         return jsonify({'error': 'Email não encontrado em nossa base de dados.'}), 404
 
