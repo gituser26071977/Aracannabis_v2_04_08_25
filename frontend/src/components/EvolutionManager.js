@@ -424,9 +424,7 @@ const EvolutionManager = ({ patientId }) => {
     <Box sx={{ width: '100%' }}>
       <ParentNotifier />
 
-
-          <NotifierElement />
-        <NotifierElement />      <Typography variant="h6" gutterBottom>
+      <Typography variant="h6" gutterBottom>
         Evoluções e Exames
       </Typography>
       
