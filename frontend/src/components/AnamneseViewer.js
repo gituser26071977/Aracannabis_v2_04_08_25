@@ -1,7 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Box, Paper, Typography, CircularProgress, Alert,
-  Chip, Divider, Grid, Card, CardContent
+  Box,
+  Paper,
+  Typography,
+  CircularProgress,
+  Alert,
+  Chip,
+  Divider,
+  Grid,
+  Card,
+  CardContent,
 } from '@mui/material';
 import {
   MedicalServices as MedicalIcon,
@@ -11,11 +19,11 @@ import {
   Warning as WarningIcon,
   Height as HeightIcon,
   Scale as ScaleIcon,
-  LocalHospital as HospitalIcon
+  LocalHospital as HospitalIcon,
 } from '@mui/icons-material';
 import api from '../services/api';
 
-const AnamneseViewer = ({ patientId }) => {
+const AnamneseViewer = ({ patientId, habilitarCannabis = false }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [anamneses, setAnamneses] = useState([]);
@@ -47,7 +55,11 @@ const AnamneseViewer = ({ patientId }) => {
   }
 
   if (error) {
-    return <Alert severity="error" sx={{ m: 2 }}>{error}</Alert>;
+    return (
+      <Alert severity="error" sx={{ m: 2 }}>
+        {error}
+      </Alert>
+    );
   }
 
   if (anamneses.length === 0) {
@@ -92,17 +104,16 @@ const AnamneseViewer = ({ patientId }) => {
             size="small"
           />
           {anamneses.length > 1 && (
-            <Chip
-              label={`${anamneses.length} registros`}
-              size="small"
-              sx={{ ml: 1 }}
-            />
+            <Chip label={`${anamneses.length} registros`} size="small" sx={{ ml: 1 }} />
           )}
         </Box>
       </Box>
 
       <Typography variant="caption" color="text.secondary" sx={{ mb: 2, display: 'block' }}>
-        Registrada em: {anamnese.data_anamnese ? new Date(anamnese.data_anamnese).toLocaleString('pt-BR') : 'Data não disponível'}
+        Registrada em:{' '}
+        {anamnese.data_anamnese
+          ? new Date(anamnese.data_anamnese).toLocaleString('pt-BR')
+          : 'Data não disponível'}
         {anamnese.profissional_nome && ` | Por: ${anamnese.profissional_nome}`}
       </Typography>
 
@@ -137,13 +148,15 @@ const AnamneseViewer = ({ patientId }) => {
             value={anamnese.medicamentos_uso}
           />
         </Grid>
-        <Grid item xs={12} md={6}>
-          <InfoCard
-            icon={<HistoryIcon color="action" />}
-            title="Histórico Cannabis"
-            value={anamnese.historico_cannabis}
-          />
-        </Grid>
+        {habilitarCannabis && (
+          <Grid item xs={12} md={6}>
+            <InfoCard
+              icon={<HistoryIcon color="action" />}
+              title="Histórico Cannabis"
+              value={anamnese.historico_cannabis}
+            />
+          </Grid>
+        )}
         <Grid item xs={12} md={6}>
           <InfoCard
             icon={<HistoryIcon color="action" />}

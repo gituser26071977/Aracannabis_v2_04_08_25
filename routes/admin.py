@@ -598,6 +598,26 @@ def sistema_info():
     except Exception as e:
         return jsonify({'error': f'Erro ao obter informações do sistema: {str(e)}'}), 500
 
+@admin_bp.route('/feature-flags', methods=['GET'])
+@jwt_required()
+def feature_flags():
+    """Lista as feature flags disponíveis com seus estados.
+
+    Consumido pelo frontend (ex.: CatalogoPage) para gate de funcionalidades.
+    Não requer role admin — flags são por feature, não por perfil.
+    """
+    try:
+        from services.feature_flag_service import FeatureFlagService
+        flags_dict = FeatureFlagService.list_all()
+        # list_all() retorna {name: to_dict()}; o frontend espera uma lista
+        # [{name, enabled, ...}].
+        features = list(flags_dict.values())
+        return jsonify({'features': features}), 200
+    except Exception as e:
+        current_app.logger.error(f"Erro ao listar feature flags: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
 @admin_bp.route('/sistema/health', methods=['GET'])
 @admin_required
 def sistema_health():

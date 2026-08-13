@@ -68,6 +68,7 @@ import ForbiddenPage from './pages/ForbiddenPage';
 import ServerErrorPage from './pages/ServerErrorPage';
 
 import NavigationMenu from './components/NavigationMenu';
+import { useModulos } from './contexts/ModulosContext';
 
 // Patient Portal Pages
 import PatientLogin from './pages/patient/PatientLogin';
@@ -458,9 +459,13 @@ function AppContent() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const { currentUser } = useAuth();
+  const { hasModulo } = useModulos();
   const location = useLocation();
   const { mode, toggleColorMode } = useColorMode();
 
+  // Gestão de associação (estoque, dispensação, membros) é específica do
+  // fluxo canabinoide — só aparece com o módulo cannabis-medicinal ativo.
+  const habilitarCannabis = hasModulo('cannabis-medicinal');
   const isLoginPage = location.pathname === '/login' || location.pathname === '/patient/login';
   const isOnboardingPage = location.pathname === '/onboarding';
   const showTrialBanner = currentUser && !isLoginPage && !isOnboardingPage;
@@ -540,8 +545,8 @@ function AppContent() {
                 🌿 {APP_TITLE}
               </Typography>
 
-              {/* Association Selector for SaaS */}
-              {currentUser && <AssociationSelector />}
+              {/* Association Selector (cannabis medicinal) */}
+              {currentUser && habilitarCannabis && <AssociationSelector />}
 
               <IconButton
                 color="inherit"
@@ -803,48 +808,54 @@ function AppContent() {
                 </ProtectedRoute>
               }
             />
-            <Route
-              path="/catalogo"
-              element={
-                <ProtectedRoute>
-                  <CatalogoPage />
-                </ProtectedRoute>
-              }
-            />
+            {habilitarCannabis && (
+              <Route
+                path="/catalogo"
+                element={
+                  <ProtectedRoute>
+                    <CatalogoPage />
+                  </ProtectedRoute>
+                }
+              />
+            )}
 
-            {/* Association Module Routes */}
-            <Route
-              path="/association"
-              element={
-                <ProtectedRoute>
-                  <AssociationPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/association/members"
-              element={
-                <ProtectedRoute>
-                  <MembersPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/association/stock"
-              element={
-                <ProtectedRoute>
-                  <StockPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/association/dispensation"
-              element={
-                <ProtectedRoute>
-                  <DispensationPage />
-                </ProtectedRoute>
-              }
-            />
+            {/* Association Module Routes (cannabis medicinal) */}
+            {habilitarCannabis && (
+              <>
+                <Route
+                  path="/association"
+                  element={
+                    <ProtectedRoute>
+                      <AssociationPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/association/members"
+                  element={
+                    <ProtectedRoute>
+                      <MembersPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/association/stock"
+                  element={
+                    <ProtectedRoute>
+                      <StockPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/association/dispensation"
+                  element={
+                    <ProtectedRoute>
+                      <DispensationPage />
+                    </ProtectedRoute>
+                  }
+                />
+              </>
+            )}
             <Route
               path="/intelligent-import"
               element={

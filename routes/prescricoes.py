@@ -9,6 +9,42 @@ import os
 prescricoes_bp = Blueprint('prescricoes', __name__)
 service = PrescriptionService()
 
+
+@prescricoes_bp.route('/gerar-base', methods=['POST'])
+@jwt_required()
+@require_permission(Permission.PRESCRIPTION_WRITE)
+def gerar_prescricao_base():
+    """Gera receituário base (prontuário clínico geral).
+
+    Aceita medicamentos livres com posologia textual — sem depender de
+    dosagens canaboides. Usado pelo módulo base (todas as especialidades).
+    """
+    data = request.get_json() or {}
+    profissional_id = get_jwt_identity()
+    paciente_id = data.get('paciente_id')
+    observacoes = data.get('observacoes', '')
+    medicamentos = data.get('medicamentos', []) or []
+
+    if not paciente_id:
+        return jsonify({'error': 'paciente_id é obrigatório'}), 400
+
+    try:
+        prescricao = service.gerar_prescricao_pdf(
+            profissional_id=profissional_id,
+            paciente_id=paciente_id,
+            observacoes=observacoes,
+            medicamentos_livres=medicamentos,
+        )
+        return jsonify({
+            'success': True,
+            'message': 'Receituário gerado com sucesso',
+            'data': prescricao.to_dict()
+        })
+    except Exception as e:
+        current_app.logger.error(f"Erro ao gerar receituário base: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
 @prescricoes_bp.route('/gerar', methods=['POST'])
 @jwt_required()
 @require_permission(Permission.PRESCRIPTION_WRITE)

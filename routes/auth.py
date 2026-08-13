@@ -167,7 +167,7 @@ def login():
             'access_token': araos_pair.access_token,
             'refresh_token': araos_pair.refresh_token,
             'legacy_access_token': access_token,
-            'user': profissional.to_dict(),
+            'user': _user_com_perfil_efetivo(profissional),
             'token_expires_in': araos_pair.expires_in,
             'token_expires_in_hours': 12,
             'trial_expired': True
@@ -178,7 +178,7 @@ def login():
         'access_token': araos_pair.access_token,
         'refresh_token': araos_pair.refresh_token,
         'legacy_access_token': access_token,
-        'user': profissional.to_dict(),
+        'user': _user_com_perfil_efetivo(profissional),
         'token_expires_in': araos_pair.expires_in,
         'token_expires_in_hours': 12
     }), 200
@@ -286,6 +286,19 @@ def get_profile():
     data = profissional.to_dict()
     data['perfil_efetivo'] = resolver_perfil(profissional)
     return jsonify({'user': data}), 200
+
+
+def _user_com_perfil_efetivo(profissional):
+    """to_dict() + perfil_efetivo resolvido (mesmo campo do /profile).
+
+    Garante que o frontend receba o perfil efetivo já no login, sem depender
+    do fetch assíncrono de /profile após o reload.
+    """
+    from services.perfil_acesso import resolver_perfil
+
+    data = profissional.to_dict()
+    data['perfil_efetivo'] = resolver_perfil(profissional)
+    return data
 
 @profissionais_bp.route('/profissionais/<int:prof_id>/assinatura', methods=['GET'])
 @jwt_required()

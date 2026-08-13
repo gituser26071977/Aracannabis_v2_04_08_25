@@ -106,11 +106,13 @@ def create_app(config_obj=None):
             "Authorization",
             "X-CSRF-Token",
             "X-Requested-With",
+            "X-Association-ID",
         ],
         expose_headers=[
             "Content-Type",
             "Authorization",
             "X-CSRF-Token",
+            "X-Association-ID",
         ],
         supports_credentials=True,
         max_age=600,  # cache curto: mudanças de CORS propagam rápido

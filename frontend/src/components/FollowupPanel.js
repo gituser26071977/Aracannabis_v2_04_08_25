@@ -21,14 +21,10 @@ import {
   ListItemIcon,
   Card,
   CardContent,
-  Stepper,
-  Step,
-  StepLabel,
-  StepContent,
   LinearProgress,
   FormControl,
   InputLabel,
-  Select
+  Select,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -41,7 +37,7 @@ import {
   Flag as FlagIcon,
   PlayArrow as PlayIcon,
   Pause as PauseIcon,
-  DoneAll as DoneAllIcon
+  DoneAll as DoneAllIcon,
 } from '@mui/icons-material';
 import { followupService } from '../services/api';
 
@@ -49,31 +45,34 @@ const STATUS_COLORS = {
   active: 'success',
   paused: 'warning',
   completed: 'info',
-  cancelled: 'error'
+  cancelled: 'error',
 };
 
 const STATUS_ICONS = {
   active: <PlayIcon fontSize="small" />,
   paused: <PauseIcon fontSize="small" />,
   completed: <DoneAllIcon fontSize="small" />,
-  cancelled: <WarningIcon fontSize="small" />
+  cancelled: <WarningIcon fontSize="small" />,
 };
 
 const STATUS_LABELS = {
   active: 'Ativo',
   paused: 'Pausado',
   completed: 'Concluído',
-  cancelled: 'Cancelado'
+  cancelled: 'Cancelado',
 };
 
 const SEVERITY_COLORS = {
   low: 'info',
   medium: 'warning',
   high: 'error',
-  critical: 'error'
+  critical: 'error',
 };
 
-const FollowupPanel = ({ patientId }) => {
+const FollowupPanel = ({ patientId, habilitarCannabis = false }) => {
+  // Especialidade padrão do programa: 'cannabis' apenas no módulo canabinoide;
+  // base usa 'geral'.
+  const specialtyDefault = habilitarCannabis ? 'cannabis' : 'geral';
   const [programs, setPrograms] = useState([]);
   const [checkpoints, setCheckpoints] = useState([]);
   const [questionnaires, setQuestionnaires] = useState([]);
@@ -87,28 +86,29 @@ const FollowupPanel = ({ patientId }) => {
   const [programForm, setProgramForm] = useState({
     patient_id: parseInt(patientId),
     name: '',
-    specialty_code: 'cannabis',
-    status: 'active'
+    specialty_code: specialtyDefault,
+    status: 'active',
   });
 
   const fetchAll = async () => {
     setLoading(true);
     setError('');
     try {
-      const [programsData, checkpointsData, questionnairesData, responsesData, alertsData] = await Promise.all([
-        followupService.listarProgramas(patientId).catch(() => []),
-        followupService.listarCheckpoints({}).catch(() => []),
-        followupService.listarQuestionarios().catch(() => []),
-        followupService.listarRespostas({ patient_id: patientId }).catch(() => []),
-        followupService.listarAlertas({ patient_id: patientId }).catch(() => [])
-      ]);
+      const [programsData, checkpointsData, questionnairesData, responsesData, alertsData] =
+        await Promise.all([
+          followupService.listarProgramas(patientId).catch(() => []),
+          followupService.listarCheckpoints({}).catch(() => []),
+          followupService.listarQuestionarios().catch(() => []),
+          followupService.listarRespostas({ patient_id: patientId }).catch(() => []),
+          followupService.listarAlertas({ patient_id: patientId }).catch(() => []),
+        ]);
       setPrograms(programsData || []);
       setCheckpoints(checkpointsData || []);
       setQuestionnaires(questionnairesData || []);
       setResponses(responsesData || []);
       setAlerts(alertsData || []);
     } catch (err) {
-      if(process.env.NODE_ENV!=='production')console.error('Erro ao carregar follow-up:', err);
+      if (process.env.NODE_ENV !== 'production') console.error('Erro ao carregar follow-up:', err);
       setError('Erro ao carregar dados de acompanhamento');
     } finally {
       setLoading(false);
@@ -117,13 +117,19 @@ const FollowupPanel = ({ patientId }) => {
 
   useEffect(() => {
     if (patientId) fetchAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [patientId]);
 
   const handleCreateProgram = async () => {
     try {
       await followupService.criarPrograma(programForm);
       setOpenProgramDialog(false);
-      setProgramForm({ patient_id: parseInt(patientId), name: '', specialty_code: 'cannabis', status: 'active' });
+      setProgramForm({
+        patient_id: parseInt(patientId),
+        name: '',
+        specialty_code: specialtyDefault,
+        status: 'active',
+      });
       fetchAll();
     } catch (err) {
       setError(err?.error?.message || 'Erro ao criar programa');
@@ -142,7 +148,9 @@ const FollowupPanel = ({ patientId }) => {
   const formatDate = (dateStr) => {
     if (!dateStr) return 'N/A';
     return new Date(dateStr).toLocaleDateString('pt-BR', {
-      day: '2-digit', month: '2-digit', year: 'numeric'
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
     });
   };
 
@@ -163,10 +171,22 @@ const FollowupPanel = ({ patientId }) => {
       )}
 
       {/* Header */}
-      <Paper elevation={2} sx={{ p: 3, mb: 3, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
+      <Paper
+        elevation={2}
+        sx={{
+          p: 3,
+          mb: 3,
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          color: 'white',
+        }}
+      >
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Box>
-            <Typography variant="h5" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography
+              variant="h5"
+              gutterBottom
+              sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+            >
               <TimelineIcon /> Acompanhamento
             </Typography>
             <Typography variant="body2" sx={{ opacity: 0.9 }}>
@@ -177,7 +197,11 @@ const FollowupPanel = ({ patientId }) => {
             variant="contained"
             startIcon={<AddIcon />}
             onClick={() => setOpenProgramDialog(true)}
-            sx={{ backgroundColor: 'rgba(255,255,255,0.9)', color: '#764ba2', '&:hover': { backgroundColor: 'white' } }}
+            sx={{
+              backgroundColor: 'rgba(255,255,255,0.9)',
+              color: '#764ba2',
+              '&:hover': { backgroundColor: 'white' },
+            }}
           >
             Novo Programa
           </Button>
@@ -193,7 +217,11 @@ const FollowupPanel = ({ patientId }) => {
           <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
             Este paciente ainda não está em nenhum programa de acompanhamento.
           </Typography>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpenProgramDialog(true)}>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => setOpenProgramDialog(true)}
+          >
             Criar Programa
           </Button>
         </Paper>
@@ -202,14 +230,22 @@ const FollowupPanel = ({ patientId }) => {
           {/* Programs */}
           <Grid item xs={12}>
             <Paper elevation={2} sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography
+                variant="h6"
+                gutterBottom
+                sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+              >
                 <PlayIcon color="primary" /> Programas Ativos
               </Typography>
               <Divider sx={{ mb: 2 }} />
               <Grid container spacing={2}>
                 {programs.map((program) => {
-                  const programCheckpoints = checkpoints.filter(cp => cp.program_id === program.id);
-                  const completedCp = programCheckpoints.filter(cp => cp.status === 'completed').length;
+                  const programCheckpoints = checkpoints.filter(
+                    (cp) => cp.program_id === program.id,
+                  );
+                  const completedCp = programCheckpoints.filter(
+                    (cp) => cp.status === 'completed',
+                  ).length;
                   const totalCp = programCheckpoints.length;
                   const progress = totalCp > 0 ? (completedCp / totalCp) * 100 : 0;
 
@@ -217,8 +253,17 @@ const FollowupPanel = ({ patientId }) => {
                     <Grid item xs={12} md={6} key={program.id}>
                       <Card variant="outlined">
                         <CardContent>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                            <Typography variant="h6" fontSize="1.1rem">{program.name}</Typography>
+                          <Box
+                            sx={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'flex-start',
+                              mb: 1,
+                            }}
+                          >
+                            <Typography variant="h6" fontSize="1.1rem">
+                              {program.name}
+                            </Typography>
                             <Chip
                               size="small"
                               icon={STATUS_ICONS[program.status]}
@@ -232,7 +277,9 @@ const FollowupPanel = ({ patientId }) => {
                           <Box sx={{ mt: 2 }}>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
                               <Typography variant="caption">Progresso</Typography>
-                              <Typography variant="caption">{completedCp}/{totalCp} checkpoints</Typography>
+                              <Typography variant="caption">
+                                {completedCp}/{totalCp} checkpoints
+                              </Typography>
                             </Box>
                             <LinearProgress
                               variant="determinate"
@@ -241,7 +288,11 @@ const FollowupPanel = ({ patientId }) => {
                             />
                           </Box>
                           {program.started_at && (
-                            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                              sx={{ mt: 1, display: 'block' }}
+                            >
                               Iniciado: {formatDate(program.started_at)}
                             </Typography>
                           )}
@@ -257,7 +308,11 @@ const FollowupPanel = ({ patientId }) => {
           {/* Checkpoints */}
           <Grid item xs={12} md={6}>
             <Paper elevation={2} sx={{ p: 3, height: '100%' }}>
-              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography
+                variant="h6"
+                gutterBottom
+                sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+              >
                 <EventIcon color="primary" /> Checkpoints
               </Typography>
               <Divider sx={{ mb: 2 }} />
@@ -266,7 +321,11 @@ const FollowupPanel = ({ patientId }) => {
                   {checkpoints.map((cp) => (
                     <ListItem key={cp.id} divider>
                       <ListItemIcon>
-                        {cp.status === 'completed' ? <CheckCircleIcon color="success" /> : <PendingIcon color="action" />}
+                        {cp.status === 'completed' ? (
+                          <CheckCircleIcon color="success" />
+                        ) : (
+                          <PendingIcon color="action" />
+                        )}
                       </ListItemIcon>
                       <ListItemText
                         primary={cp.name}
@@ -281,12 +340,18 @@ const FollowupPanel = ({ patientId }) => {
                           </Box>
                         }
                       />
-                      <Chip size="small" label={cp.status} color={cp.status === 'completed' ? 'success' : 'warning'} />
+                      <Chip
+                        size="small"
+                        label={cp.status}
+                        color={cp.status === 'completed' ? 'success' : 'warning'}
+                      />
                     </ListItem>
                   ))}
                 </List>
               ) : (
-                <Typography variant="body2" color="text.secondary">Nenhum checkpoint definido</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Nenhum checkpoint definido
+                </Typography>
               )}
             </Paper>
           </Grid>
@@ -294,14 +359,18 @@ const FollowupPanel = ({ patientId }) => {
           {/* Questionnaires & Responses */}
           <Grid item xs={12} md={6}>
             <Paper elevation={2} sx={{ p: 3, height: '100%' }}>
-              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography
+                variant="h6"
+                gutterBottom
+                sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+              >
                 <AssignmentIcon color="primary" /> Questionários & Respostas
               </Typography>
               <Divider sx={{ mb: 2 }} />
               {questionnaires.length > 0 ? (
                 <List dense>
                   {questionnaires.map((qn) => {
-                    const qnResponses = responses.filter(r => r.questionnaire_id === qn.id);
+                    const qnResponses = responses.filter((r) => r.questionnaire_id === qn.id);
                     return (
                       <ListItem key={qn.id} divider>
                         <ListItemText
@@ -312,18 +381,25 @@ const FollowupPanel = ({ patientId }) => {
                                 {qn.description}
                               </Typography>
                               <Typography variant="caption" color="text.secondary">
-                                {qn.questions?.length || 0} questões | {qnResponses.length} respostas
+                                {qn.questions?.length || 0} questões | {qnResponses.length}{' '}
+                                respostas
                               </Typography>
                             </Box>
                           }
                         />
-                        <Chip size="small" label={qn.status} color={qn.status === 'active' ? 'success' : 'default'} />
+                        <Chip
+                          size="small"
+                          label={qn.status}
+                          color={qn.status === 'active' ? 'success' : 'default'}
+                        />
                       </ListItem>
                     );
                   })}
                 </List>
               ) : (
-                <Typography variant="body2" color="text.secondary">Nenhum questionário definido</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Nenhum questionário definido
+                </Typography>
               )}
 
               {responses.length > 0 && (
@@ -334,7 +410,8 @@ const FollowupPanel = ({ patientId }) => {
                   {responses.slice(0, 5).map((resp) => (
                     <Paper key={resp.id} variant="outlined" sx={{ p: 1, mb: 1 }}>
                       <Typography variant="body2">
-                        <strong>{resp.value}</strong> {resp.numeric_value !== null && `(${resp.numeric_value})`}
+                        <strong>{resp.value}</strong>{' '}
+                        {resp.numeric_value !== null && `(${resp.numeric_value})`}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
                         {formatDate(resp.responded_at)} — por {resp.responded_by}
@@ -349,7 +426,11 @@ const FollowupPanel = ({ patientId }) => {
           {/* Alerts */}
           <Grid item xs={12}>
             <Paper elevation={2} sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography
+                variant="h6"
+                gutterBottom
+                sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+              >
                 <WarningIcon color="warning" /> Alertas de Acompanhamento
               </Typography>
               <Divider sx={{ mb: 2 }} />
@@ -367,14 +448,18 @@ const FollowupPanel = ({ patientId }) => {
                           )
                         }
                       >
-                        <Typography variant="body2" fontWeight="medium">{alert.title}</Typography>
+                        <Typography variant="body2" fontWeight="medium">
+                          {alert.title}
+                        </Typography>
                         <Typography variant="caption">{alert.description}</Typography>
                       </Alert>
                     </Grid>
                   ))}
                 </Grid>
               ) : (
-                <Typography variant="body2" color="text.secondary">Nenhum alerta de acompanhamento</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Nenhum alerta de acompanhamento
+                </Typography>
               )}
             </Paper>
           </Grid>
@@ -382,7 +467,12 @@ const FollowupPanel = ({ patientId }) => {
       )}
 
       {/* Program Dialog */}
-      <Dialog open={openProgramDialog} onClose={() => setOpenProgramDialog(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={openProgramDialog}
+        onClose={() => setOpenProgramDialog(false)}
+        maxWidth="sm"
+        fullWidth
+      >
         <DialogTitle>Novo Programa de Acompanhamento</DialogTitle>
         <DialogContent>
           <TextField
@@ -401,7 +491,7 @@ const FollowupPanel = ({ patientId }) => {
               label="Especialidade"
               onChange={(e) => setProgramForm({ ...programForm, specialty_code: e.target.value })}
             >
-              <MenuItem value="cannabis">Cannabis</MenuItem>
+              {habilitarCannabis && <MenuItem value="cannabis">Cannabis</MenuItem>}
               <MenuItem value="general">Geral</MenuItem>
               <MenuItem value="pain">Dor</MenuItem>
               <MenuItem value="mental_health">Saúde Mental</MenuItem>
@@ -421,7 +511,9 @@ const FollowupPanel = ({ patientId }) => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenProgramDialog(false)}>Cancelar</Button>
-          <Button onClick={handleCreateProgram} variant="contained">Criar</Button>
+          <Button onClick={handleCreateProgram} variant="contained">
+            Criar
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>

@@ -108,13 +108,21 @@ def verificar_acesso_paciente(profissional_id, paciente_id, nivel_necessario='le
     Returns:
         tuple: (tem_acesso, eh_responsavel, nivel_acesso)
     """
-    paciente = Paciente.query.get(paciente_id)
+    # Se for admin ou superadmin, acesso completo. Resolver ANTES da query
+    # do paciente para que admin/superadmin enxerguem pacientes de qualquer
+    # associação (mesmo padrão P0-09 de obter_pacientes_acessiveis: usar
+    # skip_tenant=True ao carregar o paciente fora do tenant corrente).
+    user = Profissional.query.get(profissional_id)
+    is_global_admin = bool(user and user.role in ['admin', 'superadmin'])
+
+    paciente_query = Paciente.query
+    if is_global_admin:
+        paciente_query = paciente_query.execution_options(skip_tenant=True)
+    paciente = paciente_query.get(paciente_id)
     if not paciente:
         return False, False, None
-    
-    # Se for admin ou superadmin, acesso completo
-    user = Profissional.query.get(profissional_id)
-    if user and user.role in ['admin', 'superadmin']:
+
+    if is_global_admin:
         return True, False, 'completo'
 
     
@@ -139,6 +147,22 @@ def verificar_acesso_paciente(profissional_id, paciente_id, nivel_necessario='le
             return True, False, compartilhamento.nivel_acesso
     
     return False, False, None
+
+
+def carregar_paciente(profissional_id, paciente_id):
+    """Carrega paciente respeitando o isolamento multi-tenant (P0-08).
+
+    Admin/superadmin (papel global) veem pacientes de qualquer associação —
+    mesmo padrão P0-09 de `obter_pacientes_acessiveis`. Profissionais comuns
+    seguem o filtro do tenant corrente.
+    """
+    user = Profissional.query.get(profissional_id)
+    is_global_admin = bool(user and user.role in ['admin', 'superadmin'])
+    query = Paciente.query
+    if is_global_admin:
+        query = query.execution_options(skip_tenant=True)
+    return query.get(paciente_id)
+
 
 def obter_pacientes_acessiveis(profissional_id):
     """
@@ -287,7 +311,7 @@ def obter_paciente(paciente_id):
     if not tem_acesso:
         return jsonify({'error': 'Acesso negado a este paciente'}), 403
     
-    paciente = Paciente.query.get(paciente_id)
+    paciente = carregar_paciente(profissional_id, paciente_id)
     
     if not paciente:
         return jsonify({'error': 'Paciente não encontrado'}), 404
@@ -509,7 +533,7 @@ def atualizar_paciente(paciente_id):
     if not tem_acesso:
         return jsonify({'error': 'Acesso negado para editar este paciente'}), 403
 
-    paciente = Paciente.query.get(paciente_id)
+    paciente = carregar_paciente(profissional_id, paciente_id)
 
     if not paciente:
         return jsonify({'error': 'Paciente não encontrado'}), 404
@@ -676,7 +700,7 @@ def excluir_paciente(paciente_id):
     if not tem_acesso or not eh_responsavel:
         return jsonify({'error': 'Apenas o profissional responsável pode excluir pacientes'}), 403
     
-    paciente = Paciente.query.get(paciente_id)
+    paciente = carregar_paciente(profissional_id, paciente_id)
     
     if not paciente:
         return jsonify({'error': 'Paciente não encontrado'}), 404

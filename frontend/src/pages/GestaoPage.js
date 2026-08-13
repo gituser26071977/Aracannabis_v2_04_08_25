@@ -27,6 +27,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useModulos } from '../contexts/ModulosContext';
 
 function RoutineCard({ icon, title, description, onClick, emBreve }) {
   return (
@@ -88,12 +89,15 @@ function RoutineGroup({ title, children }) {
 function GestaoPage() {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
+  const { hasModulo } = useModulos();
   const ehAdmin = currentUser?.role === 'admin' || currentUser?.role === 'superadmin';
-  const ehAssistencial =
-    currentUser?.perfil_efetivo === 'assistencial' ||
-    (!currentUser?.perfil_efetivo && !ehAdmin && currentUser?.role !== 'profissional'
-      ? false
-      : (currentUser?.perfil_efetivo || 'assistencial') === 'assistencial');
+  // Admin/superadmin têm perfil solo — nunca são tratados como assistencial-only,
+  // mesmo quando perfil_efetivo ainda não foi carregado (undefined) após o login.
+  const ehAssistencial = ehAdmin
+    ? false
+    : (currentUser?.perfil_efetivo || 'assistencial') === 'assistencial';
+  // Estoque/Gestão da Clínica são específicos do fluxo canabinoide.
+  const habilitarCannabis = hasModulo('cannabis-medicinal');
 
   return (
     <Box p={3}>
@@ -146,7 +150,7 @@ function GestaoPage() {
         </RoutineGroup>
       )}
 
-      {!ehAssistencial && (
+      {!ehAssistencial && habilitarCannabis && (
         <RoutineGroup title="OPERAÇÕES">
           <Grid item xs={12} sm={6} md={4}>
             <RoutineCard
@@ -184,14 +188,16 @@ function GestaoPage() {
             onClick={() => navigate('/configuracao-prescricao')}
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={4}>
-          <RoutineCard
-            icon={<Category fontSize="large" />}
-            title="Catálogo → Importar por IA"
-            description="Importe produtos/procedimentos com IA."
-            onClick={() => navigate('/catalogo')}
-          />
-        </Grid>
+        {habilitarCannabis && (
+          <Grid item xs={12} sm={6} md={4}>
+            <RoutineCard
+              icon={<Category fontSize="large" />}
+              title="Catálogo → Importar por IA"
+              description="Importe produtos/procedimentos com IA."
+              onClick={() => navigate('/catalogo')}
+            />
+          </Grid>
+        )}
         <Grid item xs={12} sm={6} md={4}>
           <RoutineCard
             icon={<Extension fontSize="large" />}

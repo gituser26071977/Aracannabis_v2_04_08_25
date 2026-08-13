@@ -23,11 +23,9 @@ import {
   TextField,
   InputAdornment,
   Chip,
-  Grid,
   FormControl,
-  InputLabel,
   Select,
-  MenuItem
+  MenuItem,
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -39,7 +37,7 @@ import {
   People as PeopleIcon,
   Share as ShareIcon,
   AccountCircle as ResponsavelIcon,
-  Group as CompartilhadoIcon
+  Group as CompartilhadoIcon,
 } from '@mui/icons-material';
 import { Avatar, Fab } from '@mui/material';
 import { pacientesService } from '../services/api';
@@ -105,7 +103,8 @@ const PatientList = ({ onEdit, onAdd, refreshTrigger }) => {
         setFilteredPatients(data.pacientes || []); // Agora o backend filtra
         setError('');
       } catch (err) {
-        if(process.env.NODE_ENV!=='production')console.error('Erro ao carregar pacientes:', err);
+        if (process.env.NODE_ENV !== 'production')
+          console.error('Erro ao carregar pacientes:', err);
         setError('Não foi possível carregar a lista de pacientes');
       } finally {
         setLoading(false);
@@ -122,7 +121,6 @@ const PatientList = ({ onEdit, onAdd, refreshTrigger }) => {
 
   // Remover client-side effect de busca já que agora é server-side
   // useEffect(() => { ... }, [searchTerm, patients]); excluido.
-
 
   // Manipular busca
   const handleSearchChange = (event) => {
@@ -147,7 +145,8 @@ const PatientList = ({ onEdit, onAdd, refreshTrigger }) => {
   const handleDeletePatient = async (patient) => {
     const ok = await confirm({
       title: `Excluir ${patient.nome}?`,
-      message: 'Esta ação não pode ser desfeita. Todos os dados do prontuário, consultas e histórico serão removidos permanentemente.',
+      message:
+        'Esta ação não pode ser desfeita. Todos os dados do prontuário, consultas e histórico serão removidos permanentemente.',
       confirmLabel: 'Excluir permanentemente',
       destructive: true,
     });
@@ -155,9 +154,9 @@ const PatientList = ({ onEdit, onAdd, refreshTrigger }) => {
 
     try {
       await pacientesService.excluir(patient.id);
-      setPatients(patients.filter(p => p.id !== patient.id));
+      setPatients(patients.filter((p) => p.id !== patient.id));
     } catch (err) {
-      if(process.env.NODE_ENV!=='production')console.error('Erro ao excluir paciente:', err);
+      if (process.env.NODE_ENV !== 'production') console.error('Erro ao excluir paciente:', err);
       setError('Não foi possível excluir o paciente');
     }
   };
@@ -181,15 +180,14 @@ const PatientList = ({ onEdit, onAdd, refreshTrigger }) => {
         setPatients(data.pacientes || []);
         setFilteredPatients(data.pacientes || []);
       } catch (err) {
-        if(process.env.NODE_ENV!=='production')console.error('Erro ao recarregar pacientes:', err);
+        if (process.env.NODE_ENV !== 'production')
+          console.error('Erro ao recarregar pacientes:', err);
       }
     };
     fetchPatients();
   };
 
-
   // Calcular estatísticas dos pacientes
-  const patientsInTreatment = patients.filter(patient => patient.em_tratamento).length;
 
   return (
     <Paper elevation={3} sx={{ p: 2, position: 'relative' }}>
@@ -272,7 +270,7 @@ const PatientList = ({ onEdit, onAdd, refreshTrigger }) => {
           title="Nenhum paciente cadastrado"
           description="Comece adicionando seu primeiro paciente para gerenciar consultas, prescrições e prontuários."
           actionLabel="Cadastrar paciente"
-          onAction={() => navigate('/pacientes/novo')}
+          onAction={onAdd}
         />
       ) : filteredPatients.length === 0 ? (
         <EmptyState
@@ -308,22 +306,24 @@ const PatientList = ({ onEdit, onAdd, refreshTrigger }) => {
                     <TableRow key={patient.id}>
                       <TableCell>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                          <Avatar
-                            src={getFotoUrl(patient)}
-                            sx={{ width: 36, height: 36 }}
-                          >
+                          <Avatar src={getFotoUrl(patient)} sx={{ width: 36, height: 36 }}>
                             {!getFotoUrl(patient) && patient.nome.charAt(0).toUpperCase()}
                           </Avatar>
-                          <Typography variant="body2">
-                            {patient.nome}
-                          </Typography>
+                          <Typography variant="body2">{patient.nome}</Typography>
                         </Box>
                       </TableCell>
                       <TableCell>{calcularIdade(patient.data_nascimento)}</TableCell>
                       <TableCell>{patient.diagnostico}</TableCell>
                       <TableCell>{patient.associacao || '-'}</TableCell>
                       <TableCell align="center">
-                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'center' }}>
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 0.5,
+                            alignItems: 'center',
+                          }}
+                        >
                           {patient.em_tratamento ? (
                             <Chip
                               label="Em tratamento"
@@ -332,12 +332,7 @@ const PatientList = ({ onEdit, onAdd, refreshTrigger }) => {
                               size="small"
                             />
                           ) : (
-                            <Chip
-                              label="Inativo"
-                              color="default"
-                              variant="outlined"
-                              size="small"
-                            />
+                            <Chip label="Inativo" color="default" variant="outlined" size="small" />
                           )}
                           {patient.tdah_positivo && (
                             <Chip
@@ -361,8 +356,13 @@ const PatientList = ({ onEdit, onAdd, refreshTrigger }) => {
                         ) : (
                           <Chip
                             icon={<CompartilhadoIcon />}
-                            label={patient.nivel_acesso === 'leitura' ? 'Leitura' :
-                              patient.nivel_acesso === 'escrita' ? 'Escrita' : 'Completo'}
+                            label={
+                              patient.nivel_acesso === 'leitura'
+                                ? 'Leitura'
+                                : patient.nivel_acesso === 'escrita'
+                                  ? 'Escrita'
+                                  : 'Completo'
+                            }
                             color="secondary"
                             size="small"
                           />
@@ -420,7 +420,10 @@ const PatientList = ({ onEdit, onAdd, refreshTrigger }) => {
             onRowsPerPageChange={handleChangeRowsPerPage}
             labelRowsPerPage="Linhas por página:"
             labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
-            sx={{ '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows, & .MuiTablePagination-select': { fontSize: '1.1rem' } }}
+            sx={{
+              '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows, & .MuiTablePagination-select':
+                { fontSize: '1.1rem' },
+            }}
           />
         </>
       )}
@@ -451,11 +454,13 @@ const PatientList = ({ onEdit, onAdd, refreshTrigger }) => {
         </DialogTitle>
         <DialogContent>
           <DialogContentText sx={{ fontSize: '1.1rem', mt: 1 }}>
-            Sua assinatura atual não permite o cadastro de <strong>novos pacientes como titular</strong>.
-            Isso ocorre porque seu período de avaliação expirou ou você é um profissional de equipe colaborativa.
+            Sua assinatura atual não permite o cadastro de{' '}
+            <strong>novos pacientes como titular</strong>. Isso ocorre porque seu período de
+            avaliação expirou ou você é um profissional de equipe colaborativa.
           </DialogContentText>
           <DialogContentText sx={{ fontSize: '1.1rem', mt: 2 }}>
-            Para ser o responsável clínico (cadastrar, gerenciar faturamento e manter os prontuários seguros), é necessário ativar um plano.
+            Para ser o responsável clínico (cadastrar, gerenciar faturamento e manter os prontuários
+            seguros), é necessário ativar um plano.
           </DialogContentText>
         </DialogContent>
         <DialogActions sx={{ p: 3, pt: 1 }}>

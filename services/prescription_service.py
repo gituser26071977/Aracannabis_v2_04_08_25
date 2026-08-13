@@ -67,10 +67,19 @@ class PrescriptionService:
         
         return config
 
-    def gerar_prescricao_pdf(self, profissional_id, paciente_id, dosagens_ids=None, observacoes=None):
+    def gerar_prescricao_pdf(self, profissional_id, paciente_id, dosagens_ids=None, observacoes=None, medicamentos_livres=None):
         profissional = Profissional.query.get(profissional_id)
-        paciente = Paciente.query.get(paciente_id)
-        
+
+        # Admin/superadmin (papel global) podem emitir receituário para
+        # pacientes de qualquer associação — mesmo padrão P0-09 usado em
+        # routes/pacientes.py (carregar_paciente). Sem isso, o filtro
+        # multi-tenant (P0-08) esconderia pacientes de outra associação.
+        is_global_admin = bool(profissional and profissional.role in ('admin', 'superadmin'))
+        if is_global_admin:
+            paciente = Paciente.query.execution_options(skip_tenant=True).get(paciente_id)
+        else:
+            paciente = Paciente.query.get(paciente_id)
+
         if not profissional or not paciente:
             raise ValueError("Profissional ou Paciente não encontrado")
 
@@ -107,6 +116,69 @@ class PrescriptionService:
         elements.append(Paragraph("Receituário", style_title))
         
         # 3. ITENS DA PRESCRIÇÃO
+        # Modo base: medicamentos livres (sem dosagens canaboides) passados
+        # diretamente — posologia textual livre.
+        if medicamentos_livres:
+            medicamentos_list = []
+            for med in medicamentos_livres:
+                item_elements = []
+                nome_med = med.get('nome_medicamento') or med.get('nome') or 'Medicamento'
+                uso = med.get('via_administracao') or 'Uso Oral'
+                posologia_texto = med.get('posologia_texto') or med.get('posologia') or 'Conforme orientação médica.'
+                instrucoes = med.get('instrucoes') or None
+
+                item_elements.append(Paragraph(f"{len(medicamentos_list) + 1}. {nome_med}", style_med_name))
+                item_elements.append(Paragraph(f"   <b>{uso.upper()}</b>", style_normal))
+                item_elements.append(Paragraph(f"   Posologia: {posologia_texto}", style_normal))
+                if instrucoes:
+                    item_elements.append(Paragraph(f"   <i>Instruções: {instrucoes}</i>", ParagraphStyle('Instrucao', parent=style_normal, fontSize=9, textColor=colors.darkblue, leftIndent=12)))
+                item_elements.append(Spacer(1, 0.5*cm))
+                elements.append(KeepTogether(item_elements))
+
+                medicamentos_list.append({
+                    'nome': nome_med,
+                    'posologia': posologia_texto,
+                    'via': uso,
+                    'instrucoes': instrucoes
+                })
+            if observacoes:
+                elements.append(Spacer(1, 0.5*cm))
+                elements.append(Paragraph("<b>Observações Gerais:</b>", style_normal))
+                elements.append(Paragraph(observacoes, style_normal))
+            elements.append(Spacer(1, 2.5*cm))
+            sign_elements = []
+            if config and config.usar_assinatura_digital:
+                sign_elements.append(Paragraph("<i>(Assinatura Validadora Integrada Third-Party)</i>", ParagraphStyle('SignInfo', parent=style_normal, alignment=1, fontSize=8, textColor=colors.gray)))
+                sign_elements.append(Spacer(1, 1.5*cm))
+                sign_elements.append(Paragraph("_" * 40, ParagraphStyle('Line', parent=style_normal, alignment=1)))
+                sign_elements.append(Paragraph(profissional.nome, ParagraphStyle('Sign', parent=style_normal, alignment=1, fontSize=10)))
+            else:
+                icp_style = ParagraphStyle('ICP', parent=style_normal, alignment=1, fontSize=9)
+                sign_elements.append(Paragraph("_" * 60, ParagraphStyle('Line', parent=style_normal, alignment=1)))
+                sign_elements.append(Paragraph(f"<b>{profissional.nome}</b>", icp_style))
+                sign_elements.append(Paragraph(f"CRM/Registro: {profissional.crm} - {profissional.uf_crm}", icp_style))
+                sign_elements.append(Spacer(1, 0.2*cm))
+                sign_elements.append(Paragraph("Documento assinado digitalmente conforme MP nº 2.200-2/2001 (ICP-Brasil).", ParagraphStyle('Info', parent=style_normal, alignment=1, fontSize=7, textColor=colors.gray)))
+                sign_elements.append(Paragraph("A validação pode ser feita no portal gov.br/receita-federal.", ParagraphStyle('Info2', parent=style_normal, alignment=1, fontSize=7, textColor=colors.gray)))
+            elements.append(KeepTogether(sign_elements))
+            if config and config.rodape_personalizado:
+                elements.append(Spacer(1, 1*cm))
+                footer_text = config.rodape_personalizado.replace('\n', '<br/>')
+                elements.append(Paragraph(footer_text, ParagraphStyle('FooterParams', parent=style_normal, alignment=1, fontSize=9, textColor=colors.grey)))
+            doc.build(elements)
+            prescricao = Prescricao(
+                paciente_id=paciente.id,
+                profissional_id=profissional.id,
+                associacao_id=_resolve_assoc_id(),
+                data_emissao=datetime.utcnow(),
+                arquivo_path=pdf_filename,
+                conteudo_json={'medicamentos': medicamentos_list, 'modo': 'base'},
+                observacoes=observacoes
+            )
+            db.session.add(prescricao)
+            db.session.commit()
+            return prescricao
+
         if dosagens_ids:
             dosagens = Dosagem.query.filter(Dosagem.id.in_(dosagens_ids)).all()
         else:
