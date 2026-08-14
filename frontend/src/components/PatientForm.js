@@ -21,14 +21,13 @@ import {
   DialogContent,
   DialogActions,
   Link,
-  IconButton
+  IconButton,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { PhotoCamera, Delete, Save as SaveIcon } from '@mui/icons-material';
 import { pacientesService, lgpdService } from '../services/api';
 import LGPDBanner from './LGPDBanner';
 import PrivacyPolicy from './PrivacyPolicy';
-import QuickChipSelect from './QuickChipSelect';
 
 const PatientForm = ({ onSave, initialData = null }) => {
   const [formData, setFormData] = useState({
@@ -41,12 +40,15 @@ const PatientForm = ({ onSave, initialData = null }) => {
     genero: initialData?.genero || '',
     diagnostico: initialData?.diagnostico || '',
     observacoes: initialData?.observacoes || '',
-    associacao: initialData?.associacao || '',
-    consentimento_lgpd: initialData?.consentimento_lgpd || false
+    consentimento_lgpd: initialData?.consentimento_lgpd || false,
   });
 
   const [fotoFile, setFotoFile] = useState(null);
-  const [fotoPreview, setFotoPreview] = useState(initialData?.foto_nome ? `${process.env.REACT_APP_API_URL}/pacientes/foto/${initialData.foto_nome}` : null);
+  const [fotoPreview, setFotoPreview] = useState(
+    initialData?.foto_nome
+      ? `${process.env.REACT_APP_API_URL}/pacientes/foto/${initialData.foto_nome}`
+      : null,
+  );
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -55,9 +57,9 @@ const PatientForm = ({ onSave, initialData = null }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
@@ -93,7 +95,8 @@ const PatientForm = ({ onSave, initialData = null }) => {
     setLoading(true);
     setError('');
 
-    if(process.env.NODE_ENV!=='production')console.log('Enviando dados do formulário:', formData);
+    if (process.env.NODE_ENV !== 'production')
+      console.log('Enviando dados do formulário:', formData);
 
     try {
       let result;
@@ -103,7 +106,7 @@ const PatientForm = ({ onSave, initialData = null }) => {
       if (fotoFile) {
         dadosEnvio = new FormData();
         // Adicionar todos os campos do formulário
-        Object.keys(formData).forEach(key => {
+        Object.keys(formData).forEach((key) => {
           dadosEnvio.append(key, formData[key]);
         });
         // Adicionar arquivo de foto
@@ -114,27 +117,29 @@ const PatientForm = ({ onSave, initialData = null }) => {
 
       if (initialData?.id) {
         // Atualizar paciente existente
-        if(process.env.NODE_ENV!=='production')console.log('Atualizando paciente existente com ID:', initialData.id);
+        if (process.env.NODE_ENV !== 'production')
+          console.log('Atualizando paciente existente com ID:', initialData.id);
         result = await pacientesService.atualizar(initialData.id, dadosEnvio);
       } else {
         // Criar novo paciente
-        if(process.env.NODE_ENV!=='production')console.log('Criando novo paciente');
+        if (process.env.NODE_ENV !== 'production') console.log('Criando novo paciente');
         result = await pacientesService.criar(dadosEnvio);
       }
 
-      if(process.env.NODE_ENV!=='production')console.log('Resposta do servidor:', result);
+      if (process.env.NODE_ENV !== 'production') console.log('Resposta do servidor:', result);
 
       // Registrar consentimento LGPD se for um novo paciente ou se o consentimento foi alterado
-      if (formData.consentimento_lgpd &&
-        (!initialData || initialData.consentimento_lgpd !== formData.consentimento_lgpd)) {
+      if (
+        formData.consentimento_lgpd &&
+        (!initialData || initialData.consentimento_lgpd !== formData.consentimento_lgpd)
+      ) {
         try {
-          await lgpdService.registrarConsentimento(
-            result.paciente.id,
-            formData.consentimento_lgpd
-          );
-          if(process.env.NODE_ENV!=='production')console.log('Consentimento LGPD registrado com sucesso');
+          await lgpdService.registrarConsentimento(result.paciente.id, formData.consentimento_lgpd);
+          if (process.env.NODE_ENV !== 'production')
+            console.log('Consentimento LGPD registrado com sucesso');
         } catch (consentError) {
-          if(process.env.NODE_ENV!=='production')console.error('Erro ao registrar consentimento LGPD:', consentError);
+          if (process.env.NODE_ENV !== 'production')
+            console.error('Erro ao registrar consentimento LGPD:', consentError);
           // Não interromper o fluxo principal se houver erro no registro de consentimento
         }
       }
@@ -153,7 +158,6 @@ const PatientForm = ({ onSave, initialData = null }) => {
           genero: '',
           diagnostico: '',
           observacoes: '',
-          associacao: ''
         });
         setFotoFile(null);
         setFotoPreview(null);
@@ -163,11 +167,12 @@ const PatientForm = ({ onSave, initialData = null }) => {
       if (onSave) {
         onSave(result.paciente);
       }
-
     } catch (err) {
-      if(process.env.NODE_ENV!=='production')console.error('Erro detalhado ao salvar paciente:', err);
+      if (process.env.NODE_ENV !== 'production')
+        console.error('Erro detalhado ao salvar paciente:', err);
       if (err.response) {
-        if(process.env.NODE_ENV!=='production')console.error('Resposta do servidor:', err.response);
+        if (process.env.NODE_ENV !== 'production')
+          console.error('Resposta do servidor:', err.response);
       }
       setError(err.error || 'Erro ao salvar paciente');
     } finally {
@@ -244,10 +249,7 @@ const PatientForm = ({ onSave, initialData = null }) => {
               Foto do Paciente
             </Typography>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-              <Avatar
-                src={fotoPreview}
-                sx={{ width: 80, height: 80 }}
-              >
+              <Avatar src={fotoPreview} sx={{ width: 80, height: 80 }}>
                 {!fotoPreview && formData.nome.charAt(0).toUpperCase()}
               </Avatar>
               <Box>
@@ -303,12 +305,7 @@ const PatientForm = ({ onSave, initialData = null }) => {
           <Grid item xs={12} sm={6}>
             <FormControl fullWidth margin="normal">
               <InputLabel>Gênero</InputLabel>
-              <Select
-                name="genero"
-                value={formData.genero}
-                onChange={handleChange}
-                label="Gênero"
-              >
+              <Select name="genero" value={formData.genero} onChange={handleChange} label="Gênero">
                 <MenuItem value="masculino">Masculino</MenuItem>
                 <MenuItem value="feminino">Feminino</MenuItem>
                 <MenuItem value="outro">Outro</MenuItem>
@@ -352,18 +349,6 @@ const PatientForm = ({ onSave, initialData = null }) => {
           </Grid>
 
           <Grid item xs={12}>
-            <Box sx={{ mt: 2, mb: 1 }}>
-              <QuickChipSelect
-                label="Associação de Pacientes (opcional)"
-                value={formData.associacao}
-                onChange={(v) => setFormData(prev => ({ ...prev, associacao: v }))}
-                options={['ABRACE', 'Santa Cannabis', 'Cannabis Sem Fronteiras', 'Cultive', 'ABRACannabis', 'Ama+']}
-                rememberKey="associacao"
-              />
-            </Box>
-          </Grid>
-
-          <Grid item xs={12}>
             <TextField
               name="diagnostico"
               label="Diagnóstico"
@@ -398,7 +383,9 @@ const PatientForm = ({ onSave, initialData = null }) => {
               control={
                 <Checkbox
                   checked={formData.consentimento_lgpd}
-                  onChange={(e) => setFormData({ ...formData, consentimento_lgpd: e.target.checked })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, consentimento_lgpd: e.target.checked })
+                  }
                   name="consentimento_lgpd"
                   color="primary"
                 />
@@ -406,7 +393,14 @@ const PatientForm = ({ onSave, initialData = null }) => {
               label={
                 <Typography variant="body2">
                   Concordo com a coleta e processamento dos meus dados pessoais conforme a{' '}
-                  <Link component="button" variant="body2" onClick={(e) => { e.preventDefault(); setOpenPrivacyModal(true); }}>
+                  <Link
+                    component="button"
+                    variant="body2"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setOpenPrivacyModal(true);
+                    }}
+                  >
                     Política de Privacidade
                   </Link>
                 </Typography>
@@ -467,13 +461,15 @@ const PatientForm = ({ onSave, initialData = null }) => {
           <PrivacyPolicy />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenPrivacyModal(false)}>
-            Fechar
-          </Button>
-          <Button onClick={() => {
-            setFormData({ ...formData, consentimento_lgpd: true });
-            setOpenPrivacyModal(false);
-          }} variant="contained" color="primary">
+          <Button onClick={() => setOpenPrivacyModal(false)}>Fechar</Button>
+          <Button
+            onClick={() => {
+              setFormData({ ...formData, consentimento_lgpd: true });
+              setOpenPrivacyModal(false);
+            }}
+            variant="contained"
+            color="primary"
+          >
             Concordar
           </Button>
         </DialogActions>
