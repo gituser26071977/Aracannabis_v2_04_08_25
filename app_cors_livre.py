@@ -346,11 +346,16 @@ def create_app(config_obj=None):
     from routes.intake_integration import intake_integration_bp
 
     app.register_blueprint(intake_integration_bp, url_prefix="/api")
-    from routes.pre_atendimento import pre_atendimento_bp
+    from routes.pre_atendimento import (
+        pre_atendimento_bp,
+        pre_atendimento_conferencia_bp,
+    )
 
     # Pré-atendimento público por tenant (sem JWT). O middleware de tenant
     # dá bypass em /api/public (ver middleware/tenant_middleware.py).
     app.register_blueprint(pre_atendimento_bp, url_prefix="/api/public")
+    # Conferência do pré-atendimento (com JWT — fila do tenant).
+    app.register_blueprint(pre_atendimento_conferencia_bp, url_prefix="/api/pre-atendimento")
     from routes.intelligent_catalog import icatalog_bp
 
     app.register_blueprint(icatalog_bp)

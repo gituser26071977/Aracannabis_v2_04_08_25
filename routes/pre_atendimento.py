@@ -1,27 +1,37 @@
-"""Pré-atendimento público por tenant.
+"""Pré-atendimento público por tenant + conferência.
 
 Rotas públicas (sem JWT) — acessadas pelo paciente pela URL
-`/pre-atendimento/<slug>` (ex.: /pre-atendimento/dr.anderson).
+`/pre-atendimento/<slug>`:
 
     GET  /api/public/pre-atendimento/<slug>  — identidade do instituto + questionário
-    POST /api/public/pre-atendimento/<slug>  — envia o pré-atendimento
+    POST /api/public/pre-atendimento/<slug>  — registra pré-atendimento (pendente pagamento)
+
+Rotas de conferência (com JWT — profissional/tenant):
+
+    GET  /api/pre-atendimento/pendentes           — fila de conferência
+    POST /api/pre-atendimento/<id>/conferir       — libera ou rejeita
 """
 
 from __future__ import annotations
 
 import logging
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, g
+from flask_jwt_extended import jwt_required, get_jwt_identity
 
+from models import Profissional, PreConsulta
 from services.pre_atendimento import (
+    conferir_pre_atendimento,
+    listar_pre_atendimentos,
     obter_questionario,
-    processar_pre_atendimento,
+    registrar_pre_atendimento,
     resolver_tenant_por_slug,
 )
 
 logger = logging.getLogger(__name__)
 
 pre_atendimento_bp = Blueprint("pre_atendimento", __name__)
+pre_atendimento_conferencia_bp = Blueprint("pre_atendimento_conferencia", __name__)
 
 
 @pre_atendimento_bp.route("/pre-atendimento/<slug>", methods=["GET"])
@@ -35,13 +45,8 @@ def obter_pre_atendimento(slug: str):
     assoc = tenant["associacao"]
     questionario = obter_questionario(prof.id)
 
-    # Nome institucional uniforme: "Instituto <nome>" para a associação
-    # principal; se o nome da associação já for o instituto (ex.: Vittalis),
-    # padroniza como "Instituto Vittalis".
     nome_assoc = assoc.nome if assoc else prof.nome
-    nome_instituto = nome_assoc
-    if nome_assoc.strip().lower() == "vittalis":
-        nome_instituto = "Instituto Vittalis"
+    nome_instituto = "Instituto Vittalis" if nome_assoc.strip().lower() == "vittalis" else nome_assoc
 
     return jsonify({
         "slug": slug,
@@ -57,17 +62,98 @@ def obter_pre_atendimento(slug: str):
 
 @pre_atendimento_bp.route("/pre-atendimento/<slug>", methods=["POST"])
 def enviar_pre_atendimento(slug: str):
-    """Recebe as respostas do pré-atendimento e cria/vincula o paciente."""
+    """Recebe as respostas do pré-atendimento (ficam pendentes de pagamento)."""
     data = request.get_json(silent=True) or {}
     if not isinstance(data, dict):
         return jsonify({"error": "payload inválido"}), 400
 
     try:
-        resultado = processar_pre_atendimento(slug, data)
+        resultado = registrar_pre_atendimento(slug, data)
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
     except Exception:  # noqa: BLE001
         logger.exception("pre_atendimento_falhou")
         return jsonify({"error": "erro ao processar pré-atendimento"}), 500
 
-    return jsonify({"message": "Pré-atendimento recebido com sucesso!", "resultado": resultado}), 201
+    return jsonify({"message": resultado.pop("mensagem"), "resultado": resultado}), 201
+
+
+# ─────────────────────────────────────────────────────────────
+# Conferência (autenticado — fila do tenant)
+# ─────────────────────────────────────────────────────────────
+
+def _tenant_ids_do_usuario(user_id: int):
+    """Associações ativas do profissional logado.
+
+    Usa skip_tenant=True: a query de UsuarioAssociacao também é filtrada pelo
+    tenant (associacao_id=current), o que esconderia vínculos em outras
+    associações do mesmo profissional (P0-09 — mesmo padrão de pacientes).
+    """
+    from models_extra import UsuarioAssociacao
+    links = UsuarioAssociacao.query.execution_options(skip_tenant=True).filter_by(
+        profissional_id=user_id, status="active"
+    ).all()
+    return [l.associacao_id for l in links if l.associacao_id]
+
+
+@pre_atendimento_conferencia_bp.route("/pendentes", methods=["GET"])
+@jwt_required()
+def listar_pendentes():
+    """Fila de conferência dos pré-atendimentos do tenant."""
+    user_id = int(get_jwt_identity())
+    user = Profissional.query.get(user_id)
+    tenant_ids = _tenant_ids_do_usuario(user_id)
+    status = request.args.get("status") or None
+
+    # Admin/superadmin veem todos os tenants; demais, só os seus.
+    if user and user.role in ("admin", "superadmin") and request.args.get("todos") == "1":
+        tenant_ids = None
+
+    itens = listar_pre_atendimentos(tenant_ids=tenant_ids, status=status)
+    return jsonify({"total": len(itens), "pre_atendimentos": [i.to_dict() for i in itens]}), 200
+
+
+@pre_atendimento_conferencia_bp.route("/<int:pre_id>/conferir", methods=["POST"])
+@jwt_required()
+def conferir(pre_id: int):
+    """Libera (cria paciente) ou rejeita um pré-atendimento."""
+    user_id = int(get_jwt_identity())
+    user = Profissional.query.get(user_id)
+    data = request.get_json(silent=True) or {}
+    acao = data.get("acao", "liberar")
+
+    try:
+        # Temporariamente adota a associação do pré-atendimento como tenant do
+        # request (se o usuário pertence a ela), para que o flush P0-08 aceite
+        # criar o paciente na associação correta.
+        from association.models import Associacao
+        from models_extra import UsuarioAssociacao
+        pre = PreConsulta.query.execution_options(skip_tenant=True).get(pre_id)
+        if pre and pre.associacao_id:
+            # skip_tenant: a query de UsuarioAssociacao também é filtrada pelo
+            # tenant (associacao_id=current), o que esconderia o vínculo da
+            # associação de destino (P0-09 — mesmo padrão de pacientes).
+            link = UsuarioAssociacao.query.execution_options(skip_tenant=True).filter_by(
+                profissional_id=user_id, associacao_id=pre.associacao_id, status="active"
+            ).first()
+            if link:
+                assoc = Associacao.query.get(pre.associacao_id)
+                g.current_association = assoc or link.associacao
+
+        resultado = conferir_pre_atendimento(
+            pre_id,
+            acao=acao,
+            pagamento_confirmado=bool(data.get("pagamento_confirmado")),
+            dispensar_pagamento=bool(data.get("dispensar_pagamento")),
+            conferido_por=f"{user.nome} (id {user.id})" if user else str(user_id),
+            motivo=data.get("motivo"),
+        )
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception:  # noqa: BLE001
+        logger.exception("conferir_pre_atendimento_falhou")
+        return jsonify({"error": "erro ao conferir"}), 500
+
+    if resultado.get("erro"):
+        return jsonify({"message": resultado["erro"], "resultado": resultado}), 200
+    return jsonify({"message": "Pré-atendimento processado.", "resultado": resultado}), 200

@@ -1389,7 +1389,7 @@ class PreConsulta(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     paciente_id = db.Column(
-        db.Integer, db.ForeignKey("pacientes.id", ondelete="CASCADE"), nullable=False
+        db.Integer, db.ForeignKey("pacientes.id", ondelete="CASCADE"), nullable=True
     )
     associacao_id = db.Column(
         db.Integer, db.ForeignKey("associacoes.id", ondelete="SET NULL"), nullable=True
@@ -1399,7 +1399,19 @@ class PreConsulta(db.Model):
     canal = db.Column(db.String(20), default="web", nullable=False)  # web | telegram
     status = db.Column(
         db.String(20), default="concluida", nullable=False
-    )  # concluida | revisada
+    )  # concluida | revisada | pendente_pagamento | liberado | rejeitado
+    # Conferência + pagamento (pré-atendimento por tenant)
+    dados_solicitacao = db.Column(db.JSON, nullable=True)  # respostas do questionário
+    status_pagamento = db.Column(
+        db.String(20), default="pendente", nullable=False
+    )  # pendente | aguardando | pago | dispensado | rejeitado
+    valor_consulta = db.Column(db.Float, nullable=True)
+    preferencia_id = db.Column(db.String(64), nullable=True)  # Mercado Pago
+    link_pagamento = db.Column(db.String(500), nullable=True)
+    conferido_por = db.Column(db.String(120), nullable=True)
+    conferido_em = db.Column(db.DateTime, nullable=True)
+    pagamento_confirmado_em = db.Column(db.DateTime, nullable=True)
+    rejeitado_motivo = db.Column(db.Text, nullable=True)
     intake_interview_id = db.Column(db.String(64), nullable=True, unique=True)
     araos_patient_id = db.Column(db.String(64), nullable=True, index=True)
     gene_expressions = db.Column(db.JSON, nullable=True)
@@ -1413,10 +1425,22 @@ class PreConsulta(db.Model):
         return {
             "id": self.id,
             "paciente_id": self.paciente_id,
+            "associacao_id": self.associacao_id,
             "queixa_principal": self.queixa_principal,
             "intensidade": self.intensidade,
             "canal": self.canal,
             "status": self.status,
+            "dados_solicitacao": self.dados_solicitacao,
+            "status_pagamento": self.status_pagamento,
+            "valor_consulta": self.valor_consulta,
+            "preferencia_id": self.preferencia_id,
+            "link_pagamento": self.link_pagamento,
+            "conferido_por": self.conferido_por,
+            "conferido_em": self.conferido_em.isoformat() if self.conferido_em else None,
+            "pagamento_confirmado_em": self.pagamento_confirmado_em.isoformat()
+            if self.pagamento_confirmado_em
+            else None,
+            "rejeitado_motivo": self.rejeitado_motivo,
             "intake_interview_id": self.intake_interview_id,
             "araos_patient_id": self.araos_patient_id,
             "data_pre_consulta": self.data_pre_consulta.isoformat()

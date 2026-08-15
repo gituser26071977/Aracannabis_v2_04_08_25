@@ -1,31 +1,41 @@
 """Pré-atendimento por tenant (página pública de cada profissional).
 
 Cada profissional/clínica tem um slug público (`pre_atendimento_slug`,
-ex.: 'dr.anderson', 'dr.ueslhe'). O paciente acessa /pre-atendimento/<slug>,
-preenche o questionário e o sistema:
+ex.: 'dr.anderson', 'dr.ueslhe'). O paciente acessa /pre-atendimento/<slug>
+e preenche o questionário.
 
-1. Resolve o profissional + associação (tenant) pelo slug.
-2. Checa duplicado DENTRO do tenant (nome/CPF/telefone filtrado por
-   associacao_id).
-3. Cria o paciente (se não existe) vinculado ao tenant.
-4. Grava a anamnese estruturada com as respostas do questionário.
-5. Registra a Pré-Consulta (queixa, intensidade, respostas) com tenant.
+Fluxo com conferência + pagamento:
+1. Envio público -> cria PreConsulta com status `pendente_pagamento`
+   (NÃO cria paciente ainda). Guarda as respostas e gera link de pagamento
+   (Mercado Pago quando configurado).
+2. Admin/médico confere os dados e confirma o pagamento recebido ->
+   cria o Paciente (tenant) + anamnese estruturada + marca pré-consulta
+   como `liberado`.
+3. Sem conferência e pagamento confirmados, o pré-atendimento não vira
+   paciente ativo.
 """
 
 from __future__ import annotations
 
 import logging
-import re
 from datetime import datetime
 from typing import Any, Dict, Optional
 
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 
 from models import db, Paciente, PreConsulta, Anamnese, Profissional
 from models_extra import UsuarioAssociacao
-from association.models import Associacao
 
 logger = logging.getLogger(__name__)
+
+# Status do pré-atendimento
+STATUS_PENDENTE_PAGAMENTO = "pendente_pagamento"
+STATUS_LIBERADO = "liberado"
+STATUS_REJEITADO = "rejeitado"
+
+STATUS_PAG_PENDENTE = "pendente"
+STATUS_PAG_PAGO = "pago"
+STATUS_PAG_DISPENSADO = "dispensado"
 
 # Perguntas padrão do questionário (base para todas as especialidades).
 QUESTIONARIO_PADRAO = [
@@ -59,16 +69,13 @@ def resolver_tenant_por_slug(slug: str) -> Optional[Dict[str, Any]]:
     prof = Profissional.query.filter_by(pre_atendimento_slug=slug.strip().lower()).first()
     if not prof:
         return None
-    # Associações ativas do profissional
     links = UsuarioAssociacao.query.filter_by(
         profissional_id=prof.id, status="active"
     ).all()
     if not links:
         return {"profissional": prof, "associacao": None}
 
-    # Se houver mais de uma, prioriza a que tem mais membros ativos (instituto).
     if len(links) > 1:
-        from sqlalchemy import func
         contagem = (
             db.session.query(UsuarioAssociacao.associacao_id, func.count(UsuarioAssociacao.profissional_id).label("n"))
             .filter(UsuarioAssociacao.status == "active")
@@ -91,9 +98,110 @@ def resolver_tenant_por_slug(slug: str) -> Optional[Dict[str, Any]]:
 
 def obter_questionario(profissional_id: int) -> Dict[str, Any]:
     """Retorna o questionário configurado do tenant (ou o padrão)."""
-    # TODO: permitir questionário personalizado por tenant (campo JSON).
-    # Por ora usa o padrão clínico base.
     return {"perguntas": QUESTIONARIO_PADRAO, "versao": "v1"}
+
+
+def _gerar_link_pagamento(profissional, dados: Dict[str, Any]) -> Dict[str, Any]:
+    """Gera link de pagamento (Mercado Pago se configurado).
+
+    Retorna {"link": ..., "preferencia_id": ..., "valor": ...}.
+    Sem MP configurado, gera um link placeholder apontando para o próprio
+    front de pagamento (a conferência manual confirma o recebimento).
+    """
+    valor = None
+    try:
+        from models import ConfiguracaoIA
+        cfg = ConfiguracaoIA.query.filter_by(profissional_id=profissional.id).first()
+        if cfg and cfg.valor_consulta:
+            # valor_consulta pode ser "R$ 250,00" ou número
+            import re
+            nums = re.findall(r"\d+[.,]?\d*", cfg.valor_consulta or "")
+            if nums:
+                valor = float(nums[0].replace(".", "").replace(",", ".")) if "," in nums[0] else float(nums[0])
+    except Exception:
+        valor = None
+
+    preferencia_id = None
+    link = None
+    try:
+        from services.mercadopago_service import MercadoPagoService
+        mp = MercadoPagoService()
+        if mp.sdk and valor:
+            resultado = mp.criar_preferencia_pagamento({
+                "plano": "consulta",
+                "periodo": "avulsa",
+                "nome": dados.get("nome"),
+                "email": dados.get("email") or "",
+                "telefone": dados.get("telefone") or "",
+                "user_id": f"pre_{profissional.id}",
+            })
+            if resultado.get("success"):
+                preferencia_id = resultado.get("preference_id")
+                link = resultado.get("init_point") or resultado.get("sandbox_init_point")
+    except Exception as e:
+        logger.warning(f"[pre_atendimento] MP indisponível: {e}")
+
+    return {"link": link, "preferencia_id": preferencia_id, "valor": valor}
+
+
+def registrar_pre_atendimento(slug: str, dados: Dict[str, Any]) -> Dict[str, Any]:
+    """Registra o pré-atendimento (pendente de pagamento/conferência).
+
+    NÃO cria o paciente ativo. Guarda as respostas e gera link de pagamento.
+    """
+    tenant = resolver_tenant_por_slug(slug)
+    if not tenant:
+        raise ValueError("slug inválido")
+
+    prof = tenant["profissional"]
+    assoc = tenant["associacao"]
+    assoc_id = assoc.id if assoc else None
+
+    nome = (dados.get("nome") or "").strip()
+    if not nome:
+        raise ValueError("nome é obrigatório")
+
+    pag = _gerar_link_pagamento(prof, dados)
+
+    pre = PreConsulta(
+        paciente_id=None,  # só é criado após conferência + pagamento
+        associacao_id=assoc_id,
+        queixa_principal=dados.get("queixa_principal") or dados.get("condicao_principal"),
+        intensidade=dados.get("intensidade"),
+        canal="web",
+        status=STATUS_PENDENTE_PAGAMENTO,
+        dados_solicitacao={
+            **dados,
+            "slug": slug,
+            "profissional_id": prof.id,
+            "profissional": prof.nome,
+        },
+        status_pagamento=STATUS_PAG_PENDENTE,
+        valor_consulta=pag["valor"],
+        preferencia_id=pag["preferencia_id"],
+        link_pagamento=pag["link"],
+    )
+    db.session.add(pre)
+    db.session.commit()
+
+    return {
+        "status": STATUS_PENDENTE_PAGAMENTO,
+        "pre_consulta_id": pre.id,
+        "associacao_id": assoc_id,
+        "profissional": prof.nome,
+        "instituto": _nome_instituto(assoc),
+        "link_pagamento": pag["link"],
+        "valor_consulta": pag["valor"],
+        "mensagem": "Pré-atendimento recebido! Após a confirmação do pagamento e conferência, você será liberado(a).",
+    }
+
+
+def _nome_instituto(assoc) -> str:
+    if not assoc:
+        return ""
+    if assoc.nome.strip().lower() == "vittalis":
+        return "Instituto Vittalis"
+    return assoc.nome
 
 
 def detectar_duplicados_no_tenant(dados: Dict[str, Any], associacao_id: Optional[int]) -> list:
@@ -113,37 +221,57 @@ def detectar_duplicados_no_tenant(dados: Dict[str, Any], associacao_id: Optional
     if not conds:
         return []
 
-    q = Paciente.query.filter(or_(*conds))
+    # skip_tenant: o filtro é aplicado manualmente via associacao_id (P0-09).
+    q = Paciente.query.execution_options(skip_tenant=True).filter(or_(*conds))
     if associacao_id:
         q = q.filter(Paciente.associacao_id == associacao_id)
     return q.all()
 
 
-def processar_pre_atendimento(slug: str, dados: Dict[str, Any]) -> Dict[str, Any]:
-    """Processa o envio do pré-atendimento público por tenant.
+def conferir_pre_atendimento(
+    pre_id: int,
+    *,
+    acao: str = "liberar",  # liberar | rejeitar
+    pagamento_confirmado: bool = False,
+    dispensar_pagamento: bool = False,
+    conferido_por: Optional[str] = None,
+    motivo: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Confere um pré-atendimento: libera (cria paciente) ou rejeita.
 
-    Returns:
-        {"status": "criado"|"existente"|"duplicado", "paciente_id", "pre_consulta_id", "anamnese_id"?}
+    A liberação exige que o pagamento esteja confirmado (ou dispensado).
     """
-    tenant = resolver_tenant_por_slug(slug)
-    if not tenant:
-        raise ValueError("slug inválido")
+    pre = PreConsulta.query.execution_options(skip_tenant=True).get(pre_id)
+    if not pre:
+        raise ValueError("pré-atendimento inexistente")
+    if pre.status == STATUS_LIBERADO:
+        raise ValueError("pré-atendimento já liberado")
 
-    prof = tenant["profissional"]
-    assoc = tenant["associacao"]
-    assoc_id = assoc.id if assoc else None
+    if acao == "rejeitar":
+        pre.status = STATUS_REJEITADO
+        pre.rejeitado_motivo = motivo
+        pre.conferido_por = conferido_por
+        pre.conferido_em = datetime.utcnow()
+        db.session.commit()
+        return {"status": STATUS_REJEITADO, "pre_consulta_id": pre.id}
 
-    nome = (dados.get("nome") or "").strip()
-    if not nome:
-        raise ValueError("nome é obrigatório")
+    # Liberar: exige pagamento confirmado OU dispensado
+    if not (pagamento_confirmado or dispensar_pagamento):
+        return {
+            "status": "aguardando_pagamento",
+            "pre_consulta_id": pre.id,
+            "erro": "Pagamento ainda não confirmado. Confirme o pagamento para liberar o paciente.",
+        }
+
+    dados = pre.dados_solicitacao or {}
+    assoc_id = pre.associacao_id
+    prof = Profissional.query.get(dados.get("profissional_id")) if dados.get("profissional_id") else None
+    prof_id = prof.id if prof else None
 
     duplicados = detectar_duplicados_no_tenant(dados, assoc_id)
-
     if duplicados:
-        # Reutiliza o paciente existente (mesmo tenant) e vincula a nova pré-consulta.
         paciente = duplicados[0]
-        status = "existente"
-        # Atualizar dados que faltam
+        status_paciente = "existente"
         if not paciente.telefone and _normalizar_telefone(dados.get("telefone")):
             paciente.telefone = _normalizar_telefone(dados.get("telefone"))
         if not paciente.cpf and _normalizar_cpf(dados.get("cpf")):
@@ -159,7 +287,7 @@ def processar_pre_atendimento(slug: str, dados: Dict[str, Any]) -> Dict[str, Any
             except (ValueError, TypeError):
                 data_nasc = None
         paciente = Paciente(
-            nome=nome,
+            nome=(dados.get("nome") or "").strip(),
             cpf=_normalizar_cpf(dados.get("cpf")),
             telefone=_normalizar_telefone(dados.get("telefone")),
             email=(dados.get("email") or "").strip() or None,
@@ -167,30 +295,18 @@ def processar_pre_atendimento(slug: str, dados: Dict[str, Any]) -> Dict[str, Any
             genero=dados.get("genero") or None,
             diagnostico=dados.get("queixa_principal") or dados.get("condicao_principal") or None,
             associacao_id=assoc_id,
-            profissional_responsavel_id=prof.id,
+            profissional_responsavel_id=prof_id,
             consentimento_lgpd=True,
             data_consentimento=datetime.utcnow(),
         )
         db.session.add(paciente)
         db.session.flush()
-        status = "criado"
+        status_paciente = "criado"
 
-    # Pré-Consulta vinculada (tenant)
-    pre = PreConsulta(
-        paciente_id=paciente.id,
-        associacao_id=assoc_id,
-        queixa_principal=dados.get("queixa_principal") or dados.get("condicao_principal"),
-        intensidade=dados.get("intensidade"),
-        canal="web",
-        status="concluida",
-    )
-    db.session.add(pre)
-    db.session.flush()
-
-    # Anamnese estruturada com as respostas do questionário
+    # Anamnese estruturada com as respostas
     anamnese = Anamnese(
         paciente_id=paciente.id,
-        profissional_id=prof.id,
+        profissional_id=prof_id,
         condicao_principal=dados.get("queixa_principal") or dados.get("condicao_principal"),
         sintomas_atuais=dados.get("sintomas_atuais"),
         medicamentos_uso=dados.get("medicamentos_uso"),
@@ -201,14 +317,39 @@ def processar_pre_atendimento(slug: str, dados: Dict[str, Any]) -> Dict[str, Any
         fonte="pre_atendimento",
     )
     db.session.add(anamnese)
+
+    # Vincular a pré-consulta ao paciente liberado
+    pre.paciente_id = paciente.id
+    pre.status = STATUS_LIBERADO
+    pre.status_pagamento = STATUS_PAG_DISPENSADO if dispensar_pagamento else STATUS_PAG_PAGO
+    pre.conferido_por = conferido_por
+    pre.conferido_em = datetime.utcnow()
+    pre.pagamento_confirmado_em = datetime.utcnow()
     db.session.commit()
 
     return {
-        "status": status,
+        "status": STATUS_LIBERADO,
+        "status_paciente": status_paciente,
         "paciente_id": paciente.id,
-        "pre_consulta_id": pre.id,
         "anamnese_id": anamnese.id,
+        "pre_consulta_id": pre.id,
         "associacao_id": assoc_id,
-        "profissional": prof.nome,
-        "instituto": "Instituto Vittalis" if (assoc and assoc.nome.strip().lower() == "vittalis") else (assoc.nome if assoc else None),
     }
+
+
+def listar_pre_atendimentos(tenant_ids=None, status=None, limit: int = 100) -> list:
+    """Lista pré-atendimentos (fila de conferência).
+
+    Usa skip_tenant=True para que o profissional consulte os pré-atendimentos
+    de TODAS as associações que ele pertence (mesmo padrão P0-09 de
+    obter_pacientes_acessiveis em routes/pacientes.py). O filtro de tenant é
+    aplicado manualmente via `tenant_ids` (associações ativas do usuário).
+    """
+    q = PreConsulta.query.execution_options(skip_tenant=True).filter(
+        PreConsulta.paciente_id.is_(None)
+    )
+    if status:
+        q = q.filter(PreConsulta.status == status)
+    if tenant_ids:
+        q = q.filter(PreConsulta.associacao_id.in_(tenant_ids))
+    return q.order_by(PreConsulta.data_pre_consulta.asc()).limit(limit).all()
