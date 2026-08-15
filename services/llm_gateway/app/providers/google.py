@@ -33,8 +33,8 @@ class GoogleProvider(BaseLLMProvider):
         max_retries = 2
         last_error = None
         
-        # Modelo solicitado: gemini-1.5-flash
-        model = "gemini-1.5-flash"
+        # Modelo solicitado: gemini-flash-latest
+        model = "gemini-flash-latest"
         
         while attempts < max_retries:
             try:

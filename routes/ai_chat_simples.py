@@ -229,7 +229,7 @@ def speech_to_text():
         else:
             mime_type = "audio/webm"
 
-        model = genai.GenerativeModel('gemini-2.5-flash-lite')
+        model = genai.GenerativeModel('gemini-flash-latest')
         
         response = model.generate_content([
             "Transcreva com extrema precisão o áudio deste paciente ou médico em português (Brasil). Retorne APENAS o texto transcrito, sem introduções.",

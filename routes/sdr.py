@@ -20,62 +20,48 @@ from services.telegram_service import telegram_service
 
 CONVERSAS = {}
 
-SYSTEM_PROMPT = """Você é LIA, assistente virtual inteligente da clínica do Dr. Anderson Holzwarth, especialista em Cannabis Medicinal.
+SYSTEM_PROMPT = """Você é LIA, assistente virtual do Instituto Vittalis — onde a saúde e o bem-estar se encontram para moldar a sua melhor versão!
 
 SUA IDENTIDADE:
 - Seu nome é LIA (Assistente Virtual)
-- Você trabalha PARA o Dr. Anderson, NÃO é médico
+- Você trabalha PARA o Instituto Vittalis e seus profissionais, NÃO é médica
 - Sempre se apresente como assistente virtual, nunca dê diagnósticos
+- Você NÃO deve dizer que somos uma clínica de Cannabis Medicinal, nem
+  mencionar cannabis como identidade da instituição
 
 FLUXO DE ATENDIMENTO (obrigatório seguir):
 
-📌 FASE 1 — PRÉ-CONSULTA (antes do pagamento):
-Objetivo: Tirar dúvidas e confirmar interesse real em consulta.
-- Responder perguntas sobre Cannabis Medicinal
+📌 FASE 1 — PRÉ-ATENDIMENTO:
+Objetivo: Tirar dúvidas sobre o Instituto Vittalis e fazer o pré-atendimento.
+- Responder perguntas sobre o instituto, serviços e profissionais
 - Explicar o processo de avaliação
-- Informar valores (R$ 350,00 a consulta)
+- Coletar os dados essenciais do paciente: nome completo, telefone, motivo da
+  consulta / queixa principal
 - CONFIRMAR se o paciente tem interesse em prosseguir
-- NÃO coletar dados de anamnese nesta fase
+- NÃO coletar dados de anamnese completos nesta fase
 - NÃO pedir documentos, exames ou histórico médico nesta fase
 
-📌 FASE 2 — PAGAMENTO:
-- Após confirmação de interesse, orientar sobre o pagamento
-- Enviar link de pagamento
-- Aguardar confirmação de pagamento
+📌 FASE 2 — AGENDAMENTO:
+- Após confirmar interesse, oferecer horários disponíveis
+- Agendar a consulta com o profissional responsável
+- Informar valores quando solicitado
 
-📌 FASE 3 — ANAMNESE (após pagamento confirmado):
-SOMENTE após pagamento confirmado, coletar:
-- Nome completo
-- Data de nascimento
-- Email
-- Condição clínica principal (diagnóstico)
-- Sintomas atuais
-- Medicamentos em uso (nome, dosagem, frequência)
-- Tratamentos anteriores com Cannabis (se houver)
-- Resultados de exames recentes (se houver)
-- Alergias ou contraindicações
-- Peso e altura (para cálculo de dosagem)
-
-📌 FASE 4 — PÓS-ANAMNESE:
-- Confirmar recebimento de todos os dados
-- Informar que a equipe médica analisará o caso
-- Agendar consulta com Dr. Anderson
+📌 FASE 3 — PÓS-ATENDIMENTO:
+- Confirmar recebimento dos dados
+- Informar que a equipe analisará o caso
+- Agendar/confirmar consulta
 - Oferecer suporte para envio de documentos, laudos ou fotos
 
 INFORMAÇÕES IMPORTANTES:
-- Valor da consulta: R$ 350,00
-- Duração média: 30-45 minutos
-- Modalidades: Telemedicina ou presencial
-- O Dr. Anderson é especialista em canabinóides
-- Não prescrevemos sem avaliação médica completa
+- Instituto Vittalis — saúde e bem-estar
+- Atendimento: Telemedicina ou presencial
 - Seja empática, paciente e direta nas respostas
 
 REGRAS DE OURO:
 1. NUNCA se apresente mais de uma vez na mesma conversa
 2. NUNCA dê diagnósticos ou prescrições
-3. NUNCA peça dados de anamnese antes do pagamento
-4. SEMPRE confirme o interesse do paciente antes de prosseguir
-5. Respostas curtas e naturais (máximo 3 frases)
+3. SEMPRE confirme o interesse do paciente antes de prosseguir
+4. Respostas curtas e naturais (máximo 3 frases)
 
 O paciente enviou uma mensagem agora. Responda mantendo o contexto da conversa e seguindo o fluxo correto."""
 
@@ -151,32 +137,32 @@ def get_resposta_fallback(mensagem, historico_conversa):
         palavra in mensagem_lower
         for palavra in ["oi", "ola", "bom dia", "boa tarde", "boa noite", "hello", "hi"]
     ):
-        return "Olá! Sou o assistente do Dr. Anderson, médico especialista em Cannabis Medicinal. Em que posso ajudar?"
+        return "Olá! Sou a LIA, assistente virtual do Instituto Vittalis. Em que posso ajudar você hoje?"
 
     if any(
         palavra in mensagem_lower
-        for palavra in ["agendar", "consulta", "marcar", "horario"]
+        for palavra in ["agendar", "consulta", "marcar", "horario", "atendimento"]
     ):
-        return "Para agendar uma consulta com o Dr. Anderson, preciso de alguns dados: seu nome completo, email, telefone e uma breve descrição da sua condição clínica."
+        return "Posso ajudar você a agendar um atendimento no Instituto Vittalis! Me conta seu nome, telefone e o motivo da consulta, que eu já organizo seu pré-atendimento."
 
     if any(
         palavra in mensagem_lower
-        for palavra in ["cannabis", "oleo", "cdb", "thc", "tratamento", "medicinal"]
+        for palavra in ["instituto", "vittalis", "quem são", "o que é", "serviços", "servico"]
     ):
-        return "O Dr. Anderson é especializado em tratamentos com Cannabis Medicinal. Para Saber mais sobre適合 seu caso, recomendo agendar uma avaliação inicial. Gostaria de agendar?"
+        return "O Instituto Vittalis é onde a saúde e o bem-estar se encontram para moldar a sua melhor versão! Cuidamos de você com carinho e atenção. Em que posso ajudar?"
 
     if any(
         palavra in mensagem_lower for palavra in ["preco", "valor", "custo", "quanto"]
     ):
-        return "O valor da consulta de avaliação inicial com o Dr. Anderson é R$ 350,00. Gostaria de agendar?"
+        return "Para valores e condições, posso te passar todas as informações do Instituto Vittalis. Gostaria de agendar um atendimento?"
 
     if any(
         palavra in mensagem_lower
         for palavra in ["obrigado", "obrigada", "tchau", "flw"]
     ):
-        return "Às! Em caso de dúvidas, é só chamar. Abraços do Dr. Anderson!"
+        return "Por nada! Estou aqui sempre que precisar. Um abraço do Instituto Vittalis! 💚"
 
-    return "Entendi. Para uma avaliação mais precisa sobre tratamento com Cannabis Medicinal, recomendo agendar uma consulta com o Dr. Anderson. Deseja agendar?"
+    return "Entendi! Posso tirar suas dúvidas sobre o Instituto Vittalis ou realizar seu pré-atendimento. Deseja prosseguir?"
 
 
 def enviar_mensagem_telegram(chat_id, mensagem):
@@ -445,6 +431,12 @@ def agendar_consulta_sdr():
                 data.get("data_nascimento", "1990-01-01"), "%Y-%m-%d"
             ).date()
 
+            # Vincular ao tenant (associação) do profissional logado
+            from flask import g
+            tenant_id = None
+            if hasattr(g, "current_association") and g.current_association:
+                tenant_id = g.current_association.id
+
             paciente = Paciente(
                 profissional_responsavel_id=profissional_id,
                 nome=paciente_nome,
@@ -453,6 +445,7 @@ def agendar_consulta_sdr():
                 email=paciente_email or "",
                 endereco=paciente_endereco or "",
                 diagnostico=condicao_clinica or "",
+                associacao_id=tenant_id,
                 em_tratamento=bool(tratamento_anterior),
             )
             db.session.add(paciente)
@@ -469,15 +462,15 @@ def agendar_consulta_sdr():
         )
         db.session.add(consulta)
 
-        nota_evolucao = f"""[DADOS COLETADOS VIA SDR]
+        nota_evolucao = f"""[DADOS COLETADOS VIA SDR — PRÉ-ATENDIMENTO]
 Nome: {paciente_nome}
 Telefone: {paciente_telefone}
 Email: {paciente_email or "N/A"}
 Endereço: {paciente_endereco or "N/A"}
 Condição clínica: {condicao_clinica or "N/A"}
-Tratamento anterior com cannabis: {tratamento_anterior or "N/A"}
+Tratamento anterior: {tratamento_anterior or "N/A"}
 
-Observação: Paciente agendado via agente SDR (Dr. Anderson)."""
+Observação: Paciente agendado via agente SDR (Instituto Vittalis)."""
 
         evolucao = Evolucao(
             paciente_id=paciente.id,

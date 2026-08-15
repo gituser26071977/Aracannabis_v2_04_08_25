@@ -45,10 +45,16 @@ def criar_lead():
         from models import db, Paciente, Profissional
         from datetime import datetime
 
-        # Buscar Dr. Anderson pelo nome ou usar primeiro admin disponível
-        dr_anderson = Profissional.query.filter(
-            Profissional.nome.ilike('%anderson%')
-        ).first()
+        # Usar o profissional informado pelo agente (multi-tenant), com fallback
+        # para o Dr. Anderson / primeiro admin (legado).
+        profissional_id = data.get('profissional_id')
+        dr_anderson = None
+        if profissional_id:
+            dr_anderson = Profissional.query.get(int(profissional_id))
+        if not dr_anderson:
+            dr_anderson = Profissional.query.filter(
+                Profissional.nome.ilike('%anderson%')
+            ).first()
 
         if not dr_anderson:
             dr_anderson = Profissional.query.filter(
@@ -66,8 +72,8 @@ def criar_lead():
         observacoes_completas = data.get('observacoes', '')
         historico_cannabis = data.get('historico_cannabis') or data.get('historico')
         if historico_cannabis:
-            observacoes_completas += f"\n\nHistórico Cannabis: {historico_cannabis}"
-        observacoes_completas += "\n\n[Lead captado automaticamente via Telegram - Agente LIA Dr. Anderson]"
+            observacoes_completas += f"\n\nHistórico: {historico_cannabis}"
+        observacoes_completas += "\n\n[Pré-atendimento captado automaticamente via Agente LIA]"
 
         # TODO P1-LGPD: revisar criacao automatica de consentimento.
         # O consentimento_lgpd=True abaixo e setado sem aceite real do titular.
@@ -83,6 +89,7 @@ def criar_lead():
             diagnostico=data.get('diagnostico', ''),
             observacoes=observacoes_completas.strip(),
             em_tratamento=False,
+            associacao_id=data.get('associacao_id') or None,
             consentimento_lgpd=True,
             data_consentimento=datetime.utcnow(),
         )

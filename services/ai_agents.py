@@ -80,7 +80,7 @@ class AIProviderManager:
             'google': {
                 'available': GOOGLE_AVAILABLE,
                 'client': None,
-                'models': ['gemini-2.5-flash-lite'],
+                'models': ['gemini-flash-latest'],
                 'type': 'cloud'
             },
             'deepseek': {
@@ -135,13 +135,13 @@ class AIProviderManager:
             },
         }
         
-        # Padronizar no Gemini 2.5 Flash Lite
+        # Padronizar: DeepSeek para texto geral, Google Gemini para visão.
         self.default_provider = 'deepseek'
         self.default_model = 'deepseek-chat'
-        self.default_vision_provider = 'deepseek'
-        self.default_vision_model = 'deepseek-chat'
+        self.default_vision_provider = 'google'
+        self.default_vision_model = 'gemini-flash-latest'
         self.default_multimodal_provider = 'google'
-        self.default_multimodal_model = 'gemini-2.5-flash-lite'
+        self.default_multimodal_model = 'gemini-flash-latest'
 
         self._initialize_clients()
         logger.info(f"AI Manager iniciado (Padrao: {self.default_provider}/{self.default_model})")
@@ -200,7 +200,7 @@ class AIProviderManager:
                     # Modelos padrão de visão para fallback
                     fallback_model = self.providers[fallback_provider]['models'][0]
                     if fallback_provider == 'zhipu': fallback_model = 'glm-4v'
-                    elif fallback_provider == 'google': fallback_model = 'gemini-1.5-flash'
+                    elif fallback_provider == 'google': fallback_model = 'gemini-flash-latest'
                     elif fallback_provider == 'openai': fallback_model = 'gpt-4o-mini'
                     
                     return self._call_vision_provider(fallback_provider, fallback_model, prompt, image_data, temperature, max_tokens)

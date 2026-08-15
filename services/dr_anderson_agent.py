@@ -168,12 +168,14 @@ def criar_paciente_no_siap(dados: Dict) -> Optional[int]:
         ]
         
         payload = {
-            "nome": dados.get("nome_completo", "Paciente Dr. Anderson"),
+            "nome": dados.get("nome_completo", "Paciente"),
             "telefone": dados.get("telefone", ""),
             "email": dados.get("email", ""),
             "diagnostico": dados.get("condicao_principal", ""),
             "observacoes": "\n".join(obs_lines),
             "data_nascimento": _calcular_data_nascimento(dados.get("data_nascimento", dados.get("idade", "30"))),
+            "profissional_id": dados.get("profissional_id"),
+            "associacao_id": dados.get("associacao_id"),
         }
         resp = requests.post(url, json=payload, headers=headers, timeout=10)
         if resp.status_code in (200, 201):
@@ -288,101 +290,93 @@ def _sincronizar_agendamento_vsf(dados: Dict, data_hora: datetime) -> Optional[s
 # Prompts
 # ──────────────────────────────────────────────
 
-SYSTEM_PROMPT_BASE = """Você é a LIA, assistente SDR dedicada do Dr. Anderson Holzwarth, especialista em Cannabis Medicinal pela Arapath.
+SYSTEM_PROMPT_BASE = """Você é a LIA, assistente SDR dedicada do Instituto Vittalis — onde a saúde e o bem-estar se encontram para moldar a sua melhor versão!
 
-PERFIL DO MÉDICO:
-- Dr. Anderson Holzwarth
-- CRM ativo, especialista em tratamentos com canabinóides
+PERFIL DO INSTITUTO:
+- Instituto Vittalis: saúde e bem-estar em primeiro lugar
 - Atendimento via Telemedicina e presencial
-- Consulta inicial: R$ 350,00 | Duração: 30-45 min
+- Acolhimento e cuidado em cada atendimento
+
+IMPORTANTE:
+- NUNCA se apresente como uma clínica de Cannabis Medicinal.
+- NUNCA mencione cannabis como identidade da instituição.
 
 FLUXO OBRIGATÓRIO (seguir rigorosamente):
 
-FASE 1 — TRIAGEM (antes do pagamento):
-- OBJETIVO: tirar dúvidas e confirmar interesse REAL em consulta
-- Responda perguntas sobre Cannabis Medicinal, processo, valores
-- NÃO peça nome, email, condição, histórico ou exames nesta fase
-- NÃO faça anamnese nesta fase
-- SÓ avance para pagamento quando o paciente confirmar interesse
+FASE 1 — PRÉ-ATENDIMENTO:
+- OBJETIVO: tirar dúvidas sobre o instituto e fazer o pré-atendimento
+- Responda perguntas sobre o Instituto Vittalis, serviços e profissionais
+- Colete os dados essenciais: nome completo, telefone, motivo/queixa principal
+- NÃO faça anamnese completa nesta fase
+- SÓ avance para agendamento quando o paciente confirmar interesse
 
-FASE 2 — PAGAMENTO:
-- Oriente sobre o pagamento (R$ 350,00)
-- Envie link de pagamento
-- Aguarde confirmação de pagamento
-- SÓ prossiga para anamnese quando confirmar pagamento
+FASE 2 — AGENDAMENTO:
+- Ofereça horários disponíveis
+- Confirme o horário com o paciente
+- Agende a consulta
 
-FASE 3 — ANAMNESE (após pagamento confirmado):
-- Agora SIM colete dados médicos completos
-- Condição principal, sintomas, medicamentos, histórico cannabis
-- Exames, alergias, peso/altura
-- Seja gentil e explique por que precisa de cada informação
-
-FASE 4 — PÓS-ANAMNESE:
-- Confirme recebimento de todos os dados
-- Ofereça receber documentos, laudos ou fotos por WhatsApp
-- Agende consulta com Dr. Anderson
-- Explique que o médico analisará o caso antes da consulta
+FASE 3 — PÓS-ATENDIMENTO:
+- Confirme recebimento dos dados
+- Ofereça receber documentos, laudos ou fotos
+- Explique que a equipe analisará o caso
 
 REGRAS DE OURO:
 1. NUNCA se apresente mais de uma vez
 2. NUNCA dê diagnósticos ou prescrições
-3. NUNCA peça dados de anamnese antes do pagamento
-4. Respostas curtas e naturais (máx 3 frases por vez)
-5. Seja empática e direta
+3. Respostas curtas e naturais (máx 3 frases por vez)
+4. Seja empática e direta
 """
 
 PROMPT_TRIAGEM = SYSTEM_PROMPT_BASE + """
 
-VOCÊ ESTÁ NA FASE DE TRIAGEM.
-- Responda dúvidas do paciente sobre Cannabis Medicinal
-- NÃO peça dados pessoais ou médicos ainda
-- Quando o paciente mostrar interesse em consulta, confirme e ofereça prosseguir com pagamento
+VOCÊ ESTÁ NA FASE DE PRÉ-ATENDIMENTO.
+- Responda dúvidas do paciente sobre o Instituto Vittalis
+- Colete os dados essenciais (nome, telefone, queixa principal)
+- Quando o paciente mostrar interesse em agendar, confirme e ofereça horários
 - Se não houver interesse, continue tirando dúvidas educadamente
 """
 
 PROMPT_PAGAMENTO = SYSTEM_PROMPT_BASE + """
 
-VOCÊ ESTÁ NA FASE DE PAGAMENTO.
-- O paciente já confirmou interesse em consulta
-- Informe o valor (R$ 350,00) e oriente sobre o pagamento
-- Envie o link de pagamento
-- Aguarde confirmação
-- NÃO inicie anamnese até confirmar pagamento
+VOCÊ ESTÁ NA FASE DE AGENDAMENTO.
+- O paciente já confirmou interesse em atendimento
+- Ofereça horários disponíveis
+- Confirme o horário escolhido
+- NÃO inicie anamnese completa
 """
 
 PROMPT_ANAMNESE = SYSTEM_PROMPT_BASE + """
 
-VOCÊ ESTÁ NA FASE DE ANAMNESE (pagamento confirmado).
-- Colete os dados médicos de forma gentil e estruturada
-- Explique brevemente por cada informação é importante
-- Aceite respostas parciais e continue naturalmente
+VOCÊ ESTÁ CONCLUINDO O PRÉ-ATENDIMENTO.
+- Confirme os dados essenciais coletados (nome, telefone, queixa)
+- Peça, de forma gentil, qualquer informação adicional necessária
 - Se o paciente não souber algo, anote "não informado" e prossiga
 - Ofereça enviar fotos de documentos, laudos ou exames
 """
 
 PROMPT_POS_ANAMNESE = SYSTEM_PROMPT_BASE + """
 
-VOCÊ ESTÁ NA FASE PÓS-ANAMNESE.
+VOCÊ ESTÁ NA FASE PÓS-ATENDIMENTO.
 - Agradeça e confirme que todos os dados foram recebidos
 - Ofereça enviar documentos, laudos ou fotos adicionais
-- Informe que o Dr. Anderson analisará o caso antes da consulta
+- Informe que a equipe do Instituto Vittalis analisará o caso
 - Agende a consulta ou passe as opções de horário
 - Seja acolhedora e transmita segurança
 """
 
-# Mapa de perguntas para cada passo da anamnese
+# Mapa de perguntas para o pré-atendimento (dados essenciais)
 PERGUNTA_ANAMNESE = {
-    "nome_completo": "Para iniciar sua ficha, qual é o seu nome completo?",
+    "nome_completo": "Para iniciar seu pré-atendimento, qual é o seu nome completo?",
     "data_nascimento": "Qual é a sua data de nascimento? (Ex: 15/03/1985)",
     "email": "Qual é o seu melhor e-mail?",
-    "condicao_principal": "Qual é a condição de saúde principal que você deseja tratar com Cannabis Medicinal?",
-    "sintomas_atuais": "Quais sintomas você está sentindo no momento? (Ex: dor, insônia, ansiedade, náusea...)",
+    "condicao_principal": "Qual é o motivo principal da sua consulta? (O que você gostaria de cuidar?)",
+    "sintomas_atuais": "Quais sintomas ou desconfortos você está sentindo no momento? (Ex: dor, insônia, ansiedade...)",
     "medicamentos_uso": "Quais medicamentos você está tomando atualmente? Informe o nome, dosagem e frequência de cada um.",
-    "historico_cannabis": "Você já fez ou faz uso de Cannabis Medicinal? Se sim, qual produto e dosagem?",
+    "historico_cannabis": "Você já realizou tratamentos anteriores? Se sim, quais e como foi a experiência?",
     "tratamentos_previos": "Já realizou outros tratamentos para essa condição? Quais e como foi a experiência?",
     "exames_recentes": "Possui exames recentes (sangue, imagem, etc.)? Se quiser, pode enviar fotos dos laudos por aqui.",
     "alergias": "Tem alguma alergia medicamentosa ou reação adversa conhecida?",
-    "peso_altura": "Qual é o seu peso e altura? (Importante para o cálculo de dosagem)",
+    "peso_altura": "Qual é o seu peso e altura?",
 }
 
 
@@ -468,15 +462,15 @@ class DrAndersonAgent:
 
         # Detectar interesse em agendamento/consulta
         if self._detectar_interesse_consulta(message):
-            # Transitar para fase de pagamento
+            # Transitar para fase de agendamento
             state["fase"] = FASE["pagamento"]
             state["interesse_confirmado"] = True
             set_state(phone, state)
             
             reply = ("Que ótimo! Fico feliz que você quer dar esse passo. 💚\n\n"
-                    "A consulta inicial com o Dr. Anderson custa *R$ 350,00* e dura cerca de 30 a 45 minutos. "
-                    "Posso te enviar o link para pagamento agora. Assim que confirmar, iniciamos sua anamnese completa.\n\n"
-                    "Deseja prosseguir com o pagamento?")
+                    "Vou fazer seu pré-atendimento com carinho e depois te apresento "
+                    "os horários disponíveis no Instituto Vittalis.\n\n"
+                    "Deseja prosseguir?")
             return reply
 
         # Keywords de agenda
@@ -506,26 +500,26 @@ class DrAndersonAgent:
             state["step"] = ANAMNESE_STEPS[0]
             set_state(phone, state)
             
-            reply = ("Pagamento confirmado! 🎉\n\n"
-                    "Agora vou coletar algumas informações para montar sua ficha completa antes da consulta com o Dr. Anderson. "
-                    "Isso ajuda o médico a se preparar melhor para te atender.\n\n"
+            reply = ("Perfeito! 🎉\n\n"
+                    "Agora vou coletar algumas informações para montar seu pré-atendimento "
+                    "com a equipe do Instituto Vittalis. Isso ajuda a equipe a se preparar "
+                    "melhor para te atender.\n\n"
                     f"{PERGUNTA_ANAMNESE['nome_completo']}")
             state["last_asked"] = "nome_completo"
             set_state(phone, state)
             return reply
 
-        # Ainda não pagou — orientar
+        # Ainda não confirmou — orientar agendamento
         prompt = PROMPT_PAGAMENTO
         if state.get("history"):
             messages = [{"role": "system", "content": prompt}]
             messages.extend(state["history"][:-1])
             messages.append({"role": "user", "content": message})
             resp = ai_manager.chat_completion(messages=messages, temperature=0.7)
-            return resp.get("content", "Assim que efetuar o pagamento de R$ 350,00, me avise para iniciarmos sua ficha! 💚")
+            return resp.get("content", "Podemos agendar seu atendimento no Instituto Vittalis. Me avise se deseja prosseguir! 💚")
         
-        return ("Perfeito! Para prosseguir com a consulta, o valor é de *R$ 350,00*.\n\n"
-                "Assim que você efetuar o pagamento, me avise aqui mesmo que iniciarei sua ficha completa "
-                "e agendaremos seu horário com o Dr. Anderson. 💚")
+        return ("Perfeito! Para prosseguir com o atendimento no Instituto Vittalis, "
+                "vou registrar seu pré-atendimento e depois apresento os horários disponíveis. 💚")
 
     def _handle_anamnese(self, message: str, phone: str, media_base64, mime_type) -> str:
         """Fase 3: Coletar dados médicos completos estruturados."""
@@ -556,12 +550,12 @@ class DrAndersonAgent:
             set_state(phone, state)
             
             nome = dados.get("nome_completo", "Paciente")
-            reply = (f"Perfeito, {nome.split()[0]}! ✅ Recebi todos os seus dados e já montei sua ficha completa.\n\n"
-                    "O Dr. Anderson vai analisar seu caso antes da consulta. "
+            reply = (f"Perfeito, {nome.split()[0]}! ✅ Recebi os dados do seu pré-atendimento.\n\n"
+                    "A equipe do Instituto Vittalis vai analisar seu caso antes do atendimento. "
                     "Se tiver laudos, receitas ou exames em foto, pode enviar por aqui!\n\n"
-                    "Também posso cadastrar seu reconhecimento facial para check-in automático na clínica. "
+                    "Também posso cadastrar seu reconhecimento facial para check-in automático na unidade. "
                     "Se quiser, é só enviar uma selfie bem iluminada. 📸\n\n"
-                    "Vou verificar a agenda e te passo as opções de horário em seguida. 🌿📅")
+                    "Vou verificar a agenda e te passo as opções de horário em seguida. 💚📅")
             return reply
 
         # Próxima pergunta da anamnese
@@ -669,7 +663,7 @@ class DrAndersonAgent:
                         except Exception as vsf_err:
                             print(f"DEBUG: [Agent] Erro VSF sync: {vsf_err}", flush=True)
                     
-                    return f"Maravilha, {paciente_nome.split()[0]}! ✅ Sua consulta foi reservada para o dia {dt_obj.strftime('%d/%m/%Y')} às {dt_obj.strftime('%H:%M')}.{vsf_msg}\n\nO Dr. Anderson já está com sua ficha e vai te atender com todo cuidado. Até lá! 🌿📅"
+                    return f"Maravilha, {paciente_nome.split()[0]}! ✅ Seu atendimento foi reservado para o dia {dt_obj.strftime('%d/%m/%Y')} às {dt_obj.strftime('%H:%M')}.{vsf_msg}\n\nA equipe do Instituto Vittalis já está com seu pré-atendimento e vai te atender com todo cuidado. Até lá! 💚📅"
             except Exception as e:
                 print(f"DEBUG: [Agent Dr. Anderson] Erro no agendamento: {e}", flush=True)
 
@@ -730,7 +724,7 @@ Se não houver data/hora clara para agendamento, responda null.
             slots = calendar_service.list_free_slots(amanha)
             
             if not calendar_service.service:
-                return "SISTEMA: Agenda do Dr. Anderson é de terça a sexta, das 09h às 18h. INSTRUÇÃO: Informe que o médico confirmará o horário exato após o cadastro."
+                return "SISTEMA: Agenda do Instituto Vittalis é de segunda a sexta, das 09h às 18h. INSTRUÇÃO: Informe que a equipe confirmará o horário exato após o pré-atendimento."
             
             if slots:
                 return f"SISTEMA: Horários disponíveis: {', '.join(slots[:5])}. INSTRUÇÃO: Sugira esses horários ao paciente."
