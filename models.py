@@ -46,6 +46,9 @@ class Profissional(db.Model):
     email_verified = db.Column(db.Boolean, default=False)
     onboarding_completed = db.Column(db.Boolean, default=False)
     onboarding_step = db.Column(db.Integer, default=0)  # último passo completado no wizard
+    # Slug público da página de pré-atendimento do profissional/tenant
+    # (ex.: 'dr.anderson', 'dr.ueslhe') — URL pública para o paciente.
+    pre_atendimento_slug = db.Column(db.String(64), unique=True, nullable=True)
 
     evolucoes = db.relationship("Evolucao", backref="profissional", lazy=True)
     logs = db.relationship("LogAtividade", backref="profissional", lazy=True)
@@ -1387,6 +1390,9 @@ class PreConsulta(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     paciente_id = db.Column(
         db.Integer, db.ForeignKey("pacientes.id", ondelete="CASCADE"), nullable=False
+    )
+    associacao_id = db.Column(
+        db.Integer, db.ForeignKey("associacoes.id", ondelete="SET NULL"), nullable=True
     )
     queixa_principal = db.Column(db.Text, nullable=True)
     intensidade = db.Column(db.String(20), nullable=True)

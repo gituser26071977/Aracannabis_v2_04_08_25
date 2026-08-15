@@ -74,6 +74,7 @@ import { useModulos } from './contexts/ModulosContext';
 import PatientLogin from './pages/patient/PatientLogin';
 import PatientRegister from './pages/patient/PatientRegister';
 import PatientDashboard from './pages/patient/PatientDashboard';
+import PreAtendimentoPage from './pages/PreAtendimentoPage';
 
 const APP_TITLE = 'AraOS';
 // Tema personalizado
@@ -468,7 +469,10 @@ function AppContent() {
   const habilitarCannabis = hasModulo('cannabis-medicinal');
   const isLoginPage = location.pathname === '/login' || location.pathname === '/patient/login';
   const isOnboardingPage = location.pathname === '/onboarding';
-  const showTrialBanner = currentUser && !isLoginPage && !isOnboardingPage;
+  const isPreAtendimento = location.pathname.startsWith('/pre-atendimento/');
+  // Página pública do pré-atendimento: sem AppBar/menu (layout do app).
+  const isPublicStandalone = isLoginPage || isPreAtendimento;
+  const showTrialBanner = currentUser && !isPublicStandalone && !isOnboardingPage;
 
   // Scroll-aware AppBar
   useEffect(() => {
@@ -487,7 +491,7 @@ function AppContent() {
     <ErrorBoundary>
       <AssociationProvider>
         {showTrialBanner && <TrialBanner />}
-        {!isLoginPage && (
+        {!isPublicStandalone && (
           <AppBar
             position="sticky"
             elevation={scrolled ? 2 : 0}
@@ -621,8 +625,8 @@ function AppContent() {
         )}
         <NavigationMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
         <Container
-          maxWidth={isLoginPage ? false : 'xl'}
-          sx={isLoginPage ? { p: 0, m: 0 } : { mt: { xs: 2, sm: 4 }, mb: { xs: 2, sm: 4 } }}
+          maxWidth={isPublicStandalone ? false : 'xl'}
+          sx={isPublicStandalone ? { p: 0, m: 0 } : { mt: { xs: 2, sm: 4 }, mb: { xs: 2, sm: 4 } }}
         >
           <Routes>
             <Route path="/" element={<LandingPage />} />
@@ -879,6 +883,9 @@ function AppContent() {
             <Route path="/patient/login" element={<PatientLogin />} />
             <Route path="/patient/register" element={<PatientRegister />} />
             <Route path="/patient/dashboard" element={<PatientDashboard />} />
+
+            {/* Pré-atendimento público por tenant (sem login) */}
+            <Route path="/pre-atendimento/:slug" element={<PreAtendimentoPage />} />
 
             {/* Error Pages (MISSÃO 12) */}
             <Route path="/401" element={<UnauthorizedPage />} />
