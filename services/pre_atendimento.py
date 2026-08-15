@@ -48,17 +48,44 @@ def _normalizar_cpf(v):
 
 
 def resolver_tenant_por_slug(slug: str) -> Optional[Dict[str, Any]]:
-    """Resolve o profissional + associação (tenant) pelo slug público."""
+    """Resolve o profissional + associação (tenant) pelo slug público.
+
+    Quando o profissional pertence a mais de uma associação ativa, prioriza
+    o instituto/clínica (a associação com mais membros ativos) — assim a
+    saudação e o tenant de dados são uniformes (ex.: Instituto Vittalis).
+    """
     if not slug:
         return None
     prof = Profissional.query.filter_by(pre_atendimento_slug=slug.strip().lower()).first()
     if not prof:
         return None
-    # Associação ativa do profissional (primeira)
-    link = UsuarioAssociacao.query.filter_by(
+    # Associações ativas do profissional
+    links = UsuarioAssociacao.query.filter_by(
         profissional_id=prof.id, status="active"
-    ).first()
-    assoc = link.associacao if link else None
+    ).all()
+    if not links:
+        return {"profissional": prof, "associacao": None}
+
+    # Se houver mais de uma, prioriza a que tem mais membros ativos (instituto).
+    if len(links) > 1:
+        from sqlalchemy import func
+        contagem = (
+            db.session.query(UsuarioAssociacao.associacao_id, func.count(UsuarioAssociacao.profissional_id).label("n"))
+            .filter(UsuarioAssociacao.status == "active")
+            .group_by(UsuarioAssociacao.associacao_id)
+            .all()
+        )
+        contagem_map = {cid: n for cid, n in contagem}
+        links_sorted = sorted(
+            links,
+            key=lambda l: contagem_map.get(l.associacao_id, 0),
+            reverse=True,
+        )
+        link = links_sorted[0]
+    else:
+        link = links[0]
+
+    assoc = link.associacao
     return {"profissional": prof, "associacao": assoc}
 
 
@@ -183,5 +210,5 @@ def processar_pre_atendimento(slug: str, dados: Dict[str, Any]) -> Dict[str, Any
         "anamnese_id": anamnese.id,
         "associacao_id": assoc_id,
         "profissional": prof.nome,
-        "instituto": assoc.nome if assoc else None,
+        "instituto": "Instituto Vittalis" if (assoc and assoc.nome.strip().lower() == "vittalis") else (assoc.nome if assoc else None),
     }

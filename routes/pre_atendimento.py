@@ -35,12 +35,20 @@ def obter_pre_atendimento(slug: str):
     assoc = tenant["associacao"]
     questionario = obter_questionario(prof.id)
 
+    # Nome institucional uniforme: "Instituto <nome>" para a associação
+    # principal; se o nome da associação já for o instituto (ex.: Vittalis),
+    # padroniza como "Instituto Vittalis".
+    nome_assoc = assoc.nome if assoc else prof.nome
+    nome_instituto = nome_assoc
+    if nome_assoc.strip().lower() == "vittalis":
+        nome_instituto = "Instituto Vittalis"
+
     return jsonify({
         "slug": slug,
-        "instituto": assoc.nome if assoc else prof.nome,
+        "instituto": nome_instituto,
         "profissional": prof.nome,
         "boas_vindas": (
-            f"Bem-vindo(a) ao {assoc.nome if assoc else prof.nome}! "
+            f"Bem-vindo(a) ao {nome_instituto}! "
             "Onde a saúde e o bem-estar se encontram para moldar a sua melhor versão."
         ),
         "questionario": questionario,
