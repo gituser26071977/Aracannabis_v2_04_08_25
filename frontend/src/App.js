@@ -75,6 +75,7 @@ import PatientLogin from './pages/patient/PatientLogin';
 import PatientRegister from './pages/patient/PatientRegister';
 import PatientDashboard from './pages/patient/PatientDashboard';
 import PreAtendimentoPage from './pages/PreAtendimentoPage';
+import PreAtendimentoConferenciaPage from './pages/PreAtendimentoConferenciaPage';
 
 const APP_TITLE = 'AraOS';
 // Tema personalizado
@@ -735,6 +736,14 @@ function AppContent() {
               element={
                 <ProtectedRoute>
                   <OnboardingPacientesPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/pre-atendimento-conferencia"
+              element={
+                <ProtectedRoute>
+                  <PreAtendimentoConferenciaPage />
                 </ProtectedRoute>
               }
             />

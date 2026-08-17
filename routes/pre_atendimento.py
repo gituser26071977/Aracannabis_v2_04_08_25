@@ -79,6 +79,66 @@ def enviar_pre_atendimento(slug: str):
 
 
 # ─────────────────────────────────────────────────────────────
+# Chat com agente (público — entrevista o lead)
+# ─────────────────────────────────────────────────────────────
+
+@pre_atendimento_bp.route("/pre-atendimento/<slug>/chat/iniciar", methods=["POST"])
+def iniciar_chat(slug: str):
+    """Inicia uma sessão de chat do pré-atendimento."""
+    from services.pre_atendimento_chat import nova_sessao
+    session_id = nova_sessao(slug)
+    return jsonify({"session_id": session_id}), 201
+
+
+@pre_atendimento_bp.route("/pre-atendimento/<slug>/chat", methods=["POST"])
+def chat_pre_atendimento(slug: str):
+    """Envia mensagem (texto e/ou imagem) para o agente do pré-atendimento."""
+    from services.pre_atendimento_chat import processar_mensagem
+
+    data = request.get_json(silent=True) or {}
+    session_id = data.get("session_id") or ""
+    mensagem = data.get("mensagem") or ""
+    imagem_b64 = data.get("imagem_b64")
+    mime_type = data.get("mime_type")
+
+    if not session_id:
+        return jsonify({"error": "session_id é obrigatório"}), 400
+    if not mensagem and not imagem_b64:
+        return jsonify({"error": "mensagem ou imagem é obrigatório"}), 400
+
+    try:
+        resultado = processar_mensagem(session_id, mensagem, imagem_b64, mime_type)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception:  # noqa: BLE001
+        logger.exception("chat_pre_atendimento_falhou")
+        return jsonify({"error": "erro ao processar mensagem"}), 500
+
+    return jsonify(resultado), 200
+
+
+@pre_atendimento_bp.route("/pre-atendimento/<slug>/chat/finalizar", methods=["POST"])
+def finalizar_chat(slug: str):
+    """Finaliza o chat e registra o pré-atendimento (pendente pagamento)."""
+    from services.pre_atendimento_chat import finalizar_pre_atendimento_chat
+
+    data = request.get_json(silent=True) or {}
+    session_id = data.get("session_id") or ""
+    if not session_id:
+        return jsonify({"error": "session_id é obrigatório"}), 400
+
+    try:
+        resultado = finalizar_pre_atendimento_chat(session_id)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception:  # noqa: BLE001
+        logger.exception("finalizar_chat_falhou")
+        return jsonify({"error": "erro ao finalizar pré-atendimento"}), 500
+
+    return jsonify({"message": resultado.pop("mensagem"), "resultado": resultado}), 201
+
+
+# ─────────────────────────────────────────────────────────────
 # Conferência (autenticado — fila do tenant)
 # ─────────────────────────────────────────────────────────────
 

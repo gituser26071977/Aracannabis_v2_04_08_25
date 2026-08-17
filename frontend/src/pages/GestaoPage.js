@@ -24,6 +24,7 @@ import {
   Groups,
   AdminPanelSettings,
   Assessment,
+  CheckCircle,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -116,6 +117,14 @@ function GestaoPage() {
               title="Cadastro de pacientes"
               description="Cadastro com assistência de IA e upload de documentos (imagem/PDF)."
               onClick={() => navigate('/onboarding-pacientes')}
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} md={4}>
+            <RoutineCard
+              icon={<CheckCircle fontSize="large" />}
+              title="Pré-atendimentos"
+              description="Confira os pré-atendimentos, confirme o pagamento e libere o paciente."
+              onClick={() => navigate('/pre-atendimento-conferencia')}
             />
           </Grid>
         </RoutineGroup>

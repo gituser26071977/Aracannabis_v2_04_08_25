@@ -1,72 +1,134 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Paper,
   Typography,
   TextField,
   Button,
-  Grid,
   CircularProgress,
   Alert,
-  Slider,
   Container,
   Stack,
+  Avatar,
+  IconButton,
+  Chip,
 } from '@mui/material';
 import { useParams } from 'react-router-dom';
 import AutoAwesome from '@mui/icons-material/AutoAwesome';
+import Send from '@mui/icons-material/Send';
+import AttachFile from '@mui/icons-material/AttachFile';
+import Image from '@mui/icons-material/Image';
 import CheckCircle from '@mui/icons-material/CheckCircle';
+import Person from '@mui/icons-material/Person';
 import api from '../services/api';
 
 const PreAtendimentoPage = () => {
   const { slug } = useParams();
   const [meta, setMeta] = useState(null);
-  const [perguntas, setPerguntas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [sessionId, setSessionId] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState('');
   const [enviando, setEnviando] = useState(false);
-  const [sucesso, setSucesso] = useState(false);
-
-  const [form, setForm] = useState({
-    nome: '',
-    telefone: '',
-    cpf: '',
-    email: '',
-    data_nascimento: '',
-    genero: '',
-    intensidade: 5,
-  });
+  const [pronto, setPronto] = useState(false);
+  const [finalizado, setFinalizado] = useState(false);
+  const [dadosColetados, setDadosColetados] = useState([]);
+  const fileRef = useRef(null);
+  const bottomRef = useRef(null);
 
   useEffect(() => {
     if (!slug) return;
-    const load = async () => {
+    const init = async () => {
       setLoading(true);
       setError('');
       try {
         const r = await api.get(`/public/pre-atendimento/${slug}`);
         setMeta(r.data);
-        setPerguntas(r.data?.questionario?.perguntas || []);
+
+        // Iniciar sessão de chat
+        const s = await api.post(`/public/pre-atendimento/${slug}/chat/iniciar`);
+        setSessionId(s.data.session_id);
+
+        setMessages([
+          {
+            role: 'assistant',
+            content:
+              r.data.boas_vindas +
+              ' Vou fazer algumas perguntas para o seu pré-atendimento. Para começar, qual é o seu nome completo?',
+          },
+        ]);
       } catch (e) {
         setError(e?.response?.data?.error || 'Instituto não encontrado.');
       } finally {
         setLoading(false);
       }
     };
-    load();
+    init();
   }, [slug]);
 
-  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, enviando]);
 
-  const enviar = async () => {
+  const enviarMensagem = async (texto, imagemB64 = null, mimeType = null) => {
+    if (!sessionId || enviando) return;
+    if (!texto.trim() && !imagemB64) return;
+
+    setEnviando(true);
+    setError('');
+
+    const userMsg = imagemB64
+      ? { role: 'user', content: texto || '📎 Enviei um documento', imagem: true }
+      : { role: 'user', content: texto };
+    setMessages((m) => [...m, userMsg]);
+    setInput('');
+
+    try {
+      const payload = { session_id: sessionId, mensagem: texto };
+      if (imagemB64) {
+        payload.imagem_b64 = imagemB64;
+        payload.mime_type = mimeType || 'image/jpeg';
+      }
+      const r = await api.post(`/public/pre-atendimento/${slug}/chat`, payload);
+      setMessages((m) => [...m, { role: 'assistant', content: r.data.resposta }]);
+      setPronto(Boolean(r.data.pronto));
+      setDadosColetados(r.data.campos_respondidos || []);
+    } catch (e) {
+      setError(e?.response?.data?.error || 'Erro ao enviar. Tente novamente.');
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  const onKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      enviarMensagem(input);
+    }
+  };
+
+  const onFile = async (file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const b64 = String(reader.result);
+      const mime = file.type || 'image/jpeg';
+      await enviarMensagem('', b64, mime);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const finalizar = async () => {
     setEnviando(true);
     setError('');
     try {
-      await api.post(`/public/pre-atendimento/${slug}`, {
-        ...form,
-        intensidade: String(form.intensidade),
+      await api.post(`/public/pre-atendimento/${slug}/chat/finalizar`, {
+        session_id: sessionId,
       });
-      setSucesso(true);
+      setFinalizado(true);
     } catch (e) {
-      setError(e?.response?.data?.error || 'Erro ao enviar. Tente novamente.');
+      setError(e?.response?.data?.error || 'Erro ao finalizar.');
     } finally {
       setEnviando(false);
     }
@@ -89,113 +151,193 @@ const PreAtendimentoPage = () => {
   }
 
   return (
-    <Container maxWidth="md" sx={{ py: 5 }}>
-      <Paper elevation={3} sx={{ p: { xs: 3, md: 5 }, borderRadius: 3 }}>
-        {sucesso ? (
-          <Box textAlign="center" py={4}>
+    <Container maxWidth="md" sx={{ py: 4 }}>
+      <Paper elevation={3} sx={{ borderRadius: 3, overflow: 'hidden' }}>
+        {/* Header */}
+        <Box
+          sx={{
+            p: 2,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.5,
+            bgcolor: 'primary.main',
+            color: 'white',
+          }}
+        >
+          <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.2)' }}>
+            <AutoAwesome />
+          </Avatar>
+          <Box>
+            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+              {meta?.instituto}
+            </Typography>
+            <Typography variant="body2" sx={{ opacity: 0.9 }}>
+              {meta?.profissional} · Pré-atendimento
+            </Typography>
+          </Box>
+        </Box>
+
+        {finalizado ? (
+          <Box textAlign="center" py={6} px={3}>
             <CheckCircle color="success" sx={{ fontSize: 64, mb: 2 }} />
             <Typography variant="h5" gutterBottom>
               Pré-atendimento recebido!
             </Typography>
             <Typography color="text.secondary">
-              Obrigado, {form.nome.split(' ')[0]}! Suas informações foram enviadas com sucesso.
-              Nossa equipe entrará em contato em breve.
+              Seus dados foram enviados para a equipe do {meta?.instituto}. Após a confirmação do
+              pagamento e a conferência, você será liberado(a).
             </Typography>
           </Box>
         ) : (
           <>
-            <Stack direction="row" spacing={1.5} alignItems="center" mb={1}>
-              <AutoAwesome color="primary" />
-              <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                {meta?.instituto}
-              </Typography>
-            </Stack>
-            <Typography color="text.secondary" gutterBottom mb={3}>
-              {meta?.boas_vindas}
-            </Typography>
+            {/* Mensagens */}
+            <Box
+              sx={{ p: 2, minHeight: 420, maxHeight: 480, overflowY: 'auto', bgcolor: '#f5f7f9' }}
+            >
+              {messages.map((m, i) => (
+                <Stack
+                  key={i}
+                  direction="row"
+                  justifyContent={m.role === 'user' ? 'flex-end' : 'flex-start'}
+                  mb={1}
+                >
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    alignItems="flex-start"
+                    sx={{
+                      maxWidth: '80%',
+                      flexDirection: m.role === 'user' ? 'row-reverse' : 'row',
+                    }}
+                  >
+                    <Avatar
+                      sx={{
+                        width: 32,
+                        height: 32,
+                        bgcolor: m.role === 'user' ? 'primary.main' : 'secondary.main',
+                        fontSize: 16,
+                      }}
+                    >
+                      {m.role === 'user' ? (
+                        <Person fontSize="small" />
+                      ) : (
+                        <AutoAwesome fontSize="small" />
+                      )}
+                    </Avatar>
+                    <Box
+                      sx={{
+                        p: 1.5,
+                        borderRadius: 2,
+                        bgcolor: m.role === 'user' ? 'primary.main' : 'white',
+                        color: m.role === 'user' ? 'white' : 'inherit',
+                        border: m.role === 'user' ? 'none' : '1px solid',
+                        borderColor: 'divider',
+                        whiteSpace: 'pre-wrap',
+                      }}
+                    >
+                      <Typography variant="body2">{m.content}</Typography>
+                    </Box>
+                  </Stack>
+                </Stack>
+              ))}
+              {enviando && (
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Avatar sx={{ width: 32, height: 32, bgcolor: 'secondary.main', fontSize: 16 }}>
+                    <AutoAwesome fontSize="small" />
+                  </Avatar>
+                  <CircularProgress size={18} />
+                </Stack>
+              )}
+              <div ref={bottomRef} />
+            </Box>
 
-            {error && (
-              <Alert severity="error" sx={{ mb: 2 }}>
-                {error}
-              </Alert>
+            {/* Dados coletados */}
+            {dadosColetados.length > 0 && (
+              <Box sx={{ px: 2, pb: 1 }}>
+                <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                  {dadosColetados.map((c) => (
+                    <Chip
+                      key={c}
+                      size="small"
+                      label={c.replace(/_/g, ' ')}
+                      color="success"
+                      variant="outlined"
+                    />
+                  ))}
+                </Stack>
+              </Box>
             )}
 
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  label="Nome completo *"
-                  fullWidth
-                  value={form.nome}
-                  onChange={set('nome')}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  label="Telefone"
-                  fullWidth
-                  value={form.telefone}
-                  onChange={set('telefone')}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField label="CPF" fullWidth value={form.cpf} onChange={set('cpf')} />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField label="E-mail" fullWidth value={form.email} onChange={set('email')} />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  label="Data de nascimento"
-                  type="date"
-                  fullWidth
-                  value={form.data_nascimento}
-                  onChange={set('data_nascimento')}
-                  InputLabelProps={{ shrink: true }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField label="Gênero" fullWidth value={form.genero} onChange={set('genero')} />
-              </Grid>
+            {error && (
+              <Box sx={{ px: 2, pb: 1 }}>
+                <Alert severity="error">{error}</Alert>
+              </Box>
+            )}
 
-              {perguntas.map((q) => (
-                <Grid item xs={12} key={q.key}>
-                  <TextField
-                    label={q.pergunta}
-                    fullWidth
-                    multiline
-                    rows={2}
-                    value={form[q.key] || ''}
-                    onChange={(e) => setForm((f) => ({ ...f, [q.key]: e.target.value }))}
-                  />
-                </Grid>
-              ))}
-
-              <Grid item xs={12}>
-                <Typography gutterBottom>
-                  Intensidade do desconforto: {form.intensidade}/10
-                </Typography>
-                <Slider
-                  value={Number(form.intensidade) || 0}
-                  onChange={(_, v) => setForm((f) => ({ ...f, intensidade: v }))}
-                  min={0}
-                  max={10}
-                  step={1}
-                  marks
-                  valueLabelDisplay="auto"
-                />
-              </Grid>
-            </Grid>
-
-            <Button
-              variant="contained"
-              size="large"
-              fullWidth
-              sx={{ mt: 3, py: 1.5, borderRadius: 2 }}
-              onClick={enviar}
-              disabled={enviando || !form.nome.trim()}
-            >
-              {enviando ? 'Enviando...' : 'Enviar pré-atendimento'}
-            </Button>
+            {/* Input */}
+            <Box sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider', bgcolor: 'white' }}>
+              {pronto ? (
+                <Button
+                  variant="contained"
+                  size="large"
+                  fullWidth
+                  startIcon={<CheckCircle />}
+                  onClick={finalizar}
+                  disabled={enviando}
+                >
+                  {enviando ? 'Finalizando...' : 'Finalizar pré-atendimento'}
+                </Button>
+              ) : (
+                <>
+                  <Stack direction="row" spacing={1} alignItems="flex-end">
+                    <TextField
+                      fullWidth
+                      size="small"
+                      placeholder="Digite sua resposta..."
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyDown={onKeyDown}
+                      multiline
+                      maxRows={3}
+                      disabled={enviando}
+                    />
+                    <input
+                      ref={fileRef}
+                      type="file"
+                      accept="image/png,image/jpeg,image/jpg,application/pdf"
+                      style={{ display: 'none' }}
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) onFile(f);
+                        e.target.value = '';
+                      }}
+                    />
+                    <IconButton
+                      onClick={() => fileRef.current?.click()}
+                      disabled={enviando}
+                      title="Enviar documento/exame/laudo"
+                    >
+                      <Image />
+                    </IconButton>
+                    <IconButton
+                      onClick={() => fileRef.current?.click()}
+                      disabled={enviando}
+                      title="Anexar arquivo"
+                    >
+                      <AttachFile />
+                    </IconButton>
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      onClick={() => enviarMensagem(input)}
+                      disabled={enviando || !input.trim()}
+                    >
+                      <Send />
+                    </Button>
+                  </Stack>
+                </>
+              )}
+            </Box>
           </>
         )}
       </Paper>

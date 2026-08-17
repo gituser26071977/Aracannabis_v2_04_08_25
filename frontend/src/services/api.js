@@ -2065,4 +2065,26 @@ export const pacienteOnboardingService = {
   },
 };
 
+/**
+ * Serviço de conferência do pré-atendimento (fila do tenant).
+ */
+export const preAtendimentoService = {
+  listarPendentes: async (params = {}) => {
+    try {
+      const response = await api.get('/pre-atendimento/pendentes', { params });
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  conferir: async (id, payload) => {
+    try {
+      const response = await api.post(`/pre-atendimento/${id}/conferir`, payload);
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+};
+
 export default api;
