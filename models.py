@@ -569,6 +569,18 @@ class Evolucao(db.Model):
     nota_evolucao = db.Column(db.Text, nullable=False)
     fonte_origem = db.Column(db.String(20), default="manual")  # "manual" ou "sdr"
 
+    # ── Evolução estruturada (padrão SOAP) ──
+    # S (Subjetivo)
+    anamnese = db.Column(db.Text, nullable=True)          # queixa + HPI + revisão de sistemas
+    # O (Objetivo)
+    exame_fisico = db.Column(db.Text, nullable=True)       # achados do exame físico
+    sinais_vitais = db.Column(db.JSON, nullable=True)      # {pa, fc, fr, temperatura, spo2, peso, altura, glicemia, ...}
+    exames_resultados = db.Column(db.Text, nullable=True)  # resultados dos últimos exames
+    # A (Avaliação)
+    avaliacao = db.Column(db.Text, nullable=True)          # hipóteses / diagnóstico / impressão
+    # P (Plano)
+    plano = db.Column(db.Text, nullable=True)              # conduta, exames, retorno
+
     def to_dict(self):
         return {
             "id": self.id,
@@ -578,6 +590,12 @@ class Evolucao(db.Model):
             if self.data_evolucao
             else None,
             "nota_evolucao": self.nota_evolucao,
+            "anamnese": self.anamnese,
+            "exame_fisico": self.exame_fisico,
+            "sinais_vitais": self.sinais_vitais,
+            "exames_resultados": self.exames_resultados,
+            "avaliacao": self.avaliacao,
+            "plano": self.plano,
             "profissional_nome": self.profissional.nome if self.profissional else None,
             "fonte_origem": self.fonte_origem,
         }

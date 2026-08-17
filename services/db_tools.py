@@ -21,13 +21,31 @@ from typing import Dict, List, Any, Optional, Tuple
 # Por simplicidade inicial, vamos assumir que o contexto está disponível quando a rota chama.
 
 # @tool # Remover decorador
-def save_evolution_to_db(paciente_id: int, profissional_id: int, narrative_evolution: str, data_evolucao_str: str) -> dict:
-    """Salva a narrativa da evolução de um paciente no banco de dados.
+def save_evolution_to_db(
+    paciente_id: int,
+    profissional_id: int,
+    narrative_evolution: str,
+    data_evolucao_str: str,
+    anamnese: str = None,
+    exame_fisico: str = None,
+    sinais_vitais: dict = None,
+    exames_resultados: str = None,
+    avaliacao: str = None,
+    plano: str = None,
+) -> dict:
+    """Salva a evolução (padrão SOAP estruturado) de um paciente no banco.
+
     Argumentos:
         paciente_id (int): ID do paciente.
         profissional_id (int): ID do profissional que registra.
-        narrative_evolution (str): O texto da evolução.
-        data_evolucao_str (str): Data da evolução no formato 'YYYY-MM-DD'.
+        narrative_evolution (str): Texto livre (visão geral) da evolução.
+        data_evolucao_str (str): Data no formato 'YYYY-MM-DD'.
+        anamnese (str): Subjetivo — queixa/HPI/sintomas.
+        exame_fisico (str): Objetivo — achados do exame físico.
+        sinais_vitais (dict): Objetivo — PA/FC/FR/temperatura/SpO2/peso/altura.
+        exames_resultados (str): Objetivo — resultados dos últimos exames.
+        avaliacao (str): Avaliação — hipóteses/diagnóstico/impressão.
+        plano (str): Plano — conduta/exames/retorno.
     Retorna um dicionário com a evolução salva ou um erro.
     """
     try:
@@ -43,6 +61,12 @@ def save_evolution_to_db(paciente_id: int, profissional_id: int, narrative_evolu
             associacao_id=paciente.associacao_id,
             profissional_id=profissional_id,
             nota_evolucao=narrative_evolution,
+            anamnese=anamnese,
+            exame_fisico=exame_fisico,
+            sinais_vitais=sinais_vitais,
+            exames_resultados=exames_resultados,
+            avaliacao=avaliacao,
+            plano=plano,
             data_evolucao=data_evolucao_obj
         )
         db.session.add(nova_evolucao)

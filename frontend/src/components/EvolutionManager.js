@@ -51,6 +51,22 @@ const EvolutionManager = ({ patientId, habilitarCannabis = false }) => {
   const [newEvolution, setNewEvolution] = useState({
     nota_evolucao: '',
     data_evolucao: new Date().toISOString().split('T')[0],
+    // Campos SOAP estruturados
+    anamnese: '',
+    exame_fisico: '',
+    sinais_vitais: {
+      pa_sistolica: '',
+      pa_diastolica: '',
+      fc: '',
+      fr: '',
+      temperatura: '',
+      spo2: '',
+      peso: '',
+      altura: '',
+    },
+    exames_resultados: '',
+    avaliacao: '',
+    plano: '',
   });
 
   // Estado para edição de evolução
@@ -154,6 +170,22 @@ const EvolutionManager = ({ patientId, habilitarCannabis = false }) => {
       setNewEvolution((prev) => ({
         ...prev,
         [name]: value,
+      }));
+    }
+  };
+
+  // Manipulador para os sinais vitais (objeto)
+  const handleSinaisVitaisChange = (e) => {
+    const { name, value } = e.target;
+    if (editMode) {
+      setEvolutionToEdit((prev) => ({
+        ...prev,
+        sinais_vitais: { ...(prev.sinais_vitais || {}), [name]: value },
+      }));
+    } else {
+      setNewEvolution((prev) => ({
+        ...prev,
+        sinais_vitais: { ...(prev.sinais_vitais || {}), [name]: value },
       }));
     }
   };
@@ -291,6 +323,12 @@ const EvolutionManager = ({ patientId, habilitarCannabis = false }) => {
       try {
         const response = await evolucoesService.atualizar(evolutionToEdit.id, {
           nota_evolucao: evolutionToEdit.nota_evolucao,
+          anamnese: evolutionToEdit.anamnese,
+          exame_fisico: evolutionToEdit.exame_fisico,
+          sinais_vitais: evolutionToEdit.sinais_vitais,
+          exames_resultados: evolutionToEdit.exames_resultados,
+          avaliacao: evolutionToEdit.avaliacao,
+          plano: evolutionToEdit.plano,
         });
 
         // Atualizar evolução na lista
@@ -330,6 +368,21 @@ const EvolutionManager = ({ patientId, habilitarCannabis = false }) => {
         setNewEvolution({
           nota_evolucao: '',
           data_evolucao: new Date().toISOString().split('T')[0],
+          anamnese: '',
+          exame_fisico: '',
+          sinais_vitais: {
+            pa_sistolica: '',
+            pa_diastolica: '',
+            fc: '',
+            fr: '',
+            temperatura: '',
+            spo2: '',
+            peso: '',
+            altura: '',
+          },
+          exames_resultados: '',
+          avaliacao: '',
+          plano: '',
         });
 
         setError('');
@@ -474,18 +527,229 @@ const EvolutionManager = ({ patientId, habilitarCannabis = false }) => {
                     InputLabelProps={{ shrink: true }}
                   />
                 </Grid>
-                <Grid item xs={12} sm={9}>
+
+                {/* ── S: Subjetivo (Anamnese) ── */}
+                <Grid item xs={12}>
+                  <Typography variant="subtitle2" color="primary" gutterBottom>
+                    🗣️ Anamnese (queixa, história e sintomas)
+                  </Typography>
+                  <TextField
+                    name="anamnese"
+                    label="Anamnese / Queixa principal"
+                    value={editMode ? evolutionToEdit.anamnese || '' : newEvolution.anamnese}
+                    onChange={handleInputChange}
+                    fullWidth
+                    multiline
+                    rows={3}
+                    helperText="Início, localização, duração, caráter, fatores de melhora/piora, intensidade (OPQRST/SOCRATES)."
+                  />
+                </Grid>
+
+                {/* ── O: Sinais vitais ── */}
+                <Grid item xs={12}>
+                  <Typography variant="subtitle2" color="secondary" gutterBottom>
+                    📏 Sinais vitais
+                  </Typography>
+                  <Grid container spacing={2}>
+                    <Grid item xs={6} sm={3}>
+                      <TextField
+                        name="pa_sistolica"
+                        label="PA sistólica (mmHg)"
+                        type="number"
+                        value={
+                          (editMode ? evolutionToEdit.sinais_vitais : newEvolution.sinais_vitais)
+                            ?.pa_sistolica || ''
+                        }
+                        onChange={handleSinaisVitaisChange}
+                        fullWidth
+                        size="small"
+                      />
+                    </Grid>
+                    <Grid item xs={6} sm={3}>
+                      <TextField
+                        name="pa_diastolica"
+                        label="PA diastólica (mmHg)"
+                        type="number"
+                        value={
+                          (editMode ? evolutionToEdit.sinais_vitais : newEvolution.sinais_vitais)
+                            ?.pa_diastolica || ''
+                        }
+                        onChange={handleSinaisVitaisChange}
+                        fullWidth
+                        size="small"
+                      />
+                    </Grid>
+                    <Grid item xs={6} sm={2}>
+                      <TextField
+                        name="fc"
+                        label="FC (bpm)"
+                        type="number"
+                        value={
+                          (editMode ? evolutionToEdit.sinais_vitais : newEvolution.sinais_vitais)
+                            ?.fc || ''
+                        }
+                        onChange={handleSinaisVitaisChange}
+                        fullWidth
+                        size="small"
+                      />
+                    </Grid>
+                    <Grid item xs={6} sm={2}>
+                      <TextField
+                        name="fr"
+                        label="FR (irpm)"
+                        type="number"
+                        value={
+                          (editMode ? evolutionToEdit.sinais_vitais : newEvolution.sinais_vitais)
+                            ?.fr || ''
+                        }
+                        onChange={handleSinaisVitaisChange}
+                        fullWidth
+                        size="small"
+                      />
+                    </Grid>
+                    <Grid item xs={6} sm={2}>
+                      <TextField
+                        name="temperatura"
+                        label="Temp (°C)"
+                        type="number"
+                        value={
+                          (editMode ? evolutionToEdit.sinais_vitais : newEvolution.sinais_vitais)
+                            ?.temperatura || ''
+                        }
+                        onChange={handleSinaisVitaisChange}
+                        fullWidth
+                        size="small"
+                      />
+                    </Grid>
+                    <Grid item xs={6} sm={2}>
+                      <TextField
+                        name="spo2"
+                        label="SpO2 (%)"
+                        type="number"
+                        value={
+                          (editMode ? evolutionToEdit.sinais_vitais : newEvolution.sinais_vitais)
+                            ?.spo2 || ''
+                        }
+                        onChange={handleSinaisVitaisChange}
+                        fullWidth
+                        size="small"
+                      />
+                    </Grid>
+                    <Grid item xs={6} sm={2}>
+                      <TextField
+                        name="peso"
+                        label="Peso (kg)"
+                        type="number"
+                        value={
+                          (editMode ? evolutionToEdit.sinais_vitais : newEvolution.sinais_vitais)
+                            ?.peso || ''
+                        }
+                        onChange={handleSinaisVitaisChange}
+                        fullWidth
+                        size="small"
+                      />
+                    </Grid>
+                    <Grid item xs={6} sm={2}>
+                      <TextField
+                        name="altura"
+                        label="Altura (m)"
+                        type="number"
+                        value={
+                          (editMode ? evolutionToEdit.sinais_vitais : newEvolution.sinais_vitais)
+                            ?.altura || ''
+                        }
+                        onChange={handleSinaisVitaisChange}
+                        fullWidth
+                        size="small"
+                      />
+                    </Grid>
+                  </Grid>
+                </Grid>
+
+                {/* ── O: Exame físico ── */}
+                <Grid item xs={12}>
+                  <Typography variant="subtitle2" color="secondary" gutterBottom>
+                    🩺 Exame físico
+                  </Typography>
+                  <TextField
+                    name="exame_fisico"
+                    label="Exame físico (sistemas, achados, normais e alterações)"
+                    value={
+                      editMode ? evolutionToEdit.exame_fisico || '' : newEvolution.exame_fisico
+                    }
+                    onChange={handleInputChange}
+                    fullWidth
+                    multiline
+                    rows={3}
+                    helperText="Inspeção, ausculta, palpação, percussão por sistema."
+                  />
+                </Grid>
+
+                {/* ── O: Resultados de exames ── */}
+                <Grid item xs={12}>
+                  <Typography variant="subtitle2" color="secondary" gutterBottom>
+                    📋 Resultados de exames
+                  </Typography>
+                  <TextField
+                    name="exames_resultados"
+                    label="Resultados dos últimos exames (laboratoriais, imagem, etc.)"
+                    value={
+                      editMode
+                        ? evolutionToEdit.exames_resultados || ''
+                        : newEvolution.exames_resultados
+                    }
+                    onChange={handleInputChange}
+                    fullWidth
+                    multiline
+                    rows={3}
+                  />
+                </Grid>
+
+                {/* ── A: Avaliação ── */}
+                <Grid item xs={12}>
+                  <Typography variant="subtitle2" color="warning" gutterBottom>
+                    🔎 Avaliação (hipóteses e diagnóstico)
+                  </Typography>
+                  <TextField
+                    name="avaliacao"
+                    label="Avaliação / hipóteses diagnósticas"
+                    value={editMode ? evolutionToEdit.avaliacao || '' : newEvolution.avaliacao}
+                    onChange={handleInputChange}
+                    fullWidth
+                    multiline
+                    rows={2}
+                  />
+                </Grid>
+
+                {/* ── P: Plano ── */}
+                <Grid item xs={12}>
+                  <Typography variant="subtitle2" color="success" gutterBottom>
+                    📝 Plano (conduta)
+                  </Typography>
+                  <TextField
+                    name="plano"
+                    label="Plano terapêutico, exames, orientações e retorno"
+                    value={editMode ? evolutionToEdit.plano || '' : newEvolution.plano}
+                    onChange={handleInputChange}
+                    fullWidth
+                    multiline
+                    rows={2}
+                  />
+                </Grid>
+
+                {/* ── Resumo (texto livre opcional) ── */}
+                <Grid item xs={12}>
                   <TextField
                     name="nota_evolucao"
-                    label="Nota de Evolução"
+                    label="Resumo livre / observações (opcional)"
                     value={editMode ? evolutionToEdit.nota_evolucao : newEvolution.nota_evolucao}
                     onChange={handleInputChange}
                     fullWidth
                     required
                     multiline
-                    rows={4}
+                    rows={2}
                     autoFocus
-                    helperText="Digite sintomas, exames e observações do paciente. ⌘/Ctrl + Enter para salvar."
+                    helperText="Use os campos acima ou escreva aqui de forma livre. ⌘/Ctrl + Enter para salvar."
                     onKeyDown={(e) => {
                       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
                         e.preventDefault();
@@ -783,7 +1047,88 @@ const EvolutionManager = ({ patientId, habilitarCannabis = false }) => {
                       <Divider sx={{ mb: 2 }} />
 
                       {item.type === 'evolution' ? (
-                        <Typography variant="body1">{item.nota_evolucao}</Typography>
+                        <Box>
+                          {/* Campos SOAP estruturados */}
+                          {item.anamnese && (
+                            <Box sx={{ mb: 1 }}>
+                              <Typography variant="caption" color="primary" fontWeight="bold">
+                                🗣️ Anamnese
+                              </Typography>
+                              <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                                {item.anamnese}
+                              </Typography>
+                            </Box>
+                          )}
+                          {item.sinais_vitais &&
+                            Object.values(item.sinais_vitais).some((v) => v) && (
+                              <Box sx={{ mb: 1 }}>
+                                <Typography variant="caption" color="secondary" fontWeight="bold">
+                                  📏 Sinais vitais
+                                </Typography>
+                                <Typography variant="body2">
+                                  {[
+                                    item.sinais_vitais.pa_sistolica &&
+                                      `${item.sinais_vitais.pa_sistolica}/${item.sinais_vitais.pa_diastolica} mmHg`,
+                                    item.sinais_vitais.fc && `FC ${item.sinais_vitais.fc} bpm`,
+                                    item.sinais_vitais.fr && `FR ${item.sinais_vitais.fr} irpm`,
+                                    item.sinais_vitais.temperatura &&
+                                      `T ${item.sinais_vitais.temperatura}°C`,
+                                    item.sinais_vitais.spo2 && `SpO2 ${item.sinais_vitais.spo2}%`,
+                                    item.sinais_vitais.peso && `Peso ${item.sinais_vitais.peso} kg`,
+                                    item.sinais_vitais.altura &&
+                                      `Altura ${item.sinais_vitais.altura} m`,
+                                  ]
+                                    .filter(Boolean)
+                                    .join(' · ')}
+                                </Typography>
+                              </Box>
+                            )}
+                          {item.exame_fisico && (
+                            <Box sx={{ mb: 1 }}>
+                              <Typography variant="caption" color="secondary" fontWeight="bold">
+                                🩺 Exame físico
+                              </Typography>
+                              <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                                {item.exame_fisico}
+                              </Typography>
+                            </Box>
+                          )}
+                          {item.exames_resultados && (
+                            <Box sx={{ mb: 1 }}>
+                              <Typography variant="caption" color="secondary" fontWeight="bold">
+                                📋 Resultados de exames
+                              </Typography>
+                              <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                                {item.exames_resultados}
+                              </Typography>
+                            </Box>
+                          )}
+                          {item.avaliacao && (
+                            <Box sx={{ mb: 1 }}>
+                              <Typography variant="caption" color="warning" fontWeight="bold">
+                                🔎 Avaliação
+                              </Typography>
+                              <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                                {item.avaliacao}
+                              </Typography>
+                            </Box>
+                          )}
+                          {item.plano && (
+                            <Box sx={{ mb: 1 }}>
+                              <Typography variant="caption" color="success" fontWeight="bold">
+                                📝 Plano
+                              </Typography>
+                              <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                                {item.plano}
+                              </Typography>
+                            </Box>
+                          )}
+                          {item.nota_evolucao && (
+                            <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                              {item.nota_evolucao}
+                            </Typography>
+                          )}
+                        </Box>
                       ) : (
                         <Box>
                           <Typography variant="subtitle1" gutterBottom>

@@ -166,7 +166,13 @@ def registrar_evolucao(paciente_id):
             paciente_id=paciente_id,
             profissional_id=profissional_id,
             narrative_evolution=narrative_evolution,
-            data_evolucao_str=data_evolucao_str
+            data_evolucao_str=data_evolucao_str,
+            anamnese=data.get('anamnese') or None,
+            exame_fisico=data.get('exame_fisico') or None,
+            sinais_vitais=data.get('sinais_vitais') if isinstance(data.get('sinais_vitais'), dict) else None,
+            exames_resultados=data.get('exames_resultados') or None,
+            avaliacao=data.get('avaliacao') or None,
+            plano=data.get('plano') or None,
         )
         current_app.logger.info(f"EVOLUCOES_ROUTE: Resultado do salvamento da evolução: {evolution_save_result}")
 
@@ -297,8 +303,14 @@ def atualizar_evolucao(evolucao_id):
         return jsonify({'error': 'Nota de evolução é obrigatória'}), 400
     
     try:
-        # Atualizar evolução
+        # Atualizar evolução (texto livre + campos SOAP estruturados)
         evolucao.nota_evolucao = data['nota_evolucao'].strip()
+        evolucao.anamnese = data.get('anamnese') or None
+        evolucao.exame_fisico = data.get('exame_fisico') or None
+        evolucao.sinais_vitais = data.get('sinais_vitais') if isinstance(data.get('sinais_vitais'), dict) else None
+        evolucao.exames_resultados = data.get('exames_resultados') or None
+        evolucao.avaliacao = data.get('avaliacao') or None
+        evolucao.plano = data.get('plano') or None
         db.session.commit()
         
         # Registrar atividade
