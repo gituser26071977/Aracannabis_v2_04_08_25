@@ -132,3 +132,11 @@ tools/*/build/
 # Husky
 .husky/_/
 mobile/web/dist/
+
+# Segredos e credenciais (auditoria 2026-08)
+*sgac-490811*
+client_secret_*
+*google_credentials*
+token.txt
+*.pem
+*.key
