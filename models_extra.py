@@ -441,6 +441,61 @@ class AndarSetor(db.Model):
         }
 
 
+class BiometriaProfissional(db.Model):
+    """Biometria facial do profissional (LGPD-compliant).
+
+    O embedding NUNCA é armazenado em texto — é o vetor cancelável
+    (biohashing) gerado pelo VSF (CancelableBiometrics). Este registro
+    guarda a REFERÊNCIA (vsf_identity_id) + consentimento + expiração,
+    seguindo o mesmo padrão do BiometricIdentity do VSF.
+
+    Detecta o profissional na chegada à unidade (presença) via VSF.
+    """
+
+    __tablename__ = 'biometria_profissionais'
+
+    id = db.Column(db.Integer, primary_key=True)
+    profissional_id = db.Column(
+        db.Integer, db.ForeignKey('profissionais.id', ondelete='CASCADE'), nullable=False, index=True
+    )
+    associacao_id = db.Column(
+        db.Integer, db.ForeignKey('associacoes.id', ondelete='CASCADE'), nullable=False, index=True
+    )
+    # Referência à identidade biométrica no VSF (embedding cancelável lá)
+    vsf_identity_id = db.Column(db.String, nullable=True)
+    # Consentimento explícito (LGPD)
+    consentimento = db.Column(db.Boolean, default=False, nullable=False)
+    consentimento_em = db.Column(db.DateTime, nullable=True)
+    consentimento_ip = db.Column(db.String(45), nullable=True)
+    # Retenção: expira após período (auto-expirante) — default 24 meses
+    expira_em = db.Column(db.DateTime, nullable=True)
+    revogado_em = db.Column(db.DateTime, nullable=True)
+    # Foto de referência (thumbnail, NÃO o embedding) — para UI
+    foto_referencia = db.Column(db.String, nullable=True)  # path/url
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow)
+
+    profissional = db.relationship('Profissional', backref='biometria')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'profissional_id': self.profissional_id,
+            'associacao_id': self.associacao_id,
+            'vsf_identity_id': self.vsf_identity_id,
+            'consentimento': self.consentimento,
+            'consentimento_em': self.consentimento_em.isoformat() if self.consentimento_em else None,
+            'expira_em': self.expira_em.isoformat() if self.expira_em else None,
+            'revogado_em': self.revogado_em.isoformat() if self.revogado_em else None,
+            'foto_referencia': self.foto_referencia,
+            'criado_em': self.criado_em.isoformat() if self.criado_em else None,
+            'ativa': (
+                bool(self.consentimento)
+                and self.revogado_em is None
+                and (self.expira_em is None or self.expira_em > datetime.utcnow())
+            ),
+        }
+
+
 class ICatalogProcess(db.Model):
     """Fila de processamento inteligente de catálogo/estoque (cadastro inteligente).
 

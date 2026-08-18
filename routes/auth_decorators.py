@@ -120,6 +120,70 @@ def require_permission(*permissions: str):
     return decorator
 
 
+def require_modulo(modulo_slug: str):
+    """Bloqueia request se o profissional não tem o módulo de especialidade ativo.
+
+    Gating por módulo aditivo (ex.: 'nutrologia', 'cardiologia', 'oncologia').
+    Bypass: admin/superadmin sempre passam.
+
+    Uso:
+        @require_modulo('nutrologia')
+        def calcular_plano(): ...
+    """
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            profissional_id = _get_current_profissional_id()
+            if not profissional_id:
+                return jsonify({"error": "Autenticação necessária."}), 401
+
+            profissional = Profissional.query.get(profissional_id)
+            if not profissional:
+                return jsonify({"error": "Profissional não encontrado."}), 404
+
+            if profissional.role in _ROLE_BYPASS:
+                return f(*args, **kwargs)
+
+            # O módulo 'base' está sempre incluso
+            if modulo_slug == "base":
+                return f(*args, **kwargs)
+
+            from models_modulos import Modulo, ModuloAssinatura
+
+            modulo = Modulo.query.filter_by(slug=modulo_slug, ativo=True).first()
+            if not modulo:
+                logger.warning("require_modulo: módulo inexistente %s", modulo_slug)
+                return (
+                    jsonify({"error": "Módulo não encontrado", "modulo": modulo_slug}),
+                    404,
+                )
+
+            assinatura = ModuloAssinatura.query.filter_by(
+                profissional_id=profissional_id, modulo_id=modulo.id
+            ).first()
+            if not assinatura or not assinatura.is_acesso_ativo():
+                logger.warning(
+                    "require_modulo: user=%s sem acesso ao módulo %s",
+                    profissional_id, modulo_slug,
+                )
+                return (
+                    jsonify(
+                        {
+                            "error": "Este recurso requer o módulo ativo",
+                            "message": f"Ative o módulo {modulo.nome} para usar esta funcionalidade.",
+                            "modulo": modulo_slug,
+                            "modulo_nome": modulo.nome,
+                        }
+                    ),
+                    403,
+                )
+            return f(*args, **kwargs)
+
+        return decorated_function
+
+    return decorator
+
+
 def require_staff_role(*allowed_roles: str):
     """
     Bloqueia request se a role do usuário não está na lista permitida.

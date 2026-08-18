@@ -27,6 +27,7 @@ import redis
 
 from services.ai_agents import ai_manager
 from services.pre_atendimento import (
+    detectar_duplicados_no_tenant,
     registrar_pre_atendimento,
     resolver_tenant_por_slug,
 )
@@ -92,6 +93,8 @@ def get_state(session_id: str) -> Dict:
         "history": [],
         "docs": [],
         "pronto": False,
+        "duplicado": False,
+        "duplicados": [],
     }
     set_state(session_id, new_state)
     return new_state
@@ -111,6 +114,8 @@ def nova_sessao(slug: str) -> str:
         "history": [],
         "docs": [],
         "pronto": False,
+        "duplicado": False,
+        "duplicados": [],
     })
     return session_id
 
@@ -124,6 +129,33 @@ def _proximo_campo(state: Dict) -> Optional[str]:
 
 def _extrair_historia(history: List[Dict]) -> str:
     return "\n".join(f"{m['role']}: {m['content']}" for m in history[-12:])
+
+
+def _checar_duplicado(slug: str, dados: Dict) -> List[Dict]:
+    """Consulta o banco procurando paciente duplicado no tenant (skill DB).
+
+    Retorna uma lista de pacientes existentes que batem com nome/CPF/telefone
+    coletados até agora. O agente usa essa informação para avisar o lead.
+    """
+    try:
+        tenant = resolver_tenant_por_slug(slug)
+        if not tenant:
+            return []
+        assoc = tenant.get("associacao")
+        assoc_id = assoc.id if assoc else None
+        duplicados = detectar_duplicados_no_tenant(dados, assoc_id)
+        return [
+            {
+                "id": d.id,
+                "nome": d.nome,
+                "telefone": d.telefone,
+                "cpf": d.cpf,
+            }
+            for d in duplicados
+        ]
+    except Exception as e:
+        logger.warning(f"[pre_chat] checagem de duplicado falhou: {e}")
+        return []
 
 
 def processar_mensagem(session_id: str, mensagem: str, imagem_b64: str = None, mime_type: str = None) -> Dict[str, Any]:
@@ -179,6 +211,7 @@ Responda APENAS com o JSON, sem texto extra."""
     parsed = _parse_json(content)
 
     resposta_agente = ""
+    campo_coletado = None
     if isinstance(parsed, dict):
         if parsed.get("campo"):
             # Marcamos como respondido mesmo se vazio (não travar a entrevista)
@@ -186,6 +219,7 @@ Responda APENAS com o JSON, sem texto extra."""
             state["dados"][parsed["campo"]] = valor
             if parsed["campo"] not in state["campos_respondidos"]:
                 state["campos_respondidos"].append(parsed["campo"])
+            campo_coletado = parsed["campo"]
         resposta_agente = parsed.get("resposta") or ""
 
         # Garantir que a próxima pergunta apareça na resposta
@@ -196,6 +230,23 @@ Responda APENAS com o JSON, sem texto extra."""
                 resposta_agente = f"{resposta_agente} {pergunta_prox}".strip()
     else:
         resposta_agente = content
+
+    # ── Skill: checagem de duplicado no banco (nome/telefone/cpf) ──
+    if campo_coletado in ("nome", "telefone", "cpf"):
+        duplicados = _checar_duplicado(slug, state["dados"])
+        if duplicados:
+            state["duplicado"] = True
+            state["duplicados"] = duplicados
+            nomes = ", ".join(f"{d['nome']}" for d in duplicados[:2])
+            aviso = (
+                "\n\nℹ️ Identificamos que já existe um cadastro com esses dados "
+                f"em nosso sistema ({nomes}). Não se preocupe: continuaremos seu "
+                "pré-atendimento e nossa equipe fará a conferência. Se você já é "
+                "paciente, pode seguir normalmente."
+            )
+            resposta_agente = f"{resposta_agente}{aviso}"
+        elif not state.get("duplicado"):
+            state["duplicado"] = False
 
     # Se todos os campos coletados, marcamos como pronto
     if _proximo_campo(state) is None:
@@ -211,6 +262,8 @@ Responda APENAS com o JSON, sem texto extra."""
         "pronto": state["pronto"],
         "dados_parciais": state["dados"],
         "campos_respondidos": state["campos_respondidos"],
+        "duplicado": state.get("duplicado", False),
+        "duplicados": state.get("duplicados", []),
     }
 
 

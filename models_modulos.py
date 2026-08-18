@@ -189,4 +189,122 @@ __all__ = [
     "ModuloAssinatura",
     "ModuloConsentimento",
     "TRIAL_DAYS",
+    "MODULOS_CATALOGO",
+    "seed_modulos_catalogo",
 ]
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Catálogo canônico de módulos (idempotente)
+# ═══════════════════════════════════════════════════════════════════════
+MODULOS_CATALOGO = [
+    {
+        "slug": "base",
+        "nome": "Módulo Base (Clínica Médica)",
+        "descricao": "Prontuário, agenda, receituário e fluxos clínicos essenciais.",
+        "descricao_curta": "Fluxos essenciais do dia a dia",
+        "preco_mensal": 0.0,
+        "plano_minimo_slug": "basico",
+        "ordem": 0,
+    },
+    {
+        "slug": "cannabis-medicinal",
+        "nome": "Cannabis Medicinal",
+        "descricao": "Prescrição e rastreio de cannabis medicinal (dosagens, concentrações, acompanhamento).",
+        "descricao_curta": "Prescrição e rastreio canábico",
+        "preco_mensal": 99.0,
+        "plano_minimo_slug": "premium",
+        "ordem": 10,
+    },
+    {
+        "slug": "nutrologia",
+        "nome": "Nutrologia",
+        "descricao": "Avaliação nutricional, planos alimentares e acompanhamento de metas.",
+        "descricao_curta": "Avaliação e planos nutricionais",
+        "preco_mensal": 89.0,
+        "plano_minimo_slug": "basico",
+        "ordem": 20,
+    },
+    {
+        "slug": "psiquiatria",
+        "nome": "Psiquiatria",
+        "descricao": "Escalas psiquiátricas (PHQ-9, GAD-7, Beck), prescrição e acompanhamento.",
+        "descricao_curta": "Escalas e acompanhamento psiquiátrico",
+        "preco_mensal": 89.0,
+        "plano_minimo_slug": "basico",
+        "ordem": 30,
+    },
+    {
+        "slug": "cardiologia",
+        "nome": "Cardiologia",
+        "descricao": "Avaliação cardiovascular, fatores de risco e acompanhamento.",
+        "descricao_curta": "Avaliação e acompanhamento cardiovascular",
+        "preco_mensal": 89.0,
+        "plano_minimo_slug": "premium",
+        "ordem": 40,
+    },
+    {
+        "slug": "nefrologia",
+        "nome": "Nefrologia",
+        "descricao": "Avaliação renal, função glomerular, diálise e acompanhamento.",
+        "descricao_curta": "Avaliação e acompanhamento renal",
+        "preco_mensal": 89.0,
+        "plano_minimo_slug": "premium",
+        "ordem": 50,
+    },
+    {
+        "slug": "oncologia",
+        "nome": "Oncologia",
+        "descricao": "Acompanhamento oncológico, esquemas de tratamento e toxicidade.",
+        "descricao_curta": "Acompanhamento oncológico",
+        "preco_mensal": 129.0,
+        "plano_minimo_slug": "premium",
+        "ordem": 60,
+    },
+    {
+        "slug": "pediatria",
+        "nome": "Pediatria",
+        "descricao": "Puericultura, curvas de crescimento, imunização e acompanhamento pediátrico.",
+        "descricao_curta": "Puericultura e acompanhamento pediátrico",
+        "preco_mensal": 89.0,
+        "plano_minimo_slug": "basico",
+        "ordem": 70,
+    },
+    {
+        "slug": "geriatria",
+        "nome": "Geriatria",
+        "descricao": "Avaliação geriátrica ampla, risco de queda, polifarmácia e acompanhamento.",
+        "descricao_curta": "Avaliação geriátrica ampla",
+        "preco_mensal": 89.0,
+        "plano_minimo_slug": "basico",
+        "ordem": 80,
+    },
+    {
+        "slug": "pesquisa-clinica",
+        "nome": "Pesquisa Clínica",
+        "descricao": "Coortes, correlacões e relatórios de evidência para pesquisa.",
+        "descricao_curta": "Coortes e evidência para pesquisa",
+        "preco_mensal": 149.0,
+        "plano_minimo_slug": "enterprise",
+        "ordem": 90,
+    },
+]
+
+
+def seed_modulos_catalogo() -> list[Modulo]:
+    """Garante o catálogo canônico no banco (idempotente).
+
+    Cria/atualiza os módulos por slug. Retorna a lista de módulos ativos.
+    """
+    criados: list[Modulo] = []
+    for data in MODULOS_CATALOGO:
+        m = Modulo.query.filter_by(slug=data["slug"]).first()
+        if not m:
+            m = Modulo(**data)
+            db.session.add(m)
+        else:
+            for k, v in data.items():
+                setattr(m, k, v)
+        criados.append(m)
+    db.session.commit()
+    return criados
