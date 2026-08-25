@@ -53,17 +53,30 @@ def _get_profissional_and_subscription(profissional_id: int):
     return profissional, assinatura, plano
 
 
+# Aliases de roles legadas → roles do RoleRegistry (backward compat).
+# Ex.: o fluxo de aprovação cria profissionais com role 'profissional',
+# que não existe no RoleRegistry (só 'physician'). Sem o alias, todo
+# endpoint protegido por @require_permission retorna 403.
+_ROLE_ALIASES = {
+    "profissional": "physician",
+    "secretaria": "secretary",
+}
+
+
 def _resolve_user_role_names(profissional: Profissional) -> list[str]:
     """Resolve o conjunto de nomes de role ativos para o usuário.
 
     Combina role global (Profissional.role) com role institucional
-    (UsuarioAssociacao.role) se houver tenant context.
+    (UsuarioAssociacao.role) se houver tenant context. Roles legadas
+    são traduzidas para as roles do RoleRegistry via _ROLE_ALIASES.
     """
-    roles: list[str] = [profissional.role] if profissional.role else []
+    raw_roles = [profissional.role] if profissional.role else []
     # Adiciona role institucional se houver tenant context ativo
     link_role = getattr(g, "user_role", None)
-    if link_role and link_role not in roles:
-        roles.append(link_role)
+    if link_role and link_role not in raw_roles:
+        raw_roles.append(link_role)
+    # Traduz aliases legados para as roles conhecidas do RoleRegistry
+    roles: list[str] = [_ROLE_ALIASES.get(r, r) for r in raw_roles]
     return roles
 
 

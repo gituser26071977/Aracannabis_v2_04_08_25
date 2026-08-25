@@ -33,11 +33,19 @@ PERFIL_SOLO = "solo"
 PERFIS_VALIDOS = {PERFIL_ASSISTENCIAL, PERFIL_ADMINISTRATIVO, PERFIL_SOLO}
 
 # Rotas de LEITURA financeira do próprio profissional (exceção p/ assistencial)
-REDACTED = [
+_ROTAS_ASSISTENCIAL_LEITURA_FINANCEIRA = [
     "/api/faturamento/minha-situacao",
     "/api/faturamento/agente",
     # Visão de ocupação: consumida pelo agente IA e pelo assistencial
     "/api/salas/ocupacao",
+]
+
+# Rotas liberadas para QUALQUER usuário autenticado (área None),
+# mesmo estando classificadas como administrativas por prefixo.
+# B2: /api/planos é público por definição (catálogo de vendas + meu-plano);
+# o POST/PUT administrativo continua protegido pelo admin_required da rota.
+_ROTAS_ABERTAS_AUTENTICADO = [
+    "/api/planos",
 ]
 
 # Esfera ASSISTENCIAL — prontuário/atendimento clínico
@@ -58,6 +66,13 @@ AREA_ASSISTENCIAL = [
     "/api/snap-iv",
     "/api/cannabis",
     "/api/neuro",
+    # B3: configuração de prescrição é do próprio profissional
+    # (logomarcas, assinatura, IA de dosagem) — criada pelo
+    # processar_aprovacao, não é gestão de clínica.
+    "/api/prescricao-config",
+    # B4: módulos de especialidade do profissional logado
+    # (assinaturas/ativação de trial) — o dashboard consome no login.
+    "/api/meus-modulos",
 ]
 
 # Esfera ADMINISTRATIVA — agenda, financeiro, cadastros, configurações
@@ -65,15 +80,12 @@ AREA_ADMINISTRATIVA = [
     "/api/faturamento",
     "/api/convenios",
     "/api/billing",
-    "/api/planos",
     "/api/mercadopago",
     "/api/modulos",
-    "/api/meus-modulos",
     "/api/profissionais",
     "/api/admin",
     "/api/cadastro_profissionais",
     "/api/ai-config",
-    "/api/prescricao-config",
     "/api/tenant-config",
     "/api/anuncios",
     "/api/import-export",
@@ -95,7 +107,10 @@ def area_da_rota(path: str) -> Optional[str]:
     secretária vê agregado). Retornam None (sem área) para não serem
     bloqueadas por nenhum perfil.
     """
-    for prefixo in REDACTED:
+    for prefixo in _ROTAS_ASSISTENCIAL_LEITURA_FINANCEIRA:
+        if path == prefixo or path.startswith(prefixo + "/"):
+            return None
+    for prefixo in _ROTAS_ABERTAS_AUTENTICADO:
         if path == prefixo or path.startswith(prefixo + "/"):
             return None
     for prefixo in AREA_ASSISTENCIAL:
