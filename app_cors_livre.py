@@ -255,6 +255,7 @@ def create_app(config_obj=None):
     from routes.sintomas import sintomas_bp
     from routes.dosagens import dosagens_bp
     from routes.evolucoes import evolucoes_bp
+    from routes.prontuario_estruturado import prontuario_bp
     from routes.lgpd import lgpd_bp
     from routes.consultas import consultas_bp
     from routes.import_export import import_export_bp
@@ -289,6 +290,7 @@ def create_app(config_obj=None):
     app.register_blueprint(sintomas_bp, url_prefix="/api/sintomas")
     app.register_blueprint(dosagens_bp, url_prefix="/api/dosagens")
     app.register_blueprint(evolucoes_bp, url_prefix="/api/evolucoes")
+    app.register_blueprint(prontuario_bp, url_prefix="/api/prontuario")
     app.register_blueprint(lgpd_bp, url_prefix="/api/lgpd")
     app.register_blueprint(consultas_bp, url_prefix="/api/consultas")
     app.register_blueprint(import_export_bp, url_prefix="/api/import-export")

@@ -622,6 +622,130 @@ export const evolucoesService = {
   },
 };
 
+// Serviço Prontuário Estruturado (F1): sinais vitais, exame físico, diagnósticos
+export const prontuarioService = {
+  // ── Sinais vitais ──
+  listarSinaisVitais: async (pacienteId, limite) => {
+    try {
+      const url = limite
+        ? `/prontuario/paciente/${pacienteId}/sinais-vitais?limite=${limite}`
+        : `/prontuario/paciente/${pacienteId}/sinais-vitais`;
+      const response = await api.get(url);
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  criarSinaisVitais: async (pacienteId, dados) => {
+    try {
+      const response = await api.post(`/prontuario/paciente/${pacienteId}/sinais-vitais`, dados);
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  atualizarSinaisVitais: async (id, dados) => {
+    try {
+      const response = await api.put(`/prontuario/sinais-vitais/${id}`, dados);
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  excluirSinaisVitais: async (id) => {
+    try {
+      const response = await api.delete(`/prontuario/sinais-vitais/${id}`);
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+
+  // ── Exame físico por sistema ──
+  listarExameFisico: async (pacienteId, limite) => {
+    try {
+      const url = limite
+        ? `/prontuario/paciente/${pacienteId}/exame-fisico?limite=${limite}`
+        : `/prontuario/paciente/${pacienteId}/exame-fisico`;
+      const response = await api.get(url);
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  criarExameFisico: async (pacienteId, sistemas) => {
+    try {
+      const response = await api.post(`/prontuario/paciente/${pacienteId}/exame-fisico`, {
+        sistemas,
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  atualizarExameFisico: async (id, dados) => {
+    try {
+      const response = await api.put(`/prontuario/exame-fisico/${id}`, dados);
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  excluirExameFisico: async (id) => {
+    try {
+      const response = await api.delete(`/prontuario/exame-fisico/${id}`);
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+
+  // ── Diagnósticos (CID) ──
+  listarDiagnosticos: async (pacienteId, incluirInativos = false) => {
+    try {
+      const url = incluirInativos
+        ? `/prontuario/paciente/${pacienteId}/diagnosticos?incluir_inativos=true`
+        : `/prontuario/paciente/${pacienteId}/diagnosticos`;
+      const response = await api.get(url);
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  criarDiagnostico: async (pacienteId, dados) => {
+    try {
+      const response = await api.post(`/prontuario/paciente/${pacienteId}/diagnosticos`, dados);
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  atualizarDiagnostico: async (id, dados) => {
+    try {
+      const response = await api.put(`/prontuario/diagnosticos/${id}`, dados);
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  excluirDiagnostico: async (id) => {
+    try {
+      const response = await api.delete(`/prontuario/diagnosticos/${id}`);
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  autocompleteCid: async (q) => {
+    try {
+      const response = await api.get(`/prontuario/cids?q=${encodeURIComponent(q)}`);
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+};
+
 // Serviço GAD-7
 export const gad7Service = {
   criarTeste: async (pacienteId, testeData) => {

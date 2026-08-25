@@ -28,6 +28,7 @@ import CombinedChartView from '../components/CombinedChartView';
 import ExameManager from '../components/ExameManager';
 import FollowupPanel from '../components/FollowupPanel';
 import AnamneseViewer from '../components/AnamneseViewer';
+import ProntuarioEstruturadoPanel from '../components/ProntuarioEstruturadoPanel';
 import ReceituarioBase from '../components/ReceituarioBase';
 import HCReportPanel from '../components/HCReportPanel';
 import DosageManager from '../components/DosageManager';
@@ -238,6 +239,7 @@ const PatientDetailPage = () => {
       <TabPanel value={tabValue} index={1}>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
           <AnamneseViewer patientId={patientId} habilitarCannabis={habilitarCannabis} />
+          <ProntuarioEstruturadoPanel patientId={patientId} />
           <EvolutionManager patientId={patientId} habilitarCannabis={habilitarCannabis} />
           <SymptomsManager patientId={patientId} />
           <CombinedChartView patientId={patientId} habilitarCannabis={habilitarCannabis} />

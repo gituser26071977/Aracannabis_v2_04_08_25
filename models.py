@@ -601,6 +601,158 @@ class Evolucao(db.Model):
         }
 
 
+class EvolucaoSinaisVitais(db.Model):
+    """Sinais vitais estruturados por medição (F1 — módulo base).
+
+    Substitui o uso de JSON solto em Evolucao.sinais_vitais por linhas
+    próprias, permitindo série temporal e gráficos de tendência. Convive
+    com o campo SOAP legado (que continua como resumo).
+    """
+    __tablename__ = "evolucao_sinais_vitais"
+
+    id = db.Column(db.Integer, primary_key=True)
+    associacao_id = db.Column(
+        db.Integer, db.ForeignKey("associacoes.id", ondelete="CASCADE"), nullable=True
+    )
+    evolucao_id = db.Column(
+        db.Integer, db.ForeignKey("evolucoes.id", ondelete="CASCADE"), nullable=True
+    )
+    paciente_id = db.Column(
+        db.Integer, db.ForeignKey("pacientes.id", ondelete="CASCADE"), nullable=False
+    )
+    profissional_id = db.Column(
+        db.Integer, db.ForeignKey("profissionais.id", ondelete="SET NULL")
+    )
+    data_medicao = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    pa_sistolica = db.Column(db.Integer, nullable=True)
+    pa_diastolica = db.Column(db.Integer, nullable=True)
+    fc = db.Column(db.Integer, nullable=True)           # frequência cardíaca (bpm)
+    fr = db.Column(db.Integer, nullable=True)           # frequência respiratória (irpm)
+    temperatura = db.Column(db.Float, nullable=True)    # °C
+    spo2 = db.Column(db.Integer, nullable=True)         # saturação O2 (%)
+    glicemia = db.Column(db.Float, nullable=True)       # mg/dL
+    peso = db.Column(db.Float, nullable=True)           # kg
+    altura = db.Column(db.Float, nullable=True)         # m
+    imc = db.Column(db.Float, nullable=True)            # calculado no backend
+    observacoes = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    paciente = db.relationship("Paciente", backref="sinais_vitais")
+    profissional = db.relationship("Profissional")
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "evolucao_id": self.evolucao_id,
+            "paciente_id": self.paciente_id,
+            "profissional_id": self.profissional_id,
+            "profissional_nome": self.profissional.nome if self.profissional else None,
+            "data_medicao": self.data_medicao.isoformat() if self.data_medicao else None,
+            "pa_sistolica": self.pa_sistolica,
+            "pa_diastolica": self.pa_diastolica,
+            "fc": self.fc,
+            "fr": self.fr,
+            "temperatura": self.temperatura,
+            "spo2": self.spo2,
+            "glicemia": self.glicemia,
+            "peso": self.peso,
+            "altura": self.altura,
+            "imc": self.imc,
+            "observacoes": self.observacoes,
+        }
+
+
+class EvolucaoExameFisico(db.Model):
+    """Exame físico estruturado por sistema orgânico (F1 — módulo base).
+
+    Uma linha por sistema (ex.: cardiovascular, respiratório, abdominal,
+    neurológico, pele, osteomuscular). Convive com o campo SOAP legado
+    Evolucao.exame_fisico (texto livre).
+    """
+    __tablename__ = "evolucao_exame_fisico"
+
+    id = db.Column(db.Integer, primary_key=True)
+    associacao_id = db.Column(
+        db.Integer, db.ForeignKey("associacoes.id", ondelete="CASCADE"), nullable=True
+    )
+    evolucao_id = db.Column(
+        db.Integer, db.ForeignKey("evolucoes.id", ondelete="CASCADE"), nullable=True
+    )
+    paciente_id = db.Column(
+        db.Integer, db.ForeignKey("pacientes.id", ondelete="CASCADE"), nullable=False
+    )
+    profissional_id = db.Column(
+        db.Integer, db.ForeignKey("profissionais.id", ondelete="SET NULL")
+    )
+    sistema = db.Column(db.String(64), nullable=False)
+    # ex.: 'cardiovascular', 'respiratorio', 'abdominal', 'neurologico',
+    #      'pele', 'osteomuscular', 'geral', 'outros'
+    achados = db.Column(db.Text, nullable=True)
+    data_exame = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    paciente = db.relationship("Paciente", backref="exames_fisicos")
+    profissional = db.relationship("Profissional")
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "evolucao_id": self.evolucao_id,
+            "paciente_id": self.paciente_id,
+            "profissional_id": self.profissional_id,
+            "sistema": self.sistema,
+            "achados": self.achados,
+            "data_exame": self.data_exame.isoformat() if self.data_exame else None,
+        }
+
+
+class Diagnostico(db.Model):
+    """Diagnósticos do paciente com CID-10 (F1 — módulo base).
+
+    Permite histórico (hipótese → definitivo) e serve de base para a
+    página de tendências. O campo cid é texto livre com autocomplete
+    simples por prefixo no backend.
+    """
+    __tablename__ = "diagnosticos"
+
+    id = db.Column(db.Integer, primary_key=True)
+    associacao_id = db.Column(
+        db.Integer, db.ForeignKey("associacoes.id", ondelete="CASCADE"), nullable=True
+    )
+    paciente_id = db.Column(
+        db.Integer, db.ForeignKey("pacientes.id", ondelete="CASCADE"), nullable=False
+    )
+    profissional_id = db.Column(
+        db.Integer, db.ForeignKey("profissionais.id", ondelete="SET NULL")
+    )
+    cid = db.Column(db.String(16), nullable=True)        # ex.: "F41.2"
+    descricao = db.Column(db.Text, nullable=False)       # texto livre do diagnóstico
+    tipo = db.Column(
+        db.String(20), default="hipotese", nullable=False
+    )  # 'hipotese' | 'definitivo'
+    data_diagnostico = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    ativo = db.Column(db.Boolean, default=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    paciente = db.relationship("Paciente", backref="diagnosticos")
+    profissional = db.relationship("Profissional")
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "paciente_id": self.paciente_id,
+            "profissional_id": self.profissional_id,
+            "profissional_nome": self.profissional.nome if self.profissional else None,
+            "cid": self.cid,
+            "descricao": self.descricao,
+            "tipo": self.tipo,
+            "data_diagnostico": self.data_diagnostico.isoformat()
+            if self.data_diagnostico
+            else None,
+            "ativo": self.ativo,
+        }
+
+
 class Consulta(db.Model):
     __tablename__ = "consultas"
 
