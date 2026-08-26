@@ -6,7 +6,7 @@ Camada de read model reconstruível a partir do Event Store.
 Componentes:
     db_models.py    — 7 tabelas SQLAlchemy (read model físico)
     handlers.py     — Event → projection reducers (pure functions)
-    registry.py     — REDACTED (replay_all, replay_from, apply)
+    registry.py     — NeurodevelopmentalProjectionEngine (replay_all, replay_from, apply)
 
 Princípios:
     1. Registry é PROJECTION — descartável, reconstruível.
