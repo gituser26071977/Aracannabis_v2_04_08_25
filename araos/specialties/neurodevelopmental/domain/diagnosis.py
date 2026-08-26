@@ -190,7 +190,7 @@ class Diagnosis:
                 "(assessment_ids, exam_ids, or clinical_criteria_met required)."
             )
 
-    def REDACTED(self) -> None:
+    def _validate_classification(self) -> None:
         """CONFIRMED e REVISED exigem classificação com pelo menos 1 entry."""
         if self.state in (DiagnosisState.CONFIRMED, DiagnosisState.REVISED):
             self.classification.validate()
@@ -235,7 +235,7 @@ class Diagnosis:
         self.updated_at = when
         # Invariante pós-transição
         self._ensure_can_confirm()
-        self.REDACTED()
+        self._validate_classification()
         return self
 
     def revise(
@@ -263,7 +263,7 @@ class Diagnosis:
         self.state = DiagnosisState.REVISED
         self.source_event_ids.append(event_id)
         self.updated_at = when
-        self.REDACTED()
+        self._validate_classification()
         return self
 
     def mark_in_remission(

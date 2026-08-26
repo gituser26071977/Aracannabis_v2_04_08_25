@@ -40,7 +40,7 @@ ORM Models definidos aqui:
 
 Migration Alembic correspondente:
 
-    migrations/versions/REDACTED.py
+    migrations/versions/2026_07_18_knowledge_domain_tables.py
 
 Compatibilidade:
 
@@ -148,7 +148,7 @@ class ClinicalGenomeModel(AuditFieldsMixin, Base):
         # Composite covering index for list_genomes ORDER BY
         # (patient_id ASC, window_start ASC, window_end ASC, genome_id ASC).
         Index(
-            "REDACTED",
+            "ix_sql_cgenomes_tenant_patient_window",
             "tenant_id",
             "patient_id",
             "window_start",
@@ -303,7 +303,7 @@ class KnowledgeGraphModel(AuditFieldsMixin, Base):
         # Composite covering index for list_graphs ORDER BY
         # (patient_id ASC, graph_id ASC).
         Index(
-            "REDACTED",
+            "ix_sql_kgraphs_tenant_patient_graph",
             "tenant_id",
             "patient_id",
             "graph_id",

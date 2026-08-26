@@ -134,22 +134,22 @@ class Permission:
     NEURODEVELOPMENTAL_PROFILE_WRITE = "neurodevelopmental.profile.write"
     NEURODEVELOPMENTAL_SCALE_APPLY = "neurodevelopmental.scale.apply"
     NEURODEVELOPMENTAL_SCALE_INTERPRET = "neurodevelopmental.scale.interpret"
-    REDACTED = "neurodevelopmental.medication.prescribe"
-    REDACTED = "neurodevelopmental.cannabis.prescribe"
+    NEURODEVELOPMENTAL_MEDICATION_PRESCRIBE = "neurodevelopmental.medication.prescribe"
+    NEURODEVELOPMENTAL_CANNABIS_PRESCRIBE = "neurodevelopmental.cannabis.prescribe"
     NEURODEVELOPMENTAL_GRAPH_VIEW = "neurodevelopmental.graph.view"
     NEURODEVELOPMENTAL_GRAPH_CREATE = "neurodevelopmental.graph.create"
     NEURODEVELOPMENTAL_REPORT_GENERATE = "neurodevelopmental.report.generate"
     NEURODEVELOPMENTAL_REPORT_EXPORT = "neurodevelopmental.report.export"
     NEURODEVELOPMENTAL_AI_USE = "neurodevelopmental.ai.use"
     NEURODEVELOPMENTAL_RESEARCH_EXPORT = "neurodevelopmental.research.export"
-    REDACTED = "neurodevelopmental.observatory.view"
-    REDACTED = "neurodevelopmental.dashboard.medical"
-    REDACTED = "neurodevelopmental.dashboard.coordinator"
-    REDACTED = "neurodevelopmental.dashboard.researcher"
-    REDACTED = "neurodevelopmental.dashboard.manager"
-    REDACTED = "neurodevelopmental.dashboard.health_secretary"
-    REDACTED = "neurodevelopmental.dashboard.financial"
-    REDACTED = "neurodevelopmental.dashboard.scientific"
+    NEURODEVELOPMENTAL_OBSERVATORY_VIEW = "neurodevelopmental.observatory.view"
+    NEURODEVELOPMENTAL_DASHBOARD_MEDICAL = "neurodevelopmental.dashboard.medical"
+    NEURODEVELOPMENTAL_DASHBOARD_COORDINATOR = "neurodevelopmental.dashboard.coordinator"
+    NEURODEVELOPMENTAL_DASHBOARD_RESEARCHER = "neurodevelopmental.dashboard.researcher"
+    NEURODEVELOPMENTAL_DASHBOARD_MANAGER = "neurodevelopmental.dashboard.manager"
+    NEURODEVELOPMENTAL_DASHBOARD_HEALTH_SECRETARY = "neurodevelopmental.dashboard.health_secretary"
+    NEURODEVELOPMENTAL_DASHBOARD_FINANCIAL = "neurodevelopmental.dashboard.financial"
+    NEURODEVELOPMENTAL_DASHBOARD_SCIENTIFIC = "neurodevelopmental.dashboard.scientific"
 
     # ─── Sprint 4 — Clinical Intelligence Platform ────────────────────
     # Explainability + Timeline + Analytics + Correlation + Cohort +
@@ -536,15 +536,15 @@ class RoleRegistry:
             Permission.NEURODEVELOPMENTAL_PROFILE_WRITE,
             Permission.NEURODEVELOPMENTAL_SCALE_APPLY,
             Permission.NEURODEVELOPMENTAL_SCALE_INTERPRET,
-            Permission.REDACTED,
-            Permission.REDACTED,
+            Permission.NEURODEVELOPMENTAL_MEDICATION_PRESCRIBE,
+            Permission.NEURODEVELOPMENTAL_CANNABIS_PRESCRIBE,
             Permission.NEURODEVELOPMENTAL_GRAPH_VIEW,
             Permission.NEURODEVELOPMENTAL_GRAPH_CREATE,
             Permission.NEURODEVELOPMENTAL_REPORT_GENERATE,
             Permission.NEURODEVELOPMENTAL_REPORT_EXPORT,
             Permission.NEURODEVELOPMENTAL_AI_USE,
-            Permission.REDACTED,
-            Permission.REDACTED,
+            Permission.NEURODEVELOPMENTAL_OBSERVATORY_VIEW,
+            Permission.NEURODEVELOPMENTAL_DASHBOARD_MEDICAL,
             # Sprint 4 — Clinical Intelligence Platform
             Permission.INTELLIGENCE_TIMELINE_READ,
             Permission.INTELLIGENCE_CONTEXT_READ,
@@ -589,8 +589,8 @@ class RoleRegistry:
     ROLE_HEALTH_SECRETARY = Role(
         name="health_secretary",
         permissions=frozenset({
-            Permission.REDACTED,
-            Permission.REDACTED,
+            Permission.NEURODEVELOPMENTAL_OBSERVATORY_VIEW,
+            Permission.NEURODEVELOPMENTAL_DASHBOARD_HEALTH_SECRETARY,
         }),
         description="Secretaria de Saúde (acesso somente leitura ao Observatório)",
     )
@@ -604,8 +604,8 @@ class RoleRegistry:
             Permission.PATIENT_READ,
             Permission.NEURODEVELOPMENTAL_PROFILE_READ,
             Permission.NEURODEVELOPMENTAL_RESEARCH_EXPORT,
-            Permission.REDACTED,
-            Permission.REDACTED,
+            Permission.NEURODEVELOPMENTAL_OBSERVATORY_VIEW,
+            Permission.NEURODEVELOPMENTAL_DASHBOARD_SCIENTIFIC,
         }),
         description="Pesquisador / Produtor Científico",
     )

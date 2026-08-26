@@ -485,7 +485,7 @@ class FeatureFlag(Base):
     __table_args__ = (
         UniqueConstraint(
             "organization_id", "key", "scope", "target",
-            name="REDACTED"
+            name="uq_feature_flag_org_key_scope_target"
         ),
         Index("ix_feature_flag_org_key", "organization_id", "key"),
         Index("ix_feature_flag_enabled", "organization_id", "enabled"),

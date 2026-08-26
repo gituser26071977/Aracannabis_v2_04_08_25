@@ -42,7 +42,7 @@ class ServiceAccountAuthenticator:
         - Prefixo: ara_ (identificação visual)
         - Seguido de 32 bytes aleatórios em base64
         - Total: ~45 caracteres
-        - Exemplo: REDACTED
+        - Exemplo: ara_abc123def456ghi789jkl012mno345pqr678stu901vwx234yz
     """
     
     KEY_PREFIX = "ara_"
@@ -127,7 +127,7 @@ class ServiceAccountAuthenticator:
         if len(api_key) < 40:
             return False
         # Apenas caracteres válidos para base64url
-        valid_chars = set("REDACTED=")
+        valid_chars = set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_=")
         if not all(c in valid_chars for c in api_key[len(prefix):]):
             return False
         return True

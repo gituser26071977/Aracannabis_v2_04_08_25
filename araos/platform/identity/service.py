@@ -355,7 +355,7 @@ class IdentityService(IdentityProviderContract):
             delegated_by=claims.delegated_by,
         )
     
-    def REDACTED(
+    def authenticate_service_account(
         self, api_key: str
     ) -> IdentityContext:
         """
