@@ -7,7 +7,7 @@ Une os dois branches ativos de migrations AraOS antes de Sprint 4.5:
               → 791ba78aa8fb (araos_week5_agent_runtime)
 
     Branch B: bb2cbd44835d → 2026_07_15_neuro_s1 → 2026_07_15_cee_s31
-              → 2026_07_16_neuro_registry_s32 → REDACTED
+              → 2026_07_16_neuro_registry_s32
               → 2026_07_18_clinical_context_s42
 
 Após este merge, existe um único head (`2026_07_22_merge_araos_heads`)

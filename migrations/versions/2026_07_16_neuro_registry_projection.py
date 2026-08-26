@@ -58,21 +58,21 @@ def upgrade() -> None:
         sa.Column("deleted_by", sa.String(36), nullable=True),
         sa.UniqueConstraint(
             "tenant_id", "patient_id",
-            name="REDACTED",
+            name="uq_neuro_registry_identities_tenant_patient",
         ),
     )
     op.create_index(
-        "REDACTED",
+        "ix_neuro_registry_identities_tenant_id",
         "neuro_registry_clinical_identities",
         ["tenant_id"],
     )
     op.create_index(
-        "REDACTED",
+        "ix_neuro_registry_identities_patient_id",
         "neuro_registry_clinical_identities",
         ["patient_id"],
     )
     op.create_index(
-        "REDACTED",
+        "ix_neuro_registry_identities_tenant_status",
         "neuro_registry_clinical_identities",
         ["tenant_id", "status"],
     )
@@ -131,7 +131,7 @@ def upgrade() -> None:
         ["identity_id"],
     )
     op.create_index(
-        "REDACTED",
+        "ix_neuro_registry_diag_condition_code",
         "neuro_registry_diagnoses",
         ["condition_code"],
     )
@@ -141,12 +141,12 @@ def upgrade() -> None:
         ["state"],
     )
     op.create_index(
-        "REDACTED",
+        "ix_neuro_registry_diag_identity_state",
         "neuro_registry_diagnoses",
         ["identity_id", "state"],
     )
     op.create_index(
-        "REDACTED",
+        "ix_neuro_registry_diag_tenant_state",
         "neuro_registry_diagnoses",
         ["tenant_id", "state"],
     )
@@ -198,7 +198,7 @@ def upgrade() -> None:
         ["patient_id"],
     )
     op.create_index(
-        "REDACTED",
+        "ix_neuro_registry_pheno_identity_id",
         "neuro_registry_phenotypes",
         ["identity_id"],
     )
@@ -213,7 +213,7 @@ def upgrade() -> None:
         ["is_active"],
     )
     op.create_index(
-        "REDACTED",
+        "ix_neuro_registry_pheno_identity_active",
         "neuro_registry_phenotypes",
         ["identity_id", "is_active"],
     )
@@ -260,22 +260,22 @@ def upgrade() -> None:
         ["tenant_id"],
     )
     op.create_index(
-        "REDACTED",
+        "ix_neuro_registry_assess_patient_id",
         "neuro_registry_assessments",
         ["patient_id"],
     )
     op.create_index(
-        "REDACTED",
+        "ix_neuro_registry_assess_identity_id",
         "neuro_registry_assessments",
         ["identity_id"],
     )
     op.create_index(
-        "REDACTED",
+        "ix_neuro_registry_assess_scale_code",
         "neuro_registry_assessments",
         ["scale_code"],
     )
     op.create_index(
-        "REDACTED",
+        "ix_neuro_registry_assess_identity_scale",
         "neuro_registry_assessments",
         ["identity_id", "scale_code"],
     )
@@ -354,7 +354,7 @@ def upgrade() -> None:
         ["is_active"],
     )
     op.create_index(
-        "REDACTED",
+        "ix_neuro_registry_int_identity_state",
         "neuro_registry_interventions",
         ["identity_id", "state"],
     )
@@ -400,27 +400,27 @@ def upgrade() -> None:
         sa.Column("deleted_by", sa.String(36), nullable=True),
     )
     op.create_index(
-        "REDACTED",
+        "ix_neuro_registry_outcomes_tenant_id",
         "neuro_registry_outcomes",
         ["tenant_id"],
     )
     op.create_index(
-        "REDACTED",
+        "ix_neuro_registry_outcomes_patient_id",
         "neuro_registry_outcomes",
         ["patient_id"],
     )
     op.create_index(
-        "REDACTED",
+        "ix_neuro_registry_outcomes_identity_id",
         "neuro_registry_outcomes",
         ["identity_id"],
     )
     op.create_index(
-        "ix_neuro_registry_outcome_type",
+        "ix_neuro_registry_outcomes_type",
         "neuro_registry_outcomes",
         ["outcome_type"],
     )
     op.create_index(
-        "REDACTED",
+        "ix_neuro_registry_outcomes_identity_type",
         "neuro_registry_outcomes",
         ["identity_id", "outcome_type"],
     )
@@ -441,17 +441,17 @@ def upgrade() -> None:
         sa.Column("processed_at", sa.DateTime(timezone=True), nullable=False),
     )
     op.create_index(
-        "REDACTED",
+        "ix_neuro_registry_processed_tenant_id",
         "neuro_registry_processed_events",
         ["tenant_id"],
     )
     op.create_index(
-        "REDACTED",
+        "ix_neuro_registry_processed_patient_id",
         "neuro_registry_processed_events",
         ["patient_id"],
     )
     op.create_index(
-        "REDACTED",
+        "ix_neuro_registry_processed_event_type",
         "neuro_registry_processed_events",
         ["event_type"],
     )
@@ -461,7 +461,7 @@ def upgrade() -> None:
         ["sequence"],
     )
     op.create_index(
-        "REDACTED",
+        "ix_neuro_registry_processed_tenant_seq",
         "neuro_registry_processed_events",
         ["tenant_id", "sequence"],
     )

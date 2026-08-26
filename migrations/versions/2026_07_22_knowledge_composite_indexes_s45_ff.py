@@ -8,8 +8,8 @@ identificadas na revisão de performance (RC1_GATE1_PERFORMANCE_REVIEW.md
 Migration forward-only compatível (Alembic 1.13+).
 Idempotente via `IF NOT EXISTS` quando disponível.
 
-Revision ID: REDACTED
-Revises: REDACTED
+Revision ID: 2026_07_22_knowledge_composite_indexes_s45_ff
+Revises: 2026_07_22_merge_araos_heads
 Create Date: 2026-07-22 12:30:00.000000
 
 Razão: reduzir filesort em list_* mantendo os índices tenant-bound.
@@ -22,8 +22,8 @@ from alembic import op
 
 
 # revision identifiers, used by Alembic.
-revision = "REDACTED"
-down_revision = "REDACTED"
+revision = "2026_07_22_knowledge_composite_indexes_s45_ff"
+down_revision = "2026_07_22_merge_araos_heads"
 branch_labels = None
 depends_on = None
 
