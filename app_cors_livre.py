@@ -469,27 +469,37 @@ def create_app(config_obj=None):
     app.register_blueprint(neuro_registry_bp)
 
     # [NEW] AraOS Clinical Intelligence Platform (Sprint 4.1 / ADR-0003)
-    from routes.intelligence_timeline import intelligence_timeline_bp
-    from routes.explainability import explainability_bp
-    app.register_blueprint(intelligence_timeline_bp)
-    app.register_blueprint(explainability_bp)
+    # Gateado por AROS_INTELLIGENCE_ENABLED: as engines tiveram identificadores
+    # redigidos ("REDACTED") e estao em reconstrucao. Enquanto desabilitadas,
+    # o nucleo SIAP (pacientes, prontuario, consultas) opera sem elas.
+    if app.config.get("AROS_INTELLIGENCE_ENABLED"):
+        from routes.intelligence_timeline import intelligence_timeline_bp
+        from routes.explainability import explainability_bp
+        app.register_blueprint(intelligence_timeline_bp)
+        app.register_blueprint(explainability_bp)
 
-    # [NEW] AraOS Clinical Context Engine (Sprint 4.2 / ADR-0003)
-    from routes.clinical_context import clinical_context_bp
-    app.register_blueprint(clinical_context_bp)
+        # [NEW] AraOS Clinical Context Engine (Sprint 4.2 / ADR-0003)
+        from routes.clinical_context import clinical_context_bp
+        app.register_blueprint(clinical_context_bp)
 
-    # [NEW] AraOS Clinical Knowledge Engine — Knowledge REST API (RC1 Gate 2 / Sprint 4.5 §W3)
-    # Translation layer only. Foundation-Freeze compliant (no domain mutation).
-    from interfaces.rest.v1 import knowledge_bp as knowledge_v1_bp
-    from interfaces.rest.v1.observability import register_request_hooks as _register_knowledge_hooks
-    app.register_blueprint(knowledge_v1_bp)
-    # Configure Knowledge persistence session factory (re-uses Flask-SQLAlchemy session).
-    app.config.setdefault(
-        "REDACTED",
-        lambda: db.session,
-    )
-    # Install request/correlation_id/latency hooks scoped to /api/v1/knowledge.
-    _register_knowledge_hooks(app)
+        # [NEW] AraOS Clinical Knowledge Engine — Knowledge REST API (RC1 Gate 2 / Sprint 4.5 §W3)
+        # Translation layer only. Foundation-Freeze compliant (no domain mutation).
+        from interfaces.rest.v1 import knowledge_bp as knowledge_v1_bp
+        from interfaces.rest.v1.observability import register_request_hooks as _register_knowledge_hooks
+        app.register_blueprint(knowledge_v1_bp)
+        # Configure Knowledge persistence session factory (re-uses Flask-SQLAlchemy session).
+        app.config.setdefault(
+            "REDACTED",
+            lambda: db.session,
+        )
+        # Install request/correlation_id/latency hooks scoped to /api/v1/knowledge.
+        _register_knowledge_hooks(app)
+    else:
+        print(
+            "[ARAOS] Inteligência clínica desabilitada "
+            "(AROS_INTELLIGENCE_ENABLED=false). Engines timeline/explainability/"
+            "context/knowledge não registradas."
+        )
 
     # [NEW] Tenant Middleware
     from middleware.tenant_middleware import register_tenant_middleware

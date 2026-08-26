@@ -78,6 +78,18 @@ class Config:
         "yes",
     )
 
+    # --- AraOS Clinical Intelligence Platform (ADR-0003) ---
+    # As engines (timeline, explainability, clinical context, knowledge) tiveram
+    # identificadores redigidos ("REDACTED") e ainda estao em reconstrucao.
+    # AROSA_INTELLIGENCE_ENABLED="true" reativa os blueprints quando a
+    # reconstrucao terminar; por padrao ficam DESABILITADOS para nao quebrar
+    # o nucleo SIAP em runtime.
+    AROS_INTELLIGENCE_ENABLED = os.getenv("AROS_INTELLIGENCE_ENABLED", "false").lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+
     # --- Engine options (P0-13 Production Readiness) ---
     # pool_size=20, max_overflow=40 → até 60 conexões concorrentes
     # pool_pre_ping=True → testa conexão antes de usar
