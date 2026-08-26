@@ -117,7 +117,7 @@ def app(session_factory, monkeypatch):
     flask_app = Flask(__name__)
     flask_app.config["TESTING"] = True
     flask_app.config["JWT_SECRET_KEY"] = "test-secret-rc1-gate-2"
-    flask_app.config["REDACTED"] = session_factory
+    flask_app.config["KNOWLEDGE_SESSION_FACTORY"] = session_factory
     JWTManager(flask_app)
 
     # The platform's @require_permission is a no-op for these REST-shape

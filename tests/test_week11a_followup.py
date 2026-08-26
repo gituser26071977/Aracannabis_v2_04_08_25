@@ -48,7 +48,7 @@ from araos.followup.programs.cannabis.program import (
     build_stabilization_phase,
     build_maintenance_phase,
     build_pain_questionnaire,
-    REDACTED,
+    build_adverse_effects_questionnaire,
     build_adherence_questionnaire,
 )
 
@@ -200,7 +200,7 @@ class TestWhatsAppIntegration:
         )
         assert r.channel == "whatsapp"
 
-    def REDACTED(self):
+    def build_adverse_effects_questionnaire(self):
         q = build_pain_questionnaire()
         assert q.estimated_duration_minutes > 0
         assert len(q.questions) > 0
@@ -372,7 +372,7 @@ class TestDigitalTwinIntegration:
 class TestSpecialtyIntegration:
     """Valida integração com Specialty Framework."""
 
-    def REDACTED(self):
+    def build_adverse_effects_questionnaire(self):
         sfp = SpecialtyFollowupProgram(
             specialty_code="cannabis",
             name="Acompanhamento Cannabis",
@@ -533,7 +533,7 @@ class TestCannabisQuestionnaires:
         assert len(pain_questions) == 3
 
     def test_adverse_effects_questionnaire(self):
-        q = REDACTED()
+        q = build_adverse_effects_questionnaire()
         assert q.questionnaire_id == "cannabis_adverse_v1"
         assert len(q.questions) == 6
         ae_questions = q.get_questions_by_category("adverse_effect")
@@ -550,7 +550,7 @@ class TestCannabisQuestionnaires:
         pain_q = build_pain_questionnaire()
         assert pain_q.questions[0].question_type == QuestionType.SCALE
 
-        ae_q = REDACTED()
+        ae_q = build_adverse_effects_questionnaire()
         assert ae_q.questions[0].question_type == QuestionType.YES_NO
 
         adh_q = build_adherence_questionnaire()
@@ -564,7 +564,7 @@ class TestCannabisQuestionnaires:
 class TestEscalonamento:
     """Valida regras de escalonamento automático."""
 
-    def REDACTED(self):
+    def build_adverse_effects_questionnaire(self):
         rule = FollowupRule(
             rule_id="ae_severe", name="AE Grave",
             condition="severe_adverse_effect",
@@ -704,7 +704,7 @@ class TestFullIntegration:
         # Stub: validamos que o framework está pronto
         assert len(program.responses) == 1
 
-    def REDACTED(self):
+    def build_adverse_effects_questionnaire(self):
         """Programa Cannabis possui todos os questionários necessários."""
         program = build_cannabis_followup_program()
 
