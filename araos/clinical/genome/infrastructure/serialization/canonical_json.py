@@ -70,9 +70,7 @@ def _datetime_from_iso(s: str) -> datetime:
     return datetime.fromisoformat(s)
 
 
-# REDACTED
-# Serializers por tipo
-# REDACTED
+# ─── Serializers por tipo ──────────────────────────────────────────
 
 
 def serialize_confidence(c: Confidence) -> dict[str, Any]:
@@ -312,9 +310,7 @@ def serialize_domain_event(event: DomainEvent) -> dict[str, Any]:
     }
 
 
-# REDACTED
-# Top-level: gene_to_canonical_json / gene_from_canonical_json
-# REDACTED
+# ─── Top-level: gene_to_canonical_json / gene_from_canonical_json ──
 
 
 def gene_to_canonical_json(gene: ClinicalGene) -> str:

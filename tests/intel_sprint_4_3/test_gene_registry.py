@@ -32,7 +32,7 @@ from araos.clinical.genome.domain import (
 )
 from araos.clinical.genome.infrastructure import (
     ClinicalGeneRegistryRepository,
-    REDACTED,
+    InMemoryClinicalGeneRegistryRepository,
     RegistryLoadError,
     load_registry,
     load_registry_v1,
@@ -64,17 +64,17 @@ class TestClinicalGeneId:
         }
         assert set(ClinicalGeneId.values()) == expected
 
-    def REDACTED(self):
+    def test_sleep_quality_renamed(self):
         """SLEEP_QUALITY foi renomeado para SLEEP no Registry v1.0."""
         assert ClinicalGeneId.contains("SLEEP")
         assert not ClinicalGeneId.contains("SLEEP_QUALITY")
 
-    def REDACTED(self):
+    def test_anxiety_renamed(self):
         """ANXIETY foi renomeado para ANXIETY_REGULATION."""
         assert ClinicalGeneId.contains("ANXIETY_REGULATION")
         assert not ClinicalGeneId.contains("ANXIETY")
 
-    def REDACTED(self):
+    def test_values_are_strings(self):
         assert isinstance(ClinicalGeneId.values(), list)
         assert all(isinstance(v, str) for v in ClinicalGeneId.values())
 
@@ -117,7 +117,7 @@ class TestRegistryVersion:
         with pytest.raises(ValueError):
             RegistryVersion.parse("abc")
 
-    def REDACTED(self):
+    def test_parse_alpha_version_raises(self):
         with pytest.raises(ValueError):
             RegistryVersion.parse("a.b")
 
@@ -133,7 +133,7 @@ class TestRegistryVersion:
         with pytest.raises(ValueError):
             RegistryVersion(major=1, minor=0, patch=-1)
 
-    def REDACTED(self):
+    def test_naive_effective_from_raises(self):
         with pytest.raises(ValueError):
             RegistryVersion(
                 major=1,
@@ -147,7 +147,7 @@ class TestRegistryVersion:
         assert v1.is_compatible_with(v11)
         assert v11.is_compatible_with(v1)
 
-    def REDACTED(self):
+    def test_incompatible_different_major(self):
         v1 = RegistryVersion(major=1, minor=0)
         v2 = RegistryVersion(major=2, minor=0)
         assert not v1.is_compatible_with(v2)
@@ -198,7 +198,7 @@ class TestGeneDefinition:
                 registry_version=RegistryVersion.current(),
             )
 
-    def REDACTED(self):
+    def test_blank_display_name_raises(self):
         with pytest.raises(ValueError, match="display_name"):
             GeneDefinition(
                 id=ClinicalGeneId.SLEEP,
@@ -218,7 +218,7 @@ class TestGeneDefinition:
                 registry_version=RegistryVersion.current(),
             )
 
-    def REDACTED(self):
+    def test_empty_clinical_functions_raises(self):
         with pytest.raises(ValueError, match="clinical_functions"):
             GeneDefinition(
                 id=ClinicalGeneId.SLEEP,
@@ -228,7 +228,7 @@ class TestGeneDefinition:
                 registry_version=RegistryVersion.current(),
             )
 
-    def REDACTED(self):
+    def test_empty_function_name_raises(self):
         with pytest.raises(ValueError, match="clinical_functions"):
             GeneDefinition(
                 id=ClinicalGeneId.SLEEP,
@@ -238,7 +238,7 @@ class TestGeneDefinition:
                 registry_version=RegistryVersion.current(),
             )
 
-    def REDACTED(self):
+    def test_wrong_registry_version_type_raises(self):
         with pytest.raises(ValueError, match="registry_version"):
             GeneDefinition(
                 id=ClinicalGeneId.SLEEP,
@@ -338,7 +338,7 @@ class TestClinicalGeneRegistry:
                 definitions=bad_defs,
             )
 
-    def REDACTED(self):
+    def test_duplicate_display_names_raises(self):
         # Two GeneDefinitions with different ids but same display_name
         v = RegistryVersion.current()
         d1 = GeneDefinition(
@@ -361,7 +361,7 @@ class TestClinicalGeneRegistry:
                 definitions=(d1, d2),
             )
 
-    def REDACTED(self):
+    def test_duplicate_primary_functions_raises(self):
         v = RegistryVersion.current()
         d1 = GeneDefinition(
             id=ClinicalGeneId.SLEEP,
@@ -401,7 +401,7 @@ class TestClinicalGeneRegistry:
         with pytest.raises(ValueError, match="não existe em ClinicalGeneId"):
             ClinicalGeneRegistry(version=v, definitions=(bogus,))
 
-    def REDACTED(self):
+    def test_mismatched_definition_version_raises(self):
         v1 = RegistryVersion(major=1, minor=0)
         v11 = RegistryVersion(major=1, minor=1)
         d = GeneDefinition(
@@ -414,7 +414,7 @@ class TestClinicalGeneRegistry:
         with pytest.raises(ValueError, match="versão"):
             ClinicalGeneRegistry(version=v1, definitions=(d,))
 
-    def REDACTED(self):
+    def test_invalid_definition_type_raises(self):
         with pytest.raises(ValueError, match="definição inválida"):
             ClinicalGeneRegistry(
                 version=RegistryVersion.current(),
@@ -516,11 +516,11 @@ class TestRegistryLoader:
         with pytest.raises(RegistryLoadError):
             validate_gene_id("BOGUS_GENE")
 
-    def REDACTED(self):
+    def test_validate_compatibility_valid(self):
         registry = load_registry_v1()
         validate_registry_compatibility(registry, ClinicalGeneId.SLEEP)
 
-    def REDACTED(self):
+    def test_validate_registry_compatibility_invalid(self):
         registry = load_registry_v1()
         with pytest.raises(RegistryLoadError):
             validate_registry_compatibility(registry, "BOGUS")
@@ -559,11 +559,11 @@ class TestSerializationRoundtrip:
             assert "registry_version_effective_from" in defn
             assert "created_at" in defn
 
-    def REDACTED(self):
+    def test_from_dict_missing_version_raises(self):
         with pytest.raises(ValueError, match="version"):
             ClinicalGeneRegistry.from_dict({"definitions": []})
 
-    def REDACTED(self):
+    def test_from_dict_missing_registry_version_raises(self):
         with pytest.raises(ValueError, match="registry_version"):
             GeneDefinition.from_dict(
                 {
@@ -583,22 +583,22 @@ class TestInMemoryRepository:
     """Repositório in-memory."""
 
     def test_default_preloads_v1(self):
-        repo = REDACTED()
+        repo = InMemoryClinicalGeneRegistryRepository()
         assert repo.list_versions() == ["1.0"]
 
     def test_no_preload_is_empty(self):
-        repo = REDACTED(preload=False)
+        repo = InMemoryClinicalGeneRegistryRepository(preload=False)
         assert repo.list_versions() == []
         with pytest.raises(RuntimeError):
             repo.get_current()
 
     def test_save_persists(self):
-        repo = REDACTED(preload=False)
+        repo = InMemoryClinicalGeneRegistryRepository(preload=False)
         repo.save(load_registry_v1())
         assert repo.list_versions() == ["1.0"]
 
     def test_save_idempotent_same_version(self):
-        repo = REDACTED()
+        repo = InMemoryClinicalGeneRegistryRepository()
         reg1 = load_registry_v1()
         reg2 = load_registry_v1()
         repo.save(reg1)
@@ -606,39 +606,39 @@ class TestInMemoryRepository:
         assert repo.list_versions() == ["1.0"]
 
     def test_get_version_returns_registry(self):
-        repo = REDACTED()
+        repo = InMemoryClinicalGeneRegistryRepository()
         reg = repo.get_version("1.0")
         assert reg is not None
         assert len(reg) == 7
 
-    def REDACTED(self):
-        repo = REDACTED()
+    def test_get_unknown_version(self):
+        repo = InMemoryClinicalGeneRegistryRepository()
         assert repo.get_version("99.0") is None
 
     def test_get_current_v1(self):
-        repo = REDACTED()
+        repo = InMemoryClinicalGeneRegistryRepository()
         current = repo.get_current()
         assert current.version.version_string == "1.0"
 
     def test_is_known(self):
-        repo = REDACTED()
+        repo = InMemoryClinicalGeneRegistryRepository()
         assert repo.is_known(ClinicalGeneId.SLEEP)
         assert repo.is_known("SLEEP")
         assert not repo.is_known("BOGUS")
 
     def test_contains_protocol(self):
-        repo = REDACTED()
+        repo = InMemoryClinicalGeneRegistryRepository()
         assert ClinicalGeneId.SLEEP in repo
         assert "SLEEP" in repo
         assert "BOGUS" not in repo
 
     def test_len(self):
-        repo = REDACTED()
+        repo = InMemoryClinicalGeneRegistryRepository()
         assert len(repo) == 1  # only v1.0
 
     def test_is_abstract(self):
         assert issubclass(
-            REDACTED,
+            InMemoryClinicalGeneRegistryRepository,
             ClinicalGeneRegistryRepository,
         )
 
@@ -651,7 +651,7 @@ class TestFutureCompatibility:
 
     def test_load_v1_1_simulated(self):
         """Carregar Registry v1.1 com Gene novo coexiste com v1.0."""
-        repo = REDACTED()
+        repo = InMemoryClinicalGeneRegistryRepository()
         # v1.0 já carregado
         v10 = repo.get_version("1.0")
         assert v10 is not None
@@ -685,7 +685,7 @@ class TestFutureCompatibility:
         v2 = RegistryVersion(major=2, minor=0)
         assert not v1.is_compatible_with(v2)
 
-    def REDACTED(self):
+    def test_load_future_version(self):
         """Loader aceita qualquer versão + definições (testes, futuro)."""
         v_future = RegistryVersion(major=2, minor=0)
         # Definição vinculada a v2.0
@@ -721,7 +721,7 @@ class TestUbiquitousLanguage:
         assert "ANXIETY" not in ids
         assert "ANXIETY_REGULATION" in ids
 
-    def REDACTED(self):
+    def test_clinical_functions_not_capability(self):
         """Genes representam Funções Clínicas Fundamentais, não capabilities."""
         # Verificar que GeneDefinition usa `clinical_functions` (plural).
         d = build_registry_v1_definitions()[0]
@@ -740,14 +740,14 @@ class TestUbiquitousLanguage:
         # Deve usar `clinical_functions` (plural).
         assert "clinical_functions" in source
 
-    def REDACTED(self):
+    def test_gene_definition_has_registry_version(self):
         """Toda GeneDefinition carrega registry_version."""
         defs = build_registry_v1_definitions()
         for d in defs:
             assert isinstance(d.registry_version, RegistryVersion)
             assert d.registry_version.version_string == "1.0"
 
-    def REDACTED(self):
+    def test_registry_has_version(self):
         """Toda ClinicalGeneRegistry carrega RegistryVersion."""
         registry = load_registry_v1()
         assert isinstance(registry.version, RegistryVersion)

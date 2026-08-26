@@ -5,7 +5,7 @@ Sprint 4.3 — ADR-0005.
 
 Esta Sprint implementa apenas o contrato (ABC) e a versão
 ``InMemory`` (default para testes e operação síncrona). A
-implementação SQL (``REDACTED``)
+implementação SQL (``SqlClinicalGeneRegistryRepository``)
 será entregue na Sprint 4.3 Phase 4, junto com a migration
 ``2026_07_19_clinical_genome_s43.py``.
 
@@ -49,7 +49,7 @@ class ClinicalGeneRegistryRepository(ABC):
         """Persiste um Registry. Idempotente (mesma versão → sobrescreve)."""
 
 
-class REDACTED(ClinicalGeneRegistryRepository):
+class InMemoryClinicalGeneRegistryRepository(ClinicalGeneRegistryRepository):
     """Repositório in-memory (testes, operação síncrona, Phase 1).
 
     Por padrão, pré-carrega o Registry v1.0. Suporta múltiplas
@@ -73,7 +73,7 @@ class REDACTED(ClinicalGeneRegistryRepository):
         """
         if not self._by_version:
             raise RuntimeError(
-                "REDACTED vazio. "
+                "InMemoryClinicalGeneRegistryRepository vazio. "
                 "Faça preload ou save() antes de get_current()."
             )
         versions = [RegistryVersion.parse(v) for v in self._by_version]

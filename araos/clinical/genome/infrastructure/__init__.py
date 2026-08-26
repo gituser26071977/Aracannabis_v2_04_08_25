@@ -22,7 +22,7 @@ from .registry_loader import (
 )
 from .registry_repository import (
     ClinicalGeneRegistryRepository,
-    REDACTED,
+    InMemoryClinicalGeneRegistryRepository,
 )
 from .serialization import (
     compute_state_hash,
@@ -34,7 +34,7 @@ from .serialization import (
 
 __all__ = [
     "ClinicalGeneRegistryRepository",
-    "REDACTED",
+    "InMemoryClinicalGeneRegistryRepository",
     "RegistryLoadError",
     "load_registry",
     "load_registry_v1",
