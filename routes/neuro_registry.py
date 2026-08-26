@@ -60,7 +60,7 @@ from araos.specialties.neurodevelopmental.domain import (
     PhenotypeSeverity,
 )
 from araos.specialties.neurodevelopmental.projections import (
-    REDACTED,
+    NeurodevelopmentalProjectionEngine,
 )
 
 logger = logging.getLogger(__name__)
