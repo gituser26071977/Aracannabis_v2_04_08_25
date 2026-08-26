@@ -17,6 +17,8 @@ Rotas (url_prefix /api/prontuario):
     PUT    /diagnosticos/<id>                      atualiza
     DELETE /diagnosticos/<id>                      remove (soft delete: ativo=false)
     GET    /cids?q=prefixo                         autocomplete simples de CID
+    GET    /paciente/<id>/timeline                 histórico unificado (F2)
+    GET    /paciente/<id>/tendencias               séries temporais (F2)
 """
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
@@ -27,6 +29,12 @@ from models import (
     EvolucaoExameFisico,
     Diagnostico,
     LogAtividade,
+    Evolucao,
+    Anamnese,
+    Sintoma,
+    Consulta,
+    Exame,
+    ExameLabResultado,
 )
 from datetime import datetime
 
@@ -495,3 +503,182 @@ def autocomplete_cid():
         if all(s["cid"] != cid for s in sugestoes):
             sugestoes.append({"cid": cid, "descricao": desc})
     return jsonify({"cids": sugestoes[:15]}), 200
+
+
+# ───────────────────────────────────────────────────────────
+# F2 — Timeline unificada e Tendências
+# ───────────────────────────────────────────────────────────
+def _iso(dt):
+    return dt.isoformat() if dt else None
+
+
+def _resumir(texto, limite=300):
+    if not texto:
+        return None
+    texto = " ".join(str(texto).split())
+    return texto[:limite] + ("…" if len(texto) > limite else "")
+
+
+@prontuario_bp.route("/paciente/<int:paciente_id>/timeline", methods=["GET"])
+@jwt_required()
+def timeline_paciente(paciente_id):
+    """Histórico unificado do paciente, do mais recente ao mais antigo."""
+    if not _paciente_existe(paciente_id):
+        return jsonify({"error": "Paciente não encontrado"}), 404
+
+    eventos = []
+
+    for c in Consulta.query.filter_by(paciente_id=paciente_id).all():
+        eventos.append({
+            "type": "consultation",
+            "title": f"Consulta {c.tipo_consulta or 'presencial'}",
+            "date": _iso(c.data_hora),
+            "description": _resumir(c.observacoes) or (
+                f"Status: {c.status}" if c.status else None
+            ),
+        })
+
+    for e in Evolucao.query.filter_by(paciente_id=paciente_id).all():
+        desc = e.nota_evolucao or ""
+        if e.avaliacao:
+            desc = f"{desc} — Avaliação: {e.avaliacao}" if desc else f"Avaliação: {e.avaliacao}"
+        eventos.append({
+            "type": "evolution",
+            "title": f"Evolução #{e.id}",
+            "date": _iso(e.data_evolucao),
+            "description": _resumir(desc),
+        })
+
+    for a in Anamnese.query.filter_by(paciente_id=paciente_id).all():
+        desc = a.condicao_principal or a.sintomas_atuais
+        eventos.append({
+            "type": "anamnesis",
+            "title": f"Anamnese ({a.fonte or 'manual'})",
+            "date": _iso(a.data_anamnese),
+            "description": _resumir(desc),
+        })
+
+    for v in EvolucaoSinaisVitais.query.filter_by(paciente_id=paciente_id).all():
+        partes = []
+        if v.peso is not None:
+            partes.append(f"Peso {v.peso}kg")
+        if v.imc is not None:
+            partes.append(f"IMC {v.imc}")
+        if v.pa_sistolica is not None:
+            partes.append(f"PA {v.pa_sistolica}/{v.pa_diastolica or '?'}")
+        if v.fc is not None:
+            partes.append(f"FC {v.fc}bpm")
+        if v.temperatura is not None:
+            partes.append(f"T {v.temperatura}°C")
+        if v.spo2 is not None:
+            partes.append(f"SpO2 {v.spo2}%")
+        if v.glicemia is not None:
+            partes.append(f"Glicemia {v.glicemia}")
+        eventos.append({
+            "type": "vital",
+            "title": "Sinais vitais",
+            "date": _iso(v.data_medicao),
+            "description": ", ".join(partes) if partes else _resumir(v.observacoes),
+        })
+
+    for f in EvolucaoExameFisico.query.filter_by(paciente_id=paciente_id).all():
+        eventos.append({
+            "type": "physical_exam",
+            "title": f"Exame físico — {f.sistema}",
+            "date": _iso(f.data_exame),
+            "description": _resumir(f.achados),
+        })
+
+    for s in Sintoma.query.filter_by(paciente_id=paciente_id).all():
+        eventos.append({
+            "type": "symptom",
+            "title": f"Sintoma: {s.sintoma}",
+            "date": _iso(s.data),
+            "description": f"Intensidade {s.intensidade}/10",
+        })
+
+    for ex in Exame.query.filter_by(paciente_id=paciente_id).all():
+        eventos.append({
+            "type": "exam",
+            "title": f"Exame: {ex.titulo or ex.tipo_exame or f'#{ex.id}'}",
+            "date": _iso(ex.data_exame),
+            "description": _resumir(ex.descricao),
+        })
+
+    for d in Diagnostico.query.filter_by(paciente_id=paciente_id).filter(
+        Diagnostico.ativo.is_(True)
+    ).all():
+        cid = f" — CID {d.cid}" if d.cid else ""
+        eventos.append({
+            "type": "diagnosis",
+            "title": f"Diagnóstico ({d.tipo})",
+            "date": _iso(d.data_diagnostico),
+            "description": _resumir(f"{d.descricao}{cid}"),
+        })
+
+    eventos.sort(key=lambda ev: ev["date"] or "", reverse=True)
+    return jsonify({"events": eventos}), 200
+
+
+@prontuario_bp.route("/paciente/<int:paciente_id>/tendencias", methods=["GET"])
+@jwt_required()
+def tendencias_paciente(paciente_id):
+    """Séries temporais para a página de tendências clínicas.
+
+    Estrutura:
+        series: {
+            peso|imc|fc|fr|pa_sistolica|pa_diastolica|temperatura|spo2|glicemia: [{data, valor}],
+            sintomas: {nome: [{data, valor}]},
+            exames_laboratoriais: {teste: [{data, valor, referencia, unidade}]},
+        }
+    """
+    if not _paciente_existe(paciente_id):
+        return jsonify({"error": "Paciente não encontrado"}), 404
+
+    CAMPOS_VITAIS = (
+        "peso", "imc", "fc", "fr", "pa_sistolica", "pa_diastolica",
+        "temperatura", "spo2", "glicemia",
+    )
+    series = {campo: [] for campo in CAMPOS_VITAIS}
+
+    medicoes = (
+        EvolucaoSinaisVitais.query.filter_by(paciente_id=paciente_id)
+        .order_by(EvolucaoSinaisVitais.data_medicao.asc())
+        .all()
+    )
+    for m in medicoes:
+        data = _iso(m.data_medicao)
+        for campo in CAMPOS_VITAIS:
+            valor = getattr(m, campo)
+            if valor is not None:
+                series[campo].append({"data": data, "valor": valor})
+
+    series["sintomas"] = {}
+    for s in (
+        Sintoma.query.filter_by(paciente_id=paciente_id)
+        .order_by(Sintoma.data.asc())
+        .all()
+    ):
+        series["sintomas"].setdefault(s.sintoma, []).append({
+            "data": _iso(s.data),
+            "valor": s.intensidade,
+        })
+
+    series["exames_laboratoriais"] = {}
+    labs = (
+        db.session.query(ExameLabResultado, Exame)
+        .join(Exame, Exame.id == ExameLabResultado.exame_id)
+        .filter(Exame.paciente_id == paciente_id)
+        .order_by(ExameLabResultado.created_at.asc())
+        .all()
+    )
+    for resultado, exame in labs:
+        data = _iso(exame.data_exame) or _iso(resultado.created_at)
+        series["exames_laboratoriais"].setdefault(resultado.teste_nome, []).append({
+            "data": data,
+            "valor": float(resultado.valor) if resultado.valor is not None else None,
+            "referencia": resultado.valor_referencia,
+            "unidade": resultado.unidade,
+        })
+
+    return jsonify({"series": series}), 200

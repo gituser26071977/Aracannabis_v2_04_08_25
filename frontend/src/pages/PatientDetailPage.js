@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import {
   Box,
   Paper,
@@ -29,6 +29,7 @@ import ExameManager from '../components/ExameManager';
 import FollowupPanel from '../components/FollowupPanel';
 import AnamneseViewer from '../components/AnamneseViewer';
 import ProntuarioEstruturadoPanel from '../components/ProntuarioEstruturadoPanel';
+import PatientTimeline from '../components/PatientTimeline';
 import ReceituarioBase from '../components/ReceituarioBase';
 import HCReportPanel from '../components/HCReportPanel';
 import DosageManager from '../components/DosageManager';
@@ -238,11 +239,21 @@ const PatientDetailPage = () => {
 
       <TabPanel value={tabValue} index={1}>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <Button
+            component={Link}
+            to={`/pacientes/detail/${patientId}/tendencias`}
+            variant="outlined"
+            startIcon={<EventIcon />}
+            sx={{ alignSelf: 'flex-start' }}
+          >
+            📈 Ver Tendências Clínicas
+          </Button>
           <AnamneseViewer patientId={patientId} habilitarCannabis={habilitarCannabis} />
           <ProntuarioEstruturadoPanel patientId={patientId} />
           <EvolutionManager patientId={patientId} habilitarCannabis={habilitarCannabis} />
           <SymptomsManager patientId={patientId} />
           <CombinedChartView patientId={patientId} habilitarCannabis={habilitarCannabis} />
+          <PatientTimeline patientId={patientId} />
         </Box>
       </TabPanel>
 

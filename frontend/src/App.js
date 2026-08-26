@@ -21,6 +21,7 @@ import AssociationSelector from './components/AssociationSelector';
 // Importar páginas
 import PacientesPageComponent from './pages/PacientesPage';
 import PatientDetailPage from './pages/PatientDetailPage';
+import TrendsPage from './pages/TrendsPage';
 import PatientEditPage from './pages/PatientEditPage';
 import SecurityPage from './pages/SecurityPage';
 import ConsultasPage from './pages/ConsultasPage';
@@ -680,6 +681,14 @@ function AppContent() {
               element={
                 <ProtectedRoute>
                   <PatientDetailPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/pacientes/detail/:patientId/tendencias"
+              element={
+                <ProtectedRoute>
+                  <TrendsPage />
                 </ProtectedRoute>
               }
             />

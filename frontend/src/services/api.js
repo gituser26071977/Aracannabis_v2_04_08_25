@@ -744,6 +744,24 @@ export const prontuarioService = {
       throw error.response ? error.response.data : { error: 'Erro de conexão' };
     }
   },
+
+  // ── F2: Tendências e Timeline ──
+  tendencias: async (pacienteId) => {
+    try {
+      const response = await api.get(`/prontuario/paciente/${pacienteId}/tendencias`);
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
+  timeline: async (pacienteId) => {
+    try {
+      const response = await api.get(`/prontuario/paciente/${pacienteId}/timeline`);
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { error: 'Erro de conexão' };
+    }
+  },
 };
 
 // Serviço GAD-7
