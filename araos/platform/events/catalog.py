@@ -658,6 +658,9 @@ _EVENT_CATALOG: Dict[str, EventDefinition] = {
     ),
     "NEURODEVELOPMENTAL_CONDITION_REMOVED": EventDefinition(
         event_type="NEURODEVELOPMENTAL_CONDITION_REMOVED",
+        domain="neurodevelopmental",
+        action="removed",
+        aggregate_type="neuro_condition",
         description="Condição neurodesenvolvimental removida",
         consumers=["audit", "timeline", "digital_twin"],
         sensitive=True,
