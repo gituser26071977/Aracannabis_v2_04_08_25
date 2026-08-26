@@ -140,3 +140,19 @@ client_secret_*
 token.txt
 *.pem
 *.key
+
+# Artefatos de documentacao e memoria (nao-commitaveis)
+docs/
+memory/
+ara-intake/
+tests/conformance/
+tests/e2e/screenshots/
+/DEC-*.md
+/NEURO_*.md
+/PLATFORM_*.md
+/RC1_*.md
+/RC3_*.md
+/RECOVERY_*.md
+/ROADMAP_*.md
+/SPRINT_*.md
+/proposta_*.md
