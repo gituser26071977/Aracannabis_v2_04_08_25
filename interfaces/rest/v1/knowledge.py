@@ -102,12 +102,12 @@ def health():
 def _session_factory():
     """Return a callable that produces a SQLAlchemy ``Session``.
 
-    Source: ``current_app.config["REDACTED"]``.
+    Source: ``current_app.config["KNOWLEDGE_SESSION_FACTORY"]``.
     Falls back to ``None`` (services that don't need persistence
     — like ``run_pipeline`` — can still call the application layer
     in memory without erroring).
     """
-    factory = current_app.config.get("REDACTED")
+    factory = current_app.config.get("KNOWLEDGE_SESSION_FACTORY")
     if factory is None:
         return None
     return factory

@@ -6,7 +6,7 @@ Permite queries eficientes:
     - "qual rede forma este contexto?"
     - "pagerank topológico básico"
 
-Mantém a tabela materializada `REDACTED`,
+Mantém a tabela materializada `clinical_context_relationships_active`,
 idempotente e rebuildable.
 """
 

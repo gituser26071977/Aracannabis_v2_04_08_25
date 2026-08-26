@@ -206,7 +206,7 @@ def handle_clinical_context_created(
     session.flush()
 
 
-def REDACTED(
+def handle_status_change(
     session: Session, event: Dict[str, Any]
 ) -> None:
     """Handler genérico para Activated/Closed/Reopened/Rejected."""
@@ -253,25 +253,25 @@ def REDACTED(
 def handle_clinical_context_activated(
     session: Session, event: Dict[str, Any]
 ) -> None:
-    REDACTED(session, event)
+    handle_status_change(session, event)
 
 
 def handle_clinical_context_closed(
     session: Session, event: Dict[str, Any]
 ) -> None:
-    REDACTED(session, event)
+    handle_status_change(session, event)
 
 
 def handle_clinical_context_reopened(
     session: Session, event: Dict[str, Any]
 ) -> None:
-    REDACTED(session, event)
+    handle_status_change(session, event)
 
 
 def handle_clinical_context_rejected(
     session: Session, event: Dict[str, Any]
 ) -> None:
-    REDACTED(session, event)
+    handle_status_change(session, event)
 
 
 def handle_clinical_context_updated(
@@ -362,7 +362,7 @@ def handle_clinical_context_unlinked(
 # ─── Type confirmed ────────────────────────────────────────────────
 
 
-def REDACTED(
+def handle_clinical_context_type_confirmed(
     session: Session, event: Dict[str, Any]
 ) -> None:
     payload = event.get("payload") or {}
@@ -391,5 +391,5 @@ HANDLERS_BY_EVENT_TYPE = {
     "CLINICAL_CONTEXT_LINKED": handle_clinical_context_linked,
     "CLINICAL_CONTEXT_UNLINKED": handle_clinical_context_unlinked,
     "CLINICAL_CONTEXT_REJECTED": handle_clinical_context_rejected,
-    "CLINICAL_CONTEXT_TYPE_CONFIRMED": REDACTED,
+    "CLINICAL_CONTEXT_TYPE_CONFIRMED": handle_clinical_context_type_confirmed,
 }

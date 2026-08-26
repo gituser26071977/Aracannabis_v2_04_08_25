@@ -60,8 +60,8 @@ from araos.clinical.context.domain.context_status import ContextStatus
 from araos.clinical.context.domain.context_type import ContextType
 from araos.clinical.context.sql import (
     SqlAlchemyClinicalContextQuery,
-    REDACTED,
-    REDACTED,
+    ClinicalContextRepository,
+    ContextRelationshipRepository,
 )
 from araos.clinical.event_store import ClinicalEventPublisher
 from routes._helpers import _get_actor_id, _resolve_tenant_id, get_logger
@@ -80,10 +80,10 @@ def _session_factory():
     """Resolve SQLAlchemy session factory from app config.
 
     Ordem:
-        1. REDACTED (injetada no app factory)
+        1. INTELLIGENCE_CONTEXT_SESSION_FACTORY (injetada no app factory)
         2. None → retorna None (modo in-memory).
     """
-    return current_app.config.get("REDACTED")
+    return current_app.config.get("INTELLIGENCE_CONTEXT_SESSION_FACTORY")
 
 
 def _publisher() -> Optional[ClinicalEventPublisher]:
@@ -93,23 +93,23 @@ def _publisher() -> Optional[ClinicalEventPublisher]:
     return pub
 
 
-def _repo() -> REDACTED:
+def _repo() -> ClinicalContextRepository:
     sf = _session_factory()
     if sf is None:
         raise RuntimeError(
-            "REDACTED not configured. "
+            "ClinicalContextRepository not configured. "
             "In-memory mode requires explicit setup; production requires DB."
         )
-    return REDACTED(sf)
+    return ClinicalContextRepository(sf)
 
 
-def _rel_repo() -> REDACTED:
+def _rel_repo() -> ContextRelationshipRepository:
     sf = _session_factory()
     if sf is None:
         raise RuntimeError(
-            "REDACTED not configured"
+            "ContextRelationshipRepository not configured"
         )
-    return REDACTED(sf)
+    return ContextRelationshipRepository(sf)
 
 
 def _query() -> ClinicalContextQuery:

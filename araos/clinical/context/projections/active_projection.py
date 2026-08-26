@@ -29,16 +29,6 @@ class ActiveContextProjection:
 
     def apply(self, event: Dict[str, Any]) -> bool:
         """Atualiza projection baseado em 1 evento."""
-        from .handlers import (
-            handle_clinical_context_created,
-            REDACTED,
-            handle_clinical_context_linked,
-            handle_clinical_context_unlinked,
-            handle_clinical_context_rejected,
-            REDACTED,
-            handle_clinical_context_updated,
-        )
-
         event_type = event.get("event_type")
         if event_type not in HANDLERS_BY_EVENT_TYPE:
             return False

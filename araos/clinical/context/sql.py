@@ -8,8 +8,8 @@ Camadas:
         - ProcessedRuleEvaluationModel (idempotência)
     2. Converters row ↔ domain.
     3. SqlAlchemyClinicalContextQuery (read-side).
-    4. REDACTED (write-side — usado pela API/projection).
-    5. REDACTED (relationship CRUD).
+    4. ClinicalContextRepository (write-side — usado pela API/projection).
+    5. ContextRelationshipRepository (relationship CRUD).
 
 Padrão (Sprint 3.2 + 4.1):
     - AuditFieldsMixin + Base de araos.platform.tenant.models.
@@ -444,7 +444,7 @@ class SqlAlchemyClinicalContextQuery(ClinicalContextQuery):
 # ═══════════════════════════════════════════════════════════════════════
 
 
-class REDACTED:
+class ClinicalContextRepository:
     """Repository para persistência/recuperação de ClinicalContext.
 
     Write-side puro. Não emite eventos — emissão é responsabilidade
@@ -611,7 +611,7 @@ class REDACTED:
 # ═══════════════════════════════════════════════════════════════════════
 
 
-class REDACTED:
+class ContextRelationshipRepository:
     def __init__(self, session_factory) -> None:
         self._session_factory = session_factory
 

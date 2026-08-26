@@ -104,7 +104,7 @@ class ClinicalContextProjection:
         """
         with self._session_factory() as session:
             session.execute(
-                text("DELETE FROM REDACTED "
+                text("DELETE FROM clinical_context_processed_rule_evals "
                      "WHERE tenant_id = :t"),
                 {"t": tenant_id},
             )
@@ -173,7 +173,7 @@ class ClinicalContextProjection:
             proc_rows = session.execute(
                 text(
                     "SELECT id, rule_id, event_id, suggestion_id "
-                    "FROM REDACTED "
+                    "FROM clinical_context_processed_rule_evals "
                     "WHERE tenant_id = :t ORDER BY id"
                 ),
                 {"t": tenant_id},

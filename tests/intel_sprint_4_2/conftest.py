@@ -143,14 +143,14 @@ def suggester(rule_engine, suggestion_registry, publisher):
 
 @pytest.fixture
 def context_repo(session_factory):
-    from araos.clinical.context.sql import REDACTED
-    return REDACTED(session_factory=session_factory)
+    from araos.clinical.context.sql import ClinicalContextRepository
+    return ClinicalContextRepository(session_factory=session_factory)
 
 
 @pytest.fixture
 def relationship_repo(session_factory):
-    from araos.clinical.context.sql import REDACTED
-    return REDACTED(session_factory=session_factory)
+    from araos.clinical.context.sql import ContextRelationshipRepository
+    return ContextRelationshipRepository(session_factory=session_factory)
 
 
 @pytest.fixture

@@ -489,7 +489,12 @@ def create_app(config_obj=None):
         app.register_blueprint(knowledge_v1_bp)
         # Configure Knowledge persistence session factory (re-uses Flask-SQLAlchemy session).
         app.config.setdefault(
-            "REDACTED",
+            "KNOWLEDGE_SESSION_FACTORY",
+            lambda: db.session,
+        )
+        # Configure Clinical Context session factory (re-uses Flask-SQLAlchemy session).
+        app.config.setdefault(
+            "INTELLIGENCE_CONTEXT_SESSION_FACTORY",
             lambda: db.session,
         )
         # Install request/correlation_id/latency hooks scoped to /api/v1/knowledge.
