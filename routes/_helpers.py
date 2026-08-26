@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from flask import jsonify
-from flask_jwt_extended import get_jwt_identity
+from flask_jwt_extended import get_jwt, get_jwt_identity
 
 
 def _resolve_tenant_id() -> str:
@@ -58,6 +58,11 @@ def _resolve_tenant_id() -> str:
             tid = identity.get("tenant_id") or identity.get("organization_id")
             if tid:
                 return str(tid)
+        # Fallback: claims stored via additional_claims (string identity)
+        claims = get_jwt() or {}
+        tid = claims.get("tenant_id") or claims.get("organization_id")
+        if tid:
+            return str(tid)
     except Exception:
         pass
     return ""

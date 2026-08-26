@@ -21,6 +21,9 @@ _PROJECT_ROOT = os.path.abspath(
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
+# Enable AraOS Intelligence blueprints for Sprint 4.2 tests
+os.environ.setdefault("AROS_INTELLIGENCE_ENABLED", "true")
+
 
 import pytest
 from sqlalchemy import create_engine
@@ -172,7 +175,7 @@ def app(event_store, suggestion_registry, session_factory, publisher):
     flask_app.config["TESTING"] = True
     flask_app.config["JWT_SECRET_KEY"] = "test-secret-sprint-4-2"
     flask_app.config["CLINICAL_EVENT_STORE"] = event_store
-    flask_app.config["REDACTED"] = session_factory
+    flask_app.config["INTELLIGENCE_CONTEXT_SESSION_FACTORY"] = session_factory
     flask_app.config["INTELLIGENCE_CONTEXT_PUBLISHER"] = publisher
     flask_app.config["INTELLIGENCE_EXPLANATION_REGISTRY"] = (
         suggestion_registry

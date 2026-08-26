@@ -108,31 +108,31 @@ class TestHandlersDirect:
             handle_clinical_context_created(s, ev)
             s.commit()
 
-    def REDACTED(self, session_factory):
+    def test_handle_activated_noop(self, session_factory):
         from araos.clinical.context.projections.handlers import (
-            REDACTED,
+            handle_clinical_context_activated,
         )
         with session_factory() as s:
-            REDACTED(s, _ev(
+            handle_clinical_context_activated(s, _ev(
                 "CLINICAL_CONTEXT_ACTIVATED",
                 {"context_id": None, "new_status": "Active"},
             ))
             s.commit()
 
-    def REDACTED(self, session_factory):
+    def test_handle_activated_missing_context(self, session_factory):
         from araos.clinical.context.projections.handlers import (
-            REDACTED,
+            handle_clinical_context_activated,
         )
         with session_factory() as s:
-            REDACTED(s, _ev(
+            handle_clinical_context_activated(s, _ev(
                 "CLINICAL_CONTEXT_ACTIVATED",
                 {"context_id": "c-x"},
             ))
             s.commit()
 
-    def REDACTED(self, session_factory):
+    def test_handle_activated_invalid_status(self, session_factory):
         from araos.clinical.context.projections.handlers import (
-            REDACTED,
+            handle_clinical_context_activated,
         )
         # First create a context
         from araos.clinical.context.projections.handlers import (
@@ -153,17 +153,17 @@ class TestHandlersDirect:
             ))
             s.commit()
             # Now try invalid status
-            REDACTED(s, _ev(
+            handle_clinical_context_activated(s, _ev(
                 "CLINICAL_CONTEXT_ACTIVATED",
                 {"context_id": "c-x", "new_status": "INVALID"},
                 seq=2,
             ))
             s.commit()
 
-    def REDACTED(self, session_factory):
+    def test_handle_closed_full(self, session_factory):
         from araos.clinical.context.projections.handlers import (
             handle_clinical_context_created,
-            REDACTED,
+            handle_clinical_context_closed,
         )
         with session_factory() as s:
             handle_clinical_context_created(s, _ev(
@@ -179,7 +179,7 @@ class TestHandlersDirect:
                 seq=1,
             ))
             s.commit()
-            REDACTED(s, _ev(
+            handle_clinical_context_closed(s, _ev(
                 "CLINICAL_CONTEXT_CLOSED",
                 {
                     "context_id": "c-y",
@@ -191,10 +191,10 @@ class TestHandlersDirect:
             ))
             s.commit()
 
-    def REDACTED(self, session_factory):
+    def test_handle_rejected_full(self, session_factory):
         from araos.clinical.context.projections.handlers import (
             handle_clinical_context_created,
-            REDACTED,
+            handle_clinical_context_rejected,
         )
         with session_factory() as s:
             handle_clinical_context_created(s, _ev(
@@ -210,7 +210,7 @@ class TestHandlersDirect:
                 seq=1,
             ))
             s.commit()
-            REDACTED(s, _ev(
+            handle_clinical_context_rejected(s, _ev(
                 "CLINICAL_CONTEXT_REJECTED",
                 {
                     "context_id": "c-z",
@@ -381,10 +381,10 @@ class TestHandlersDirect:
 
     def REDACTED(self, session_factory):
         from araos.clinical.context.projections.handlers import (
-            REDACTED,
+            handle_clinical_context_type_confirmed,
         )
         with session_factory() as s:
-            REDACTED(s, _ev(
+            handle_clinical_context_type_confirmed(s, _ev(
                 "CLINICAL_CONTEXT_TYPE_CONFIRMED",
                 {"context_id": None},
             ))
@@ -393,7 +393,7 @@ class TestHandlersDirect:
     def test_handle_type_confirmed_full(self, session_factory):
         from araos.clinical.context.projections.handlers import (
             handle_clinical_context_created,
-            REDACTED,
+            handle_clinical_context_type_confirmed,
         )
         with session_factory() as s:
             handle_clinical_context_created(s, _ev(
@@ -409,7 +409,7 @@ class TestHandlersDirect:
                 seq=1,
             ))
             s.commit()
-            REDACTED(s, _ev(
+            handle_clinical_context_type_confirmed(s, _ev(
                 "CLINICAL_CONTEXT_TYPE_CONFIRMED",
                 {
                     "context_id": "c-w",
@@ -419,10 +419,10 @@ class TestHandlersDirect:
             ))
             s.commit()
 
-    def REDACTED(self, session_factory):
+    def test_handle_type_confirmed_invalid_type(self, session_factory):
         from araos.clinical.context.projections.handlers import (
             handle_clinical_context_created,
-            REDACTED,
+            handle_clinical_context_type_confirmed,
         )
         with session_factory() as s:
             handle_clinical_context_created(s, _ev(
@@ -438,7 +438,7 @@ class TestHandlersDirect:
                 seq=1,
             ))
             s.commit()
-            REDACTED(s, _ev(
+            handle_clinical_context_type_confirmed(s, _ev(
                 "CLINICAL_CONTEXT_TYPE_CONFIRMED",
                 {
                     "context_id": "c-v",
@@ -551,7 +551,7 @@ class TestActiveProjection:
     def test_resync_to_active(self, session_factory):
         from araos.clinical.context.projections.handlers import (
             handle_clinical_context_created,
-            REDACTED,
+            handle_clinical_context_activated,
         )
         p = self._make(session_factory)
         # First insert as Planned
@@ -583,7 +583,7 @@ class TestActiveProjection:
         ))
         # Now activate
         with session_factory() as s:
-            REDACTED(s, _ev(
+            handle_clinical_context_activated(s, _ev(
                 "CLINICAL_CONTEXT_ACTIVATED",
                 {
                     "context_id": "c-rs",
@@ -610,7 +610,7 @@ class TestActiveProjection:
     def test_resync_to_inactive_removes(self, session_factory):
         from araos.clinical.context.projections.handlers import (
             handle_clinical_context_created,
-            REDACTED,
+            handle_clinical_context_closed,
         )
         p = self._make(session_factory)
         with session_factory() as s:
@@ -640,7 +640,7 @@ class TestActiveProjection:
         ))
         # Close
         with session_factory() as s:
-            REDACTED(s, _ev(
+            handle_clinical_context_closed(s, _ev(
                 "CLINICAL_CONTEXT_CLOSED",
                 {
                     "context_id": "c-cl",
@@ -670,7 +670,7 @@ class TestActiveProjection:
     def test_rejected_deletes(self, session_factory):
         from araos.clinical.context.projections.handlers import (
             handle_clinical_context_created,
-            REDACTED,
+            handle_clinical_context_rejected,
         )
         p = self._make(session_factory)
         with session_factory() as s:
@@ -699,7 +699,7 @@ class TestActiveProjection:
             },
         ))
         with session_factory() as s:
-            REDACTED(s, _ev(
+            handle_clinical_context_rejected(s, _ev(
                 "CLINICAL_CONTEXT_REJECTED",
                 {
                     "context_id": "c-rj",
@@ -730,7 +730,7 @@ class TestActiveProjection:
     def test_type_confirmed_resyncs(self, session_factory):
         from araos.clinical.context.projections.handlers import (
             handle_clinical_context_created,
-            REDACTED,
+            handle_clinical_context_type_confirmed,
         )
         p = self._make(session_factory)
         with session_factory() as s:
@@ -747,7 +747,7 @@ class TestActiveProjection:
                 seq=1,
             ))
             s.commit()
-            REDACTED(s, _ev(
+            handle_clinical_context_type_confirmed(s, _ev(
                 "CLINICAL_CONTEXT_TYPE_CONFIRMED",
                 {
                     "context_id": "c-tc",

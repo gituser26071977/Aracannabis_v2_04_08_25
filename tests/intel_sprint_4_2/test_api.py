@@ -465,7 +465,7 @@ class TestQueriesAPI:
         )
         assert resp.status_code == 400
 
-    def REDACTED(self, client, auth_headers):
+    def test_suggested_contexts(self, client, auth_headers):
         resp = client.get(
             "/api/intelligence/patients/p1/contexts/co-occurred",
             headers=auth_headers,
