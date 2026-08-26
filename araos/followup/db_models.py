@@ -128,7 +128,7 @@ class FollowupQuestionModel(db.Model):
     questionnaire = relationship("FollowupQuestionnaireModel", back_populates="questions")
 
     __table_args__ = (
-        Index("REDACTED", "questionnaire_id"),
+        Index("ix_followup_questions_questionnaire", "questionnaire_id"),
     )
 
 
@@ -151,7 +151,7 @@ class FollowupResponseModel(db.Model):
 
     __table_args__ = (
         Index("ix_followup_responses_patient", "patient_id"),
-        Index("REDACTED", "questionnaire_id"),
+        Index("ix_followup_responses_questionnaire", "questionnaire_id"),
     )
 
 

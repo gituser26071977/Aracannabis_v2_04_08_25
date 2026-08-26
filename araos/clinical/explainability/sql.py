@@ -84,17 +84,17 @@ class IntelligenceExplanationModel(AuditFieldsMixin, Base):
     )
 
     __table_args__ = (
-        Index("REDACTED", "tenant_id", "analysis_id"),
+        Index("ix_intel_explanations_tenant_analysis", "tenant_id", "analysis_id"),
         Index("ix_intel_explanations_tenant_type", "tenant_id", "analysis_type"),
-        Index("REDACTED", "tenant_id", "created_at"),
-        Index("REDACTED", "correlation_id"),
+        Index("ix_intel_explanations_tenant_created", "tenant_id", "created_at"),
+        Index("ix_intel_explanations_correlation", "correlation_id"),
     )
 
 
 class REDACTED(Base):
     """Tracker de queries pesadas do Timeline (idempotência + auditoria)."""
 
-    __tablename__ = "REDACTED"
+    __tablename__ = "intelligence_query_processed"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True, default=lambda: str(uuid.uuid4()))
     tenant_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)

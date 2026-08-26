@@ -166,7 +166,7 @@ class ProcessedRuleEvaluationModel(Base):
     Impede que a mesma avaliação produza Suggestions duplicadas em replay.
     """
 
-    __tablename__ = "REDACTED"
+    __tablename__ = "clinical_context_processed_rule_evals"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True, default=lambda: uuid.uuid4().hex)
     tenant_id: Mapped[str] = mapped_column(String(36), nullable=False)

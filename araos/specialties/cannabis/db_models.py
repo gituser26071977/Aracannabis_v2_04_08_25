@@ -48,7 +48,7 @@ class CannabisProfileModel(db.Model):
     alerts = relationship("CannabisAlertModel", back_populates="profile", cascade="all, delete-orphan")
 
     __table_args__ = (
-        Index("REDACTED", "patient_id", "tenant_id"),
+        Index("ix_cannabis_profiles_patient_tenant", "patient_id", "tenant_id"),
         UniqueConstraint("patient_id", "tenant_id", name="uq_cannabis_profile_patient_tenant"),
     )
 
@@ -170,7 +170,7 @@ class CannabisDoseEntryModel(db.Model):
     profile = relationship("CannabisProfileModel", back_populates="dose_entries")
 
     __table_args__ = (
-        Index("REDACTED", "patient_id", "entry_date"),
+        Index("ix_cannabis_dose_entries_patient_entry", "patient_id", "entry_date"),
         Index("ix_cannabis_dose_entries_tenant", "tenant_id"),
     )
 
@@ -198,8 +198,8 @@ class CannabisOutcomeScoreModel(db.Model):
     profile = relationship("CannabisProfileModel", back_populates="outcome_scores")
 
     __table_args__ = (
-        Index("REDACTED", "patient_id", "metric_name"),
-        Index("REDACTED", "recorded_at"),
+        Index("ix_cannabis_outcome_scores_patient_metric", "patient_id", "metric_name"),
+        Index("ix_cannabis_outcome_scores_recorded", "recorded_at"),
     )
 
 
