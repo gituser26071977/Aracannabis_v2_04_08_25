@@ -34,13 +34,13 @@ try:
     from araos.clinical.explainability.sql import (
         SqlAlchemyExplanationRegistry,
         IntelligenceExplanationModel,
-        REDACTED,
+        IntelligenceQueryProcessed,
     )
     _SQL_AVAILABLE = True
 except ImportError:
     SqlAlchemyExplanationRegistry = None  # type: ignore[misc,assignment]
     IntelligenceExplanationModel = None   # type: ignore[misc,assignment]
-    REDACTED = None  # type: ignore[misc,assignment]
+    IntelligenceQueryProcessed = None  # type: ignore[misc,assignment]
     _SQL_AVAILABLE = False
 
 __all__ = [
@@ -50,6 +50,6 @@ __all__ = [
     "InMemoryExplanationRegistry",
     "SqlAlchemyExplanationRegistry",
     "IntelligenceExplanationModel",
-    "REDACTED",
+    "IntelligenceQueryProcessed",
     "new_explanation_id",
 ]

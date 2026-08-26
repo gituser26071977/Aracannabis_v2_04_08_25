@@ -71,7 +71,7 @@ def _to_datetime(value: Any) -> Optional[datetime]:
     return None
 
 
-class REDACTED:
+class NeurodevelopmentalProjectionEngine:
     """
     Engine de projeção do Neurodevelopmental Registry.
 

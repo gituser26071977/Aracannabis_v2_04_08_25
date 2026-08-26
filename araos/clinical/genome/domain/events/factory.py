@@ -165,7 +165,7 @@ def make_expression_unknown_recorded(
     )
 
 
-def REDACTED(
+def make_expression_unavailable_recorded(
     *,
     tenant_id: str,
     patient_id: str,

@@ -103,8 +103,7 @@ def build_sleep_questionnaire() -> FollowupQuestionnaire:
     return q
 
 
-def REDACTED() -> FollowupQuestionnaire:
-    """Questionário de qualidade de vida."""
+def build_qol_questionnaire() -> FollowupQuestionnaire:
     q = FollowupQuestionnaire(
         questionnaire_id="cannabis_qol_v1",
         name="Qualidade de Vida",
@@ -121,8 +120,7 @@ def REDACTED() -> FollowupQuestionnaire:
     return q
 
 
-def REDACTED() -> FollowupQuestionnaire:
-    """Questionário de efeitos adversos."""
+def build_adverse_effects_questionnaire() -> FollowupQuestionnaire:
     q = FollowupQuestionnaire(
         questionnaire_id="cannabis_adverse_v1",
         name="Efeitos Adversos",
@@ -277,7 +275,7 @@ def build_initial_phase() -> FollowupPhase:
         description="Avaliação de sintomas e efeitos adversos",
         day_offset=5,
         window_days=1,
-        questionnaire=REDACTED(),
+        questionnaire=build_adverse_effects_questionnaire(),
     ))
 
     # D+10: Avaliação completa
@@ -403,8 +401,8 @@ def build_cannabis_followup_program() -> SpecialtyFollowupProgram:
     program.add_questionnaire(build_pain_questionnaire())
     program.add_questionnaire(build_anxiety_questionnaire())
     program.add_questionnaire(build_sleep_questionnaire())
-    program.add_questionnaire(REDACTED())
-    program.add_questionnaire(REDACTED())
+    program.add_questionnaire(build_qol_questionnaire())
+    program.add_questionnaire(build_adverse_effects_questionnaire())
     program.add_questionnaire(build_adherence_questionnaire())
 
     # Regras de escalonamento

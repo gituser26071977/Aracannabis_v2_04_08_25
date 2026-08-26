@@ -229,7 +229,7 @@ def handle_diagnosis_discarded(
     diag.last_sequence = event["sequence"]
 
 
-def REDACTED(
+def handle_diagnosis_classification_added(
     session: Session, event: Dict[str, Any]
 ) -> None:
     payload = event["payload"]
@@ -263,7 +263,7 @@ def REDACTED(
     diag.last_sequence = event["sequence"]
 
 
-def REDACTED(
+def handle_diagnosis_classification_removed(
     session: Session, event: Dict[str, Any]
 ) -> None:
     payload = event["payload"]
@@ -625,8 +625,8 @@ HANDLERS: Dict[str, Callable[[Session, Dict[str, Any]], None]] = {
     "DIAGNOSIS_REVISED": handle_diagnosis_revised,
     "DIAGNOSIS_IN_REMISSION": handle_diagnosis_in_remission,
     "DIAGNOSIS_DISCARDED": handle_diagnosis_discarded,
-    "DIAGNOSIS_CLASSIFICATION_ADDED": REDACTED,
-    "DIAGNOSIS_CLASSIFICATION_REMOVED": REDACTED,
+    "DIAGNOSIS_CLASSIFICATION_ADDED": handle_diagnosis_classification_added,
+    "DIAGNOSIS_CLASSIFICATION_REMOVED": handle_diagnosis_classification_removed,
     # Phenotype
     "PHENOTYPE_OBSERVED": handle_phenotype_observed,
     "PHENOTYPE_RESOLVED": handle_phenotype_resolved,

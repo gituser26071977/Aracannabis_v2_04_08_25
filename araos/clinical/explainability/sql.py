@@ -53,7 +53,7 @@ class IntelligenceExplanationModel(AuditFieldsMixin, Base):
     """SQL projection de uma Explanation.
 
     Espelha a tabela `intelligence_explanations` definida na migration
-    REDACTED.
+    2026_07_15_cee_s31.
     """
 
     __tablename__ = "intelligence_explanations"
@@ -91,7 +91,7 @@ class IntelligenceExplanationModel(AuditFieldsMixin, Base):
     )
 
 
-class REDACTED(Base):
+class IntelligenceQueryProcessed(Base):
     """Tracker de queries pesadas do Timeline (idempotência + auditoria)."""
 
     __tablename__ = "intelligence_query_processed"

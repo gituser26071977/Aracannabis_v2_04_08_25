@@ -88,10 +88,10 @@ class NeuroRegistryClinicalIdentityModel(AuditFieldsMixin, Base):
         # 1 ClinicalIdentity por patient_id por tenant
         UniqueConstraint(
             "tenant_id", "patient_id",
-            name="REDACTED",
+            name="uq_neuro_registry_identities_tenant_patient",
         ),
         Index(
-            "REDACTED",
+            "ix_neuro_registry_identities_tenant_status",
             "tenant_id", "status",
         ),
     )
@@ -164,11 +164,11 @@ class NeuroRegistryDiagnosisModel(AuditFieldsMixin, Base):
 
     __table_args__ = (
         Index(
-            "REDACTED",
+            "ix_neuro_registry_diag_identity_state",
             "identity_id", "state",
         ),
         Index(
-            "REDACTED",
+            "ix_neuro_registry_diag_tenant_state",
             "tenant_id", "state",
         ),
     )
@@ -235,7 +235,7 @@ class NeuroRegistryPhenotypeModel(AuditFieldsMixin, Base):
 
     __table_args__ = (
         Index(
-            "REDACTED",
+            "ix_neuro_registry_pheno_identity_active",
             "identity_id", "is_active",
         ),
     )
@@ -301,202 +301,8 @@ class NeuroRegistryAssessmentModel(AuditFieldsMixin, Base):
     )
 
     __table_args__ = (
-        Index(
-            "REDACTED",
-            "identity_id", "scale_code",
-        ),
-    )
-
-    def __repr__(self) -> str:
-        return (
-            f"<NeuroRegistryAssessmentModel id={self.id!r} "
-            f"scale={self.scale_code!r} v={self.scale_version!r}>"
-        )
-
-
-# ═══════════════════════════════════════════════════════════════════════
-# TABLE 5: INTERVENTION (Aggregate Root projection)
-# ═══════════════════════════════════════════════════════════════════════
-
-class NeuroRegistryInterventionModel(AuditFieldsMixin, Base):
-    """Projeção do Intervention aggregate root."""
-
-    __tablename__ = "neuro_registry_interventions"
-
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    tenant_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
-    patient_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
-
-    identity_id: Mapped[str] = mapped_column(
-        String(36),
-        ForeignKey("neuro_registry_clinical_identities.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
-    )
-
-    intervention_type: Mapped[str] = mapped_column(
-        String(32), nullable=False, index=True
-    )
-    subtype: Mapped[str] = mapped_column(String(100), nullable=False)
-    state: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
-
-    dose: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
-    previous_dose: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
-    indication_condition_code: Mapped[Optional[str]] = mapped_column(
-        String(64), nullable=True
-    )
-    linked_diagnosis_ids: Mapped[List[str]] = mapped_column(JSON, default=list)
-    prescriber_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
-    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-
-    started_by: Mapped[str] = mapped_column(String(36), nullable=False)
-    start_date: Mapped[str] = mapped_column(String(10), nullable=False)
-
-    end_date: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
-    stop_reason: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
-    stop_outcome_summary: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    pause_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    expected_resume_date: Mapped[Optional[str]] = mapped_column(
-        String(10), nullable=True
-    )
-
-    is_active: Mapped[bool] = mapped_column(default=True, nullable=False, index=True)
-    is_paused: Mapped[bool] = mapped_column(default=False, nullable=False)
-
-    source_event_ids: Mapped[List[str]] = mapped_column(JSON, default=list)
-    last_sequence: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=_now_utc
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=_now_utc, onupdate=_now_utc
-    )
-    deleted_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-
-    __table_args__ = (
-        Index(
-            "REDACTED",
-            "identity_id", "state",
-        ),
-    )
-
-    def __repr__(self) -> str:
-        return (
-            f"<NeuroRegistryInterventionModel id={self.id!r} "
-            f"type={self.intervention_type!r} state={self.state!r}>"
-        )
-
-
-# ═══════════════════════════════════════════════════════════════════════
-# TABLE 6: OUTCOME (Entity projection)
-# ═══════════════════════════════════════════════════════════════════════
-
-class NeuroRegistryOutcomeModel(AuditFieldsMixin, Base):
-    """Projeção do Outcome entity."""
-
-    __tablename__ = "neuro_registry_outcomes"
-
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    tenant_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
-    patient_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
-
-    identity_id: Mapped[str] = mapped_column(
-        String(36),
-        ForeignKey("neuro_registry_clinical_identities.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
-    )
-
-    outcome_type: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
-
-    observed_by: Mapped[str] = mapped_column(String(36), nullable=False)
-    observed_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
-
-    evidence: Mapped[Dict[str, Any]] = mapped_column(JSON, default=dict)
-    intervention_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
-
-    magnitude: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
-    severity: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
-    causality: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
-    action_taken: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-
-    duration_months: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    responding_domains: Mapped[List[str]] = mapped_column(JSON, default=list)
-    non_responding_domains: Mapped[List[str]] = mapped_column(JSON, default=list)
-    duration_observed_months: Mapped[Optional[int]] = mapped_column(
-        Integer, nullable=True
-    )
-    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-
-    source_event_ids: Mapped[List[str]] = mapped_column(JSON, default=list)
-    last_sequence: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=_now_utc
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=_now_utc, onupdate=_now_utc
-    )
-    deleted_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-
-    __table_args__ = (
-        Index(
-            "REDACTED",
-            "identity_id", "outcome_type",
-        ),
-    )
-
-    def __repr__(self) -> str:
-        return (
-            f"<NeuroRegistryOutcomeModel id={self.id!r} "
-            f"type={self.outcome_type!r}>"
-        )
-
-
-# ═══════════════════════════════════════════════════════════════════════
-# TABLE 7: PROCESSED EVENTS (idempotency)
-# ═══════════════════════════════════════════════════════════════════════
-
-class NeuroRegistryProcessedEventModel(Base):
-    """
-    Rastro de eventos aplicados ao Registry.
-
-    Usado para:
-        1. Idempotência — não aplicar mesmo event_id duas vezes.
-        2. Auditoria — quantos eventos foram processados por tenant.
-        3. Replay incremental — saber onde parou.
-    """
-
-    __tablename__ = "neuro_registry_processed_events"
-
-    event_id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    tenant_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
-    patient_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
-
-    event_type: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
-    aggregate_type: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
-    aggregate_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
-
-    sequence: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
-    event_datetime: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
-
-    processed_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=_now_utc
-    )
-
-    __table_args__ = (
-        Index(
-            "REDACTED",
+Index(
+            "ix_neuro_registry_outcomes_identity_type",
             "tenant_id", "sequence",
         ),
     )

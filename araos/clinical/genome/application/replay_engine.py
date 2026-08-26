@@ -134,7 +134,7 @@ def _ensure_aware(dt: datetime) -> datetime:
     return dt
 
 
-def REDACTED(event: DomainEvent) -> Explanation:
+def _explain_from_event(event: DomainEvent) -> Explanation:
     """Reconstrói uma Explanation mínima a partir de um evento."""
     return Explanation(
         explanation_id=event.payload.get("explanation_reference", f"replay_{event.event_id}"),
@@ -223,7 +223,7 @@ class ReplayEngine:
 
         if et in (EXPRESSION_OBSERVED, EXPRESSION_REPLACED, EXPRESSION_DERIVED_COMPUTED):
             expression = _reconstruct_expression_from_event(event)
-            explanation = REDACTED(event)
+            explanation = _explain_from_event(event)
             return gene.replace_expression(
                 expression,
                 event_id=event.event_id,
@@ -263,7 +263,7 @@ class ReplayEngine:
                 state=state,
                 sequence=event.sequence,
             )
-            explanation = REDACTED(event)
+            explanation = _explain_from_event(event)
             return gene.replace_expression(
                 expression,
                 event_id=event.event_id,

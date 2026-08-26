@@ -656,11 +656,8 @@ _EVENT_CATALOG: Dict[str, EventDefinition] = {
         consumers=["audit", "timeline", "digital_twin", "observatory_etl"],
         sensitive=True,
     ),
-    "REDACTED": EventDefinition(
-        event_type="REDACTED",
-        domain="neurodevelopmental",
-        action="removed",
-        aggregate_type="neuro_condition",
+    "NEURODEVELOPMENTAL_CONDITION_REMOVED": EventDefinition(
+        event_type="NEURODEVELOPMENTAL_CONDITION_REMOVED",
         description="Condição neurodesenvolvimental removida",
         consumers=["audit", "timeline", "digital_twin"],
         sensitive=True,
@@ -683,8 +680,8 @@ _EVENT_CATALOG: Dict[str, EventDefinition] = {
         consumers=["audit", "dashboard_cache"],
         sensitive=True,
     ),
-    "REDACTED": EventDefinition(
-        event_type="REDACTED",
+    "NEURODEVELOPMENTAL_MEDICATION_STARTED": EventDefinition(
+        event_type="NEURODEVELOPMENTAL_MEDICATION_STARTED",
         domain="neurodevelopmental",
         action="started",
         aggregate_type="neuro_medication",
@@ -692,8 +689,8 @@ _EVENT_CATALOG: Dict[str, EventDefinition] = {
         consumers=["audit", "timeline", "dashboard_cache"],
         sensitive=True,
     ),
-    "REDACTED": EventDefinition(
-        event_type="REDACTED",
+    "NEURODEVELOPMENTAL_MEDICATION_CHANGED": EventDefinition(
+        event_type="NEURODEVELOPMENTAL_MEDICATION_CHANGED",
         domain="neurodevelopmental",
         action="changed",
         aggregate_type="neuro_medication",
@@ -701,8 +698,8 @@ _EVENT_CATALOG: Dict[str, EventDefinition] = {
         consumers=["audit", "timeline", "dashboard_cache"],
         sensitive=True,
     ),
-    "REDACTED": EventDefinition(
-        event_type="REDACTED",
+    "NEURODEVELOPMENTAL_MEDICATION_STOPPED": EventDefinition(
+        event_type="NEURODEVELOPMENTAL_MEDICATION_STOPPED",
         domain="neurodevelopmental",
         action="stopped",
         aggregate_type="neuro_medication",
@@ -710,8 +707,8 @@ _EVENT_CATALOG: Dict[str, EventDefinition] = {
         consumers=["audit", "timeline", "dashboard_cache"],
         sensitive=True,
     ),
-    "REDACTED": EventDefinition(
-        event_type="REDACTED",
+    "NEURODEVELOPMENTAL_CANNABIS_REGIMEN_STARTED": EventDefinition(
+        event_type="NEURODEVELOPMENTAL_CANNABIS_REGIMEN_STARTED",
         domain="neurodevelopmental",
         action="started",
         aggregate_type="neuro_cannabis_regimen",
@@ -719,8 +716,8 @@ _EVENT_CATALOG: Dict[str, EventDefinition] = {
         consumers=["audit", "timeline", "observatory_etl"],
         sensitive=True,
     ),
-    "REDACTED": EventDefinition(
-        event_type="REDACTED",
+    "NEURODEVELOPMENTAL_CANNABIS_REGIMEN_CHANGED": EventDefinition(
+        event_type="NEURODEVELOPMENTAL_CANNABIS_REGIMEN_CHANGED",
         domain="neurodevelopmental",
         action="changed",
         aggregate_type="neuro_cannabis_regimen",
@@ -737,8 +734,8 @@ _EVENT_CATALOG: Dict[str, EventDefinition] = {
         consumers=["audit", "timeline"],
         sensitive=True,
     ),
-    "REDACTED": EventDefinition(
-        event_type="REDACTED",
+    "NEURODEVELOPMENTAL_REPORT_GENERATED": EventDefinition(
+        event_type="NEURODEVELOPMENTAL_REPORT_GENERATED",
         domain="neurodevelopmental",
         action="generated",
         aggregate_type="neuro_report",
@@ -746,8 +743,8 @@ _EVENT_CATALOG: Dict[str, EventDefinition] = {
         consumers=["audit"],
         sensitive=True,
     ),
-    "REDACTED": EventDefinition(
-        event_type="REDACTED",
+    "NEURODEVELOPMENTAL_AI_SUMMARY_GENERATED": EventDefinition(
+        event_type="NEURODEVELOPMENTAL_AI_SUMMARY_GENERATED",
         domain="neurodevelopmental",
         action="generated",
         aggregate_type="neuro_ai_summary",
@@ -755,8 +752,8 @@ _EVENT_CATALOG: Dict[str, EventDefinition] = {
         consumers=["audit", "knowledge"],
         sensitive=True,
     ),
-    "REDACTED": EventDefinition(
-        event_type="REDACTED",
+    "NEURODEVELOPMENTAL_RESEARCH_EXPORT_REQUESTED": EventDefinition(
+        event_type="NEURODEVELOPMENTAL_RESEARCH_EXPORT_REQUESTED",
         domain="neurodevelopmental",
         action="requested",
         aggregate_type="neuro_research_export",

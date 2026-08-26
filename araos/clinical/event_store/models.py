@@ -159,7 +159,7 @@ class ClinicalEventModel(Base, AuditFieldsMixin):
     __table_args__ = (
         # Queries típicas: "todos os eventos do paciente X ordenados por data"
         Index(
-            "REDACTED",
+            "ix_clinical_events_tenant_patient_datetime",
             "tenant_id", "patient_id", "event_datetime",
         ),
         # Filtros por tipo (dashboards, IA)

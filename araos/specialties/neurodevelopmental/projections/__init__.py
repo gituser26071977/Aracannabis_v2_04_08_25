@@ -30,7 +30,7 @@ from .db_models import (
     NeuroRegistryPhenotypeModel,
     NeuroRegistryProcessedEventModel,
 )
-from .registry import REDACTED
+from .registry import NeurodevelopmentalProjectionEngine
 
 __all__ = [
     "NeuroRegistryClinicalIdentityModel",
@@ -40,5 +40,5 @@ __all__ = [
     "NeuroRegistryInterventionModel",
     "NeuroRegistryOutcomeModel",
     "NeuroRegistryProcessedEventModel",
-    "REDACTED",
+    "NeurodevelopmentalProjectionEngine",
 ]
