@@ -477,7 +477,7 @@ class DrAndersonAgent:
         keywords = ["vaga", "horário", "agenda", "disponib", "segunda", "terça", "quarta", "quinta", "sexta", "amanhã", "próximos", "atendimento", "consulta", "marcar", "agendar"]
         if any(k in message.lower() for k in keywords):
             info = self._obter_info_agenda(message)
-            prompt += f"\n\n--- DADOS REAIS DO SISTEMA AGORA ---\n{info}\REDACTED"
+            prompt += f"\n\n--- DADOS REAIS DO SISTEMA AGORA ---\n{info} REDACTED"
 
         messages = [{"role": "system", "content": prompt}]
         if state["history"]:
@@ -672,7 +672,7 @@ class DrAndersonAgent:
         keywords = ["vaga", "horário", "agenda", "disponib", "segunda", "terça", "quarta", "quinta", "sexta", "amanhã", "próximos", "atendimento", "consulta", "marcar", "agendar"]
         if any(k in message.lower() for k in keywords):
             info = self._obter_info_agenda(message)
-            prompt += f"\n\n--- DADOS REAIS DO SISTEMA AGORA ---\n{info}\REDACTED"
+            prompt += f"\n\n--- DADOS REAIS DO SISTEMA AGORA ---\n{info} REDACTED"
 
         messages = [{"role": "system", "content": prompt}]
         if state["history"]:

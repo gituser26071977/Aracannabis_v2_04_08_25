@@ -347,7 +347,7 @@ def remover_sintoma_personalizado(sintoma_id):
 
 @sintomas_bp.route('/sintoma-personalizado', methods=['DELETE'])
 @jwt_required()
-def REDACTED():
+def excluir_sintoma_personalizado_por_nome():
     """Endpoint para excluir um sintoma personalizado por nome"""
     current_user_id = get_jwt_identity()
     profissional_id = int(current_user_id)

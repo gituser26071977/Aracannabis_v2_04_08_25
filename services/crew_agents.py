@@ -958,16 +958,14 @@ def analisar_dispensacoes_associacao(associacao_id: int, dias: int = 30) -> Dict
         return {"error": f"Erro ao analisar dispensações: {str(e)}"}
 
 @tool
-def REDACTED(associacao_id: int) -> Dict:
-    """Consulta status atual do estoque da associação com alertas"""
+def consultar_estoque_associacao(associacao_id: int) -> Dict:
     try:
         return AssociationReportService.get_stock_status(associacao_id)
     except Exception as e:
         return {"error": f"Erro ao consultar estoque: {str(e)}"}
 
 @tool
-def REDACTED(associacao_id: int, periodo_dias: int = 30) -> Dict:
-    """Gera relatório completo consolidado da associação usando IA"""
+def gerar_relatorio_consolidado_associacao(associacao_id: int, periodo_dias: int = 30) -> Dict:
     try:
         # Coletar todos os dados
         overview = AssociationReportService.get_association_overview(associacao_id)
@@ -1022,8 +1020,8 @@ ASSOCIATION_REPORT_TOOLS = [
     obter_overview_associacao,
     gerar_relatorio_atividade_membros,
     analisar_dispensacoes_associacao,
-    REDACTED,
-    REDACTED
+    consultar_estoque_associacao,
+    gerar_relatorio_consolidado_associacao
 ]
 
 # ========== FERRAMENTAS DE VALIDAÇÃO DE PROFISSIONAIS ==========
@@ -1119,8 +1117,7 @@ def gerar_senha_temporaria() -> Dict:
         return {"error": f"Erro ao gerar senha: {str(e)}"}
 
 @tool
-def REDACTED(profissional_id: int, senha_temporaria: str) -> Dict:
-    """Envia email de aprovação com credenciais de acesso"""
+def enviar_email_aprovacao_profissional(profissional_id: int, senha_temporaria: str) -> Dict:
     try:
         from models import Profissional
         
@@ -1209,7 +1206,7 @@ PROFESSIONAL_VALIDATION_TOOLS = [
     aprovar_cadastro_profissional,
     rejeitar_cadastro_profissional,
     gerar_senha_temporaria,
-    REDACTED,
+    enviar_email_aprovacao_profissional,
     enviar_email_rejeicao_profissional
 ]
 

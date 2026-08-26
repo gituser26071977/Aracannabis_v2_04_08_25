@@ -512,7 +512,7 @@ def listar_disponibilidades_publico():
 
 @sdr_bp.route("/disponibilidade/disponiveis", methods=["GET"])
 @jwt_required()
-def REDACTED():
+def listar_disponibilidades_disponiveis():
     """Verifica horários disponíveis para agendamento"""
     current_user_id = get_jwt_identity()
     profissional_id = int(current_user_id)

@@ -7,7 +7,7 @@ cadastros de profissionais automaticamente.
 
 from services.crew_agents import criar_validador_profissionais, validar_crm_profissional
 from services.crew_agents import aprovar_cadastro_profissional, rejeitar_cadastro_profissional
-from services.crew_agents import gerar_senha_temporaria, REDACTED
+from services.crew_agents import gerar_senha_temporaria, enviar_email_aprovacao_profissional
 
 # Exemplo de validação automática
 def validar_profissional_exemplo(profissional_id: int):
@@ -45,7 +45,7 @@ def validar_profissional_exemplo(profissional_id: int):
         print(f"✅ {approval.get('message')}")
         
         # 5. Enviar email com credenciais
-        email_result = REDACTED(profissional_id, senha_temp)
+        email_result = enviar_email_aprovacao_profissional(profissional_id, senha_temp)
         print(f"📧 Email de aprovação enviado: {email_result.get('status')}")
         
         return {

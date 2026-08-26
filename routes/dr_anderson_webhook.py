@@ -126,23 +126,23 @@ def telegram_webhook():
     Recebe Update do Telegram Bot API para o bot dedicado do Dr. Anderson.
 
     Validação: header X-Telegram-Bot-Api-Secret-Token comparado via
-    compare_digest contra REDACTED.
+    compare_digest contra DR_ANDERSON_WEBHOOK_SECRET.
 
     Configurar no BotFather/setWebhook o header
-    `secret_token=<REDACTED>` apontando para
+    `secret_token=<DR_ANDERSON_WEBHOOK_SECRET>` apontando para
     https://api.visualsmartflow.com.br/api/dr-anderson/webhooks/telegram.
     """
     import hmac
 
     # Validação do secret header do Telegram
     expected_secret = os.environ.get(
-        "REDACTED", ""
+        "DR_ANDERSON_WEBHOOK_SECRET", ""
     ).strip()
     header_secret = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
 
     if not expected_secret:
         logger.error(
-            "[dr_anderson_telegram_webhook] REDACTED "
+            "[dr_anderson_telegram_webhook] DR_ANDERSON_WEBHOOK_SECRET "
             "nao configurado"
         )
         return jsonify({"error": "server misconfigured"}), 500

@@ -105,7 +105,7 @@ def _publisher() -> ClinicalEventPublisher:
     return pub
 
 
-def _projection() -> REDACTED:
+def _projection() -> NeurodevelopmentalProjectionEngine:
     proj = current_app.config.get("NEURO_REGISTRY_PROJECTION")
     if proj is None:
         raise RuntimeError(
