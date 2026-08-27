@@ -45,17 +45,8 @@ import RelatoriosFinanceirosPage from './pages/RelatoriosFinanceirosPage';
 import AIConfigPage from './pages/AIConfigPage';
 import PasswordSetupRequestPage from './pages/PasswordSetupRequestPage';
 import DefinePasswordPage from './pages/DefinePasswordPage';
-import MobileUploadPage from './pages/MobileUploadPage';
 import PaymentStatusPage from './pages/PaymentStatusPage';
 import BatchImportPage from './pages/BatchImportPage';
-import IntelligentImportPage from './pages/IntelligentImportPage';
-import AssociationPage from './pages/association/AssociationPage';
-import MembersPage from './pages/association/MembersPage';
-import StockPage from './pages/association/StockPage';
-import DispensationPage from './pages/association/DispensationPage';
-import ConfiguracaoPrescricaoPage from './pages/ConfiguracaoPrescricaoPage';
-import ConfiguracaoIAPage from './pages/ConfiguracaoIAPage';
-import CatalogoPage from './pages/CatalogoPage';
 import ConfigurarUnidadePage from './pages/ConfigurarUnidadePage';
 import OnboardingPage from './pages/OnboardingPage';
 import TrialEndingPage from './pages/TrialEndingPage';
@@ -804,24 +795,7 @@ function AppContent() {
                 </AdminRoute>
               }
             />
-            <Route path="/mobile-upload/:token" element={<MobileUploadPage />} />
             <Route path="/seguranca" element={<SecurityPage />} />
-            <Route
-              path="/configuracao-prescricao"
-              element={
-                <ProtectedRoute>
-                  <ConfiguracaoPrescricaoPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/configuracao-ia"
-              element={
-                <ProtectedRoute>
-                  <ConfiguracaoIAPage />
-                </ProtectedRoute>
-              }
-            />
             <Route
               path="/configurar-unidade"
               element={
@@ -830,63 +804,6 @@ function AppContent() {
                 </ProtectedRoute>
               }
             />
-            {habilitarCannabis && (
-              <Route
-                path="/catalogo"
-                element={
-                  <ProtectedRoute>
-                    <CatalogoPage />
-                  </ProtectedRoute>
-                }
-              />
-            )}
-
-            {/* Association Module Routes (cannabis medicinal) */}
-            {habilitarCannabis && (
-              <>
-                <Route
-                  path="/association"
-                  element={
-                    <ProtectedRoute>
-                      <AssociationPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/association/members"
-                  element={
-                    <ProtectedRoute>
-                      <MembersPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/association/stock"
-                  element={
-                    <ProtectedRoute>
-                      <StockPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/association/dispensation"
-                  element={
-                    <ProtectedRoute>
-                      <DispensationPage />
-                    </ProtectedRoute>
-                  }
-                />
-              </>
-            )}
-            <Route
-              path="/intelligent-import"
-              element={
-                <ProtectedRoute>
-                  <IntelligentImportPage />
-                </ProtectedRoute>
-              }
-            />
-
             {/* Specialty Modules */}
             <Route
               path="/modulos"

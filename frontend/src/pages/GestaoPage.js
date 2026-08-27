@@ -14,21 +14,15 @@ import {
   PersonAdd,
   ReceiptLong,
   LocalHospital,
-  Category,
   Extension,
-  Settings,
   Security,
   SmartToy,
-  Storefront,
-  Inventory2,
-  Groups,
   AdminPanelSettings,
   Assessment,
   CheckCircle,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { useModulos } from '../contexts/ModulosContext';
 
 function RoutineCard({ icon, title, description, onClick, emBreve }) {
   return (
@@ -90,15 +84,10 @@ function RoutineGroup({ title, children }) {
 function GestaoPage() {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
-  const { hasModulo } = useModulos();
   const ehAdmin = currentUser?.role === 'admin' || currentUser?.role === 'superadmin';
-  // Admin/superadmin têm perfil solo — nunca são tratados como assistencial-only,
-  // mesmo quando perfil_efetivo ainda não foi carregado (undefined) após o login.
   const ehAssistencial = ehAdmin
     ? false
     : (currentUser?.perfil_efetivo || 'assistencial') === 'assistencial';
-  // Estoque/Gestão da Clínica são específicos do fluxo canabinoide.
-  const habilitarCannabis = hasModulo('cannabis-medicinal');
 
   return (
     <Box p={3}>
@@ -159,68 +148,13 @@ function GestaoPage() {
         </RoutineGroup>
       )}
 
-      {!ehAssistencial && habilitarCannabis && (
-        <RoutineGroup title="OPERAÇÕES">
-          <Grid item xs={12} sm={6} md={4}>
-            <RoutineCard
-              icon={<Inventory2 fontSize="large" />}
-              title="Estoque"
-              description="Controle de produtos, medicamentos e dispensação."
-              onClick={() => navigate('/association/stock')}
-            />
-          </Grid>
-          <Grid item xs={12} sm={6} md={4}>
-            <RoutineCard
-              icon={<Storefront fontSize="large" />}
-              title="Marketplace"
-              description="Venda de produtos e serviços da clínica."
-              emBreve
-            />
-          </Grid>
-          <Grid item xs={12} sm={6} md={4}>
-            <RoutineCard
-              icon={<Groups fontSize="large" />}
-              title="Gestão da Clínica"
-              description="Cadastro da clínica, convites e membros da equipe."
-              onClick={() => navigate('/association')}
-            />
-          </Grid>
-        </RoutineGroup>
-      )}
-
       <RoutineGroup title="CONFIGURAÇÕES">
-        <Grid item xs={12} sm={6} md={4}>
-          <RoutineCard
-            icon={<LocalHospital fontSize="large" />}
-            title="Configurar Receituário"
-            description="Modelo do receituário e assinatura."
-            onClick={() => navigate('/configuracao-prescricao')}
-          />
-        </Grid>
-        {habilitarCannabis && (
-          <Grid item xs={12} sm={6} md={4}>
-            <RoutineCard
-              icon={<Category fontSize="large" />}
-              title="Catálogo → Importar por IA"
-              description="Importe produtos/procedimentos com IA."
-              onClick={() => navigate('/catalogo')}
-            />
-          </Grid>
-        )}
         <Grid item xs={12} sm={6} md={4}>
           <RoutineCard
             icon={<Extension fontSize="large" />}
             title="Módulos de Especialidade"
             description="Escalas e módulos por especialidade."
             onClick={() => navigate('/modulos')}
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={4}>
-          <RoutineCard
-            icon={<Settings fontSize="large" />}
-            title="Configurar IA SDR"
-            description="Agente comercial / SDR."
-            onClick={() => navigate('/configuracao-ia')}
           />
         </Grid>
         <Grid item xs={12} sm={6} md={4}>

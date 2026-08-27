@@ -61,13 +61,6 @@ const NavigationMenu = ({ open, onClose }) => {
       auth: true,
       area: 'assistencial',
     },
-    {
-      text: '📝 Configurar Receituário',
-      icon: <LocalHospitalIcon />,
-      path: '/configuracao-prescricao',
-      auth: true,
-      area: 'assistencial',
-    },
   ];
 
   const gestaoItem = {

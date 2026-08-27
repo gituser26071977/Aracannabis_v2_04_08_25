@@ -260,7 +260,6 @@ def create_app(config_obj=None):
     from routes.consultas import consultas_bp
     from routes.import_export import import_export_bp
     from routes.produtos import produtos_bp
-    from routes.catalogo_routes import catalogo_bp
     from routes.voice import voice_bp
     from routes.cadastro_profissionais import (
         cadastro_profissionais_bp as cadastro_prof_bp,
@@ -279,7 +278,6 @@ def create_app(config_obj=None):
     from routes.ai_chat_simples import ai_chat_simples_bp
     from routes.gad7 import gad7_bp
     from routes.dynamic_tenant_webhook import tenant_webhook_bp
-    from routes.config_ia_tenant import config_ia_tenant_bp
     from routes.sdr import sdr_bp
     from routes.anamneses import anamneses_bp
 
@@ -295,10 +293,8 @@ def create_app(config_obj=None):
     app.register_blueprint(consultas_bp, url_prefix="/api/consultas")
     app.register_blueprint(import_export_bp, url_prefix="/api/import-export")
     app.register_blueprint(produtos_bp, url_prefix="/api")
-    app.register_blueprint(catalogo_bp)
     app.register_blueprint(voice_bp)
     app.register_blueprint(tenant_webhook_bp, url_prefix="/api/tenant")
-    app.register_blueprint(config_ia_tenant_bp, url_prefix="/api/tenant-config")
     app.register_blueprint(sdr_bp, url_prefix="/api/sdr")
     app.register_blueprint(anamneses_bp)
     app.register_blueprint(cadastro_prof_bp, url_prefix="/api/cadastro_profissionais")
@@ -322,9 +318,6 @@ def create_app(config_obj=None):
     from routes.prescricoes import prescricoes_bp
 
     app.register_blueprint(prescricoes_bp, url_prefix="/api/prescricoes")
-    from routes.prescricao_config import prescricao_config_bp
-
-    app.register_blueprint(prescricao_config_bp, url_prefix="/api/prescricao-config")
     from routes.mercadopago import mercadopago_bp
 
     app.register_blueprint(mercadopago_bp, url_prefix="/api/mercadopago")
@@ -411,16 +404,6 @@ def create_app(config_obj=None):
 
     app.register_blueprint(patient_auth_bp, url_prefix="/api/patient-auth")
     app.register_blueprint(patient_portal_bp, url_prefix="/api/patient-portal")
-
-    # Association Management Module
-    from association.routes import association_bp
-
-    app.register_blueprint(association_bp, url_prefix="/api/association")
-
-    # [NEW] Intelligent Import (multi-tenant staff + schedule import)
-    from routes.intelligent_import import intelligent_import_bp
-
-    app.register_blueprint(intelligent_import_bp, url_prefix="/api")
 
     # [NEW] Ara Intake → AraOS (Clinical Events Fase 0)
     from routes.clinical_intake import clinical_intake_bp
