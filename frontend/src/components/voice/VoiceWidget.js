@@ -1,9 +1,9 @@
 /**
  * ARAOS Voice Widget
- * 
+ *
  * Componente visual para o Copiloto Clínico por Voz.
  * Integra com VoiceService para captura, transcrição e controle.
- * 
+ *
  * Estados visuais:
  *   - idle: Aguardando (botão verde)
  *   - listening: Capturando áudio (onda animada, azul)
@@ -72,7 +72,11 @@ export default function VoiceWidget({
   const [transcript, setTranscript] = useState([]);
   const [error, setError] = useState(null);
   const [currentSegment, setCurrentSegment] = useState(null);
+  const [suggestions, setSuggestions] = useState([]);
+  const [actionProposals, setActionProposals] = useState([]);
+  const [actionResults, setActionResults] = useState([]);
   const transcriptEndRef = useRef(null);
+  const audioRef = useRef(null);
 
   // Conectar ao serviço de voz
   useEffect(() => {
@@ -81,11 +85,10 @@ export default function VoiceWidget({
     };
 
     voiceService.onTranscription = (payload) => {
-      setTranscript(prev => {
-        // Evitar duplicatas
-        const exists = prev.find(t => t.id === payload.id);
+      setTranscript((prev) => {
+        const exists = prev.find((t) => t.id === payload.id);
         if (exists) {
-          return prev.map(t => t.id === payload.id ? payload : t);
+          return prev.map((t) => (t.id === payload.id ? payload : t));
         }
         return [...prev, payload];
       });
@@ -96,9 +99,28 @@ export default function VoiceWidget({
       }
     };
 
-    voiceService.onError = (message) => {
-      setError(message);
-      setTimeout(() => setError(null), 5000);
+    voiceService.onSuggestion = (payload) => {
+      setSuggestions((prev) => [...prev, { ...payload, id: Date.now() }]);
+      setTimeout(() => {
+        setSuggestions((prev) => prev.filter((s) => s.id !== Date.now()));
+      }, 8000);
+    };
+
+    voiceService.onActionProposal = (payload) => {
+      setActionProposals((prev) => [...prev, payload]);
+    };
+
+    voiceService.onActionResult = (payload) => {
+      setActionResults((prev) => [...prev, payload]);
+      // Remover da fila de propostas
+      setActionProposals((prev) => prev.filter((a) => a.action_id !== payload.action_id));
+    };
+
+    voiceService.onTTSAudio = (payload) => {
+      if (audioRef.current) {
+        audioRef.current.src = payload.audio;
+        audioRef.current.play().catch((e) => console.warn('[Voice] TTS playback:', e));
+      }
     };
 
     // Tentar conectar automaticamente quando o widget abrir
@@ -222,7 +244,8 @@ export default function VoiceWidget({
               size="small"
               label={stateConfig.label}
               sx={{
-                bgcolor: (t) => t.palette.mode === 'dark' ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.25)',
+                bgcolor: (t) =>
+                  t.palette.mode === 'dark' ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.25)',
                 color: 'primary.contrastText',
                 fontWeight: 'bold',
                 fontSize: '0.7rem',
@@ -261,18 +284,79 @@ export default function VoiceWidget({
             bgcolor: 'background.default',
           }}
         >
-          {transcript.length === 0 && !currentSegment && (
-            <Typography
-              variant="body2"
-              color="text.secondary"
-              align="center"
-              sx={{ mt: 8 }}
+          {transcript.length === 0 &&
+            !currentSegment &&
+            suggestions.length === 0 &&
+            actionProposals.length === 0 && (
+              <Typography variant="body2" color="text.secondary" align="center" sx={{ mt: 8 }}>
+                A transcrição aparecerá aqui...
+                <br />
+                Pressione o botão do microfone para começar.
+              </Typography>
+            )}
+
+          {/* Sugestões do Copilot */}
+          {suggestions.map((sug) => (
+            <Paper key={sug.id} sx={{ p: 1.5, mb: 1, bgcolor: '#e8f5e9', borderRadius: 2 }}>
+              <Typography variant="caption" color="text.secondary" fontWeight="bold">
+                {sug.is_wake_word ? '🎤 Comando detectado' : '💡 Sugestão'}
+              </Typography>
+              <Typography variant="body2" sx={{ mt: 0.5 }}>
+                {sug.text}
+              </Typography>
+            </Paper>
+          ))}
+
+          {/* Ações propostas */}
+          {actionProposals.map((action) => (
+            <Paper
+              key={action.action_id}
+              sx={{ p: 1.5, mb: 1, bgcolor: '#fff3e0', borderRadius: 2 }}
             >
-              A transcrição aparecerá aqui...
-              <br />
-              Pressione o botão do microfone para começar.
-            </Typography>
-          )}
+              <Typography variant="caption" color="text.secondary" fontWeight="bold">
+                ⚡ Ação proposta: {action.action_type}
+              </Typography>
+              <Typography variant="body2" sx={{ mt: 0.5 }}>
+                {action.description}
+              </Typography>
+              <Box sx={{ mt: 1, display: 'flex', gap: 1 }}>
+                <Chip
+                  size="small"
+                  label="Confirmar"
+                  color="success"
+                  onClick={() => voiceService.confirmAction(action.action_id, true)}
+                  clickable
+                />
+                <Chip
+                  size="small"
+                  label="Recusar"
+                  color="error"
+                  onClick={() => voiceService.confirmAction(action.action_id, false)}
+                  clickable
+                />
+              </Box>
+            </Paper>
+          ))}
+
+          {/* Resultados de ações */}
+          {actionResults.map((res) => (
+            <Paper
+              key={res.action_id + res.status}
+              sx={{
+                p: 1.5,
+                mb: 1,
+                bgcolor: res.status === 'executed' ? '#e8f5e9' : '#ffebee',
+                borderRadius: 2,
+              }}
+            >
+              <Typography variant="caption" color="text.secondary" fontWeight="bold">
+                {res.status === 'executed' ? '✅ Ação executada' : '❌ Falha na ação'}
+              </Typography>
+              <Typography variant="body2" sx={{ mt: 0.5 }}>
+                {res.message || res.result}
+              </Typography>
+            </Paper>
+          ))}
 
           <List dense disablePadding>
             {transcript.map((segment) => {
@@ -357,9 +441,7 @@ export default function VoiceWidget({
               '&:hover': {
                 bgcolor: isRecording ? '#d32f2f' : stateConfig.color,
               },
-              animation: isRecording
-                ? 'pulse-record 1.2s infinite'
-                : 'none',
+              animation: isRecording ? 'pulse-record 1.2s infinite' : 'none',
               '@keyframes pulse-record': {
                 '0%': { transform: 'scale(1)' },
                 '50%': { transform: 'scale(1.08)' },
@@ -402,10 +484,13 @@ export default function VoiceWidget({
         <Box sx={{ px: 2, pb: 1, textAlign: 'center' }}>
           <Typography variant="caption" color="text.secondary">
             {transcript.length > 0
-              ? `${transcript.length} segmentos • ${transcript.filter(t => t.speaker === 'doctor').length} médico / ${transcript.filter(t => t.speaker === 'patient').length} paciente`
+              ? `${transcript.length} segmentos • ${transcript.filter((t) => t.speaker === 'doctor').length} médico / ${transcript.filter((t) => t.speaker === 'patient').length} paciente`
               : 'ARAOS Voice Copilot v1.0'}
           </Typography>
         </Box>
+
+        {/* Elemento de áudio oculto para TTS */}
+        <audio ref={audioRef} style={{ display: 'none' }} />
       </Paper>
     </Slide>
   );

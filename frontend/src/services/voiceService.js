@@ -17,7 +17,7 @@ class VoiceService {
     this.state = 'disconnected'; // disconnected, connecting, idle, listening, processing, responding, error
     this.reconnectAttempts = 0;
     this.reconnectTimer = null;
-    
+
     // Callbacks
     this.onStateChange = null;
     this.onTranscription = null;
@@ -27,7 +27,7 @@ class VoiceService {
     this.onActionResult = null;
     this.onTTSAudio = null;
     this.onError = null;
-    
+
     // Buffer de áudio
     this.audioContext = null;
     this.mediaStream = null;
@@ -46,9 +46,11 @@ class VoiceService {
     wakeWord = 'Ara',
     language = 'pt-BR',
     mode = 'full',
+    patientName = null,
+    patientAge = null,
   }) {
     if (this.ws?.readyState === WebSocket.OPEN) {
-      if(process.env.NODE_ENV!=='production')console.warn('[Voice] Already connected');
+      if (process.env.NODE_ENV !== 'production') console.warn('[Voice] Already connected');
       return;
     }
 
@@ -62,12 +64,14 @@ class VoiceService {
     wsUrl.searchParams.set('wake_word', wakeWord);
     wsUrl.searchParams.set('language', language);
     wsUrl.searchParams.set('mode', mode);
+    if (patientName) wsUrl.searchParams.set('patient_name', patientName);
+    if (patientAge) wsUrl.searchParams.set('patient_age', patientAge);
 
     return new Promise((resolve, reject) => {
       this.ws = new WebSocket(wsUrl.toString());
 
       this.ws.onopen = () => {
-        if(process.env.NODE_ENV!=='production')console.log('[Voice] WebSocket connected');
+        if (process.env.NODE_ENV !== 'production') console.log('[Voice] WebSocket connected');
         this.reconnectAttempts = 0;
         this._setState('idle');
         resolve();
@@ -78,17 +82,25 @@ class VoiceService {
       };
 
       this.ws.onerror = (error) => {
-        if(process.env.NODE_ENV!=='production')console.error('[Voice] WebSocket error:', error);
+        if (process.env.NODE_ENV !== 'production') console.error('[Voice] WebSocket error:', error);
         this._setState('error');
         if (this.onError) this.onError('Connection error');
         reject(error);
       };
 
       this.ws.onclose = () => {
-        if(process.env.NODE_ENV!=='production')console.log('[Voice] WebSocket closed');
+        if (process.env.NODE_ENV !== 'production') console.log('[Voice] WebSocket closed');
         this._setState('disconnected');
         this._attemptReconnect({
-          tenantId, patientId, doctorId, specialty, wakeWord, language, mode,
+          tenantId,
+          patientId,
+          doctorId,
+          specialty,
+          wakeWord,
+          language,
+          mode,
+          patientName,
+          patientAge,
         });
       };
     });
@@ -117,7 +129,8 @@ class VoiceService {
    */
   async startRecording() {
     if (this.state !== 'idle' && this.state !== 'listening') {
-      if(process.env.NODE_ENV!=='production')console.warn(`[Voice] Cannot start recording in state: ${this.state}`);
+      if (process.env.NODE_ENV !== 'production')
+        console.warn(`[Voice] Cannot start recording in state: ${this.state}`);
       return;
     }
 
@@ -149,10 +162,10 @@ class VoiceService {
 
       this._processor = processor;
       this._setState('listening');
-      if(process.env.NODE_ENV!=='production')console.log('[Voice] Recording started');
-
+      if (process.env.NODE_ENV !== 'production') console.log('[Voice] Recording started');
     } catch (error) {
-      if(process.env.NODE_ENV!=='production')console.error('[Voice] Failed to start recording:', error);
+      if (process.env.NODE_ENV !== 'production')
+        console.error('[Voice] Failed to start recording:', error);
       this._setState('error');
       if (this.onError) this.onError('Microphone access denied');
     }
@@ -167,7 +180,7 @@ class VoiceService {
       this._sendCommand('stop_recording');
     }
     this._setState('idle');
-    if(process.env.NODE_ENV!=='production')console.log('[Voice] Recording stopped');
+    if (process.env.NODE_ENV !== 'production') console.log('[Voice] Recording stopped');
   }
 
   /**
@@ -239,12 +252,14 @@ class VoiceService {
         break;
 
       case 'error':
-        if(process.env.NODE_ENV!=='production')console.error('[Voice] Server error:', payload.message);
+        if (process.env.NODE_ENV !== 'production')
+          console.error('[Voice] Server error:', payload.message);
         if (this.onError) this.onError(payload.message);
         break;
 
       default:
-        if(process.env.NODE_ENV!=='production')console.log('[Voice] Unknown message type:', type, payload);
+        if (process.env.NODE_ENV !== 'production')
+          console.log('[Voice] Unknown message type:', type, payload);
     }
   }
 
@@ -264,7 +279,7 @@ class VoiceService {
       this._processor = null;
     }
     if (this.mediaStream) {
-      this.mediaStream.getTracks().forEach(track => track.stop());
+      this.mediaStream.getTracks().forEach((track) => track.stop());
       this.mediaStream = null;
     }
     if (this.audioContext) {
@@ -277,20 +292,24 @@ class VoiceService {
     const int16Array = new Int16Array(float32Array.length);
     for (let i = 0; i < float32Array.length; i++) {
       const s = Math.max(-1, Math.min(1, float32Array[i]));
-      int16Array[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+      int16Array[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
     }
     return int16Array;
   }
 
   _attemptReconnect(config) {
     if (this.reconnectAttempts >= VOICE_CONFIG.MAX_RECONNECT_ATTEMPTS) {
-      if(process.env.NODE_ENV!=='production')console.error('[Voice] Max reconnect attempts reached');
+      if (process.env.NODE_ENV !== 'production')
+        console.error('[Voice] Max reconnect attempts reached');
       if (this.onError) this.onError('Connection lost. Please refresh.');
       return;
     }
 
     this.reconnectAttempts++;
-    if(process.env.NODE_ENV!=='production')console.log(`[Voice] Reconnecting in ${VOICE_CONFIG.RECONNECT_INTERVAL}ms (attempt ${this.reconnectAttempts})`);
+    if (process.env.NODE_ENV !== 'production')
+      console.log(
+        `[Voice] Reconnecting in ${VOICE_CONFIG.RECONNECT_INTERVAL}ms (attempt ${this.reconnectAttempts})`,
+      );
 
     this.reconnectTimer = setTimeout(() => {
       this.connect(config).catch(() => {

@@ -9,12 +9,18 @@ Componentes:
     - ConversationBuffer: buffer de conversação da consulta
 """
 
-from .components.session_manager import SessionManager, VoiceSession
-from .components.conversation_buffer import ConversationBuffer, ConversationSegment
+from .components.session_manager import SessionManager, VoiceSession, SessionState
+from .components.conversation_buffer import ConversationBuffer, ConversationSegment, ClinicalEntity
+from .components.vad_processor import VADProcessor
+from .components.stt_engine import STTEngine
 
 __all__ = [
     "SessionManager",
     "VoiceSession",
+    "SessionState",
     "ConversationBuffer",
     "ConversationSegment",
+    "ClinicalEntity",
+    "VADProcessor",
+    "STTEngine",
 ]

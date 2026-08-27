@@ -59,6 +59,7 @@ class VoiceSession:
     
     # Metadados
     metadata: Dict[str, Any] = field(default_factory=dict)
+    structured_data: Dict[str, Any] = field(default_factory=dict)
     
     def __post_init__(self):
         self._state_lock = asyncio.Lock()
