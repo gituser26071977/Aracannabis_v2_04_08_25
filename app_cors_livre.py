@@ -499,9 +499,13 @@ def create_app(config_obj=None):
 
     register_subscription_middleware(app)
 
+    from flask import request
+
     # Criar headers de segurança
     @app.after_request
     def apply_security_headers(response):
+        if request.path.startswith('/agendar'):
+            return response
         return add_security_headers(response)
 
     # Controle de acesso por perfil (Assistencial × Administrativo × Solo).
@@ -589,15 +593,15 @@ def create_app(config_obj=None):
             print(f"📁 Diretório de upload criado: {upload_dir}")
 
     # Public Booking page
-    from flask import send_from_directory
-
-    static_dir = os.path.join(app.root_path, "static")
-
     @app.route("/agendar")
     @app.route("/agendar/<path:subpath>")
     def serve_public_booking(subpath=""):
+        static_dir = os.path.join(app.root_path, "static")
         if subpath:
             return send_from_directory(static_dir, subpath)
+        html_path = os.path.join(static_dir, "agendar.html")
+        if not os.path.exists(html_path):
+            return "Página não encontrada", 404
         return send_from_directory(static_dir, "agendar.html")
 
     return app

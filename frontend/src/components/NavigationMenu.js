@@ -26,7 +26,6 @@ import ChatIcon from '@mui/icons-material/Chat';
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import BusinessIcon from '@mui/icons-material/Business';
 import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
-import SmartButtonIcon from '@mui/icons-material/SmartButton';
 import SettingsIcon from '@mui/icons-material/Settings';
 import VerifiedIcon from '@mui/icons-material/Verified';
 
@@ -60,13 +59,6 @@ const NavigationMenu = ({ open, onClose }) => {
       text: '🤖 Agente IA',
       icon: <ChatIcon />,
       path: '/assistente-ia',
-      auth: true,
-      area: 'assistencial',
-    },
-    {
-      text: '📋 Onboarding IA',
-      icon: <SmartButtonIcon />,
-      path: '/onboarding-inteligente',
       auth: true,
       area: 'assistencial',
     },

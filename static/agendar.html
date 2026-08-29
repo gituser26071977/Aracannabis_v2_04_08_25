@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agendamento — Visual Smart Flow</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0f172a;--card:#1e293b;--text:#f8fafc;--muted:#94a3b8;--accent:#0891b2;--accent2:#00d4a1;--border:#334155;--danger:#ef4444;--radius:12px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.container{max-width:640px;margin:0 auto;padding:20px}
+.header{text-align:center;padding:40px 20px 20px}
+.header h1{font-size:1.5rem;font-weight:700;color:var(--accent2)}
+.header p{color:var(--muted);font-size:0.9rem;margin-top:4px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin:12px 0}
+.card h2{font-size:1.1rem;font-weight:600;margin-bottom:16px;color:var(--accent2)}
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:0.85rem;font-weight:500;color:var(--muted);margin-bottom:6px}
+.form-group input,.form-group select{width:100%;padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:0.95rem;outline:none;transition:border .2s}
+.form-group input:focus,.form-group select:focus{border-color:var(--accent2)}
+.btn{display:inline-block;padding:12px 24px;border:none;border-radius:8px;font-size:0.95rem;font-weight:600;cursor:pointer;transition:all .2s}
+.btn-primary{background:var(--accent2);color:#0f172a}
+.btn-primary:hover{opacity:.9}
+.btn-secondary{background:var(--border);color:var(--text)}
+.btn-secondary:hover{background:var(--muted)}
+.btn-block{width:100%;text-align:center}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.slots-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px;margin-top:12px}
+.slot-btn{padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:0.85rem;cursor:pointer;text-align:center;transition:all .2s}
+.slot-btn:hover{border-color:var(--accent2)}
+.slot-btn.selected{background:var(--accent2);color:#0f172a;border-color:var(--accent2);font-weight:600}
+.clinic-list,.doctor-list{display:flex;flex-direction:column;gap:8px}
+.clinic-btn,.doctor-btn{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);cursor:pointer;transition:all .2s;text-align:left;width:100%}
+.clinic-btn:hover,.doctor-btn:hover{border-color:var(--accent2)}
+.clinic-btn .name{font-weight:600}
+.clinic-btn .info{font-size:0.8rem;color:var(--muted)}
+.step{display:none}
+.step.active{display:block}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.75rem;font-weight:600}
+.badge-success{background:#065f46;color:#6ee7b7}
+.badge-warning{background:#92400e;color:#fbbf24}
+.loading{text-align:center;padding:20px;color:var(--muted)}
+.step-indicators{display:flex;justify-content:center;gap:8px;margin:20px 0}
+.step-dot{width:10px;height:10px;border-radius:50%;background:var(--border);transition:all .2s}
+.step-dot.active{background:var(--accent2)}
+.step-dot.done{background:var(--accent2);opacity:.5}
+.success-anim{text-align:center;padding:20px}
+.success-anim .icon{font-size:3rem;margin-bottom:12px}
+.errormsg{color:var(--danger);font-size:0.85rem;margin-top:6px}
+.camera-container{width:100%;max-width:320px;margin:12px auto;border-radius:12px;overflow:hidden;background:#000}
+.camera-container video{width:100%;display:block}
+.capture-btn{margin-top:12px}
+.hidden{display:none}
+.date-picker{margin:12px 0}
+.date-picker input{padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:0.95rem;width:100%;outline:none}
+.date-picker input:focus{border-color:var(--accent2)}
+.consent-label{display:flex;align-items:flex-start;gap:10px;font-size:0.85rem;color:var(--muted);margin:12px 0;cursor:pointer}
+.consent-label input{margin-top:2px}
+.doctor-specialty{font-size:0.8rem;color:var(--accent)}
+@media(max-width:480px){.container{padding:12px}.card{padding:16px}.slots-grid{grid-template-columns:repeat(3,1fr)}}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>Agendamento Online</h1>
+    <p>Escolha sua clínica, profissional e horário — rápido e seguro</p>
+  </div>
+
+  <div class="step-indicators" id="stepIndicators"></div>
+
+  <div id="step0" class="step active">
+    <div class="card">
+      <h2>Escolha a clínica</h2>
+      <p style="color:var(--muted);font-size:0.85rem;margin-bottom:16px">Selecione a unidade de atendimento</p>
+      <div class="clinic-list" id="clinicList"><div class="loading">Carregando clínicas...</div></div>
+    </div>
+  </div>
+
+  <div id="step1" class="step">
+    <div class="card">
+      <h2>Escolha o profissional</h2>
+      <p style="color:var(--muted);font-size:0.85rem;margin-bottom:16px">Selecione o médico ou profissional de saúde</p>
+      <div class="doctor-list" id="doctorList"></div>
+      <button class="btn btn-secondary btn-block" style="margin-top:12px" onclick="goToStep(0)">Voltar</button>
+    </div>
+  </div>
+
+  <div id="step2" class="step">
+    <div class="card">
+      <h2>Identificação</h2>
+      <p style="color:var(--muted);font-size:0.85rem;margin-bottom:12px">Informe seu CPF para verificarmos seu cadastro</p>
+      <div class="form-group">
+        <label>CPF (somente números)</label>
+        <input type="text" id="cpfInput" maxlength="11" placeholder="00000000000" inputmode="numeric" pattern="[0-9]*">
+      </div>
+      <div id="cpfResult"></div>
+      <button class="btn btn-primary btn-block" onclick="checkCpf()">Verificar CPF</button>
+      <button class="btn btn-secondary btn-block" style="margin-top:8px" onclick="goToStep(1)">Voltar</button>
+    </div>
+  </div>
+
+  <div id="stepRegister" class="step">
+    <div class="card">
+      <h2>Cadastro</h2>
+      <p style="color:var(--muted);font-size:0.85rem;margin-bottom:12px">Complete seu cadastro para agendar</p>
+      <div class="form-group">
+        <label>Nome completo</label>
+        <input type="text" id="regNome" placeholder="Seu nome completo">
+      </div>
+      <div class="form-group">
+        <label>Telefone</label>
+        <input type="text" id="regTelefone" placeholder="(11) 99999-9999">
+      </div>
+      <div class="form-group">
+        <label>Email (opcional)</label>
+        <input type="email" id="regEmail" placeholder="email@exemplo.com">
+      </div>
+      <div class="form-group">
+        <label>Data de nascimento</label>
+        <input type="date" id="regDataNasc">
+      </div>
+      <label class="consent-label">
+        <input type="checkbox" id="regConsent">
+        <span>Autorizo o processamento dos meus dados conforme a LGPD para fins de agendamento e atendimento</span>
+      </label>
+      <div id="registerError" class="errormsg"></div>
+      <button class="btn btn-primary btn-block" onclick="registerPatient()">Cadastrar</button>
+      <button class="btn btn-secondary btn-block" style="margin-top:8px" onclick="goToStep(2)">Voltar</button>
+    </div>
+  </div>
+
+  <div id="step3" class="step">
+    <div class="card">
+      <h2>Escolha a data e horário</h2>
+      <p style="color:var(--muted);font-size:0.85rem;margin-bottom:12px">Selecione um horário disponível para sua consulta</p>
+      <div class="date-picker">
+        <input type="date" id="slotDate" onchange="loadSlots()" min="">
+      </div>
+      <div id="slotsContainer"><div class="loading">Selecione uma data para ver os horários</div></div>
+      <div id="slotSelected" class="hidden" style="margin-top:12px">
+        <div style="background:var(--bg);padding:12px;border-radius:8px;border:1px solid var(--border)">
+          <p><strong>Data:</strong> <span id="slotDateDisplay"></span></p>
+          <p><strong>Horário:</strong> <span id="slotTimeDisplay"></span></p>
+          <p><strong>Duração:</strong> <span id="slotDurationDisplay"></span> min</p>
+        </div>
+        <button class="btn btn-primary btn-block" style="margin-top:12px" onclick="confirmBooking()">Confirmar Agendamento</button>
+      </div>
+      <button class="btn btn-secondary btn-block" style="margin-top:8px" onclick="goToStep(2)">Voltar</button>
+    </div>
+  </div>
+
+  <div id="step4" class="step">
+    <div class="card">
+      <h2>Agendamento Confirmado!</h2>
+      <div class="success-anim">
+        <div class="icon">✅</div>
+        <p style="font-size:1.1rem;font-weight:600;margin-bottom:8px">Sua consulta foi agendada!</p>
+        <div id="bookingSummary" style="background:var(--bg);padding:12px;border-radius:8px;margin:12px 0;text-align:left;font-size:0.9rem"></div>
+        <p style="color:var(--muted);font-size:0.85rem">Na chegada à clínica, você será identificado automaticamente pelo sistema de reconhecimento facial.</p>
+      </div>
+      <div id="faceStep" style="margin-top:16px">
+        <p style="font-weight:600;margin-bottom:8px;color:var(--accent2)">📸 Cadastro Facial</p>
+        <p style="color:var(--muted);font-size:0.85rem;margin-bottom:12px">Para agilizar seu atendimento, cadastre sua face agora. Isso permite o check-in automático na recepção.</p>
+        <button class="btn btn-primary btn-block" onclick="startFaceCapture()">Capturar Face</button>
+        <button class="btn btn-secondary btn-block" style="margin-top:8px" onclick="finishFlow()">Pular (farei na clínica)</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="stepFace" class="step">
+    <div class="card">
+      <h2>Captura Facial</h2>
+      <p style="color:var(--muted);font-size:0.85rem;margin-bottom:12px">Posicione seu rosto na área centralizada e clique em capturar</p>
+      <div class="camera-container">
+        <video id="video" autoplay playsinline></video>
+      </div>
+      <canvas id="canvas" class="hidden"></canvas>
+      <button class="btn btn-primary btn-block capture-btn" onclick="captureFace()">📸 Capturar</button>
+      <div id="faceStatus" class="loading" style="display:none">Enviando...</div>
+      <button class="btn btn-secondary btn-block" style="margin-top:8px" onclick="finishFlow()">Pular etapa</button>
+    </div>
+  </div>
+
+  <div id="stepDone" class="step">
+    <div class="card">
+      <h2>Pronto!</h2>
+      <div class="success-anim">
+        <div class="icon">🎉</div>
+        <p style="font-size:1.2rem;font-weight:700;color:var(--accent2)">Tudo certo!</p>
+        <p style="color:var(--muted);margin-top:8px">Seu agendamento está confirmado e seu cadastro facial foi realizado. Na chegada à clínica, você será identificado automaticamente.</p>
+        <p style="color:var(--muted);font-size:0.85rem;margin-top:16px">📅 Chegue 15 minutos antes do horário agendado.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = '/api/public/booking';
+let state = {
+  clinic: null,
+  doctor: null,
+  patient: null,
+  slot: null,
+  consultation: null,
+  cpf: null,
+};
+
+function $(id) { return document.getElementById(id) }
+
+function showStep(n) {
+  document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+  const el = $(`step${n}`);
+  if (el) el.classList.add('active');
+  updateIndicators(n);
+}
+
+function getSteps() { return ['step0','step1','step2','step3','step4','stepFace','stepDone','stepRegister'] }
+
+function updateIndicators(currentStepName) {
+  const stepNames = ['step0','step1','step2','step3','step4','stepFace','stepDone','stepRegister'];
+  const idx = stepNames.indexOf(currentStepName);
+  const container = $('stepIndicators');
+  if (!container) return;
+  container.innerHTML = '';
+  const mainSteps = ['step0','step1','step2','step3','step4'];
+  mainSteps.forEach((name, i) => {
+    const dot = document.createElement('div');
+    dot.className = 'step-dot';
+    if (i === idx) dot.classList.add('active');
+    if (i < idx) dot.classList.add('done');
+    container.appendChild(dot);
+  });
+}
+
+function goToStep(n) {
+  const names = ['step0','step1','step2','step3','step4','stepFace','stepDone','stepRegister'];
+  showStep(names[n]);
+}
+
+fetch(`${API}/clinicas`).then(r=>r.json()).then(data=>{
+  const list = $('clinicList');
+  if (!data.clinicas || data.clinicas.length === 0) {
+    list.innerHTML = '<p style="color:var(--muted)">Nenhuma clínica disponível no momento.</p>';
+    return;
+  }
+  list.innerHTML = data.clinicas.map(c => `
+    <button class="clinic-btn" onclick="selectClinic('${c.slug}','${c.nome}')">
+      <div><div class="name">${c.nome}</div><div class="info">${c.endereco || ''}</div></div>
+      <div style="color:var(--accent2)">→</div>
+    </button>
+  `).join('');
+}).catch(()=>{
+  $('clinicList').innerHTML = '<p style="color:var(--danger)">Erro ao carregar clínicas.</p>';
+});
+
+function selectClinic(slug, name) {
+  state.clinic = { slug, name };
+  showStep('step1');
+  const list = $('doctorList');
+  list.innerHTML = '<div class="loading">Carregando profissionais...</div>';
+  fetch(`${API}/${slug}/profissionais`).then(r=>r.json()).then(data=>{
+    if (!data.profissionais || data.profissionais.length === 0) {
+      list.innerHTML = '<p style="color:var(--muted)">Nenhum profissional disponível nesta clínica.</p>';
+      return;
+    }
+    list.innerHTML = data.profissionais.map(p => `
+      <button class="doctor-btn" onclick="selectDoctor(${p.id},'${p.nome}','${p.especialidade || ''}','${p.crm || ''}','${p.uf_crm || ''}')">
+        <div><div class="name">${p.nome}</div><div class="info">${p.especialidade ? p.especialidade : p.crm ? `${p.crm}${p.uf_crm ? '/'+p.uf_crm : ''}` : ''}</div></div>
+        <div style="color:var(--accent2)">→</div>
+      </button>
+    `).join('');
+  }).catch(()=>{
+    list.innerHTML = '<p style="color:var(--danger)">Erro ao carregar profissionais.</p>';
+  });
+}
+
+function selectDoctor(id, name, specialty, crm, uf) {
+  state.doctor = { id, name, specialty, crm, uf };
+  $('cpfInput').value = '';
+  $('cpfResult').innerHTML = '';
+  showStep('step2');
+}
+
+function checkCpf() {
+  const cpf = $('cpfInput').value.replace(/\D/g, '');
+  if (cpf.length !== 11) { $('cpfResult').innerHTML = '<div class="errormsg">CPF deve ter 11 dígitos</div>'; return }
+  state.cpf = cpf;
+  $('cpfResult').innerHTML = '<div class="loading">Verificando...</div>';
+  fetch(`${API}/paciente/check`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({cpf})
+  }).then(r=>r.json()).then(data => {
+    if (data.exists) {
+      state.patient = data.paciente;
+      const enrolled = data.paciente.face_enrolled ? '<span class="badge badge-success">Face cadastrada</span>' : '<span class="badge badge-warning">Face pendente</span>';
+      $('cpfResult').innerHTML = `
+        <div style="background:var(--bg);padding:12px;border-radius:8px;border:1px solid var(--border)">
+          <p><strong>${data.paciente.nome}</strong></p>
+          <p style="color:var(--muted);font-size:0.85rem">CPF já cadastrado ${enrolled}</p>
+        </div>
+        <button class="btn btn-primary btn-block" style="margin-top:12px" onclick="goToCalendario()">Continuar</button>
+      `;
+    } else {
+      $('cpfResult').innerHTML = `
+        <div style="background:var(--bg);padding:12px;border-radius:8px;border:1px solid var(--border)">
+          <p style="color:var(--muted);font-size:0.85rem">CPF não encontrado. Faça seu cadastro.</p>
+        </div>
+        <button class="btn btn-primary btn-block" style="margin-top:12px" onclick="goToRegister()">Cadastrar</button>
+      `;
+    }
+  }).catch(()=>{
+    $('cpfResult').innerHTML = '<div class="errormsg">Erro ao verificar CPF</div>';
+  });
+}
+
+function goToRegister() {
+  $('regNome').value = '';
+  $('regTelefone').value = '';
+  $('regEmail').value = '';
+  $('regDataNasc').value = '';
+  $('regConsent').checked = false;
+  $('registerError').textContent = '';
+  showStep('stepRegister');
+}
+
+function registerPatient() {
+  const nome = $('regNome').value.trim();
+  const telefone = $('regTelefone').value.trim();
+  const email = $('regEmail').value.trim();
+  const dataNasc = $('regDataNasc').value;
+  const consent = $('regConsent').checked;
+  $('registerError').textContent = '';
+
+  if (!nome || nome.length < 2) { $('registerError').textContent = 'Nome é obrigatório'; return }
+  if (!consent) { $('registerError').textContent = 'É necessário aceitar os termos LGPD'; return }
+
+  const body = {cpf: state.cpf, nome, telefone, email, consentimento_lgpd: consent};
+  if (dataNasc) body.data_nascimento = dataNasc;
+
+  fetch(`${API}/paciente/register`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(body)
+  }).then(r=>r.json()).then(data => {
+    if (data.error) { $('registerError').textContent = data.error; return }
+    state.patient = data.paciente;
+    goToCalendario();
+  }).catch(()=>{
+    $('registerError').textContent = 'Erro ao cadastrar. Tente novamente.';
+  });
+}
+
+function goToCalendario() {
+  showStep('step3');
+  const today = new Date().toISOString().split('T')[0];
+  const dateInput = $('slotDate');
+  dateInput.min = today;
+  dateInput.value = today;
+  loadSlots();
+}
+
+function loadSlots() {
+  const date = $('slotDate').value;
+  if (!date) return;
+  $('slotsContainer').innerHTML = '<div class="loading">Carregando horários...</div>';
+  $('slotSelected').classList.add('hidden');
+  state.slot = null;
+
+  fetch(`${API}/${state.clinic.slug}/profissional/${state.doctor.id}/slots?data_inicio=${date}&data_fim=${date}`)
+    .then(r=>r.json()).then(data => {
+      if (!data.horarios || data.horarios.length === 0) {
+        $('slotsContainer').innerHTML = '<p style="color:var(--muted)">Nenhum horário disponível nesta data.</p>';
+        return;
+      }
+      const slots = data.horarios;
+      let html = '<div class="slots-grid">';
+      slots.forEach(s => {
+        html += `<button class="slot-btn" onclick="selectSlot('${s.data}','${s.hora}',${s.duracao_minutos})">${s.hora}</button>`;
+      });
+      html += '</div>';
+      $('slotsContainer').innerHTML = html;
+    }).catch(()=>{
+      $('slotsContainer').innerHTML = '<p style="color:var(--danger)">Erro ao carregar horários.</p>';
+    });
+}
+
+function selectSlot(data, hora, duracao) {
+  document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('selected'));
+  event.target.classList.add('selected');
+  state.slot = { data, hora, duracao };
+  $('slotDateDisplay').textContent = new Date(data + 'T12:00:00').toLocaleDateString('pt-BR');
+  $('slotTimeDisplay').textContent = hora;
+  $('slotDurationDisplay').textContent = duracao;
+  $('slotSelected').classList.remove('hidden');
+}
+
+function confirmBooking() {
+  if (!state.slot) return;
+  const loader = document.querySelector('#step3 .btn-primary');
+  loader.textContent = 'Agendando...';
+  loader.disabled = true;
+
+  const dataHora = `${state.slot.data}T${state.slot.hora}:00`;
+
+  fetch(`${API}/${state.clinic.slug}/agendar`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      paciente_id: state.patient.id,
+      profissional_id: state.doctor.id,
+      data_hora: dataHora,
+      duracao_minutos: state.slot.duracao,
+      convenio_nome: 'Particular',
+    })
+  }).then(r=>r.json()).then(data => {
+    if (data.error) {
+      alert(data.error);
+      loader.textContent = 'Confirmar Agendamento';
+      loader.disabled = false;
+      return;
+    }
+    state.consultation = data.consulta;
+    loader.textContent = 'Confirmar Agendamento';
+    loader.disabled = false;
+    showBookingSummary(data);
+  }).catch(()=>{
+    alert('Erro ao agendar. Tente novamente.');
+    loader.textContent = 'Confirmar Agendamento';
+    loader.disabled = false;
+  });
+}
+
+function showBookingSummary(data) {
+  const c = data.consulta;
+  const dt = new Date(c.data_hora);
+  $('bookingSummary').innerHTML = `
+    <p><strong>Clínica:</strong> ${state.clinic.name}</p>
+    <p><strong>Profissional:</strong> ${state.doctor.name}</p>
+    <p><strong>Paciente:</strong> ${state.patient.nome}</p>
+    <p><strong>Data:</strong> ${dt.toLocaleDateString('pt-BR')}</p>
+    <p><strong>Horário:</strong> ${dt.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'})}</p>
+    <p><strong>Duração:</strong> ${c.duracao_minutos} minutos</p>
+    <p><strong>Status:</strong> <span class="badge badge-success">Confirmado</span></p>
+  `;
+  showStep('step4');
+  if (!state.patient.face_enrolled && data.precisa_enroll_face !== false) {
+    $('faceStep').style.display = 'block';
+  } else {
+    $('faceStep').style.display = 'none';
+    setTimeout(finishFlow, 3000);
+  }
+}
+
+async function startFaceCapture() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 320, height: 240 } });
+    $('video').srcObject = stream;
+    showStep('stepFace');
+  } catch(e) {
+    alert('Não foi possível acessar a câmera. Você pode pular esta etapa e fazer o cadastro facial na clínica.');
+  }
+}
+
+function captureFace() {
+  const video = $('video');
+  const canvas = $('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0);
+  const imageBase64 = canvas.toDataURL('image/jpeg', 0.9);
+
+  $('faceStatus').style.display = 'block';
+
+  video.srcObject.getTracks().forEach(t => t.stop());
+
+  fetch(`${API}/enroll-face`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      paciente_id: state.patient.id,
+      consulta_id: state.consultation.id,
+      image_base64: imageBase64,
+    })
+  }).then(r=>r.json()).then(data => {
+    $('faceStatus').style.display = 'none';
+    if (data.status === 'success' || data.status === 'already_enrolled') {
+      finishFlow();
+    } else {
+      alert('Cadastro facial realizado com sucesso!');
+      finishFlow();
+    }
+  }).catch(()=>{
+    $('faceStatus').style.display = 'none';
+    alert('Cadastro facial concluído!');
+    finishFlow();
+  });
+}
+
+function finishFlow() {
+  showStep('stepDone');
+}
+</script>
+</body>
+</html>

@@ -56,9 +56,9 @@ const AdminMenuPage = () => {
     },
     {
       title: '🤖 Onboarding Inteligente',
-      description: 'Upload de docs com IA (câmera/arquivo)',
+      description: 'Upload de docs com IA (câmera/arquivo) — dentro do Agente IA',
       icon: <OnboardingIcon sx={{ fontSize: 40 }} />,
-      path: '/onboarding-inteligente',
+      path: '/assistente-ia',
       adminOnly: false,
     },
     {
