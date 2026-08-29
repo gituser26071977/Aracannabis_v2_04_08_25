@@ -4,10 +4,13 @@ from models import db, Paciente, LogAtividade, Profissional, CompartilhamentoPac
 from security_config import sanitize_input, is_valid_cpf
 from routes.auth_decorators import require_permission
 from araos.platform.identity.permissions import Permission
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import os
 import re
+import logging
 from werkzeug.utils import secure_filename
+
+logger = logging.getLogger(__name__)
 
 pacientes_bp = Blueprint('pacientes', __name__)
 
@@ -880,6 +883,103 @@ def obter_foto_paciente(filename):
         return jsonify({'error': 'Arquivo não encontrado'}), 404
 
     return send_from_directory(UPLOAD_FOLDER, filename)
+
+
+@pacientes_bp.route('/<int:paciente_id>/enroll-face', methods=['POST'])
+@jwt_required()
+def enroll_face_paciente(paciente_id):
+    """Captura face do paciente e faz enrollment no VSF.
+
+    Body: {
+        "image_base64": "data:image/jpeg;base64,..."
+    }
+
+    A captura biométrica só precisa ocorrer uma vez por paciente.
+    O paciente é criado no VSF se ainda não existir.
+    """
+    current_user_id = get_jwt_identity()
+    profissional_id = int(current_user_id)
+
+    paciente = Paciente.query.get(paciente_id)
+    if not paciente:
+        return jsonify({'error': 'Paciente não encontrado'}), 404
+
+    data = request.get_json() or {}
+    image_base64 = data.get('image_base64')
+
+    if not image_base64:
+        return jsonify({'error': 'image_base64 é obrigatório'}), 400
+
+    # Se já enrolou, reenrollment opcional
+    if paciente.face_enrolled and not data.get('force'):
+        return jsonify({
+            'status': 'already_enrolled',
+            'message': 'Paciente já possui cadastro facial. Use force=true para reenrolar.',
+            'vsf_patient_id': paciente.vsf_patient_id,
+        }), 200
+
+    try:
+        from services.vsf_bridge import vsf_bridge, VSFAuthError
+
+        # Se paciente já tem ID no VSF, reenrolar
+        if paciente.vsf_patient_id:
+            # Criar um agendamento temporário para enrollment
+            try:
+                apt_data = vsf_bridge.criar_agendamento(
+                    patient_name=paciente.nome,
+                    patient_external_id=str(paciente.id),
+                    scheduled_for=datetime.utcnow() + timedelta(days=365),
+                    exam_type="enrollment",
+                    exam_duration_minutes=15,
+                )
+                apt_id = apt_data.get("appointment_id")
+                if apt_id:
+                    enroll_result = vsf_bridge.enroll_face(
+                        appointment_id=str(apt_id),
+                        image_base64=image_base64,
+                        consent=True,
+                    )
+                    paciente.face_enrolled = True
+                    db.session.commit()
+                    return jsonify({
+                        'status': 'success',
+                        'vsf_patient_id': paciente.vsf_patient_id,
+                        'enrolled': True,
+                    }), 200
+            except Exception as e:
+                logger.warning(f"Reenrollment falhou, tentando criar paciente: {e}")
+
+        # Criar paciente no VSF com face
+        patient_data = vsf_bridge.criar_paciente(
+            name=paciente.nome,
+            phone=paciente.telefone,
+            email=paciente.email,
+            cpf=paciente.cpf,
+            face_image_b64=image_base64,
+        )
+
+        vsf_patient_id = patient_data.get("id")
+        if vsf_patient_id:
+            paciente.vsf_patient_id = vsf_patient_id
+            paciente.face_enrolled = True
+            db.session.commit()
+
+            return jsonify({
+                'status': 'success',
+                'vsf_patient_id': vsf_patient_id,
+                'enrolled': True,
+                'message': 'Face cadastrada com sucesso no VSF',
+            }), 200
+
+        return jsonify({'error': 'Falha ao criar paciente no VSF'}), 502
+
+    except VSFAuthError as e:
+        logger.error(f"Erro de autenticação VSF: {e}")
+        return jsonify({'error': 'Falha na autenticação VSF'}), 502
+    except Exception as e:
+        logger.exception(f"Erro no enrollment facial do paciente {paciente_id}")
+        return jsonify({'error': str(e)}), 500
+
 
 @pacientes_bp.route('/dashboard', methods=['GET'])
 @jwt_required()

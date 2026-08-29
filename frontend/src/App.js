@@ -37,6 +37,8 @@ import BillingPage from './pages/BillingPage';
 import FaturamentoPage from './pages/FaturamentoPage';
 import DailyBoardPage from './pages/DailyBoardPage';
 import OnboardingPacientesPage from './pages/OnboardingPacientesPage';
+import IntelligentOnboardingPage from './pages/IntelligentOnboardingPage';
+import AdminMenuPage from './pages/AdminMenuPage';
 import GestaoPage from './pages/GestaoPage';
 import CertificacaoDigitalPage from './pages/CertificacaoDigitalPage';
 import RelatoriosFinanceirosPage from './pages/RelatoriosFinanceirosPage';
@@ -725,6 +727,22 @@ function AppContent() {
             element={
               <ProtectedRoute>
                 <OnboardingPacientesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/onboarding-inteligente"
+            element={
+              <ProtectedRoute>
+                <IntelligentOnboardingPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute>
+                <AdminMenuPage />
               </ProtectedRoute>
             }
           />

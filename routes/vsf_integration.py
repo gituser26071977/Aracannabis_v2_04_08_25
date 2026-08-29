@@ -24,10 +24,6 @@ vsf_bp = Blueprint("vsf_integration", __name__)
 VSF_WEBHOOK_SECRET = "vsf-araos-webhook-secret-2026"
 
 
-# ──────────────────────────────────────────────
-# Webhook VSF → AraOS
-# ──────────────────────────────────────────────
-
 @vsf_bp.route("/webhook", methods=["POST"])
 def vsf_webhook():
     """Recebe eventos do Visual Smart Flow.
@@ -45,7 +41,6 @@ def vsf_webhook():
         if not event_type:
             return jsonify({"error": "event_type obrigatório"}), 400
 
-        # Opcional: validar secret
         secret = request.headers.get("X-VSF-Secret", "")
         if secret and secret != VSF_WEBHOOK_SECRET:
             return jsonify({"error": "secret inválido"}), 401
@@ -80,10 +75,8 @@ def _handle_patient_arrived(data: dict):
         return jsonify({"error": "patient_external_id obrigatório"}), 400
 
     try:
-        # patient_external_id deve ser o ID do paciente no AraOS
         paciente = Paciente.query.get(int(patient_external_id))
         if not paciente:
-            # Tenta buscar por telefone ou email
             phone = data.get("patient_phone")
             email = data.get("patient_email")
             if phone:
@@ -95,7 +88,6 @@ def _handle_patient_arrived(data: dict):
             logger.warning(f"[VSF Webhook] Paciente não encontrado: {patient_external_id}")
             return jsonify({"status": "ignored", "reason": "patient_not_found"}), 200
 
-        # Busca consulta agendada para hoje
         hoje = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
         amanha = hoje.replace(day=hoje.day + 1)
 
@@ -108,6 +100,8 @@ def _handle_patient_arrived(data: dict):
 
         if consulta:
             consulta.status = "paciente_presente"
+            if appointment_id and not consulta.vsf_appointment_id:
+                consulta.vsf_appointment_id = str(appointment_id)
             consulta.observacoes = (consulta.observacoes or "") + f"\n[VSF] Paciente reconhecido por visão computacional às {datetime.now().strftime('%H:%M')} (sensor: {sensor_id}, confiança: {confidence})"
             db.session.commit()
             logger.info(f"[VSF Webhook] Consulta {consulta.id} atualizada: paciente_presente")
@@ -129,27 +123,19 @@ def _handle_patient_arrived(data: dict):
 
 
 def _handle_patient_entered_room(data: dict):
-    """Paciente entrou na sala de exame."""
-    # Futuro: registrar tempo de espera, enviar notificação
     logger.info(f"[VSF Webhook] Paciente entrou na sala: {data.get('patient_id')}")
     return jsonify({"status": "received", "action": "entered_room"}), 200
 
 
 def _handle_patient_exited_room(data: dict):
-    """Paciente saiu da sala de exame."""
     logger.info(f"[VSF Webhook] Paciente saiu da sala: {data.get('patient_id')}")
     return jsonify({"status": "received", "action": "exited_room"}), 200
 
 
 def _handle_patient_exited_clinic(data: dict):
-    """Paciente saiu da clínica."""
     logger.info(f"[VSF Webhook] Paciente saiu da clínica: {data.get('patient_id')}")
     return jsonify({"status": "received", "action": "exited_clinic"}), 200
 
-
-# ──────────────────────────────────────────────
-# AraOS → VSF: Sincronizar Agendamento
-# ──────────────────────────────────────────────
 
 @vsf_bp.route("/sync-appointment", methods=["POST"])
 @jwt_required()
@@ -170,18 +156,32 @@ def sync_appointment_to_vsf():
         if not paciente:
             return jsonify({"error": "Paciente não encontrado"}), 404
 
-        result = vsf_bridge.criar_agendamento(
-            patient_name=paciente.nome,
-            patient_external_id=str(paciente.id),
+        result = vsf_bridge.sincronizar_consulta(
+            paciente_nome=paciente.nome,
+            paciente_id_araos=str(paciente.id),
             scheduled_for=consulta.data_hora,
-            exam_type="consulta",
+            paciente_telefone=paciente.telefone,
+            paciente_email=paciente.email,
+            paciente_cpf=paciente.cpf,
+            convenio_nome=consulta.convenio_nome,
+            vsf_patient_id_existente=paciente.vsf_patient_id,
             professional_id=str(consulta.profissional_id) if consulta.profissional_id else None,
             exam_duration_minutes=consulta.duracao_minutos or 30,
         )
 
+        # Salvar IDs do VSF no AraOS
+        if result.get("vsf_patient_id"):
+            paciente.vsf_patient_id = result["vsf_patient_id"]
+        if result.get("vsf_appointment_id"):
+            consulta.vsf_appointment_id = result["vsf_appointment_id"]
+            consulta.vsf_synced = True
+        db.session.commit()
+
         return jsonify({
             "status": "success",
-            "vsf_appointment_id": str(result.get("appointment_id")),
+            "vsf_appointment_id": result.get("vsf_appointment_id"),
+            "vsf_patient_id": result.get("vsf_patient_id"),
+            "created_patient": result.get("created_patient", False),
             "araos_consulta_id": consulta.id,
         }), 201
 
@@ -193,60 +193,110 @@ def sync_appointment_to_vsf():
         return jsonify({"error": str(e)}), 500
 
 
-# ──────────────────────────────────────────────
-# AraOS → VSF: Enrollment Facial
-# ──────────────────────────────────────────────
-
 @vsf_bp.route("/enroll-face", methods=["POST"])
 @jwt_required()
 def enroll_face_vsf():
     """Cadastra face do paciente no VSF.
 
     Body: {
+        "paciente_id": 123,
         "consulta_id": 123,
         "image_base64": "data:image/jpeg;base64,/9j/4AAQ..."
     }
     """
     data = request.get_json() or {}
+    paciente_id = data.get("paciente_id")
     consulta_id = data.get("consulta_id")
     image_base64 = data.get("image_base64")
 
-    if not consulta_id or not image_base64:
-        return jsonify({"error": "consulta_id e image_base64 obrigatórios"}), 400
+    if not image_base64:
+        return jsonify({"error": "image_base64 obrigatório"}), 400
 
     try:
-        consulta = Consulta.query.get(consulta_id)
-        if not consulta:
-            return jsonify({"error": "Consulta não encontrada"}), 404
+        paciente = Paciente.query.get(paciente_id) if paciente_id else None
+        consulta = Consulta.query.get(consulta_id) if consulta_id else None
 
-        # Criar agendamento no VSF primeiro se ainda não existir
-        paciente = Paciente.query.get(consulta.paciente_id)
+        if not paciente and consulta:
+            paciente = Paciente.query.get(consulta.paciente_id)
+
         if not paciente:
             return jsonify({"error": "Paciente não encontrado"}), 404
 
-        vsf_apt = vsf_bridge.criar_agendamento(
-            patient_name=paciente.nome,
-            patient_external_id=str(paciente.id),
-            scheduled_for=consulta.data_hora,
-            exam_type="consulta",
-            professional_id=str(consulta.profissional_id) if consulta.profissional_id else None,
-            exam_duration_minutes=consulta.duracao_minutos or 30,
-        )
+        # Se paciente ainda não existe no VSF, criar
+        if not paciente.vsf_patient_id:
+            patient_data = vsf_bridge.criar_paciente(
+                name=paciente.nome,
+                phone=paciente.telefone,
+                email=paciente.email,
+                cpf=paciente.cpf,
+                face_image_b64=image_base64,
+            )
+            vsf_patient_id = patient_data.get("id")
+            if vsf_patient_id:
+                paciente.vsf_patient_id = vsf_patient_id
+                paciente.face_enrolled = True
+                db.session.commit()
+                logger.info(f"Paciente VSF criado e face enrolled: {vsf_patient_id}")
+                return jsonify({
+                    "status": "success",
+                    "vsf_patient_id": vsf_patient_id,
+                    "message": "Paciente criado e face cadastrada no VSF",
+                }), 200
 
-        appointment_id = str(vsf_apt.get("appointment_id"))
+        # Se paciente já existe no VSF, fazer enrollment via agendamento
+        if consulta and consulta.vsf_appointment_id:
+            enroll_result = vsf_bridge.enroll_face(
+                appointment_id=consulta.vsf_appointment_id,
+                image_base64=image_base64,
+                consent=True,
+            )
+            paciente.face_enrolled = True
+            db.session.commit()
+            return jsonify({
+                "status": "success",
+                "enrollment": enroll_result,
+                "vsf_appointment_id": consulta.vsf_appointment_id,
+                "vsf_patient_id": paciente.vsf_patient_id,
+            }), 200
 
-        # Fazer enrollment facial
-        enroll_result = vsf_bridge.enroll_face(
-            appointment_id=appointment_id,
-            image_base64=image_base64,
-            consent=True,
-        )
+        # Precisa criar agendamento primeiro
+        if consulta:
+            result = vsf_bridge.sincronizar_consulta(
+                paciente_nome=paciente.nome,
+                paciente_id_araos=str(paciente.id),
+                scheduled_for=consulta.data_hora,
+                paciente_telefone=paciente.telefone,
+                paciente_email=paciente.email,
+                paciente_cpf=paciente.cpf,
+                convenio_nome=consulta.convenio_nome,
+                vsf_patient_id_existente=paciente.vsf_patient_id,
+                professional_id=str(consulta.profissional_id) if consulta.profissional_id else None,
+                exam_duration_minutes=consulta.duracao_minutos or 30,
+            )
 
-        return jsonify({
-            "status": "success",
-            "vsf_appointment_id": appointment_id,
-            "enrollment": enroll_result,
-        }), 200
+            if result.get("vsf_patient_id"):
+                paciente.vsf_patient_id = result["vsf_patient_id"]
+            if result.get("vsf_appointment_id"):
+                consulta.vsf_appointment_id = result["vsf_appointment_id"]
+                consulta.vsf_synced = True
+            db.session.commit()
+
+            if consulta.vsf_appointment_id:
+                enroll_result = vsf_bridge.enroll_face(
+                    appointment_id=consulta.vsf_appointment_id,
+                    image_base64=image_base64,
+                    consent=True,
+                )
+                paciente.face_enrolled = True
+                db.session.commit()
+                return jsonify({
+                    "status": "success",
+                    "enrollment": enroll_result,
+                    "vsf_appointment_id": consulta.vsf_appointment_id,
+                    "vsf_patient_id": paciente.vsf_patient_id,
+                }), 200
+
+        return jsonify({"error": "Não foi possível realizar o enrollment facial"}), 500
 
     except VSFAuthError as e:
         logger.error(f"Erro de autenticação VSF: {e}")
@@ -256,13 +306,9 @@ def enroll_face_vsf():
         return jsonify({"error": str(e)}), 500
 
 
-# ──────────────────────────────────────────────
-# AraOS → VSF: Identificação Facial
-# ──────────────────────────────────────────────
-
 @vsf_bp.route("/identify-face", methods=["POST"])
 def identify_face_vsf():
-    """Identifica paciente por foto no VSF (pode ser usado sem login para check-in).
+    """Identifica paciente por foto no VSF.
 
     Body: {
         "image_base64": "data:image/jpeg;base64,/9j/4AAQ..."
@@ -283,10 +329,17 @@ def identify_face_vsf():
         if not recognized:
             return jsonify({"recognized": False, "message": "Rosto não reconhecido"}), 200
 
+        patient_external_id = result.get("patient_external_id")
         patient_id = result.get("patient_id")
 
-        # Buscar paciente no AraOS
-        paciente = Paciente.query.get(int(patient_id)) if patient_id and patient_id.isdigit() else None
+        paciente = None
+        # Tenta pelo external_id (ID do AraOS)
+        if patient_external_id and patient_external_id.isdigit():
+            paciente = Paciente.query.get(int(patient_external_id))
+
+        # Tenta pelo vsf_patient_id
+        if not paciente and patient_id:
+            paciente = Paciente.query.filter_by(vsf_patient_id=patient_id).first()
 
         return jsonify({
             "recognized": True,
@@ -294,6 +347,7 @@ def identify_face_vsf():
             "patient_name": result.get("patient_name"),
             "confidence": result.get("confidence"),
             "method": result.get("method"),
+            "patient_external_id": patient_external_id,
             "araos_paciente": {
                 "id": paciente.id if paciente else None,
                 "nome": paciente.nome if paciente else None,
@@ -309,10 +363,6 @@ def identify_face_vsf():
         logger.exception("Erro na identificação facial VSF")
         return jsonify({"error": str(e)}), 500
 
-
-# ──────────────────────────────────────────────
-# Teste de conexão
-# ──────────────────────────────────────────────
 
 @vsf_bp.route("/health", methods=["GET"])
 def vsf_health():

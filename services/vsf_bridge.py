@@ -21,9 +21,6 @@ import redis
 
 logger = logging.getLogger(__name__)
 
-# ──────────────────────────────────────────────
-# Configuração
-# ──────────────────────────────────────────────
 
 VSF_BASE_URL = os.getenv("VSF_BASE_URL", "https://visualsmartflow.com.br/api")
 VSF_EMAIL = os.getenv("VSF_EMAIL", "admin@arapath.com.br")
@@ -50,19 +47,13 @@ class VSFBridge:
         self.password = VSF_PASSWORD
         self._token: Optional[str] = None
 
-    # ──────────────────────────────────────────────
-    # Autenticação
-    # ──────────────────────────────────────────────
-
     def _get_cached_token(self) -> Optional[str]:
-        """Recupera token do cache Redis se ainda válido."""
         try:
             token = r.get(TOKEN_KEY)
             exp_str = r.get(TOKEN_EXP_KEY)
             if not token or not exp_str:
                 return None
             exp = datetime.fromtimestamp(int(exp_str), tz=timezone.utc)
-            # Considera expirado 5 min antes para segurança
             if datetime.now(timezone.utc) > exp - timedelta(minutes=5):
                 return None
             return token
@@ -71,7 +62,6 @@ class VSFBridge:
             return None
 
     def _cache_token(self, token: str, exp_timestamp: int):
-        """Armazena token no Redis com TTL próximo da expiração."""
         try:
             ttl = max(60, exp_timestamp - int(datetime.now(timezone.utc).timestamp()))
             r.setex(TOKEN_KEY, ttl, token)
@@ -80,10 +70,8 @@ class VSFBridge:
             logger.warning(f"Erro ao cachear token: {e}")
 
     def _decode_exp(self, token: str) -> int:
-        """Decodifica expiração do token JWT (sem validar assinatura)."""
         try:
             payload = token.split(".")[1]
-            # Adicionar padding se necessário
             payload += "=" * (4 - len(payload) % 4)
             data = json.loads(base64.b64decode(payload))
             return int(data.get("exp", 0))
@@ -91,7 +79,6 @@ class VSFBridge:
             return 0
 
     def get_token(self, force_refresh: bool = False) -> str:
-        """Obtém token JWT válido, fazendo login se necessário."""
         if not force_refresh:
             cached = self._get_cached_token()
             if cached:
@@ -115,7 +102,6 @@ class VSFBridge:
             if exp:
                 self._cache_token(token, exp)
             else:
-                # Fallback: cache por 23 horas
                 self._cache_token(token, int((datetime.now(timezone.utc) + timedelta(hours=23)).timestamp()))
 
             logger.info("Token VSF obtido com sucesso")
@@ -130,25 +116,29 @@ class VSFBridge:
             "Content-Type": "application/json",
         }
 
-    # ──────────────────────────────────────────────
-    # Agendamentos
-    # ──────────────────────────────────────────────
-
     def criar_paciente(
         self,
         name: str,
         phone: Optional[str] = None,
         email: Optional[str] = None,
+        cpf: Optional[str] = None,
+        convenio: Optional[str] = None,
         face_image_b64: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Cria um paciente no VSF (necessário para enrollment facial unificado).
-        Endpoint público /patients/register — não requer token."""
+        """Cria um paciente no VSF.
+
+        Se houver face_image_b64, faz enrollment facial no ato do cadastro.
+        Retorna o patient_id do VSF para ser salvo no AraOS.
+        Endpoint público /patients/register — não requer token.
+        """
         url = f"{self.base_url}/patients/register"
 
         payload = {
             "name": name,
             "phone": phone,
             "email": email,
+            "cpf": cpf,
+            "convenio": convenio or "Particular",
             "consent_data_processing": True,
             "consent_version": "1.0",
             "org_id": VSF_ORG_ID,
@@ -171,20 +161,24 @@ class VSFBridge:
         self,
         patient_name: str,
         patient_external_id: str,
-        vsf_patient_id: str,
         scheduled_for: datetime,
         exam_type: str = "consulta",
         room_id: Optional[str] = None,
         professional_id: Optional[str] = None,
         exam_duration_minutes: int = 30,
+        insurance: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Cria um agendamento no VSF vinculado a um paciente do AraOS."""
+        """Cria um agendamento no VSF.
+
+        O VSF gera internamente o patient_id a partir do patient_name.
+        O patient_external_id vincula o registro ao ID do paciente no AraOS.
+        O campo 'insurance' é mapeado como convenio no VSF.
+        """
         url = f"{self.base_url}/appointments"
 
         payload = {
             "patient_name": patient_name,
             "patient_external_id": patient_external_id,
-            "patient_id": vsf_patient_id,
             "scheduled_for": scheduled_for.isoformat(),
             "exam_type": exam_type,
             "room_id": room_id,
@@ -204,7 +198,6 @@ class VSFBridge:
             raise
 
     def buscar_agendamentos_hoje(self) -> List[Dict[str, Any]]:
-        """Busca agendamentos de hoje no VSF."""
         url = f"{self.base_url}/appointments"
         try:
             resp = requests.get(url, headers=self._headers(), timeout=15)
@@ -214,9 +207,77 @@ class VSFBridge:
             logger.error(f"Erro ao buscar agendamentos VSF: {e}")
             return []
 
-    # ──────────────────────────────────────────────
-    # Biometria Facial
-    # ──────────────────────────────────────────────
+    def sincronizar_consulta(
+        self,
+        paciente_nome: str,
+        paciente_id_araos: str,
+        scheduled_for: datetime,
+        paciente_telefone: Optional[str] = None,
+        paciente_email: Optional[str] = None,
+        paciente_cpf: Optional[str] = None,
+        convenio_nome: Optional[str] = None,
+        vsf_patient_id_existente: Optional[str] = None,
+        room_id: Optional[str] = None,
+        professional_id: Optional[str] = None,
+        exam_duration_minutes: int = 30,
+    ) -> Dict[str, Any]:
+        """Fluxo completo de sincronização: paciente + agendamento.
+
+        1. Se paciente não existe no VSF, cria
+        2. Cria agendamento no VSF
+        3. Retorna IDs do VSF para salvar no AraOS
+
+        Retorna: {
+            "vsf_patient_id": str | None,
+            "vsf_appointment_id": str | None,
+            "created_patient": bool,
+        }
+        """
+        result = {
+            "vsf_patient_id": vsf_patient_id_existente,
+            "vsf_appointment_id": None,
+            "created_patient": False,
+        }
+
+        # Passo 1: garante paciente no VSF
+        if not vsf_patient_id_existente:
+            try:
+                patient_data = self.criar_paciente(
+                    name=paciente_nome,
+                    phone=paciente_telefone,
+                    email=paciente_email,
+                    cpf=paciente_cpf,
+                    convenio=convenio_nome,
+                )
+                vsf_patient_id = patient_data.get("id")
+                if vsf_patient_id:
+                    result["vsf_patient_id"] = vsf_patient_id
+                    result["created_patient"] = True
+                    logger.info(f"Paciente VSF criado: {vsf_patient_id} para {paciente_nome}")
+            except Exception as e:
+                logger.error(f"Erro ao criar paciente VSF: {e}")
+                return result
+
+        # Passo 2: cria agendamento
+        try:
+            apt_data = self.criar_agendamento(
+                patient_name=paciente_nome,
+                patient_external_id=str(paciente_id_araos),
+                scheduled_for=scheduled_for,
+                exam_type="consulta",
+                room_id=room_id,
+                professional_id=professional_id,
+                exam_duration_minutes=exam_duration_minutes,
+                insurance=convenio_nome,
+            )
+            vsf_appointment_id = apt_data.get("appointment_id")
+            if vsf_appointment_id:
+                result["vsf_appointment_id"] = str(vsf_appointment_id)
+                logger.info(f"Agendamento VSF criado: {vsf_appointment_id} para {paciente_nome}")
+        except Exception as e:
+            logger.error(f"Erro ao criar agendamento VSF: {e}")
+
+        return result
 
     def enroll_face(
         self,
@@ -227,7 +288,6 @@ class VSFBridge:
         """Cadastra face do paciente para um agendamento no VSF."""
         url = f"{self.base_url}/appointments/{appointment_id}/enroll"
 
-        # Limpar prefixo data:image/...;base64,
         if "," in image_base64:
             image_base64 = image_base64.split(",", 1)[1]
 
@@ -236,7 +296,6 @@ class VSFBridge:
         try:
             files = {"image": ("face.jpg", image_bytes, "image/jpeg")}
             data = {"consent": str(consent).lower()}
-            # Envio multipart precisa remover Content-Type json
             headers = {"Authorization": f"Bearer {self.get_token()}"}
             resp = requests.post(url, files=files, data=data, headers=headers, timeout=30)
             resp.raise_for_status()
@@ -271,7 +330,6 @@ class VSFBridge:
             return None
 
     def marcar_chegada(self, appointment_id: str, sensor_id: str = "araos-recepcao-01") -> Dict[str, Any]:
-        """Marca chegada do paciente no VSF (chamado pelo VSF mesmo, mas disponível)."""
         url = f"{self.base_url}/appointments/{appointment_id}/arrived"
         try:
             resp = requests.post(url, json={"sensor_id": sensor_id}, headers=self._headers(), timeout=15)
@@ -280,10 +338,6 @@ class VSFBridge:
         except Exception as e:
             logger.error(f"Erro ao marcar chegada VSF: {e}")
             raise
-
-    # ──────────────────────────────────────────────
-    # Webhook Handler (VSF → AraOS)
-    # ──────────────────────────────────────────────
 
     def handle_patient_arrived(self, vsf_payload: Dict[str, Any]) -> Dict[str, Any]:
         """Processa evento de chegada do paciente vindo do VSF."""
@@ -297,9 +351,6 @@ class VSFBridge:
             f"(patient_id={patient_id}, appointment_id={appointment_id}, confidence={confidence})"
         )
 
-        # TODO: Aqui integraremos com o AraOS para atualizar status da consulta
-        # Na implementação real, buscar consulta no AraOS pelo patient_external_id
-        # e atualizar status para 'paciente_chegou'
         return {
             "status": "received",
             "action": "check_in",
@@ -310,5 +361,4 @@ class VSFBridge:
         }
 
 
-# Instância global
 vsf_bridge = VSFBridge()

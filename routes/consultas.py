@@ -7,6 +7,11 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import requests
+import logging
+
+from services.vsf_bridge import vsf_bridge, VSFAuthError
+
+logger = logging.getLogger(__name__)
 
 consultas_bp = Blueprint('consultas', __name__)
 
@@ -15,6 +20,40 @@ def _assoc_id():
     """Resolve o associacao_id atual (tenant) via middleware (P0-12)."""
     assoc = getattr(g, 'current_association', None)
     return getattr(assoc, 'id', None)
+
+
+def _sync_consulta_vsf(consulta, paciente):
+    """Sincroniza consulta com VSF. Tolerante a falhas (não quebra o fluxo)."""
+    try:
+        result = vsf_bridge.sincronizar_consulta(
+            paciente_nome=paciente.nome,
+            paciente_id_araos=str(paciente.id),
+            scheduled_for=consulta.data_hora,
+            paciente_telefone=paciente.telefone,
+            paciente_email=paciente.email,
+            paciente_cpf=paciente.cpf,
+            convenio_nome=consulta.convenio_nome,
+            vsf_patient_id_existente=paciente.vsf_patient_id,
+            professional_id=str(consulta.profissional_id) if consulta.profissional_id else None,
+            exam_duration_minutes=consulta.duracao_minutos or 30,
+        )
+
+        if result.get("vsf_patient_id"):
+            paciente.vsf_patient_id = result["vsf_patient_id"]
+        if result.get("vsf_appointment_id"):
+            consulta.vsf_appointment_id = result["vsf_appointment_id"]
+            consulta.vsf_synced = True
+
+        db.session.commit()
+
+        if result.get("vsf_appointment_id"):
+            logger.info(f"Consulta {consulta.id} sincronizada com VSF: {result['vsf_appointment_id']}")
+        else:
+            logger.warning(f"Falha ao sincronizar consulta {consulta.id} com VSF")
+    except VSFAuthError as e:
+        logger.error(f"Erro de autenticação VSF ao sincronizar consulta {consulta.id}: {e}")
+    except Exception as e:
+        logger.error(f"Erro ao sincronizar consulta {consulta.id} com VSF: {e}")
 
 
 @consultas_bp.route('/', methods=['GET'])
@@ -111,7 +150,9 @@ def agendar_consulta():
             data_hora=data_hora,
             duracao_minutos=data.get('duracao_minutos', 60),
             tipo_consulta=data.get('tipo_consulta', 'presencial'),
-            observacoes=data.get('observacoes', '')
+            observacoes=data.get('observacoes', ''),
+            convenio_id=data.get('convenio_id'),
+            convenio_nome=data.get('convenio_nome'),
         )
         
         db.session.add(nova_consulta)
@@ -126,6 +167,9 @@ def agendar_consulta():
         )
         db.session.add(log)
         db.session.commit()
+        
+        # Sincronizar com VSF (não bloqueante — falha silenciosa)
+        _sync_consulta_vsf(nova_consulta, paciente)
         
         return jsonify({
             'message': 'Consulta agendada com sucesso',
@@ -181,6 +225,11 @@ def atualizar_consulta(consulta_id):
         if 'observacoes' in data:
             consulta.observacoes = data['observacoes']
         
+        if 'convenio_id' in data:
+            consulta.convenio_id = data['convenio_id']
+        if 'convenio_nome' in data:
+            consulta.convenio_nome = data['convenio_nome']
+        
         consulta.updated_at = datetime.utcnow()
         
         db.session.commit()
@@ -194,6 +243,12 @@ def atualizar_consulta(consulta_id):
         )
         db.session.add(log)
         db.session.commit()
+        
+        # Re-sincronizar com VSF se dados relevantes mudaram
+        if any(k in data for k in ('data_hora', 'profissional_id', 'convenio_nome')):
+            paciente = Paciente.query.get(consulta.paciente_id)
+            if paciente:
+                _sync_consulta_vsf(consulta, paciente)
         
         return jsonify({
             'message': 'Consulta atualizada com sucesso',

@@ -398,6 +398,11 @@ def create_app(config_obj=None):
 
     app.register_blueprint(vsf_bp, url_prefix="/api/vsf")
 
+    # [NEW] Public Booking API (multi-tenant, sem JWT)
+    from routes.public_booking import public_booking_bp
+
+    app.register_blueprint(public_booking_bp, url_prefix="/api/public/booking")
+
     # Patient Portal (NEW)
     from routes.patient_auth import patient_auth_bp
     from routes.patient_portal import patient_portal_bp
@@ -582,6 +587,18 @@ def create_app(config_obj=None):
         if upload_dir and not os.path.exists(upload_dir):
             os.makedirs(upload_dir, exist_ok=True)
             print(f"📁 Diretório de upload criado: {upload_dir}")
+
+    # Public Booking page
+    from flask import send_from_directory
+
+    static_dir = os.path.join(app.root_path, "static")
+
+    @app.route("/agendar")
+    @app.route("/agendar/<path:subpath>")
+    def serve_public_booking(subpath=""):
+        if subpath:
+            return send_from_directory(static_dir, subpath)
+        return send_from_directory(static_dir, "agendar.html")
 
     return app
 

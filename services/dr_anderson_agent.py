@@ -272,7 +272,6 @@ def _sincronizar_agendamento_vsf(dados: Dict, data_hora: datetime) -> Optional[s
         result = vsf_bridge.criar_agendamento(
             patient_name=dados.get("nome_completo", "Paciente"),
             patient_external_id=str(dados.get("paciente_id_siap", "")),
-            vsf_patient_id=vsf_patient_id,
             scheduled_for=data_hora,
             exam_type="consulta",
             professional_id="1",  # Dr. Anderson

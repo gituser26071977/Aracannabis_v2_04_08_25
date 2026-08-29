@@ -6,6 +6,9 @@ Fluxo:
     GET  /api/onboarding/pendentes         — fila para o administrativo
     POST /api/onboarding/pendentes/<id>/confirmar — cria ou usa existente
     POST /api/onboarding/pendentes/<id>/descartar — descarta
+    POST /api/onboarding/documento/upload  — upload com IA (Gemini Vision) + pipeline completo
+    POST /api/onboarding/documento/upload-batch — upload de planilha/lista em lote
+    GET  /api/onboarding/documentos        — lista documentos do onboarding
 """
 
 from __future__ import annotations
@@ -16,7 +19,7 @@ import os
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
-from models import Profissional
+from models import Profissional, OnboardingDocumento
 from services.onboarding_pacientes import (
     confirmar_pendencia,
     descartar_pendencia,
@@ -179,6 +182,180 @@ def upload_documento():
         "texto_extraido": resultado["texto_extraido"],
         "confianca": resultado["confianca"],
         "documento_id": doc.id,
+    }), 200
+
+
+@onboarding_bp.route("/documento/upload", methods=["POST"])
+@jwt_required()
+def upload_documento_inteligente():
+    """Upload de documento com analise inteligente (Gemini Vision) + pipeline completo.
+
+    Aceita imagem (base64 via JSON ou multipart) e retorna:
+    - tipo do documento
+    - dados extraidos do paciente
+    - se criou paciente, abriu pendencia ou detectou duplicado
+    """
+    user = _current_user()
+    if not user:
+        return jsonify({"error": "Usuário não encontrado"}), 404
+
+    from services.intelligent_onboarding_service import onboarding_service
+
+    ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "pdf"}
+
+    arquivo = request.files.get("file")
+    conteudo = None
+    filename = None
+
+    if arquivo and arquivo.filename:
+        ext = arquivo.filename.rsplit(".", 1)[-1].lower() if "." in arquivo.filename else ""
+        if ext not in ALLOWED_EXTENSIONS:
+            return jsonify({"error": f"Formato invalido. Permitidos: {sorted(ALLOWED_EXTENSIONS)}"}), 400
+        conteudo = arquivo.read()
+        filename = arquivo.filename
+    else:
+        data = request.get_json(silent=True) or {}
+        imagem_b64 = data.get("imagem_base64")
+        if not imagem_b64:
+            return jsonify({"error": "Enviar arquivo (campo 'file') ou imagem_base64 no JSON"}), 400
+        import base64 as b64_mod
+        conteudo = b64_mod.b64decode(imagem_b64)
+        filename = data.get("filename", "camera_capture.jpg")
+
+    if not conteudo:
+        return jsonify({"error": "Arquivo vazio"}), 400
+
+    try:
+        resultado = onboarding_service.processar_documento(
+            conteudo, filename, criado_por=str(user.id)
+        )
+    except Exception:
+        logger.exception("upload_inteligente_falhou")
+        return jsonify({"error": "Erro ao processar documento"}), 500
+
+    return jsonify(resultado), 201 if resultado.get("status") == "criado" else 200
+
+
+@onboarding_bp.route("/documento/upload-batch", methods=["POST"])
+@jwt_required()
+def upload_lote():
+    """Upload de planilha/lista com multiplos pacientes (processamento em lote).
+
+    Aceita CSV ou XLSX com colunas: nome, cpf, telefone, email (ou imagem/PDF com lista).
+    """
+    user = _current_user()
+    if not user:
+        return jsonify({"error": "Usuário não encontrado"}), 404
+
+    from services.intelligent_onboarding_service import onboarding_service
+
+    arquivo = request.files.get("file")
+    if not arquivo or not arquivo.filename:
+        return jsonify({"error": "Enviar o arquivo no campo 'file'"}), 400
+
+    ext = arquivo.filename.rsplit(".", 1)[-1].lower() if "." in arquivo.filename else ""
+
+    if ext in ("csv", "xlsx"):
+        return _processar_planilha(arquivo, ext, str(user.id))
+    return _processar_imagem_lote(arquivo, str(user.id))
+
+
+def _processar_planilha(arquivo, ext: str, criado_por: str):
+    """Processa CSV ou XLSX com lista de pacientes."""
+    conteudo = arquivo.read()
+    logger.info(f"Processando planilha: {arquivo.filename} ({len(conteudo)} bytes)")
+
+    if ext == "csv":
+        import csv
+        import io
+        reader = csv.DictReader(io.StringIO(conteudo.decode("utf-8", errors="replace")))
+        pacientes = list(reader)
+    else:
+        import openpyxl
+        wb = openpyxl.load_workbook(io.BytesIO(conteudo), read_only=True)
+        ws = wb.active
+        headers = [cell.value for cell in next(ws.iter_rows())]
+        pacientes = []
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            pacientes.append(dict(zip(headers, [str(v) if v is not None else "" for v in row])))
+
+    from services.intelligent_onboarding_service import onboarding_service
+
+    resultados = []
+    criados = 0
+    pendentes = 0
+
+    for dados in pacientes:
+        nome = dados.get("nome", "").strip()
+        if not nome:
+            continue
+        try:
+            duplicados = onboarding_service._detectar_duplicados(dados)
+            if duplicados:
+                pendentes += 1
+                resultados.append({
+                    "status": "pendente",
+                    "dados": {"nome": nome, "cpf": dados.get("cpf")},
+                    "motivo": "duplicado",
+                    "paciente_existente": duplicados[0].nome,
+                    "paciente_id_existente": duplicados[0].id,
+                })
+                continue
+
+            paciente = onboarding_service._criar_paciente(dados)
+            compliance = onboarding_service._verificar_compliance(paciente)
+            criados += 1
+            resultados.append({
+                "status": "criado",
+                "dados": {"nome": nome, "cpf": dados.get("cpf")},
+                "paciente_id": paciente.id,
+                "compliance": compliance,
+            })
+        except Exception as e:
+            logger.error(f"Erro processando paciente {nome}: {e}")
+            resultados.append({
+                "status": "erro",
+                "dados": {"nome": nome},
+                "erro": str(e),
+            })
+
+    return jsonify({
+        "status": "lote_processado",
+        "total": len(pacientes),
+        "criados": criados,
+        "pendentes": pendentes,
+        "erros": sum(1 for r in resultados if r["status"] == "erro"),
+        "resultados": resultados,
+    }), 200
+
+
+def _processar_imagem_lote(arquivo, criado_por: str):
+    """Processa imagem/PDF com lista de pacientes (delega ao serviço inteligente)."""
+    from services.intelligent_onboarding_service import onboarding_service
+
+    analise = onboarding_service.analisar_documento(arquivo.read(), arquivo.filename)
+
+    if not analise.get("multiplos_pacientes") or not analise.get("pacientes"):
+        return jsonify({
+            "status": "nao_identificado_como_lista",
+            "analise": analise,
+            "mensagem": "Documento nao identificado como lista de pacientes. Use /documento/upload para upload individual.",
+        }), 200
+
+    resultado_lote = onboarding_service._processar_lote(
+        analise, arquivo.read(), arquivo.filename, criado_por
+    )
+    return jsonify(resultado_lote), 200
+
+
+@onboarding_bp.route("/documentos", methods=["GET"])
+@jwt_required()
+def listar_documentos():
+    """Lista documentos enviados no onboarding."""
+    docs = OnboardingDocumento.query.order_by(OnboardingDocumento.created_at.desc()).limit(100).all()
+    return jsonify({
+        "total": len(docs),
+        "documentos": [d.to_dict() for d in docs],
     }), 200
 
 
