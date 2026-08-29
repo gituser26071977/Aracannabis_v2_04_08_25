@@ -60,7 +60,7 @@ class RegistrationVerificationService:
         return final_result
     
     def _verify_crm(self, solicitacao: SolicitacoesCadastro) -> dict:
-        """Verifica CRM"""
+        """Verifica CRM com validacao externa no conselho"""
         results = {}
         
         # Validar formato
@@ -71,9 +71,29 @@ class RegistrationVerificationService:
         duplicate_check = check_duplicate_crm(solicitacao.crm, solicitacao.uf_crm, exclude_id=solicitacao.id)
         results['duplicate'] = duplicate_check
         
+        # Validar no conselho via CRMValidatorService
+        external_check = {"valid": False, "confidence": 0.0}
+        try:
+            from services.crm_validator_service import CRMValidatorService
+            ext_result = CRMValidatorService.validate_crm(solicitacao.crm, solicitacao.uf_crm)
+            external_check = {
+                "valid": ext_result.get("status") in ("validated", "possible_match"),
+                "confidence": 0.8 if ext_result.get("status") == "validated" else 0.4,
+                "details": ext_result,
+                "recommendation": "approve" if ext_result.get("status") in ("validated", "possible_match") else "review",
+            }
+            results["external"] = external_check
+        except Exception as e:
+            logger.warning(f"Validacao externa CRM indisponivel: {e}")
+            results["external"] = {"valid": False, "confidence": 0.0, "error": str(e)}
+        
         # Determinar se é válido
         is_valid = format_check['valid'] and not duplicate_check['duplicate']
-        confidence = min(format_check['confidence'], duplicate_check['confidence'])
+        confidence = min(
+            format_check['confidence'],
+            duplicate_check['confidence'],
+            external_check.get("confidence", 0.5),
+        )
         
         return {
             "valid": is_valid,

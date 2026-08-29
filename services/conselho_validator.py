@@ -74,31 +74,31 @@ CONSELHO_ALIASES = {
 # Tabela canônica: tipo -> {regex, role, label, profissao}
 _CONSELHOS: Dict[str, Dict[str, Any]] = {
     CONSELHO_CRM: {
-        "regex": re.compile(r".+"),
+        "regex": re.compile(r"^\d{4,6}$"),
         "role": "profissional",
         "label": CONSELHO_LABELS[CONSELHO_CRM],
         "profissao": "Médico",
     },
     CONSELHO_CRP: {
-        "regex": re.compile(r".+"),
+        "regex": re.compile(r"^(\d{2,6})(/\d+)?$"),
         "role": "profissional",
         "label": CONSELHO_LABELS[CONSELHO_CRP],
         "profissao": "Psicólogo",
     },
     CONSELHO_COREN: {
-        "regex": re.compile(r".+"),
+        "regex": re.compile(r"^[A-Z]{2}\d{4,6}$"),
         "role": "profissional",
         "label": CONSELHO_LABELS[CONSELHO_COREN],
         "profissao": "Enfermeiro",
     },
     CONSELHO_CRN: {
-        "regex": re.compile(r".+"),
+        "regex": re.compile(r"^\d{1,2}/\d{1,5}$"),
         "role": "profissional",
         "label": CONSELHO_LABELS[CONSELHO_CRN],
         "profissao": "Nutricionista",
     },
     CONSELHO_CREFITO: {
-        "regex": re.compile(r".+"),
+        "regex": re.compile(r"^(\d{1,2}/\d{1,5}|\d{4,6})$"),
         "role": "profissional",
         "label": CONSELHO_LABELS[CONSELHO_CREFITO],
         "profissao": "Fisioterapeuta",

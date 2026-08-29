@@ -59,8 +59,8 @@ def register():
     if Profissional.query.filter_by(crm=data['crm'], uf_crm=data['uf_crm']).first():
         return jsonify({'error': 'CRM já cadastrado'}), 409
     
-    if not re.match(r'^.{1,}$', data['crm']):
-        return jsonify({'error': 'Número do registro profissional é obrigatório'}), 400
+    if not re.match(r'^[0-9]{4,6}$', data['crm']):
+        return jsonify({'error': 'Formato de CRM inválido'}), 400
 
     if not re.match(r'^[A-Z]{2}$', data['uf_crm']):
         return jsonify({'error': 'Formato de UF do CRM inválido'}), 400
