@@ -186,7 +186,7 @@ def conferir(pre_id: int):
         # Temporariamente adota a associação do pré-atendimento como tenant do
         # request (se o usuário pertence a ela), para que o flush P0-08 aceite
         # criar o paciente na associação correta.
-        from association.models import Associacao
+        from models import Associacao
         from models_extra import UsuarioAssociacao
         pre = PreConsulta.query.execution_options(skip_tenant=True).get(pre_id)
         if pre and pre.associacao_id:

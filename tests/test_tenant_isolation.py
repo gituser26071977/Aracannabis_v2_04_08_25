@@ -5,7 +5,7 @@ CRÍTICO: Este teste valida que agentes não vazam dados entre associações dif
 import pytest
 from app_cors_livre import create_app
 from models import db, Profissional, Paciente
-from association.models import Associacao
+from models import Associacao
 from models_extra import UsuarioAssociacao
 from services.db_tools import DatabaseTools
 from datetime import datetime, date

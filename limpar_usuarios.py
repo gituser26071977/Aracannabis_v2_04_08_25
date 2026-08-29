@@ -61,20 +61,9 @@ def limpar_usuarios():
         if pacientes_ids:
             print(f"   📋 Pacientes a deletar: {pacientes_ids}")
             
-            # Deletar dependências primeiro (membros_associacao, consultas, prescricoes, etc)
+            # Deletar dependências primeiro (consultas, prescricoes, etc)
             print("   🔗 Deletando dependências...")
-            
-            # Importar modelos necessários
-            from association.models import Membro
-            
-            # Deletar membros de associação vinculados
-            deleted_membros = Membro.query.filter(
-                Membro.paciente_id.in_(pacientes_ids)
-            ).delete(synchronize_session=False)
-            
-            if deleted_membros > 0:
-                print(f"      - {deleted_membros} membro(s) de associação deletado(s)")
-            
+
             db.session.commit()
             
             # Agora deletar os pacientes

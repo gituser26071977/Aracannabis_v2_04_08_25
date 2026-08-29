@@ -29,7 +29,7 @@ def app():
 
 
 def _nova_associacao(nome="Clinica Teste"):
-    from association.models import Associacao
+    from models import Associacao
 
     a = Associacao(
         nome=nome,

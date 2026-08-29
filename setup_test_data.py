@@ -1,7 +1,7 @@
 from app_cors_livre import create_app, db
 from models import Profissional, Paciente
 from models_extra import UsuarioAssociacao
-from association.models import Associacao
+from models import Associacao
 from werkzeug.security import generate_password_hash
 from datetime import datetime, date
 

@@ -2448,3 +2448,34 @@ class Consultorio(db.Model):
             "ativo": self.ativo,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
+
+
+class Associacao(db.Model):
+    __tablename__ = "associacoes"
+
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String, nullable=False)
+    slug = db.Column(db.String, unique=True, nullable=True)
+    cnpj = db.Column(db.String, unique=True, nullable=False)
+    endereco = db.Column(db.String)
+    telefone = db.Column(db.String)
+    email = db.Column(db.String)
+    ativo = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    usuarios_vinculados = db.relationship("UsuarioAssociacao", back_populates="associacao", lazy=True, cascade="all, delete-orphan")
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "nome": self.nome,
+            "slug": self.slug,
+            "cnpj": self.cnpj,
+            "endereco": self.endereco,
+            "telefone": self.telefone,
+            "email": self.email,
+            "ativo": self.ativo,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }

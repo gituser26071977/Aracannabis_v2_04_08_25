@@ -113,23 +113,7 @@ const CadastroProfissionaisPage = () => {
     plano_slug: null, // rc.15: trial 14d é o padrão. Plano vira escolha voluntária em /planos.
   });
 
-  const [associacoes, setAssociacoes] = React.useState([]);
   const [conselhos, setConselhos] = React.useState([]);
-
-  React.useEffect(() => {
-    const fetchAssociacoes = async () => {
-      try {
-        const response = await api.get('/association/list');
-        if (response.data.success) {
-          setAssociacoes(response.data.associacoes);
-        }
-      } catch (err) {
-        if (process.env.NODE_ENV !== 'production')
-          console.error('Erro ao buscar associações:', err);
-      }
-    };
-    fetchAssociacoes();
-  }, []);
 
   React.useEffect(() => {
     // Lista de conselhos/classes profissionais (agnóstico de profissão)
@@ -384,32 +368,8 @@ const CadastroProfissionaisPage = () => {
                 <MenuItem value="pessoal">
                   Meu Consultório Virtual (Novo Espaço Personalizado)
                 </MenuItem>
-                <MenuItem value="existente">Vincular a uma Clínica/Associação Existente</MenuItem>
               </TextField>
             </Grid>
-
-            {formData.tipo_vinculo === 'existente' && (
-              <Grid item xs={12}>
-                <TextField
-                  name="associacao_id"
-                  label="Selecione a Clínica/Associação"
-                  select
-                  value={formData.associacao_id}
-                  onChange={handleInputChange}
-                  fullWidth
-                  required
-                >
-                  {associacoes.map((assoc) => (
-                    <MenuItem key={assoc.id} value={assoc.id}>
-                      {assoc.nome}
-                    </MenuItem>
-                  ))}
-                  {associacoes.length === 0 && (
-                    <MenuItem disabled>Nenhuma clínica encontrada</MenuItem>
-                  )}
-                </TextField>
-              </Grid>
-            )}
           </Grid>
         );
 
@@ -451,10 +411,7 @@ const CadastroProfissionaisPage = () => {
                   )}
 
                   <Typography variant="subtitle2" sx={{ mt: 1 }}>
-                    Vínculo:{' '}
-                    {formData.tipo_vinculo === 'pessoal'
-                      ? 'Novo Consultório Virtual'
-                      : `Vincular a ${associacoes.find((a) => a.id === formData.associacao_id)?.nome || 'Associação'}`}
+                    Vínculo: Novo Consultório Virtual
                   </Typography>
 
                   <Divider sx={{ my: 2 }} />

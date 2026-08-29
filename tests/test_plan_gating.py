@@ -19,7 +19,7 @@ from app_cors_livre import create_app
 from config import TestingConfig
 from models import db, Profissional, Plano, Assinatura
 from models_extra import UsuarioAssociacao
-from association.models import Associacao
+from models import Associacao
 
 
 def _plan_enforcement(value):

@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app_cors_livre import create_app
 from models import db, Profissional, Paciente, Sintoma, Dosagem, Evolucao, Consulta, Exame
-from association.models import Associacao
+from models import Associacao
 from models_extra import UsuarioAssociacao
 
 from faker import Faker

@@ -9,7 +9,7 @@ sys.path.append(os.getcwd())
 from app_cors_livre import create_app
 from models import db, Profissional, Paciente
 from services.crew_agents import gerar_relatorio_paciente
-from association.models import Associacao
+from models import Associacao
 from models_extra import UsuarioAssociacao
 
 # Mock para AI Manager se não estiver disponível ou para evitar custos/demora

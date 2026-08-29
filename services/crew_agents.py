@@ -83,7 +83,6 @@ from .ai_agents import ai_manager
 from .email_service import EmailService
 from .db_tools import DatabaseTools
 from .payment_service import payment_service
-from .association_report_service import AssociationReportService
 from models import db, Paciente, Evolucao, Dosagem, Sintoma, Prescricao, Profissional
 
 CURRENT_PROFISSIONAL_ID = contextvars.ContextVar("current_profissional_id", default=None)
@@ -931,99 +930,6 @@ PRESCRICAO_TOOLS = [
     gerar_prescricao_chat
 ]
 
-# ========== FERRAMENTAS DE RELATÓRIOS DE ASSOCIAÇÃO ==========
-
-@tool
-def obter_overview_associacao(associacao_id: int) -> Dict:
-    """Obtém visão geral completa de uma associação com estatísticas"""
-    try:
-        return AssociationReportService.get_association_overview(associacao_id)
-    except Exception as e:
-        return {"error": f"Erro ao obter overview: {str(e)}"}
-
-@tool
-def gerar_relatorio_atividade_membros(associacao_id: int, membro_id: Optional[int] = None) -> Dict:
-    """Gera relatório de atividade de membros de uma associação"""
-    try:
-        return AssociationReportService.get_member_activity_report(associacao_id, membro_id)
-    except Exception as e:
-        return {"error": f"Erro ao gerar relatório: {str(e)}"}
-
-@tool
-def analisar_dispensacoes_associacao(associacao_id: int, dias: int = 30) -> Dict:
-    """Analisa dispensações da associação com estatísticas e gráficos"""
-    try:
-        return AssociationReportService.get_dispensation_analytics(associacao_id, dias)
-    except Exception as e:
-        return {"error": f"Erro ao analisar dispensações: {str(e)}"}
-
-@tool
-def consultar_estoque_associacao(associacao_id: int) -> Dict:
-    try:
-        return AssociationReportService.get_stock_status(associacao_id)
-    except Exception as e:
-        return {"error": f"Erro ao consultar estoque: {str(e)}"}
-
-@tool
-def gerar_relatorio_consolidado_associacao(associacao_id: int, periodo_dias: int = 30) -> Dict:
-    try:
-        # Coletar todos os dados
-        overview = AssociationReportService.get_association_overview(associacao_id)
-        atividade = AssociationReportService.get_member_activity_report(associacao_id)
-        dispensacoes = AssociationReportService.get_dispensation_analytics(associacao_id, periodo_dias)
-        estoque = AssociationReportService.get_stock_status(associacao_id)
-        
-        # Preparar contexto para IA
-        context = {
-            "overview": overview,
-            "atividade_membros": atividade,
-            "analise_dispensacoes": dispensacoes,
-            "status_estoque": estoque,
-            "periodo_analise": periodo_dias
-        }
-        
-        # Usar IA para gerar relatório estruturado
-        system_prompt = """Você é um especialista em relatórios gerenciais para associações de cannabis medicinal.
-        
-        Gere um relatório executivo completo baseado nos dados fornecidos, estruturado com:
-        
-        1. **Resumo Executivo**: Principais indicadores e insights
-        2. **Análise de Membros**: Atividade, engajamento e crescimento
-        3. **Gestão de Dispensações**: Padrões, tendências e eficiência
-        4. **Status de Estoque**: Disponibilidade, alertas e recomendações
-        5. **Recomendações Estratégicas**: Ações prioritárias
-        
-        Use linguagem profissional, dados quantitativos e insights acionáveis.
-        Formate em Markdown para fácil leitura."""
-        
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"Dados da associação para relatório: {json.dumps(context, ensure_ascii=False)}"}
-        ]
-        
-        response = ai_manager.chat_completion(
-            messages=messages,
-            temperature=0.4,
-            max_tokens=3000
-        )
-        
-        return {
-            "relatorio_ia": response['content'],
-            "dados_brutos": context,
-            "data_geracao": datetime.utcnow().isoformat()
-        }
-        
-    except Exception as e:
-        return {"error": f"Erro ao gerar relatório completo: {str(e)}"}
-
-ASSOCIATION_REPORT_TOOLS = [
-    obter_overview_associacao,
-    gerar_relatorio_atividade_membros,
-    analisar_dispensacoes_associacao,
-    consultar_estoque_associacao,
-    gerar_relatorio_consolidado_associacao
-]
-
 # ========== FERRAMENTAS DE VALIDAÇÃO DE PROFISSIONAIS ==========
 
 @tool
@@ -1353,36 +1259,6 @@ def criar_farmaceutico_cannabis(llm_config: Optional[Dict] = None) -> Agent:
             *DOSAGEM_CRUD_TOOLS,
             *SINTOMA_CRUD_TOOLS,
             *PRESCRICAO_TOOLS
-        ],
-        llm_config=llm_config
-    )
-    
-    return agent
-
-def criar_especialista_associacoes(llm_config: Optional[Dict] = None) -> Agent:
-    """Cria agente especialista em relatórios e gestão de associações"""
-    if not CREWAI_AVAILABLE:
-        return None
-    
-    agent = Agent(
-        role="Especialista em Gestão de Associações de Cannabis Medicinal",
-        goal="""Gerar relatórios executivos e análises estratégicas para associações de cannabis medicinal.
-        Analisar dados de membros, dispensações e estoque para fornecer insights acionáveis.
-        Identificar padrões, tendências e oportunidades de melhoria na gestão da associação.
-        Criar visualizações de dados e dashboards informativos.""",
-        backstory="""Você é um consultor especializado em gestão de associações sem fins lucrativos no setor de cannabis medicinal.
-        Possui mestrado em Administração com foco em gestão de associações de saúde.
-        Trabalhou como analista de dados e gestor em várias associações de cannabis medicinal,
-        implementando sistemas de BI, dashboards e relatórios que melhoraram significativamente a eficiência operacional.
-        É expert em análise de dados, KPIs, indicadores de performance e visualização de informações.
-        Combina conhecimento técnico em análise de dados com profundo entendimento das necessidades
-        específicas de associações de pacientes. Suas recomendações são sempre baseadas em dados
-        e focadas em melhorar o atendimento aos membros da associação.""",
-        verbose=True,
-        allow_delegation=False,
-        tools=[
-            *ASSOCIATION_REPORT_TOOLS,
-            enviar_email  # Pode enviar relatórios por email
         ],
         llm_config=llm_config
     )

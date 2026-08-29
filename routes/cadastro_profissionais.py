@@ -258,7 +258,7 @@ def processar_aprovacao(solicitacao_id):
         # SAVEPOINT para nao desfazer o INSERT do profissional.
         try:
             sp = db.session.begin_nested()
-            from association.models import Associacao
+            from models import Associacao
             from models_extra import UsuarioAssociacao
 
             tipo_vinculo = getattr(solicitacao, 'tipo_vinculo', 'pessoal')
@@ -284,8 +284,7 @@ def processar_aprovacao(solicitacao_id):
                 instituicao = (getattr(solicitacao, 'instituicao', '') or '').strip()
                 nome_assoc = instituicao if instituicao else f"Consultorio {solicitacao.nome}"
                 # rc.16: CNPJ placeholder unico (AUTO-<prof_id>-<ts>) para
-                # nao colidir com CRM de outros profissionais. Usuario
-                # podera editar via /association para CNPJ real depois.
+                # nao colidir com CRM de outros profissionais.
                 import time as _time
                 cnpj_placeholder = f"AUTO-{novo_profissional.id}-{int(_time.time())}"
                 target_assoc = Associacao(
@@ -341,8 +340,8 @@ def processar_aprovacao(solicitacao_id):
         try:
             email_service.send_approval_email(solicitacao.email, solicitacao.nome, usuario, senha_temporaria, novo_profissional.data_expiracao)
             telegram_service.notify_doctor_approval(solicitacao.telefone, solicitacao.nome)
-        except Exception:
-             pass
+        except Exception as e:
+            current_app.logger.error(f"Erro ao enviar email/telegram de aprovação para {solicitacao.email}: {e}")
 
         return {'success': True, 'message': 'Aprovado'}, 200
 

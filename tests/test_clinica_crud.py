@@ -20,7 +20,7 @@ os.environ.setdefault("TESTING", "1")
 from app_cors_livre import create_app
 from config import TestingConfig
 from models import db, Profissional, Plano, Assinatura
-from association.models import Associacao
+from models import Associacao
 from models_extra import UsuarioAssociacao, AuditLog
 
 

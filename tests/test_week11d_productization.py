@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from app_cors_livre import create_app
 from models import db, Profissional, Paciente
-from association.models import Associacao
+from models import Associacao
 from models_extra import UsuarioAssociacao
 from werkzeug.security import generate_password_hash
 from datetime import datetime, date

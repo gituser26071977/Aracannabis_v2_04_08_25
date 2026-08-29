@@ -15,8 +15,6 @@ import TextField from '@mui/material/TextField';
 import Alert from '@mui/material/Alert';
 import CircularProgress from '@mui/material/CircularProgress';
 import { useAuth } from './contexts/AuthContext';
-import { AssociationProvider } from './contexts/AssociationContext';
-import AssociationSelector from './components/AssociationSelector';
 
 // Importar páginas
 import PacientesPageComponent from './pages/PacientesPage';
@@ -60,7 +58,6 @@ import ForbiddenPage from './pages/ForbiddenPage';
 import ServerErrorPage from './pages/ServerErrorPage';
 
 import NavigationMenu from './components/NavigationMenu';
-import { useModulos } from './contexts/ModulosContext';
 
 // Patient Portal Pages
 import PatientLogin from './pages/patient/PatientLogin';
@@ -453,13 +450,9 @@ function AppContent() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const { currentUser } = useAuth();
-  const { hasModulo } = useModulos();
   const location = useLocation();
   const { mode, toggleColorMode } = useColorMode();
 
-  // Gestão de associação (estoque, dispensação, membros) é específica do
-  // fluxo canabinoide — só aparece com o módulo cannabis-medicinal ativo.
-  const habilitarCannabis = hasModulo('cannabis-medicinal');
   const isLoginPage = location.pathname === '/login' || location.pathname === '/patient/login';
   const isOnboardingPage = location.pathname === '/onboarding';
   const isPreAtendimento = location.pathname.startsWith('/pre-atendimento/');
@@ -482,356 +475,351 @@ function AppContent() {
 
   return (
     <ErrorBoundary>
-      <AssociationProvider>
-        {showTrialBanner && <TrialBanner />}
-        {!isPublicStandalone && (
-          <AppBar
-            position="sticky"
-            elevation={scrolled ? 2 : 0}
-            sx={{
-              transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-              bgcolor: scrolled
-                ? mode === 'dark'
-                  ? 'rgba(10,15,13,0.85)'
-                  : 'rgba(255,255,255,0.85)'
-                : mode === 'dark'
-                  ? 'transparent'
-                  : 'transparent',
-              backdropFilter: scrolled ? 'blur(20px) saturate(180%)' : 'none',
-              WebkitBackdropFilter: scrolled ? 'blur(20px) saturate(180%)' : 'none',
-              borderBottom: scrolled
-                ? `1px solid ${mode === 'dark' ? 'rgba(0,212,170,0.08)' : 'rgba(13,115,119,0.08)'}`
-                : '1px solid transparent',
-            }}
-          >
-            <Toolbar sx={{ minHeight: { xs: 56, sm: 64 } }}>
-              <IconButton
-                edge="start"
-                color="inherit"
-                aria-label="menu"
-                onClick={toggleMenu}
+      {showTrialBanner && <TrialBanner />}
+      {!isPublicStandalone && (
+        <AppBar
+          position="sticky"
+          elevation={scrolled ? 2 : 0}
+          sx={{
+            transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+            bgcolor: scrolled
+              ? mode === 'dark'
+                ? 'rgba(10,15,13,0.85)'
+                : 'rgba(255,255,255,0.85)'
+              : mode === 'dark'
+                ? 'transparent'
+                : 'transparent',
+            backdropFilter: scrolled ? 'blur(20px) saturate(180%)' : 'none',
+            WebkitBackdropFilter: scrolled ? 'blur(20px) saturate(180%)' : 'none',
+            borderBottom: scrolled
+              ? `1px solid ${mode === 'dark' ? 'rgba(0,212,170,0.08)' : 'rgba(13,115,119,0.08)'}`
+              : '1px solid transparent',
+          }}
+        >
+          <Toolbar sx={{ minHeight: { xs: 56, sm: 64 } }}>
+            <IconButton
+              edge="start"
+              color="inherit"
+              aria-label="menu"
+              onClick={toggleMenu}
+              sx={{
+                mr: 2,
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  transform: 'scale(1.1)',
+                  bgcolor: (theme) => `${theme.palette.primary.main}14`,
+                },
+              }}
+            >
+              <MenuIcon />
+            </IconButton>
+
+            <Typography
+              variant="h6"
+              component="div"
+              sx={{
+                flexGrow: 1,
+                fontWeight: 800,
+                letterSpacing: '-0.02em',
+                background:
+                  mode === 'dark'
+                    ? 'linear-gradient(135deg, #00d4aa 0%, #ffd166 100%)'
+                    : 'linear-gradient(135deg, #0d7377 0%, #14a085 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+                fontSize: { xs: '1.1rem', sm: '1.25rem' },
+              }}
+            >
+              🌿 {APP_TITLE}
+            </Typography>
+
+            <IconButton
+              color="inherit"
+              onClick={toggleColorMode}
+              aria-label={mode === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'}
+              sx={{
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  transform: 'rotate(20deg) scale(1.1)',
+                  bgcolor: (theme) => `${theme.palette.primary.main}14`,
+                },
+              }}
+            >
+              {mode === 'dark' ? <LightMode /> : <DarkMode />}
+            </IconButton>
+
+            {currentUser && (
+              <Typography
+                variant="body2"
                 sx={{
                   mr: 2,
-                  transition: 'all 0.2s ease',
-                  '&:hover': {
-                    transform: 'scale(1.1)',
-                    bgcolor: (theme) => `${theme.palette.primary.main}14`,
-                  },
+                  ml: 2,
+                  fontWeight: 600,
+                  opacity: 0.8,
+                  display: { xs: 'none', sm: 'block' },
                 }}
               >
-                <MenuIcon />
-              </IconButton>
-
-              <Typography
-                variant="h6"
-                component="div"
-                sx={{
-                  flexGrow: 1,
-                  fontWeight: 800,
-                  letterSpacing: '-0.02em',
-                  background:
-                    mode === 'dark'
-                      ? 'linear-gradient(135deg, #00d4aa 0%, #ffd166 100%)'
-                      : 'linear-gradient(135deg, #0d7377 0%, #14a085 100%)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  backgroundClip: 'text',
-                  fontSize: { xs: '1.1rem', sm: '1.25rem' },
-                }}
-              >
-                🌿 {APP_TITLE}
+                👋 Olá, {currentUser.nome}
               </Typography>
-
-              {/* Association Selector (cannabis medicinal) */}
-              {currentUser && habilitarCannabis && <AssociationSelector />}
-
-              <IconButton
+            )}
+            {currentUser ? (
+              <Button
                 color="inherit"
-                onClick={toggleColorMode}
-                aria-label={mode === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'}
+                onClick={() =>
+                  window.open(`${process.env.REACT_APP_API_URL || ''}/api/status`, '_blank')
+                }
+                target="_blank"
+                disabled={!process.env.REACT_APP_API_URL}
                 sx={{
-                  transition: 'all 0.3s ease',
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  borderRadius: '10px',
+                  px: 2,
+                  display: { xs: 'none', sm: 'flex' },
                   '&:hover': {
-                    transform: 'rotate(20deg) scale(1.1)',
                     bgcolor: (theme) => `${theme.palette.primary.main}14`,
                   },
                 }}
               >
-                {mode === 'dark' ? <LightMode /> : <DarkMode />}
-              </IconButton>
+                🔌 API
+              </Button>
+            ) : (
+              <Button
+                color="inherit"
+                component={Link}
+                to="/login"
+                sx={{
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  borderRadius: '10px',
+                  px: 2,
+                  '&:hover': {
+                    bgcolor: (theme) => `${theme.palette.primary.main}14`,
+                  },
+                }}
+              >
+                🔑 Login
+              </Button>
+            )}
+          </Toolbar>
+        </AppBar>
+      )}
+      <NavigationMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
+      <Container
+        maxWidth={isPublicStandalone ? false : 'xl'}
+        sx={isPublicStandalone ? { p: 0, m: 0 } : { mt: { xs: 2, sm: 4 }, mb: { xs: 2, sm: 4 } }}
+      >
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
 
-              {currentUser && (
-                <Typography
-                  variant="body2"
-                  sx={{
-                    mr: 2,
-                    ml: 2,
-                    fontWeight: 600,
-                    opacity: 0.8,
-                    display: { xs: 'none', sm: 'block' },
-                  }}
-                >
-                  👋 Olá, {currentUser.nome}
-                </Typography>
-              )}
-              {currentUser ? (
-                <Button
-                  color="inherit"
-                  onClick={() =>
-                    window.open(`${process.env.REACT_APP_API_URL || ''}/api/status`, '_blank')
-                  }
-                  target="_blank"
-                  disabled={!process.env.REACT_APP_API_URL}
-                  sx={{
-                    textTransform: 'none',
-                    fontWeight: 600,
-                    borderRadius: '10px',
-                    px: 2,
-                    display: { xs: 'none', sm: 'flex' },
-                    '&:hover': {
-                      bgcolor: (theme) => `${theme.palette.primary.main}14`,
-                    },
-                  }}
-                >
-                  🔌 API
-                </Button>
-              ) : (
-                <Button
-                  color="inherit"
-                  component={Link}
-                  to="/login"
-                  sx={{
-                    textTransform: 'none',
-                    fontWeight: 600,
-                    borderRadius: '10px',
-                    px: 2,
-                    '&:hover': {
-                      bgcolor: (theme) => `${theme.palette.primary.main}14`,
-                    },
-                  }}
-                >
-                  🔑 Login
-                </Button>
-              )}
-            </Toolbar>
-          </AppBar>
-        )}
-        <NavigationMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
-        <Container
-          maxWidth={isPublicStandalone ? false : 'xl'}
-          sx={isPublicStandalone ? { p: 0, m: 0 } : { mt: { xs: 2, sm: 4 }, mb: { xs: 2, sm: 4 } }}
-        >
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <HomeByProfile />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/definir-senha/solicitar" element={<PasswordSetupRequestPage />} />
+          <Route path="/definir-senha" element={<DefinePasswordPage />} />
+          <Route path="/pagamento" element={<PagamentoPage />} />
+          <Route path="/planos" element={<PlanosPage />} />
+          <Route path="/cadastro-profissionais" element={<CadastroProfissionaisPage />} />
+          <Route path="/verificar-email" element={<VerifyEmailPage />} />
+          <Route
+            path="/onboarding"
+            element={
+              <ProtectedRoute>
+                <OnboardingPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/trial-ending"
+            element={
+              <ProtectedRoute>
+                <TrialEndingPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/test-login" element={<SimpleLogin />} />
+          <Route path="/pagamento-sucesso" element={<PaymentStatusPage />} />
+          <Route path="/pagamento-erro" element={<PaymentStatusPage />} />
+          <Route path="/pagamento-pendente" element={<PaymentStatusPage />} />
+          <Route
+            path="/pacientes"
+            element={
+              <ProtectedRoute>
+                <PacientesPageComponent />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/pacientes/detail/:patientId"
+            element={
+              <ProtectedRoute>
+                <PatientDetailPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/pacientes/detail/:patientId/tendencias"
+            element={
+              <ProtectedRoute>
+                <TrendsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/pacientes/edit/:patientId"
+            element={
+              <ProtectedRoute>
+                <PatientEditPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/importar-prescricoes"
+            element={
+              <ProtectedRoute>
+                <BatchImportPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/consultas"
+            element={
+              <ProtectedRoute>
+                <ConsultasPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/assistente-ia"
+            element={
+              <ProtectedRoute>
+                <AIChatPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/billing"
+            element={
+              <ProtectedRoute>
+                <BillingPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/faturamento"
+            element={
+              <ProtectedRoute>
+                <FaturamentoPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/onboarding-pacientes"
+            element={
+              <ProtectedRoute>
+                <OnboardingPacientesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/pre-atendimento-conferencia"
+            element={
+              <ProtectedRoute>
+                <PreAtendimentoConferenciaPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/gestao"
+            element={
+              <ProtectedRoute>
+                <GestaoPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/certificacao-digital"
+            element={
+              <ProtectedRoute>
+                <CertificacaoDigitalPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/relatorios-financeiros"
+            element={
+              <ProtectedRoute>
+                <RelatoriosFinanceirosPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <AdminRoute>
+                <AdminPage />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/ai-dashboard"
+            element={
+              <AdminRoute>
+                <AIDashboard />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/ai-config"
+            element={
+              <AdminRoute>
+                <AIConfigPage />
+              </AdminRoute>
+            }
+          />
+          <Route path="/seguranca" element={<SecurityPage />} />
+          <Route
+            path="/configurar-unidade"
+            element={
+              <ProtectedRoute>
+                <ConfigurarUnidadePage />
+              </ProtectedRoute>
+            }
+          />
+          {/* Specialty Modules */}
+          <Route
+            path="/modulos"
+            element={
+              <ProtectedRoute>
+                <ModulosPage />
+              </ProtectedRoute>
+            }
+          />
 
-            <Route path="/login" element={<LoginPage />} />
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <HomeByProfile />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="/definir-senha/solicitar" element={<PasswordSetupRequestPage />} />
-            <Route path="/definir-senha" element={<DefinePasswordPage />} />
-            <Route path="/pagamento" element={<PagamentoPage />} />
-            <Route path="/planos" element={<PlanosPage />} />
-            <Route path="/cadastro-profissionais" element={<CadastroProfissionaisPage />} />
-            <Route path="/verificar-email" element={<VerifyEmailPage />} />
-            <Route
-              path="/onboarding"
-              element={
-                <ProtectedRoute>
-                  <OnboardingPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/trial-ending"
-              element={
-                <ProtectedRoute>
-                  <TrialEndingPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="/test-login" element={<SimpleLogin />} />
-            <Route path="/pagamento-sucesso" element={<PaymentStatusPage />} />
-            <Route path="/pagamento-erro" element={<PaymentStatusPage />} />
-            <Route path="/pagamento-pendente" element={<PaymentStatusPage />} />
-            <Route
-              path="/pacientes"
-              element={
-                <ProtectedRoute>
-                  <PacientesPageComponent />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/pacientes/detail/:patientId"
-              element={
-                <ProtectedRoute>
-                  <PatientDetailPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/pacientes/detail/:patientId/tendencias"
-              element={
-                <ProtectedRoute>
-                  <TrendsPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/pacientes/edit/:patientId"
-              element={
-                <ProtectedRoute>
-                  <PatientEditPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/importar-prescricoes"
-              element={
-                <ProtectedRoute>
-                  <BatchImportPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/consultas"
-              element={
-                <ProtectedRoute>
-                  <ConsultasPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/assistente-ia"
-              element={
-                <ProtectedRoute>
-                  <AIChatPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/billing"
-              element={
-                <ProtectedRoute>
-                  <BillingPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/faturamento"
-              element={
-                <ProtectedRoute>
-                  <FaturamentoPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/onboarding-pacientes"
-              element={
-                <ProtectedRoute>
-                  <OnboardingPacientesPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/pre-atendimento-conferencia"
-              element={
-                <ProtectedRoute>
-                  <PreAtendimentoConferenciaPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/gestao"
-              element={
-                <ProtectedRoute>
-                  <GestaoPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/certificacao-digital"
-              element={
-                <ProtectedRoute>
-                  <CertificacaoDigitalPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/relatorios-financeiros"
-              element={
-                <ProtectedRoute>
-                  <RelatoriosFinanceirosPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin"
-              element={
-                <AdminRoute>
-                  <AdminPage />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="/ai-dashboard"
-              element={
-                <AdminRoute>
-                  <AIDashboard />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="/ai-config"
-              element={
-                <AdminRoute>
-                  <AIConfigPage />
-                </AdminRoute>
-              }
-            />
-            <Route path="/seguranca" element={<SecurityPage />} />
-            <Route
-              path="/configurar-unidade"
-              element={
-                <ProtectedRoute>
-                  <ConfigurarUnidadePage />
-                </ProtectedRoute>
-              }
-            />
-            {/* Specialty Modules */}
-            <Route
-              path="/modulos"
-              element={
-                <ProtectedRoute>
-                  <ModulosPage />
-                </ProtectedRoute>
-              }
-            />
+          {/* Patient Portal Routes (PUBLIC) */}
+          <Route path="/patient/login" element={<PatientLogin />} />
+          <Route path="/patient/register" element={<PatientRegister />} />
+          <Route path="/patient/dashboard" element={<PatientDashboard />} />
 
-            {/* Patient Portal Routes (PUBLIC) */}
-            <Route path="/patient/login" element={<PatientLogin />} />
-            <Route path="/patient/register" element={<PatientRegister />} />
-            <Route path="/patient/dashboard" element={<PatientDashboard />} />
+          {/* Pré-atendimento público por tenant (sem login) */}
+          <Route path="/pre-atendimento/:slug" element={<PreAtendimentoPage />} />
 
-            {/* Pré-atendimento público por tenant (sem login) */}
-            <Route path="/pre-atendimento/:slug" element={<PreAtendimentoPage />} />
+          {/* Error Pages (MISSÃO 12) */}
+          <Route path="/401" element={<UnauthorizedPage />} />
+          <Route path="/403" element={<ForbiddenPage />} />
+          <Route path="/500" element={<ServerErrorPage />} />
 
-            {/* Error Pages (MISSÃO 12) */}
-            <Route path="/401" element={<UnauthorizedPage />} />
-            <Route path="/403" element={<ForbiddenPage />} />
-            <Route path="/500" element={<ServerErrorPage />} />
-
-            {/* Catch-all 404 */}
-            <Route path="*" element={<NotFoundPage />} />
-          </Routes>
-        </Container>
-      </AssociationProvider>
+          {/* Catch-all 404 */}
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+      </Container>
     </ErrorBoundary>
   );
 }

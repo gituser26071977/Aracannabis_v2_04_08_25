@@ -443,7 +443,7 @@ def cadastrar_paciente():
                     novo_paciente.associacao_id = int(assoc_data)
                 except (ValueError, TypeError):
                     # Se não for número, tenta buscar pelo nome
-                    from association.models import Associacao
+                    from models import Associacao
                     assoc = Associacao.query.filter_by(nome=assoc_data).first()
                     if assoc:
                         novo_paciente.associacao_id = assoc.id
@@ -480,26 +480,6 @@ def cadastrar_paciente():
             db.session.add(log)
             db.session.commit()
             
-            # --- BILATERAL API SYNC START ---
-            # Enviar dados do paciente recém-criado para o sistema de Associação
-            try:
-                from association.services.external_integration_service import ExternalAssociationService
-                # Prepara dados para sync
-                sync_data = {
-                    'nome': novo_paciente.nome,
-                    'cpf': novo_paciente.cpf,
-                    'email': novo_paciente.email,
-                    'telefone': novo_paciente.telefone,
-                    'endereco': novo_paciente.endereco,
-                    'data_nascimento': novo_paciente.data_nascimento
-                }
-                # Executa sync em background ou direto (aqui direto para simplicidade, ideal seria background task)
-                ExternalAssociationService.sync_patient_to_association(sync_data)
-                print(f"Sync attempt for patient {novo_paciente.id} to external association initiated.")
-            except Exception as e_sync:
-                print(f"Error syncing new patient to external association: {e_sync}")
-            # --- BILATERAL API SYNC END ---
-
             print(f"Paciente cadastrado com sucesso: {novo_paciente.to_dict()}")
 
             return jsonify({
@@ -620,7 +600,7 @@ def atualizar_paciente(paciente_id):
                     paciente.associacao_id = int(assoc_data)
                 except (ValueError, TypeError):
                     # Se for string (nome), buscar a associação
-                    from association.models import Associacao
+                    from models import Associacao
                     assoc = Associacao.query.filter_by(nome=assoc_data).first()
                     if assoc:
                         paciente.associacao_id = assoc.id
@@ -657,23 +637,6 @@ def atualizar_paciente(paciente_id):
         db.session.add(log)
         db.session.commit()
         
-        # --- BILATERAL API SYNC START (UPDATE) ---
-        try:
-            from association.services.external_integration_service import ExternalAssociationService
-            sync_data = {
-                'nome': paciente.nome,
-                'cpf': paciente.cpf,
-                'email': paciente.email,
-                'telefone': paciente.telefone,
-                'endereco': paciente.endereco,
-                'data_nascimento': paciente.data_nascimento
-            }
-            ExternalAssociationService.sync_patient_to_association(sync_data)
-            print(f"Sync attempt for updated patient {paciente.id} to external association initiated.")
-        except Exception as e_sync:
-            print(f"Error syncing updated patient to external association: {e_sync}")
-        # --- BILATERAL API SYNC END ---
-
         return jsonify({
             'message': 'Paciente atualizado com sucesso',
             'paciente': paciente.to_dict()

@@ -1,6 +1,6 @@
 from app_cors_livre import create_app
 from models import db, Profissional
-from association.models import Associacao
+from models import Associacao
 from models_extra import UsuarioAssociacao
 from sqlalchemy import text
 

@@ -8,7 +8,7 @@ sys.path.append(os.getcwd())
 
 from app_cors_livre import create_app
 from models import db, Profissional, Paciente, Prescricao
-from association.models import Associacao
+from models import Associacao
 from models_extra import UsuarioAssociacao
 from services.crew_agents import gerar_prescricao_chat
 

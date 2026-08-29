@@ -63,45 +63,12 @@ def patient_register():
     # Buscar paciente por CPF
     paciente = Paciente.query.filter_by(cpf=cpf_clean).first()
     
-    # Se não existe localmente, tentar buscar no sistema externo
+    # Se não existe localmente
     import_data = None
     if not paciente:
-        try:
-            from association.services.external_integration_service import ExternalAssociationService
-            # Tentar buscar dados externos
-            external_data = ExternalAssociationService.search_associate(cpf_clean)
-            
-            if external_data:
-                # Criar novo paciente com dados externos
-                paciente = Paciente(
-                    cpf=cpf_clean,
-                    nome=external_data.get('nome') or 'Nome não informado',
-                    email=email, # Usa o email fornecido no registro, pois é o login
-                    telefone=external_data.get('telefone'),
-                    endereco=external_data.get('endereco'),
-                    rg=external_data.get('rg')
-                )
-                
-                # Tratar data de nascimento se vier string
-                if external_data.get('data_nascimento'):
-                    try:
-                        if isinstance(external_data.get('data_nascimento'), str):
-                             paciente.data_nascimento = datetime.strptime(external_data.get('data_nascimento'), '%Y-%m-%d').date()
-                    except:
-                        pass
-                        
-                # Adicionar ao banco
-                db.session.add(paciente)
-                import_data = True
-            else:
-                 return jsonify({
-                    'error': 'CPF não encontrado no sistema. Consulte seu médico para cadastro.'
-                }), 404
-        except Exception as e:
-            print(f"Error checking external api: {e}")
-            return jsonify({
-                'error': 'CPF não encontrado no sistema. Consulte seu médico para cadastro.'
-            }), 404
+        return jsonify({
+            'error': 'CPF não encontrado no sistema. Consulte seu médico para cadastro.'
+        }), 404
     
     # Se for paciente existente (não importado agora)
     if not import_data:
@@ -252,22 +219,6 @@ def verify_cpf():
     paciente = Paciente.query.filter_by(cpf=cpf_clean).first()
     
     if not paciente:
-        # Tenta buscar no sistema externo
-        try:
-            from association.services.external_integration_service import ExternalAssociationService
-            external_data = ExternalAssociationService.search_associate(cpf_clean)
-            
-            if external_data:
-                return jsonify({
-                    'exists': False,
-                    'can_import': True,
-                    'external_data': external_data,
-                    'nome': external_data.get('nome'),
-                    'message': 'CPF encontrado na Associação. Seus dados serão importados.'
-                }), 200
-        except Exception as e:
-            print(f"Error checking external api: {e}")
-            
         return jsonify({
             'exists': False,
             'can_import': False,

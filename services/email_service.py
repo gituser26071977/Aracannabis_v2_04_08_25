@@ -17,7 +17,7 @@ class EmailService:
         self.use_ssl = os.getenv('SMTP_USE_SSL', 'False').lower() == 'true'
         self.email_from = os.getenv('EMAIL_FROM', 'suporte@arapath.com.br')
         self.email_from_name = os.getenv('EMAIL_FROM_NAME', 'AraOS — Clinical Intelligence Operating System')
-        self.development_mode = os.getenv('EMAIL_DEVELOPMENT_MODE', 'True').lower() == 'true'
+        self.development_mode = os.getenv('EMAIL_DEVELOPMENT_MODE', 'False').lower() == 'true'
         # D05l (trial 14d): URL do site para CTA nos emails de boas-vindas/expiração
         self.site_url = os.getenv('ARAOS_SITE_URL', 'https://araos.aracannabis.com.br').strip()
         print(f"DEBUG: EmailService initialized. User={self.username}, DevMode={self.development_mode}")
@@ -175,6 +175,16 @@ class EmailService:
         html_body += f"<p><small>Link direto: <a href=\"{self.site_url}/planos\">{self.site_url}/planos</a></small></p>"
 
         # Send email
+        return self.send_email(email, subject, html_body)
+
+    def send_rejection_email(self, email, nome, observacoes=""):
+        subject = "Sua solicitação de cadastro foi revisada - AraOS"
+        html_body = f"<p>Olá {nome},</p>"
+        html_body += "<p>Após análise, sua solicitação de acesso ao AraOS não foi aprovada neste momento.</p>"
+        if observacoes:
+            html_body += f"<p><strong>Observações:</strong> {observacoes}</p>"
+        html_body += "<p>Você pode tentar novamente com dados atualizados quando desejar.</p>"
+        html_body += "<p>Atenciosamente,<br>Equipe AraOS</p>"
         return self.send_email(email, subject, html_body)
 
     def send_password_setup_email(self, email, nome, link_definicao, data_expiracao):

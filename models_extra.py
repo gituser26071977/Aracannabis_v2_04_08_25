@@ -243,50 +243,6 @@ def create_audit_entry(tenant_id, user_id, action, resource_type=None, resource_
         raise
 
 
-class ConviteAssociacao(db.Model):
-    """Convite para médico ingressar numa clínica/associação (tenant).
-
-    Fluxo: o admin da associação gera um convite (email e/ou código).
-    O médico convidado aceita (via link ou código) e vira membro da
-    associação (UsuarioAssociacao). Suporta convidar médicos que ainda
-    não têm conta (criam uma) ou que já têm (ingressam na clínica).
-    """
-
-    __tablename__ = 'convites_associacoes'
-
-    id = db.Column(db.Integer, primary_key=True)
-    associacao_id = db.Column(
-        db.Integer, db.ForeignKey('associacoes.id', ondelete='CASCADE'), nullable=False
-    )
-    email = db.Column(db.String, nullable=False)
-    # token único para aceite via link; codigo curto para aceite manual
-    token = db.Column(db.String(64), unique=True, nullable=False)
-    codigo = db.Column(db.String(12), unique=True, nullable=False)
-    role_convidado = db.Column(db.String, default='member')  # 'member', 'viewer'
-    status = db.Column(db.String, default='pendente')  # pendente, aceito, revogado, expirado
-    criado_por = db.Column(db.Integer, db.ForeignKey('profissionais.id'), nullable=True)
-    criado_em = db.Column(db.DateTime, default=datetime.utcnow)
-    expira_em = db.Column(db.DateTime, nullable=True)
-    aceito_em = db.Column(db.DateTime, nullable=True)
-    aceito_por = db.Column(db.Integer, db.ForeignKey('profissionais.id'), nullable=True)
-
-    associacao = db.relationship('Associacao', backref='convites')
-
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'associacao_id': self.associacao_id,
-            'email': self.email,
-            'token': self.token,
-            'codigo': self.codigo,
-            'role_convidado': self.role_convidado,
-            'status': self.status,
-            'criado_em': self.criado_em.isoformat() if self.criado_em else None,
-            'expira_em': self.expira_em.isoformat() if self.expira_em else None,
-            'aceito_em': self.aceito_em.isoformat() if self.aceito_em else None,
-        }
-
-
 class SalaAmbiente(db.Model):
     """Espaço físico de uma clínica/associação (tenant).
 

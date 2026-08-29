@@ -1,7 +1,6 @@
 """
 Serviço de verificação automática de cadastros usando agentes IA
 """
-from .crew_agents import Agent, tool
 from .ai_agents import ai_manager
 from models import SolicitacoesCadastro, db
 from services.registration_verification_tools import (
@@ -22,21 +21,7 @@ class RegistrationVerificationService:
     """Serviço para verificação automática de solicitações de cadastro"""
     
     def __init__(self):
-        # Os agentes agora serão usados para a decisão final baseada nos dados das ferramentas
-        self.decision_agent = self._create_decision_agent()
-    
-    def _create_decision_agent(self):
-        """Cria agente de decisão final para o cadastro"""
-        # Em modo simulado (sem CrewAI), o Agent é uma classe simples ou IA direta
-        return Agent(
-            role="Auditor de Cadastros Médicos",
-            goal="Analisar os dados de validação e decidir se o cadastro é legítimo",
-            backstory="""Você é um auditor sênior especializado em conformidade médica.
-            Sua função é revisar os resultados das ferramentas automáticas e dar o veredito final
-            sobre a aprovação de novos profissionais no AraOS.""",
-            verbose=True,
-            allow_delegation=False
-        )
+        pass
     
     def verify_registration(self, solicitacao_id: int) -> dict:
         """
@@ -227,13 +212,24 @@ class RegistrationVerificationService:
                 ai_decision["highlighted_issues"] = []
         except Exception as e:
             logger.error(f"Erro na decisão da IA: {e}")
-            # Fallback seguro
-            ai_decision = {
-                "recommendation": "manual_review",
-                "justification": f"Erro no processamento da IA: {str(e)}",
-                "confidence_score": 0.0,
-                "highlighted_issues": ["Falha técnica na auditoria"]
-            }
+            # Fallback determinístico: aprova se verificações técnicas passarem
+            crm_ok = crm_result.get("valid", False)
+            email_ok = email_result.get("valid", False)
+            fraud_ok = fraud_result.get("risk_level", "high") in ("low", "medium")
+            if crm_ok and email_ok and fraud_ok:
+                ai_decision = {
+                    "recommendation": "auto_approve",
+                    "justification": "Aprovado por fallback determinístico (IA indisponível). Verificações técnicas OK.",
+                    "confidence_score": 0.7,
+                    "highlighted_issues": []
+                }
+            else:
+                ai_decision = {
+                    "recommendation": "manual_review",
+                    "justification": f"Erro no processamento da IA + falha em verificações técnicas: {str(e)}",
+                    "confidence_score": 0.0,
+                    "highlighted_issues": ["Falha técnica na auditoria"]
+                }
 
         auto_approve = ai_decision.get("recommendation") == "auto_approve"
         

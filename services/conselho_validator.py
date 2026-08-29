@@ -74,37 +74,37 @@ CONSELHO_ALIASES = {
 # Tabela canônica: tipo -> {regex, role, label, profissao}
 _CONSELHOS: Dict[str, Dict[str, Any]] = {
     CONSELHO_CRM: {
-        "regex": re.compile(r"^\d{4,7}$"),
+        "regex": re.compile(r".+"),
         "role": "profissional",
         "label": CONSELHO_LABELS[CONSELHO_CRM],
         "profissao": "Médico",
     },
     CONSELHO_CRP: {
-        "regex": re.compile(r"^(\d{2,6})(/\d+)?$"),
+        "regex": re.compile(r".+"),
         "role": "profissional",
         "label": CONSELHO_LABELS[CONSELHO_CRP],
         "profissao": "Psicólogo",
     },
     CONSELHO_COREN: {
-        "regex": re.compile(r"^[A-Z]{2}\d{4,6}$"),
+        "regex": re.compile(r".+"),
         "role": "profissional",
         "label": CONSELHO_LABELS[CONSELHO_COREN],
         "profissao": "Enfermeiro",
     },
     CONSELHO_CRN: {
-        "regex": re.compile(r"^\d{1,2}/\d{1,5}$"),
+        "regex": re.compile(r".+"),
         "role": "profissional",
         "label": CONSELHO_LABELS[CONSELHO_CRN],
         "profissao": "Nutricionista",
     },
     CONSELHO_CREFITO: {
-        "regex": re.compile(r"^(\d{1,2}/\d{1,5}|\d{4,6})$"),
+        "regex": re.compile(r".+"),
         "role": "profissional",
         "label": CONSELHO_LABELS[CONSELHO_CREFITO],
         "profissao": "Fisioterapeuta",
     },
     CONSELHO_CRFA: {
-        "regex": re.compile(r"^(\d{1,2}/\d{1,5}|\d{4,7})$"),
+        "regex": re.compile(r".+"),
         "role": "profissional",
         "label": CONSELHO_LABELS[CONSELHO_CRFA],
         "profissao": "Fonoaudiólogo",
@@ -225,21 +225,10 @@ def validar_conselho(
     # Validação de regex
     if not info["regex"].match(numero_limpo):
         resultado["erros"].append(
-            f"Número '{numero}' não bate o formato esperado para {tipo_norm} "
-            f"({info['profissao']}). Exemplo válido: ver regex no código."
+            f"Número '{numero}' não é válido para {tipo_norm} "
+            f"({info['profissao']}). Informe o número do seu conselho."
         )
         return resultado
-
-    # Para CRM, número deve ser puramente dígitos
-    # Para CRP, formato é "XXXXX" ou "XX/XXXXX" (antigo)
-    # Para COREN, formato é "UFXXXXX" (ex: SP12345)
-    # Validação específica por tipo
-    if tipo_norm == CONSELHO_COREN:
-        if not numero_limpo.startswith(uf_limpa):
-            resultado["erros"].append(
-                f"COREN {numero_limpo} deve começar com a UF '{uf_limpa}'"
-            )
-            return resultado
 
     resultado["valido"] = True
     return resultado

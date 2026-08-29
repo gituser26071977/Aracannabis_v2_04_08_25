@@ -50,7 +50,7 @@ def _profissional(usuario="admin.dispensa"):
 
 
 def _criar_associacao_e_admin():
-    from association.models import Associacao
+    from models import Associacao
     from models_extra import UsuarioAssociacao
 
     a = Associacao(

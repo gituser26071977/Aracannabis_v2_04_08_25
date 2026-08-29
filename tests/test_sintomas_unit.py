@@ -4,7 +4,7 @@ import json
 from unittest.mock import patch, MagicMock
 from app_cors_livre import create_app
 from models import db, Sintoma, Paciente, Profissional
-from association.models import Associacao
+from models import Associacao
 import os
 from datetime import datetime
 

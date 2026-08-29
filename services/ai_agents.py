@@ -135,13 +135,13 @@ class AIProviderManager:
             },
         }
         
-        # Padronizar: DeepSeek para texto geral, Google Gemini para visão.
-        self.default_provider = 'deepseek'
-        self.default_model = 'deepseek-chat'
-        self.default_vision_provider = 'google'
-        self.default_vision_model = 'gemini-flash-latest'
-        self.default_multimodal_provider = 'google'
-        self.default_multimodal_model = 'gemini-flash-latest'
+        # Padronizar: ler de env vars, fallback para DeepSeet texto / Gemini visão
+        self.default_provider = os.getenv('DEFAULT_LLM_PROVIDER', 'deepseek')
+        self.default_model = os.getenv('DEFAULT_LLM_MODEL', 'deepseek-chat')
+        self.default_vision_provider = os.getenv('DEFAULT_LLM_VISION_PROVIDER', 'google')
+        self.default_vision_model = os.getenv('DEFAULT_LLM_VISION_MODEL', 'gemini-flash-latest')
+        self.default_multimodal_provider = os.getenv('DEFAULT_LLM_MULTIMODAL_PROVIDER', 'google')
+        self.default_multimodal_model = os.getenv('DEFAULT_LLM_MULTIMODAL_MODEL', 'gemini-flash-latest')
 
         self._initialize_clients()
         logger.info(f"AI Manager iniciado (Padrao: {self.default_provider}/{self.default_model})")

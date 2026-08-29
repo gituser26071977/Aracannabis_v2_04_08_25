@@ -195,7 +195,7 @@ def visao_unidade():
     if not assoc_id:
         return jsonify({"error": "associação não identificada"}), 400
 
-    from association.models import Associacao
+    from models import Associacao
     from models_extra import UsuarioAssociacao
 
     assoc = db.session.get(Associacao, assoc_id)
