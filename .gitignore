@@ -156,3 +156,4 @@ tests/e2e/screenshots/
 /ROADMAP_*.md
 /SPRINT_*.md
 /proposta_*.md
+.venv

@@ -244,6 +244,10 @@ class Paciente(db.Model):
     email_verified = db.Column(db.Boolean, default=False)
     last_login_at = db.Column(db.DateTime)
 
+    # VSF (Visual Smart Flow) integration
+    vsf_patient_id = db.Column(db.String, nullable=True)  # ID do paciente no VSF
+    face_enrolled = db.Column(db.Boolean, default=False)  # já fez enrollment facial
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
@@ -324,6 +328,8 @@ class Paciente(db.Model):
             "last_login_at": self.last_login_at.isoformat()
             if hasattr(self, "last_login_at") and self.last_login_at
             else None,
+            "vsf_patient_id": self.vsf_patient_id,
+            "face_enrolled": self.face_enrolled,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
@@ -778,6 +784,15 @@ class Consulta(db.Model):
     google_event_id = db.Column(db.String)  # ID do evento no Google Calendar
     lembrete_email_enviado = db.Column(db.Boolean, default=False)
     lembrete_whatsapp_enviado = db.Column(db.Boolean, default=False)
+
+    # VSF (Visual Smart Flow) integration
+    vsf_appointment_id = db.Column(db.String, nullable=True)  # ID do agendamento no VSF
+    vsf_synced = db.Column(db.Boolean, default=False)  # sincronizado com VSF
+    convenio_id = db.Column(
+        db.Integer, db.ForeignKey("convenios.id", ondelete="SET NULL"), nullable=True
+    )
+    convenio_nome = db.Column(db.String, nullable=True)  # nome do convênio no momento do agendamento
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
@@ -808,6 +823,10 @@ class Consulta(db.Model):
             "google_event_id": self.google_event_id,
             "lembrete_email_enviado": self.lembrete_email_enviado,
             "lembrete_whatsapp_enviado": self.lembrete_whatsapp_enviado,
+            "vsf_appointment_id": self.vsf_appointment_id,
+            "vsf_synced": self.vsf_synced,
+            "convenio_id": self.convenio_id,
+            "convenio_nome": self.convenio_nome,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

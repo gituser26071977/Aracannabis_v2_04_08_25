@@ -1024,6 +1024,7 @@ def gerar_senha_temporaria() -> Dict:
 
 @tool
 def enviar_email_aprovacao_profissional(profissional_id: int, senha_temporaria: str) -> Dict:
+    """Envia email de aprovação de cadastro para o profissional com senha temporária"""
     try:
         from models import Profissional
         
