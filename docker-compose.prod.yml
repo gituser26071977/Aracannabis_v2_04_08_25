@@ -95,6 +95,11 @@ services:
       - "traefik.http.routers.siap-api-http.middlewares=siap-redirect-https"
       - "traefik.http.middlewares.siap-redirect-https.redirectscheme.scheme=https"
       - "traefik.http.middlewares.siap-redirect-https.redirectscheme.permanent=true"
+      # Middleware para booking API (CORS adicional)
+      - "traefik.http.middlewares.siap-booking-cors.headers.accesscontrolalloworiginlist=https://visualsmartflow.com.br,https://www.visualsmartflow.com.br"
+      - "traefik.http.middlewares.siap-booking-cors.headers.accesscontrolallowmethods=GET,POST,OPTIONS"
+      - "traefik.http.middlewares.siap-booking-cors.headers.accesscontrolallowheaders=Content-Type,Authorization"
+      - "traefik.http.middlewares.siap-booking-cors.headers.accesscontrolmaxage=600"
     command: [ "gunicorn", "--bind", "0.0.0.0:5002", "--timeout", "300", "--workers", "3", "--threads", "2", "app_cors_livre:create_app()" ]
 
   # ── Frontend React (servido por Nginx) ─────────────────────────
@@ -117,6 +122,17 @@ services:
       - "traefik.http.routers.siap-web.tls=true"
       - "traefik.http.routers.siap-web.tls.certresolver=letsencrypt"
       - "traefik.http.services.siap-web.loadbalancer.server.port=3000"
+      # Public booking page → Flask backend (não React)
+      - "traefik.http.routers.siap-agendar.rule=Host(`visualsmartflow.com.br`) && PathPrefix(`/agendar`)"
+      - "traefik.http.routers.siap-agendar.priority=100"
+      - "traefik.http.routers.siap-agendar.entrypoints=websecure"
+      - "traefik.http.routers.siap-agendar.tls=true"
+      - "traefik.http.routers.siap-agendar.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.siap-agendar.service=siap-api"
+      # HTTP redirect for agendar
+      - "traefik.http.routers.siap-agendar-http.rule=Host(`visualsmartflow.com.br`) && PathPrefix(`/agendar`)"
+      - "traefik.http.routers.siap-agendar-http.entrypoints=web"
+      - "traefik.http.routers.siap-agendar-http.middlewares=siap-redirect-https"
       # Frontend www → naked redirect
       - "traefik.http.routers.siap-web-www.rule=Host(`www.visualsmartflow.com.br`)"
       - "traefik.http.routers.siap-web-www.entrypoints=websecure"

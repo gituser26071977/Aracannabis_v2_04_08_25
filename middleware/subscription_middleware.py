@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 PUBLIC_PATHS = [
     "/",
     "/planos",
+    "/agendar",
     "/api/webhooks/",
     "/api/status",
     "/api/auth/login",

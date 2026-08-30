@@ -32,7 +32,8 @@ def register_tenant_middleware(app):
             
         if request.path.startswith('/api/auth') or \
            request.path.startswith('/api/status') or \
-           request.path.startswith('/api/public'):
+           request.path.startswith('/api/public') or \
+           request.path.startswith('/agendar'):
             return
 
         try:

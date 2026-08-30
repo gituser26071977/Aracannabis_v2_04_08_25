@@ -64,7 +64,7 @@ const IntelligentOnboardingPage = () => {
 
     setLoading(true);
     try {
-      const response = await api.post('/api/onboarding/documento/upload', formData);
+      const response = await api.post('/onboarding/documento/upload', formData);
       setResult(response.data);
       setActiveStep(1);
     } catch (err) {
@@ -138,7 +138,7 @@ const IntelligentOnboardingPage = () => {
         endereco: dados.endereco || '',
         documento_id: result?.documento_id,
       };
-      const response = await api.post('/api/onboarding/paciente', payload);
+      const response = await api.post('/onboarding/paciente', payload);
       setResult((prev) => ({ ...prev, finalizacao: response.data }));
       setActiveStep(2);
     } catch (err) {
@@ -152,10 +152,9 @@ const IntelligentOnboardingPage = () => {
     if (!result?.onboarding_id) return;
     setLoading(true);
     try {
-      const response = await api.post(
-        `/api/onboarding/pendentes/${result.onboarding_id}/confirmar`,
-        { acao },
-      );
+      const response = await api.post(`/onboarding/pendentes/${result.onboarding_id}/confirmar`, {
+        acao,
+      });
       setResult((prev) => ({ ...prev, finalizacao: response.data }));
       setActiveStep(2);
     } catch (err) {
