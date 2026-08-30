@@ -24,7 +24,7 @@ import SecurityIcon from '@mui/icons-material/Security';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import ChatIcon from '@mui/icons-material/Chat';
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
-import BusinessIcon from '@mui/icons-material/Business';
+
 import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
 import SettingsIcon from '@mui/icons-material/Settings';
 import VerifiedIcon from '@mui/icons-material/Verified';
@@ -65,6 +65,20 @@ const NavigationMenu = ({ open, onClose }) => {
       auth: true,
       area: 'assistencial',
     },
+    {
+      text: '📋 Onboarding Pacientes',
+      icon: <PersonAddIcon />,
+      path: '/onboarding-pacientes',
+      auth: true,
+      area: 'assistencial',
+    },
+    {
+      text: '🔬 Pipeline Clínico',
+      icon: <SmartButtonIcon />,
+      path: '/pipeline-clinico',
+      auth: true,
+      area: 'assistencial',
+    },
   ];
 
   const admItem = {
@@ -78,23 +92,9 @@ const NavigationMenu = ({ open, onClose }) => {
   const gestaoItems = [
     admItem,
     {
-      text: '🏢 Gestão',
-      icon: <BusinessIcon />,
-      path: '/gestao',
-      auth: true,
-      area: 'administrativo',
-    },
-    {
       text: '🏬 Configurar Unidade',
       icon: <LocalHospitalIcon />,
       path: '/configurar-unidade',
-      auth: true,
-      area: 'administrativo',
-    },
-    {
-      text: '💰 Financeiro',
-      icon: <MonetizationOnIcon />,
-      path: '/faturamento',
       auth: true,
       area: 'administrativo',
     },
@@ -109,27 +109,6 @@ const NavigationMenu = ({ open, onClose }) => {
       text: '🤖 Configurar IA',
       icon: <PsychologyIcon />,
       path: '/configurar-ia',
-      auth: true,
-      area: 'administrativo',
-    },
-    {
-      text: '📥 Importar Prescrições',
-      icon: <CloudUploadIcon />,
-      path: '/importar-prescricoes',
-      auth: true,
-      area: 'administrativo',
-    },
-    {
-      text: '📤 Importação Inteligente',
-      icon: <SmartButtonIcon />,
-      path: '/importar-inteligente',
-      auth: true,
-      area: 'administrativo',
-    },
-    {
-      text: '📋 Onboarding Pacientes',
-      icon: <PersonAddIcon />,
-      path: '/onboarding-pacientes',
       auth: true,
       area: 'administrativo',
     },

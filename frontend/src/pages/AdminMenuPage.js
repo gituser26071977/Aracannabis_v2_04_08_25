@@ -1,18 +1,16 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Box, Typography, Grid, Card, CardActionArea, CardContent } from '@mui/material';
+import PsychologyIcon from '@mui/icons-material/Psychology';
 import {
   MonetizationOn as FinanceIcon,
   Business as GestaoIcon,
   LocalHospital as UnidadeIcon,
-  PersonAdd as OnboardingIcon,
-  Description as RelatoriosIcon,
   Verified as CertificacaoIcon,
   Security as SegurancaIcon,
   People as UsuariosIcon,
   Inventory as CatalogoIcon,
-  Psychology as NeuroIcon,
-  SmartButton as PipelineIcon,
+  CloudUpload as ImportIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -25,16 +23,9 @@ const AdminMenuPage = () => {
   const adminCards = [
     {
       title: '💰 Financeiro',
-      description: 'Planos, assinaturas, faturas e pagamentos',
+      description: 'Planos, assinaturas, faturas, relatórios e pagamentos',
       icon: <FinanceIcon sx={{ fontSize: 40 }} />,
       path: '/faturamento',
-      adminOnly: false,
-    },
-    {
-      title: '📊 Relatórios Financeiros',
-      description: 'Relatórios gerenciais e DRE',
-      icon: <RelatoriosIcon sx={{ fontSize: 40 }} />,
-      path: '/relatorios-financeiros',
       adminOnly: false,
     },
     {
@@ -43,6 +34,27 @@ const AdminMenuPage = () => {
       icon: <UsuariosIcon sx={{ fontSize: 40 }} />,
       path: '/admin/usuarios',
       adminOnly: true,
+    },
+    {
+      title: '📥 Importar Prescrições',
+      description: 'Importar prescrições em lote',
+      icon: <ImportIcon sx={{ fontSize: 40 }} />,
+      path: '/importar-prescricoes',
+      adminOnly: false,
+    },
+    {
+      title: '📤 Importação Inteligente',
+      description: 'Importar dados com IA',
+      icon: <ImportIcon sx={{ fontSize: 40 }} />,
+      path: '/importar-inteligente',
+      adminOnly: false,
+    },
+    {
+      title: '📦 Catálogo de Produtos',
+      description: 'Gerenciar catálogo de produtos',
+      icon: <CatalogoIcon sx={{ fontSize: 40 }} />,
+      path: '/catalogo',
+      adminOnly: false,
     },
     {
       title: '🏢 Gestão da Clínica',
@@ -59,38 +71,17 @@ const AdminMenuPage = () => {
       adminOnly: true,
     },
     {
-      title: '📋 Onboarding de Pacientes',
-      description: 'Cadastro manual com IA, fila de pendências',
-      icon: <OnboardingIcon sx={{ fontSize: 40 }} />,
-      path: '/onboarding-pacientes',
-      adminOnly: false,
+      title: '🔐 Certificação Digital',
+      description: 'Certificados e assinatura digital',
+      icon: <CertificacaoIcon sx={{ fontSize: 40 }} />,
+      path: '/certificacao-digital',
+      adminOnly: true,
     },
     {
-      title: '🤖 Onboarding Inteligente',
-      description: 'Upload de docs com IA (câmera/arquivo) — dentro do Agente IA',
-      icon: <OnboardingIcon sx={{ fontSize: 40 }} />,
-      path: '/assistente-ia',
-      adminOnly: false,
-    },
-    {
-      title: '📦 Catálogo de Produtos',
-      description: 'Gerenciar catálogo de produtos',
-      icon: <CatalogoIcon sx={{ fontSize: 40 }} />,
-      path: '/catalogo',
-      adminOnly: false,
-    },
-    {
-      title: '🧠 Escalas Neurológicas',
-      description: 'Escalas e avaliações neurológicas',
-      icon: <NeuroIcon sx={{ fontSize: 40 }} />,
-      path: '/neuro/escalas',
-      adminOnly: false,
-    },
-    {
-      title: '🔬 Pipeline Clínico',
-      description: 'Visualização do pipeline clínico',
-      icon: <PipelineIcon sx={{ fontSize: 40 }} />,
-      path: '/pipeline-clinico',
+      title: '🤖 Configurar IA',
+      description: 'Provedores e modelos de IA',
+      icon: <PsychologyIcon sx={{ fontSize: 40 }} />,
+      path: '/configurar-ia',
       adminOnly: false,
     },
     {
@@ -99,13 +90,6 @@ const AdminMenuPage = () => {
       icon: <SegurancaIcon sx={{ fontSize: 40 }} />,
       path: '/seguranca',
       adminOnly: false,
-    },
-    {
-      title: '🔐 Certificação Digital',
-      description: 'Certificados e assinatura digital',
-      icon: <CertificacaoIcon sx={{ fontSize: 40 }} />,
-      path: '/certificacao-digital',
-      adminOnly: true,
     },
   ];
 
