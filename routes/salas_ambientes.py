@@ -32,10 +32,20 @@ TIPOS_VALIDOS = {
 
 
 def _associacao_id() -> int | None:
-    """Resolve a associação atual (tenant) via middleware (P0-12)."""
+    """Resolve a clínica/consultório do profissional logado."""
     assoc = getattr(g, "current_association", None)
     if assoc is not None:
         return getattr(assoc, "id", None)
+    from middleware.tenant_middleware import _garantir_associacao
+    from flask_jwt_extended import get_jwt_identity
+    try:
+        user_id = int(get_jwt_identity())
+        assoc = _garantir_associacao(user_id)
+        if assoc:
+            g.current_association = assoc
+            return assoc.id
+    except Exception:
+        pass
     return None
 
 
@@ -45,7 +55,7 @@ def listar_salas():
     """Lista os espaços da associação (tenant) atual."""
     assoc_id = _associacao_id()
     if not assoc_id:
-        return jsonify({"error": "associação não identificada"}), 400
+        return jsonify({"error": "clínica/consultório não identificado"}), 400
 
     salas = SalaAmbiente.query.filter_by(associacao_id=assoc_id).order_by(SalaAmbiente.id).all()
     return jsonify({"success": True, "salas": [s.to_dict() for s in salas]}), 200
@@ -57,7 +67,7 @@ def criar_sala():
     """Cria um novo espaço (consultório, sala de espera, infusão, ...)."""
     assoc_id = _associacao_id()
     if not assoc_id:
-        return jsonify({"error": "associação não identificada"}), 400
+        return jsonify({"error": "clínica/consultório não identificado"}), 400
 
     data = request.get_json(silent=True) or {}
     nome = (data.get("nome") or "").strip()
@@ -95,7 +105,7 @@ def atualizar_sala(sala_id):
     """Atualiza um espaço da associação."""
     assoc_id = _associacao_id()
     if not assoc_id:
-        return jsonify({"error": "associação não identificada"}), 400
+        return jsonify({"error": "clínica/consultório não identificado"}), 400
 
     sala = SalaAmbiente.query.filter_by(id=sala_id, associacao_id=assoc_id).first()
     if not sala:
@@ -136,7 +146,7 @@ def desativar_sala(sala_id):
     """Desativa um espaço (soft delete — histórico preservado)."""
     assoc_id = _associacao_id()
     if not assoc_id:
-        return jsonify({"error": "associação não identificada"}), 400
+        return jsonify({"error": "clínica/consultório não identificado"}), 400
 
     sala = SalaAmbiente.query.filter_by(id=sala_id, associacao_id=assoc_id).first()
     if not sala:
@@ -157,7 +167,7 @@ def visao_ocupacao():
     """
     assoc_id = _associacao_id()
     if not assoc_id:
-        return jsonify({"error": "associação não identificada"}), 400
+        return jsonify({"error": "clínica/consultório não identificado"}), 400
 
     salas = (
         SalaAmbiente.query.filter_by(associacao_id=assoc_id, ativo=True)
@@ -193,7 +203,7 @@ def visao_unidade():
     """
     assoc_id = _associacao_id()
     if not assoc_id:
-        return jsonify({"error": "associação não identificada"}), 400
+        return jsonify({"error": "clínica/consultório não identificado"}), 400
 
     from models import Associacao
     from models_extra import UsuarioAssociacao

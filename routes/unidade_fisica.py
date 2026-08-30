@@ -31,8 +31,18 @@ TIPOS_ANDAR = {"andar", "ala", "setor", "uti", "centro_cirurgico", "recepcao", "
 
 
 def _associacao_id() -> int | None:
-    """Resolve a associação atual (tenant) via middleware (P0-12)."""
+    """Resolve o tenant do profissional logado."""
     assoc = getattr(g, "current_association", None)
+    if not assoc:
+        from middleware.tenant_middleware import _garantir_associacao
+        from flask_jwt_extended import get_jwt_identity
+        try:
+            user_id = int(get_jwt_identity())
+            assoc = _garantir_associacao(user_id)
+            if assoc:
+                g.current_association = assoc
+        except Exception:
+            pass
     return getattr(assoc, "id", None)
 
 
@@ -42,7 +52,7 @@ def listar_unidades():
     """Lista instalações da associação atual."""
     assoc_id = _associacao_id()
     if not assoc_id:
-        return jsonify({"error": "associação não identificada"}), 400
+        return jsonify({"error": "clínica/consultório não identificado"}), 400
     unidades = UnidadeFisica.query.filter_by(associacao_id=assoc_id).order_by(UnidadeFisica.id).all()
     return jsonify({"success": True, "unidades": [u.to_dict() for u in unidades]}), 200
 
@@ -53,7 +63,7 @@ def criar_unidade():
     """Cria uma instalação (clínica, consultório, hospital, home care)."""
     assoc_id = _associacao_id()
     if not assoc_id:
-        return jsonify({"error": "associação não identificada"}), 400
+        return jsonify({"error": "clínica/consultório não identificado"}), 400
 
     data = request.get_json(silent=True) or {}
     nome = (data.get("nome") or "").strip()
@@ -85,7 +95,7 @@ def atualizar_unidade(unidade_id):
     """Atualiza uma instalação."""
     assoc_id = _associacao_id()
     if not assoc_id:
-        return jsonify({"error": "associação não identificada"}), 400
+        return jsonify({"error": "clínica/consultório não identificado"}), 400
     unidade = UnidadeFisica.query.filter_by(id=unidade_id, associacao_id=assoc_id).first()
     if not unidade:
         return jsonify({"error": "instalação não encontrada"}), 404
@@ -115,7 +125,7 @@ def obter_unidade_arvore(unidade_id):
     """Instalação com a árvore completa: andares → espaços (para VSF/UI/agente)."""
     assoc_id = _associacao_id()
     if not assoc_id:
-        return jsonify({"error": "associação não identificada"}), 400
+        return jsonify({"error": "clínica/consultório não identificado"}), 400
     unidade = UnidadeFisica.query.filter_by(id=unidade_id, associacao_id=assoc_id).first()
     if not unidade:
         return jsonify({"error": "instalação não encontrada"}), 404
@@ -147,7 +157,7 @@ def criar_andar(unidade_id):
     """Cria um andar/setor dentro da instalação (UTI, ala, centro cirúrgico...)."""
     assoc_id = _associacao_id()
     if not assoc_id:
-        return jsonify({"error": "associação não identificada"}), 400
+        return jsonify({"error": "clínica/consultório não identificado"}), 400
     unidade = UnidadeFisica.query.filter_by(id=unidade_id, associacao_id=assoc_id).first()
     if not unidade:
         return jsonify({"error": "instalação não encontrada"}), 404
@@ -179,7 +189,7 @@ def atualizar_andar(andar_id):
     """Atualiza um andar/setor."""
     assoc_id = _associacao_id()
     if not assoc_id:
-        return jsonify({"error": "associação não identificada"}), 400
+        return jsonify({"error": "clínica/consultório não identificado"}), 400
     andar = AndarSetor.query.filter_by(id=andar_id, associacao_id=assoc_id).first()
     if not andar:
         return jsonify({"error": "andar não encontrado"}), 404
