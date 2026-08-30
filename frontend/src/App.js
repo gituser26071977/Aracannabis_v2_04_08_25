@@ -47,6 +47,14 @@ import DefinePasswordPage from './pages/DefinePasswordPage';
 import PaymentStatusPage from './pages/PaymentStatusPage';
 import BatchImportPage from './pages/BatchImportPage';
 import ConfigurarUnidadePage from './pages/ConfigurarUnidadePage';
+import CatalogoPage from './pages/CatalogoPage';
+import ConfiguracaoPrescricaoPage from './pages/ConfiguracaoPrescricaoPage';
+import ConfiguracaoIAPage from './pages/ConfiguracaoIAPage';
+import IntelligentImportPage from './pages/IntelligentImportPage';
+import MobileUploadPage from './pages/MobileUploadPage';
+import NeuroScalesListPage from './pages/neuro/NeuroScalesListPage';
+import NeuroScaleApplyPage from './pages/neuro/NeuroScaleApplyPage';
+import ClinicalPipelineExplorer from './pages/ClinicalPipelineExplorer/ClinicalPipelineExplorer';
 import OnboardingPage from './pages/OnboardingPage';
 import TrialEndingPage from './pages/TrialEndingPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
@@ -770,7 +778,7 @@ function AppContent() {
             }
           />
           <Route
-            path="/admin"
+            path="/admin/usuarios"
             element={
               <AdminRoute>
                 <AdminPage />
@@ -808,6 +816,72 @@ function AppContent() {
             element={
               <ProtectedRoute>
                 <ModulosPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Ferramentas Administrativas */}
+          <Route
+            path="/catalogo"
+            element={
+              <ProtectedRoute>
+                <CatalogoPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/configurar-prescricao"
+            element={
+              <ProtectedRoute>
+                <ConfiguracaoPrescricaoPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/configurar-ia"
+            element={
+              <ProtectedRoute>
+                <ConfiguracaoIAPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/importar-inteligente"
+            element={
+              <ProtectedRoute>
+                <IntelligentImportPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/upload-mobile"
+            element={
+              <ProtectedRoute>
+                <MobileUploadPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/neuro/escalas"
+            element={
+              <ProtectedRoute>
+                <NeuroScalesListPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/neuro/escalas/aplicar/:scaleId"
+            element={
+              <ProtectedRoute>
+                <NeuroScaleApplyPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/pipeline-clinico"
+            element={
+              <ProtectedRoute>
+                <ClinicalPipelineExplorer />
               </ProtectedRoute>
             }
           />

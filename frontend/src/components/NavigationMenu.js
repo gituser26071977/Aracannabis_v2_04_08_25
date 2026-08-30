@@ -28,6 +28,11 @@ import BusinessIcon from '@mui/icons-material/Business';
 import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
 import SettingsIcon from '@mui/icons-material/Settings';
 import VerifiedIcon from '@mui/icons-material/Verified';
+import InventoryIcon from '@mui/icons-material/Inventory';
+import ReceiptIcon from '@mui/icons-material/Receipt';
+import PsychologyIcon from '@mui/icons-material/Psychology';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import SmartButtonIcon from '@mui/icons-material/SmartButton';
 
 // ============================================
 // ============================================
@@ -62,6 +67,27 @@ const NavigationMenu = ({ open, onClose }) => {
       auth: true,
       area: 'assistencial',
     },
+    {
+      text: '🧠 Escalas Neurológicas',
+      icon: <PsychologyIcon />,
+      path: '/neuro/escalas',
+      auth: true,
+      area: 'assistencial',
+    },
+    {
+      text: '📦 Catálogo',
+      icon: <InventoryIcon />,
+      path: '/catalogo',
+      auth: true,
+      area: 'assistencial',
+    },
+    {
+      text: '🔬 Pipeline Clínico',
+      icon: <SmartButtonIcon />,
+      path: '/pipeline-clinico',
+      auth: true,
+      area: 'assistencial',
+    },
   ];
 
   const admItem = {
@@ -72,21 +98,93 @@ const NavigationMenu = ({ open, onClose }) => {
     area: 'administrativo',
   };
 
-  const gestaoItem = {
-    text: '🏢 Gestão',
-    icon: <BusinessIcon />,
-    path: '/gestao',
-    auth: true,
-    area: 'administrativo',
-  };
-
-  const unidadeItem = {
-    text: '🏬 Configurar Unidade',
-    icon: <LocalHospitalIcon />,
-    path: '/configurar-unidade',
-    auth: true,
-    area: 'administrativo',
-  };
+  const gestaoItems = [
+    admItem,
+    {
+      text: '🏢 Gestão',
+      icon: <BusinessIcon />,
+      path: '/gestao',
+      auth: true,
+      area: 'administrativo',
+    },
+    {
+      text: '🏬 Configurar Unidade',
+      icon: <LocalHospitalIcon />,
+      path: '/configurar-unidade',
+      auth: true,
+      area: 'administrativo',
+    },
+    {
+      text: '💰 Financeiro',
+      icon: <MonetizationOnIcon />,
+      path: '/faturamento',
+      auth: true,
+      area: 'administrativo',
+    },
+    {
+      text: '📊 Relatórios Financeiros',
+      icon: <ReceiptIcon />,
+      path: '/relatorios-financeiros',
+      auth: true,
+      area: 'administrativo',
+    },
+    {
+      text: '🔐 Certificação Digital',
+      icon: <VerifiedIcon />,
+      path: '/certificacao-digital',
+      auth: true,
+      area: 'administrativo',
+    },
+    {
+      text: '📋 Prescrição',
+      icon: <ReceiptIcon />,
+      path: '/configurar-prescricao',
+      auth: true,
+      area: 'administrativo',
+    },
+    {
+      text: '🤖 Configurar IA',
+      icon: <PsychologyIcon />,
+      path: '/configurar-ia',
+      auth: true,
+      area: 'administrativo',
+    },
+    {
+      text: '📥 Importar Prescrições',
+      icon: <CloudUploadIcon />,
+      path: '/importar-prescricoes',
+      auth: true,
+      area: 'administrativo',
+    },
+    {
+      text: '📤 Importação Inteligente',
+      icon: <SmartButtonIcon />,
+      path: '/importar-inteligente',
+      auth: true,
+      area: 'administrativo',
+    },
+    {
+      text: '📋 Onboarding Pacientes',
+      icon: <PersonAddIcon />,
+      path: '/onboarding-pacientes',
+      auth: true,
+      area: 'administrativo',
+    },
+    {
+      text: '📱 Upload Mobile',
+      icon: <CloudUploadIcon />,
+      path: '/upload-mobile',
+      auth: true,
+      area: 'administrativo',
+    },
+    {
+      text: '🧩 Módulos',
+      icon: <SmartButtonIcon />,
+      path: '/modulos',
+      auth: true,
+      area: 'administrativo',
+    },
+  ];
 
   const publicItems = [
     { text: '🏠 Início', icon: <HomeIcon />, path: '/', auth: false },
@@ -127,7 +225,7 @@ const NavigationMenu = ({ open, onClose }) => {
     };
     const grupos = [
       { title: '📋 ASSISTENCIAL', items: assistencialItems },
-      { title: '🏢 GESTÃO', items: [admItem, gestaoItem, unidadeItem] },
+      { title: '🏢 GESTÃO', items: gestaoItems },
     ];
     for (const g of grupos) {
       const visiveis = g.items.filter(podeVer);
