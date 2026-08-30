@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from models import db, Paciente, Dosagem, Evolucao, Profissional, PreConsulta
-from sqlalchemy import func
+from models import db, Paciente, Dosagem, Evolucao, Profissional, PreConsulta, Consulta
+from sqlalchemy import func, extract
 from datetime import datetime, timedelta
 
 dashboard_bp = Blueprint('dashboard', __name__)
@@ -145,3 +145,114 @@ def pacientes_do_dia():
         })
 
     return jsonify({'data': hoje.isoformat(), 'total': len(itens), 'pacientes': itens}), 200
+
+
+@dashboard_bp.route('/stats-detalhado', methods=['GET'])
+@jwt_required()
+def get_dashboard_stats_detalhado():
+    """Estatísticas detalhadas: sexo, faixa etária, consultas, localização."""
+    current_user_id = get_jwt_identity()
+    user = Profissional.query.get(current_user_id)
+    if user and user.role == 'superadmin':
+        base = Paciente.query
+    else:
+        base = Paciente.query.filter_by(profissional_responsavel_id=current_user_id)
+
+    pacientes = base.all()
+    total = len(pacientes)
+    if total == 0:
+        return jsonify({"sexo": [], "faixa_etaria": [], "consultas_tipo": [], "cidades": [], "estados": []}), 200
+
+    # 1. Sexo
+    masc = sum(1 for p in pacientes if p.genero and p.genero.lower() in ("m", "masculino", "male"))
+    fem = sum(1 for p in pacientes if p.genero and p.genero.lower() in ("f", "feminino", "female"))
+    outros = total - masc - fem
+    sexo = [
+        {"name": "Masculino", "value": masc},
+        {"name": "Feminino", "value": fem},
+        {"name": "Não informado", "value": outros},
+    ]
+
+    # 2. Faixa etária
+    hoje = datetime.utcnow().date()
+    faixas = {"0-18": 0, "19-30": 0, "31-45": 0, "46-60": 0, "60+": 0}
+    for p in pacientes:
+        if p.data_nascimento:
+            idade = hoje.year - p.data_nascimento.year - ((hoje.month, hoje.day) < (p.data_nascimento.month, p.data_nascimento.day))
+            if idade <= 18: faixas["0-18"] += 1
+            elif idade <= 30: faixas["19-30"] += 1
+            elif idade <= 45: faixas["31-45"] += 1
+            elif idade <= 60: faixas["46-60"] += 1
+            else: faixas["60+"] += 1
+        else:
+            faixas["0-18"] += 1
+    faixa_etaria = [{"name": k, "value": v} for k, v in faixas.items()]
+
+    # 3. Cidades (parse do endereco)
+    cidades = {}
+    for p in pacientes:
+        if p.endereco:
+            partes = [x.strip() for x in p.endereco.replace(",", " ").split() if x.strip()]
+            for parte in partes:
+                if parte.endswith(","):
+                    parte = parte[:-1]
+            if len(partes) >= 3:
+                cidade = partes[-2]
+                cidades[cidade] = cidades.get(cidade, 0) + 1
+    cidades_ordenadas = sorted(cidades.items(), key=lambda x: -x[1])[:10]
+    cidades_data = [{"name": c, "value": v} for c, v in cidades_ordenadas]
+
+    # 4. Estados (parse do endereco - ultima palavra)
+    estados = {}
+    for p in pacientes:
+        if p.endereco:
+            partes = p.endereco.replace(",", " ").split()
+            uf = partes[-1].strip().upper() if partes else ""
+            if len(uf) == 2 and uf.isalpha():
+                estados[uf] = estados.get(uf, 0) + 1
+    estados_data = [{"name": e, "value": v} for e, v in sorted(estados.items(), key=lambda x: -x[1])]
+
+    # 5. Consultas por tipo (online vs presencial)
+    if user and user.role == 'superadmin':
+        consultas_base = Consulta.query
+    else:
+        consultas_base = Consulta.query.filter_by(profissional_id=current_user_id)
+
+    total_consultas = consultas_base.count()
+    presencial = consultas_base.filter(Consulta.tipo_consulta == "presencial").count()
+    telemedicina = consultas_base.filter(Consulta.tipo_consulta == "telemedicina").count()
+    consultas_tipo = [
+        {"name": "Presencial", "value": presencial},
+        {"name": "Telemedicina", "value": telemedicina},
+    ]
+
+    # 6. Consultas por mês (últimos 12 meses)
+    hoje = datetime.utcnow()
+    doze_meses = hoje - timedelta(days=365)
+    consultas_por_mes = (
+        db.session.query(
+            extract("year", Consulta.data_hora).label("ano"),
+            extract("month", Consulta.data_hora).label("mes"),
+            func.count(Consulta.id).label("total"),
+        )
+        .filter(Consulta.data_hora >= doze_meses)
+    )
+    if not (user and user.role == "superadmin"):
+        consultas_por_mes = consultas_por_mes.filter(Consulta.profissional_id == current_user_id)
+    consultas_por_mes = consultas_por_mes.group_by("ano", "mes").order_by("ano", "mes").all()
+
+    consultas_mensal = [
+        {"name": f"{c.ano}-{str(c.mes).zfill(2)}", "value": c.total}
+        for c in consultas_por_mes
+    ]
+
+    return jsonify({
+        "sexo": [s for s in sexo if s["value"] > 0],
+        "faixa_etaria": faixa_etaria,
+        "cidades": cidades_data,
+        "estados": estados_data,
+        "consultas_tipo": consultas_tipo,
+        "consultas_mensal": consultas_mensal,
+        "total_pacientes": total,
+        "total_consultas": total_consultas,
+    }), 200

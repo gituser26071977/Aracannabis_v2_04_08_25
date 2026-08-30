@@ -27,6 +27,7 @@ import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 
 import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
 import SettingsIcon from '@mui/icons-material/Settings';
+import BarChartIcon from '@mui/icons-material/BarChart';
 import VerifiedIcon from '@mui/icons-material/Verified';
 import PsychologyIcon from '@mui/icons-material/Psychology';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
@@ -76,6 +77,13 @@ const NavigationMenu = ({ open, onClose }) => {
       text: '🔬 Pipeline Clínico',
       icon: <SmartButtonIcon />,
       path: '/pipeline-clinico',
+      auth: true,
+      area: 'assistencial',
+    },
+    {
+      text: '📊 Estatísticas',
+      icon: <BarChartIcon />,
+      path: '/estatisticas',
       auth: true,
       area: 'assistencial',
     },

@@ -31,6 +31,7 @@ import LandingPage from './pages/LandingPage';
 import AdminPage from './pages/AdminPage';
 
 import InternalDashboard from './pages/InternalDashboard';
+import DashboardEstatisticas from './pages/DashboardEstatisticas';
 import AIDashboard from './pages/AIDashboard';
 import AIChatPage from './pages/AIChatPage';
 import BillingPage from './pages/BillingPage';
@@ -628,6 +629,14 @@ function AppContent() {
             element={
               <ProtectedRoute>
                 <HomeByProfile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/estatisticas"
+            element={
+              <ProtectedRoute>
+                <DashboardEstatisticas />
               </ProtectedRoute>
             }
           />
