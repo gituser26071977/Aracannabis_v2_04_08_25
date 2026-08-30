@@ -114,13 +114,6 @@ const NavigationMenu = ({ open, onClose }) => {
       area: 'administrativo',
     },
     {
-      text: '📋 Prescrição',
-      icon: <ReceiptIcon />,
-      path: '/configurar-prescricao',
-      auth: true,
-      area: 'administrativo',
-    },
-    {
       text: '🤖 Configurar IA',
       icon: <PsychologyIcon />,
       path: '/configurar-ia',

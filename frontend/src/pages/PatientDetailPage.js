@@ -18,6 +18,7 @@ import {
   Description as DescriptionIcon,
   NoteAdd as NoteAddIcon,
   AddPhotoAlternate as AddPhotoIcon,
+  AccountTree as PipelineIcon,
 } from '@mui/icons-material';
 import QuickActionsBar from '../components/QuickActionsBar';
 import { pacientesService } from '../services/api';
@@ -207,6 +208,11 @@ const PatientDetailPage = () => {
           { label: 'Nova Prescrição', icon: <DescriptionIcon />, onClick: () => setTabValue(2) },
           { label: 'Nova Evolução', icon: <NoteAddIcon />, onClick: () => setTabValue(1) },
           { label: 'Adicionar Exame', icon: <AddPhotoIcon />, onClick: () => setTabValue(3) },
+          {
+            label: 'Pipeline Clínico',
+            icon: <PipelineIcon />,
+            onClick: () => navigate('/pipeline-clinico'),
+          },
         ]}
       />
 
