@@ -211,3 +211,41 @@ def atualizar_andar(andar_id):
 
     db.session.commit()
     return jsonify({"success": True, "andar": andar.to_dict()}), 200
+
+
+# ──────────────────────────────────────────────
+# Agente conversacional para configurar unidade
+# ──────────────────────────────────────────────
+
+_chat_sessions: dict = {}
+
+@unidade_bp.route("/api/unidade/chat", methods=["POST"])
+@jwt_required()
+def unidade_chat():
+    """Chat com agente IA para configurar a unidade."""
+    from flask_jwt_extended import get_jwt_identity
+    from services.unidade_config_agent import UnidadeConfigAgent
+
+    user_id = int(get_jwt_identity())
+    assoc_id = _associacao_id()
+    if not assoc_id:
+        return jsonify({"error": "clínica/consultório não identificado"}), 400
+
+    data = request.get_json(silent=True) or {}
+    mensagem = (data.get("mensagem") or "").strip()
+
+    session_id = data.get("session_id")
+    if not session_id or session_id not in _chat_sessions:
+        session_id = f"unidade-{user_id}-{len(_chat_sessions)+1}"
+        _chat_sessions[session_id] = UnidadeConfigAgent(assoc_id, user_id)
+
+    agent = _chat_sessions[session_id]
+    resultado = agent.processar(mensagem)
+
+    return jsonify({
+        "session_id": session_id,
+        "resposta": resultado.get("resposta", ""),
+        "state": resultado.get("state"),
+        "unidade_id": resultado.get("unidade_id"),
+        "concluido": resultado.get("state") == "concluido",
+    }), 200
