@@ -187,7 +187,7 @@ const NavigationMenu = ({ open, onClose }) => {
     // A visibilidade continua por perfil (item.area): assistencial vê só o
     // clínico; administrativo vê gestão + configurações; solo vê tudo.
     const ehAdmin = currentUser.role === 'admin' || currentUser.role === 'superadmin';
-    const perfil = currentUser?.perfil_efetivo || (ehAdmin ? 'solo' : 'assistencial');
+    const perfil = currentUser?.perfil_efetivo || 'solo';
     const podeVer = (item) => {
       if (item.adminOnly && !ehAdmin) return false;
       if (!item.area) return true;
