@@ -28,7 +28,6 @@ import BusinessIcon from '@mui/icons-material/Business';
 import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
 import SettingsIcon from '@mui/icons-material/Settings';
 import VerifiedIcon from '@mui/icons-material/Verified';
-import ReceiptIcon from '@mui/icons-material/Receipt';
 import PsychologyIcon from '@mui/icons-material/Psychology';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import SmartButtonIcon from '@mui/icons-material/SmartButton';
@@ -96,13 +95,6 @@ const NavigationMenu = ({ open, onClose }) => {
       text: '💰 Financeiro',
       icon: <MonetizationOnIcon />,
       path: '/faturamento',
-      auth: true,
-      area: 'administrativo',
-    },
-    {
-      text: '📊 Relatórios Financeiros',
-      icon: <ReceiptIcon />,
-      path: '/relatorios-financeiros',
       auth: true,
       area: 'administrativo',
     },
