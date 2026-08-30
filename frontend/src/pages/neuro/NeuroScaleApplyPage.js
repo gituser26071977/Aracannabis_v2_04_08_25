@@ -29,7 +29,7 @@ import {
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
 import { getScaleSpec, applyScale } from '../../services/neuroService';
-import { useNotifier } from '../../hooks/useNotifier';
+import useNotifier from '../../hooks/useNotifier';
 import PageHeader from '../../components/PageHeader';
 import LoadingState from '../../components/LoadingState';
 import ErrorBoundary from '../../components/ErrorBoundary';
@@ -77,14 +77,8 @@ const NeuroScaleApplyPage = () => {
     carregar();
   }, [code]);
 
-  const properties = useMemo(
-    () => spec?.json_schema?.properties || {},
-    [spec]
-  );
-  const requiredFields = useMemo(
-    () => spec?.json_schema?.required || [],
-    [spec]
-  );
+  const properties = useMemo(() => spec?.json_schema?.properties || {}, [spec]);
+  const requiredFields = useMemo(() => spec?.json_schema?.required || [], [spec]);
 
   const isComplete = useMemo(() => {
     return requiredFields.every((f) => responses[f] !== null && responses[f] !== undefined);
@@ -174,8 +168,8 @@ const NeuroScaleApplyPage = () => {
           </CardContent>
         </Card>
         <Alert severity="info">
-          Resposta gravada (id: <code>{result.id}</code>). Disponível no
-          histórico clínico do paciente.
+          Resposta gravada (id: <code>{result.id}</code>). Disponível no histórico clínico do
+          paciente.
         </Alert>
       </Box>
     );
@@ -229,7 +223,8 @@ const NeuroScaleApplyPage = () => {
             <Stack spacing={3}>
               {Object.entries(properties).map(([key, prop]) => {
                 const value = responses[key];
-                const isLikert = prop.type === 'integer' && prop.minimum === 0 && prop.maximum === 3;
+                const isLikert =
+                  prop.type === 'integer' && prop.minimum === 0 && prop.maximum === 3;
 
                 return (
                   <Box key={key}>
