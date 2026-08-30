@@ -18,6 +18,7 @@ from models_extra import SalaAmbiente, UsuarioAssociacao
 from datetime import datetime, date, time, timedelta
 import logging
 import re
+import json
 
 from services.vsf_bridge import vsf_bridge, VSFAuthError
 
@@ -92,12 +93,18 @@ def listar_profissionais(slug: str):
     for v in vinculos:
         prof = Profissional.query.get(v.profissional_id)
         if prof and prof.status_cadastro == "aprovado":
+            validation = {}
+            if prof.validation_data:
+                try:
+                    validation = json.loads(prof.validation_data) if isinstance(prof.validation_data, str) else prof.validation_data
+                except (json.JSONDecodeError, TypeError):
+                    validation = {}
             profissionais.append({
                 "id": prof.id,
                 "nome": prof.nome,
                 "crm": prof.crm,
                 "uf_crm": prof.uf_crm,
-                "especialidade": prof.validation_data.get("especialidade") if prof.validation_data else None,
+                "especialidade": validation.get("especialidade"),
                 "slug": prof.pre_atendimento_slug,
             })
 

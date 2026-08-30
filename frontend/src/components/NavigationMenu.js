@@ -28,7 +28,6 @@ import BusinessIcon from '@mui/icons-material/Business';
 import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
 import SettingsIcon from '@mui/icons-material/Settings';
 import VerifiedIcon from '@mui/icons-material/Verified';
-import InventoryIcon from '@mui/icons-material/Inventory';
 import ReceiptIcon from '@mui/icons-material/Receipt';
 import PsychologyIcon from '@mui/icons-material/Psychology';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
@@ -64,27 +63,6 @@ const NavigationMenu = ({ open, onClose }) => {
       text: '🤖 Agente IA',
       icon: <ChatIcon />,
       path: '/assistente-ia',
-      auth: true,
-      area: 'assistencial',
-    },
-    {
-      text: '🧠 Escalas Neurológicas',
-      icon: <PsychologyIcon />,
-      path: '/neuro/escalas',
-      auth: true,
-      area: 'assistencial',
-    },
-    {
-      text: '📦 Catálogo',
-      icon: <InventoryIcon />,
-      path: '/catalogo',
-      auth: true,
-      area: 'assistencial',
-    },
-    {
-      text: '🔬 Pipeline Clínico',
-      icon: <SmartButtonIcon />,
-      path: '/pipeline-clinico',
       auth: true,
       area: 'assistencial',
     },
