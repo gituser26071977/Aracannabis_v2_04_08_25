@@ -12,7 +12,7 @@ Cobre todas as responsabilidades da spec:
   - 100% de cobertura
 """
 
-import uuid as _uuid
+from __future__ import annotations
 
 import pytest
 import sqlalchemy as sa
@@ -23,25 +23,31 @@ from services.tenant_mapping import (
     TenantNotFound,
 )
 
+# UUIDs válidos e estáveis para os fixtures (substituem os placeholders
+# "REDACTED" que inviabilizavam a validação de formato no serviço).
+UUID_A = "11111111-1111-1111-1111-111111111111"
+UUID_B = "22222222-2222-2222-2222-222222222222"
+UUID_MISSING = "33333333-3333-3333-3333-333333333333"
+
 
 # ── get_tenant_uuid ─────────────────────────────────────────────────────
 class TestGetTenantUuid:
     def test_existing_returns_uuid(self, session, make_associacao):
         make_associacao(
             nome="A1", cnpj="00.000.000/0001-01",
-            tenant_uuid="REDACTED",
+            tenant_uuid=UUID_A,
         )
         service = TenantMappingService(session)
 
         # assoc_id 1 (autoincrement)
         result = service.get_tenant_uuid(1)
 
-        assert result == "REDACTED"
+        assert result == UUID_A
 
     def test_missing_returns_none(self, session, make_associacao):
         make_associacao(
             nome="A1", cnpj="00.000.000/0001-01",
-            tenant_uuid="REDACTED",
+            tenant_uuid=UUID_A,
         )
         service = TenantMappingService(session)
 
@@ -49,7 +55,7 @@ class TestGetTenantUuid:
 
         assert result is None
 
-    def REDACTED(self, session, make_associacao):
+    def test_existing_null_uuid_returns_none(self, session, make_associacao):
         """Edge: row existe mas tenant_uuid IS NULL (legado sem backfill)."""
         make_associacao(
             nome="A1", cnpj="00.000.000/0001-01",
@@ -67,26 +73,22 @@ class TestGetAssociacaoId:
     def test_existing_returns_id(self, session, make_associacao):
         make_associacao(
             nome="A1", cnpj="00.000.000/0001-01",
-            tenant_uuid="REDACTED",
+            tenant_uuid=UUID_A,
         )
         service = TenantMappingService(session)
 
-        result = service.get_associacao_id(
-            "REDACTED"
-        )
+        result = service.get_associacao_id(UUID_A)
 
         assert result == 1
 
     def test_missing_returns_none(self, session, make_associacao):
         make_associacao(
             nome="A1", cnpj="00.000.000/0001-01",
-            tenant_uuid="REDACTED",
+            tenant_uuid=UUID_A,
         )
         service = TenantMappingService(session)
 
-        result = service.get_associacao_id(
-            "REDACTED"
-        )
+        result = service.get_associacao_id(UUID_MISSING)
 
         assert result is None
 
@@ -97,8 +99,8 @@ class TestGetAssociacaoId:
             "12345",
             "",
             "00000000-0000-0000-0000",  # truncado
-            "REDACTED",  # chars inválidos
-            "REDACTED",  # último char inválido
+            "gggggggg-gggg-gggg-gggg-gggggggggggg",  # chars inválidos
+            "11111111-1111-1111-1111-11111111111z",  # último char inválido
         ],
     )
     def test_invalid_uuid_raises(self, session, bad_uuid):
@@ -120,20 +122,20 @@ class TestExists:
     def test_valid_existing_returns_true(self, session, make_associacao):
         make_associacao(
             nome="A1", cnpj="00.000.000/0001-01",
-            tenant_uuid="REDACTED",
+            tenant_uuid=UUID_A,
         )
         service = TenantMappingService(session)
 
-        assert service.exists("REDACTED") is True
+        assert service.exists(UUID_A) is True
 
     def test_valid_missing_returns_false(self, session, make_associacao):
         make_associacao(
             nome="A1", cnpj="00.000.000/0001-01",
-            tenant_uuid="REDACTED",
+            tenant_uuid=UUID_A,
         )
         service = TenantMappingService(session)
 
-        assert service.exists("REDACTED") is False
+        assert service.exists(UUID_MISSING) is False
 
     def test_invalid_uuid_returns_false(self, session):
         """exists NÃO levanta — entradas malformadas retornam False."""
@@ -141,7 +143,7 @@ class TestExists:
 
         assert service.exists("not-a-uuid") is False
         assert service.exists("") is False
-        assert service.exists("REDACTED") is False
+        assert service.exists("zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz") is False
 
 
 # ── get_or_raise ────────────────────────────────────────────────────────
@@ -149,25 +151,23 @@ class TestGetOrRaise:
     def test_existing_returns_id(self, session, make_associacao):
         make_associacao(
             nome="A1", cnpj="00.000.000/0001-01",
-            tenant_uuid="REDACTED",
+            tenant_uuid=UUID_A,
         )
         service = TenantMappingService(session)
 
-        result = service.get_or_raise(
-            "REDACTED"
-        )
+        result = service.get_or_raise(UUID_A)
 
         assert result == 1
 
-    def REDACTED(self, session, make_associacao):
+    def test_missing_raises_not_found(self, session, make_associacao):
         make_associacao(
             nome="A1", cnpj="00.000.000/0001-01",
-            tenant_uuid="REDACTED",
+            tenant_uuid=UUID_A,
         )
         service = TenantMappingService(session)
 
         with pytest.raises(TenantNotFound):
-            service.get_or_raise("REDACTED")
+            service.get_or_raise(UUID_MISSING)
 
     def test_invalid_uuid_raises_invalid(self, session):
         service = TenantMappingService(session)
@@ -178,12 +178,12 @@ class TestGetOrRaise:
 
 # ── Cache behavior ─────────────────────────────────────────────────────
 class TestCache:
-    def REDACTED(
+    def test_cache_hit_returns_stale_value(
         self, session, make_associacao
     ):
         """Cache hit: 2ª call não toca o DB, mesmo se valor mudou."""
-        uuid_a = "REDACTED"
-        uuid_b = "REDACTED"
+        uuid_a = UUID_A
+        uuid_b = UUID_B
         make_associacao(
             nome="A1", cnpj="00.000.000/0001-01", tenant_uuid=uuid_a,
         )
@@ -211,11 +211,11 @@ class TestCache:
         assert fresh.get_associacao_id(uuid_a) is None
         assert fresh.get_associacao_id(uuid_b) == 1
 
-    def REDACTED(
+    def test_lookup_populates_reverse_cache(
         self, session, make_associacao
     ):
         """Lookup por um sentido popula o sentido oposto no cache."""
-        uuid_v = "REDACTED"
+        uuid_v = UUID_A
         make_associacao(
             nome="A1", cnpj="00.000.000/0001-01", tenant_uuid=uuid_v,
         )
@@ -238,7 +238,7 @@ class TestCache:
 
     def test_cache_miss_first_call(self, session, make_associacao):
         """Cache miss: primeira call faz query (verificável por mutation)."""
-        uuid_v = "REDACTED"
+        uuid_v = UUID_A
         make_associacao(
             nome="A1", cnpj="00.000.000/0001-01", tenant_uuid=uuid_v,
         )
@@ -259,7 +259,7 @@ class TestCache:
 class TestRoundTrip:
     def test_id_to_uuid_to_id(self, session, make_associacao):
         """associacao_id → tenant_uuid → associacao_id retorna o id original."""
-        original_uuid = "REDACTED"
+        original_uuid = UUID_A
         make_associacao(
             nome="A1", cnpj="00.000.000/0001-01", tenant_uuid=original_uuid,
         )
@@ -275,7 +275,7 @@ class TestRoundTrip:
 
     def test_uuid_to_id_to_uuid(self, session, make_associacao):
         """tenant_uuid → associacao_id → tenant_uuid retorna o uuid original."""
-        original_uuid = "REDACTED"
+        original_uuid = UUID_A
         make_associacao(
             nome="A1", cnpj="00.000.000/0001-01", tenant_uuid=original_uuid,
         )
@@ -292,11 +292,11 @@ class TestRoundTrip:
 
 # ── Independence between instances ─────────────────────────────────────
 class TestIndependence:
-    def REDACTED(
+    def test_cache_isolation_between_instances(
         self, session, make_associacao
     ):
         """Cada instância tem seu próprio cache (sem vazamento)."""
-        uuid_v = "REDACTED"
+        uuid_v = UUID_A
         make_associacao(
             nome="A1", cnpj="00.000.000/0001-01", tenant_uuid=uuid_v,
         )
