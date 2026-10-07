@@ -38,7 +38,19 @@
     "eslint-plugin-prettier": "5.0.0"
   },
   "lint-staged": {
-    "*.{ts,tsx,js,jsx}": [
+    "mobile/**/*.{ts,tsx,js,jsx}": [
+      "eslint --max-warnings 0 --fix",
+      "prettier --write"
+    ],
+    "backend/**/*.{ts,tsx,js,jsx}": [
+      "eslint --max-warnings 0 --fix",
+      "prettier --write"
+    ],
+    "shared-contracts/**/*.{ts,tsx,js,jsx}": [
+      "eslint --max-warnings 0 --fix",
+      "prettier --write"
+    ],
+    "tools/**/*.{ts,tsx,js,jsx}": [
       "eslint --max-warnings 0 --fix",
       "prettier --write"
     ],

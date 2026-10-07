@@ -1,5 +1,11 @@
 {
-  "*.{ts,tsx}": ["eslint --fix --max-warnings 0", "prettier --write"],
-  "*.{js,jsx}": ["eslint --fix --max-warnings 0", "prettier --write"],
+  "mobile/**/*.{ts,tsx}": ["eslint --fix --max-warnings 0", "prettier --write"],
+  "backend/**/*.{ts,tsx}": ["eslint --fix --max-warnings 0", "prettier --write"],
+  "shared-contracts/**/*.{ts,tsx}": ["eslint --fix --max-warnings 0", "prettier --write"],
+  "tools/**/*.{ts,tsx}": ["eslint --fix --max-warnings 0", "prettier --write"],
+  "mobile/**/*.{js,jsx}": ["eslint --fix --max-warnings 0", "prettier --write"],
+  "backend/**/*.{js,jsx}": ["eslint --fix --max-warnings 0", "prettier --write"],
+  "shared-contracts/**/*.{js,jsx}": ["eslint --fix --max-warnings 0", "prettier --write"],
+  "tools/**/*.{js,jsx}": ["eslint --fix --max-warnings 0", "prettier --write"],
   "*.{json,md,yml,yaml}": ["prettier --write"]
 }

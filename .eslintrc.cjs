@@ -61,6 +61,7 @@ module.exports = {
     'build',
     'dist',
     'coverage',
+    'frontend',
     'mobile/ios',
     'mobile/android',
     '*.config.js',
