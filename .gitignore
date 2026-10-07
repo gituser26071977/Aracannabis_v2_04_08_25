@@ -38,6 +38,7 @@ GAVETA DE DADOS */
 *.key
 lib/
 lib64/
+!frontend/src/lib/
 # Local backup & data
 *.log
 logs/

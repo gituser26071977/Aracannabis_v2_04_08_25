@@ -17,6 +17,10 @@ COPY . .
 
 # CRITICAL: Set ENV before npm run build so React bakes it into the bundle
 ENV REACT_APP_API_URL=$REACT_APP_API_URL
+# O eslint embutido do CRA quebra o build por causa da config do
+# eslint-plugin-jest (env "jest/globals" unknown) em eslint-config-react-app.
+# Lint é feito à parte; desabilitamos o plugin eslint apenas no build.
+ENV DISABLE_ESLINT_PLUGIN=true
 
 # Construir a aplicação React para produção
 RUN npm run build
