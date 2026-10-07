@@ -142,9 +142,9 @@ jobs:
     env:
       DATABASE_URL: postgresql://siap_test:test_pass_32_chars_xxxxxxxxxxxx@localhost:5432/araos_test
       REDIS_URL: redis://localhost:6379/0
-      JWT_SECRET_KEY: REDACTED
-      CSRF_TOKEN: REDACTED
-      SECRET_KEY: REDACTED
+      JWT_SECRET_KEY: ci-staging-jwt-secret-000000000000000000000000
+      CSRF_TOKEN: ci-staging-csrf-token-0000000000000000000000000
+      SECRET_KEY: ci-staging-flask-secret-000000000000000000000000
       ENVIRONMENT: staging
     steps:
       - uses: actions/checkout@v4
@@ -260,9 +260,9 @@ jobs:
     env:
       DATABASE_URL: postgresql://siap_smoke:smoke_pass_32_chars_xxxxxxxxxxx@localhost:5432/araos_smoke
       REDIS_URL: redis://localhost:6379/0
-      JWT_SECRET_KEY: REDACTED
-      CSRF_TOKEN: REDACTED
-      SECRET_KEY: REDACTED
+      JWT_SECRET_KEY: ci-staging-jwt-secret-000000000000000000000000
+      CSRF_TOKEN: ci-staging-csrf-token-0000000000000000000000000
+      SECRET_KEY: ci-staging-flask-secret-000000000000000000000000
       ENVIRONMENT: staging
     steps:
       - uses: actions/checkout@v4
