@@ -351,6 +351,11 @@ def create_app(config_obj=None):
     app.register_blueprint(pre_atendimento_bp, url_prefix="/api/public")
     # Conferência do pré-atendimento (com JWT — fila do tenant).
     app.register_blueprint(pre_atendimento_conferencia_bp, url_prefix="/api/pre-atendimento")
+
+    # Triagem psiquiátrica conduzida pelo paciente (público, sem JWT).
+    from routes.psych_triage_public import psych_triage_public_bp
+    app.register_blueprint(psych_triage_public_bp)
+
     from routes.intelligent_catalog import icatalog_bp
 
     app.register_blueprint(icatalog_bp)
@@ -450,6 +455,10 @@ def create_app(config_obj=None):
     # [NEW] AraOS Neurodevelopmental Registry (Sprint 3.2 / ADR-0002)
     from routes.neuro_registry import neuro_registry_bp
     app.register_blueprint(neuro_registry_bp)
+
+    # [NEW] AraOS Psychiatry — Triagem e apoio à avaliação psiquiátrica
+    from routes.psychiatry import psychiatry_triage_bp
+    app.register_blueprint(psychiatry_triage_bp)
 
     # [NEW] AraOS Clinical Intelligence Platform (Sprint 4.1 / ADR-0003)
     # Gateado por AROS_INTELLIGENCE_ENABLED: as engines tiveram identificadores

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Triagem de Saúde Mental</title>
+  <style>
+    :root { --bg:#0f172a; --card:#ffffff; --primary:#0d7377; --muted:#64748b; --danger:#c62828; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background:#eef2f6; color:#0f172a; }
+    .wrap { max-width: 720px; margin: 0 auto; min-height: 100vh; display:flex; flex-direction:column; background:var(--card); }
+    header { background:var(--primary); color:#fff; padding:16px 20px; }
+    header h1 { margin:0; font-size:18px; }
+    header p { margin:4px 0 0; font-size:12px; opacity:.9; }
+    #chat { flex:1; padding:20px; overflow-y:auto; display:flex; flex-direction:column; gap:12px; }
+    .bubble { max-width:85%; padding:12px 14px; border-radius:14px; line-height:1.4; white-space:pre-wrap; }
+    .agent { align-self:flex-start; background:#e6f4f4; border:1px solid #cfe9e9; }
+    .user { align-self:flex-end; background:var(--primary); color:#fff; }
+    .progress { height:6px; background:#e2e8f0; }
+    .progress > div { height:100%; width:0; background:var(--primary); transition:width .3s; }
+    footer { padding:14px 20px; border-top:1px solid #e2e8f0; }
+    .choices { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+    button.opt { border:1px solid var(--primary); background:#fff; color:var(--primary); padding:8px 14px; border-radius:20px; cursor:pointer; }
+    button.opt:hover { background:var(--primary); color:#fff; }
+    .row { display:flex; gap:8px; }
+    input[type=text] { flex:1; padding:12px; border:1px solid #cbd5e1; border-radius:10px; font-size:15px; }
+    button.send { background:var(--primary); color:#fff; border:none; padding:0 18px; border-radius:10px; cursor:pointer; }
+    .disclaimer { font-size:11px; color:var(--muted); padding:10px 20px; background:#f8fafc; border-top:1px solid #e2e8f0; }
+    .alert { background:#fdecea; border:1px solid var(--danger); color:var(--danger); font-weight:600; }
+    .scores { font-size:13px; }
+    .scores div { display:flex; justify-content:space-between; padding:2px 0; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Triagem e apoio à avaliação em saúde mental</h1>
+    <p>Conduzida por agente — não substitui avaliação profissional.</p>
+  </header>
+  <div class="progress"><div id="bar"></div></div>
+  <div id="chat"></div>
+  <footer>
+    <div class="row">
+      <input type="text" id="answer" placeholder="Escreva sua resposta..." autocomplete="off" />
+      <button class="send" id="send">Enviar</button>
+    </div>
+    <div class="choices" id="choices"></div>
+  </footer>
+  <div class="disclaimer" id="disclaimer"></div>
+</div>
+<script>
+  const params = new URLSearchParams(location.search);
+  const token = params.get('token');
+  const chat = document.getElementById('chat');
+  const input = document.getElementById('answer');
+  const send = document.getElementById('send');
+  const choices = document.getElementById('choices');
+  const bar = document.getElementById('bar');
+  const disclaimer = document.getElementById('disclaimer');
+  let sessionId = null;
+  let current = null;
+
+  function bubble(text, cls) {
+    const el = document.createElement('div');
+    el.className = 'bubble ' + cls;
+    el.textContent = text;
+    chat.appendChild(el);
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  function renderChoices(q) {
+    choices.innerHTML = '';
+    if (!q) return;
+    let opts = [];
+    if (q.kind === 'yesno') opts = ['Sim', 'Não'];
+    else if (q.kind === 'intensity') opts = ['0', '1', '2', '3', '4'];
+    else if (q.kind === 'choice') opts = q.choices;
+    opts.forEach(v => {
+      const b = document.createElement('button');
+      b.className = 'opt';
+      b.textContent = v;
+      b.onclick = () => submitAnswer(v);
+      choices.appendChild(b);
+    });
+  }
+
+  async function start() {
+    if (!token) { bubble('Link inválido: token ausente.', 'agent'); return; }
+    const res = await fetch('/api/public/psych-triage/start', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token })
+    });
+    if (!res.ok) { bubble('Este link é inválido ou expirou.', 'agent'); return; }
+    const data = await res.json();
+    sessionId = data.session_id;
+    disclaimer.textContent = data.disclaimer || '';
+    bubble(data.greeting, 'agent');
+    current = data.question;
+    if (current) { bubble(current.prompt, 'agent'); renderChoices(current); }
+  }
+
+  async function submitAnswer(text) {
+    if (!text || !sessionId) return;
+    bubble(text, 'user');
+    input.value = '';
+    choices.innerHTML = '';
+    const res = await fetch(`/api/public/psych-triage/${sessionId}/answer`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: text })
+    });
+    const data = await res.json();
+    if (!res.ok) { bubble(data.error || 'Erro.', 'agent'); return; }
+    if (data.accepted === false) {
+      bubble(data.hint, 'agent');
+      if (data.question) { current = data.question; bubble(current.prompt, 'agent'); renderChoices(current); }
+      return;
+    }
+    if (data.done) { showResult(data); return; }
+    current = data.question;
+    if (typeof data.progress === 'number') bar.style.width = Math.round(data.progress * 100) + '%';
+    if (current) { bubble(current.prompt, 'agent'); renderChoices(current); }
+  }
+
+  function showResult(data) {
+    bar.style.width = '100%';
+    bubble(data.closing, 'agent');
+    if (data.emergency) bubble('ALERTA CLÍNICO: procure atendimento de emergência ou ligue 188 (CVV).', 'bubble agent alert');
+    const scores = data.domain_scores || {};
+    const box = document.createElement('div');
+    box.className = 'bubble agent scores';
+    Object.entries(scores).forEach(([k, v]) => {
+      const row = document.createElement('div');
+      row.innerHTML = `<span>${k}</span><strong>${v}/100</strong>`;
+      box.appendChild(row);
+    });
+    const risk = data.risk || {};
+    const rrow = document.createElement('div');
+    rrow.innerHTML = `<span>Risco suicida</span><strong>${risk.label || '-'}</strong>`;
+    box.appendChild(rrow);
+    chat.appendChild(box);
+    if (data.narrative) bubble(data.narrative, 'agent');
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  send.onclick = () => submitAnswer(input.value.trim());
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') submitAnswer(input.value.trim()); });
+  start();
+</script>
+</body>
+</html>

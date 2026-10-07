@@ -1,0 +1,1122 @@
+{
+  "code": "PSYCH_TRIAGE",
+  "name": "Triagem e Apoio à Avaliação Psiquiátrica",
+  "version": "1.0.0",
+  "criteria_base": ["DSM-5-TR", "CID-11"],
+  "criteria_version": "DSM5TR-2025-09 / CID11-2026",
+  "updated_at": "2026-10-06",
+  "evidence_sources": [
+    {
+      "instrument": "PHQ-9",
+      "domain": "depressao",
+      "scoring": "soma 0-27; corte >=10",
+      "reference": "Kroenke 2001"
+    },
+    {
+      "instrument": "GAD-7",
+      "domain": "ansiedade",
+      "scoring": "soma 0-21; corte >=10",
+      "reference": "Spitzer 2006"
+    },
+    {
+      "instrument": "MDQ",
+      "domain": "bipolaridade",
+      "scoring": ">=7/13 sintomas + coocorrencia + prejuizo moderado/grave",
+      "reference": "Hirschfeld 2000"
+    },
+    {
+      "instrument": "YMRS",
+      "domain": "mania_hipomania",
+      "scoring": "11 itens; 4 com escala 0-8 e 7 com 0-4 (itens ponderados)",
+      "reference": "Young 1978"
+    },
+    {
+      "instrument": "C-SSRS",
+      "domain": "risco_suicida",
+      "scoring": "categorico por gravidade; sim em Q4/Q5/Q6 = alto risco",
+      "reference": "Posner 2011"
+    }
+  ],
+  "disclaimer": "Instrumento de triagem e apoio à decisão clínica – não substitui avaliação psiquiátrica e não estabelece diagnóstico automaticamente.",
+  "index_calibration": 0.6,
+  "intensity_labels": {
+    "0": "ausente",
+    "1": "leve",
+    "2": "moderado",
+    "3": "intenso",
+    "4": "muito intenso"
+  },
+  "temporal_bands": [
+    { "code": "nunca", "label": "Nunca", "modifier": 0.0 },
+    { "code": "passado_remoto", "label": "Passado remoto", "modifier": 0.5 },
+    { "code": "passado_recente", "label": "Passado recente", "modifier": 0.7 },
+    { "code": "ultimos_30_dias", "label": "Últimos 30 dias", "modifier": 1.0 },
+    { "code": "ultimos_7_dias", "label": "Últimos 7 dias", "modifier": 1.1 },
+    { "code": "hoje", "label": "Hoje", "modifier": 1.2 },
+    { "code": "episodico", "label": "Durante episódios específicos", "modifier": 1.0 }
+  ],
+  "change_bands": [
+    { "code": "nao", "label": "Não", "modifier": 0.25 },
+    { "code": "discretamente", "label": "Discretamente", "modifier": 0.55 },
+    { "code": "moderadamente", "label": "Moderadamente", "modifier": 0.85 },
+    { "code": "claramente", "label": "Claramente", "modifier": 1.15 },
+    { "code": "drasticamente", "label": "Drasticamente", "modifier": 1.35 }
+  ],
+  "specificity_factors": { "alta": 1.0, "media": 0.7, "baixa": 0.4 },
+  "domains": [
+    { "code": "depressao", "label": "Depressão" },
+    { "code": "ansiedade", "label": "Ansiedade" },
+    { "code": "bipolaridade", "label": "Espectro Bipolar" },
+    { "code": "mania_hipomania", "label": "Mania / Hipomania" },
+    { "code": "psicose", "label": "Sintomas Psicóticos" },
+    { "code": "tea", "label": "Transtorno do Espectro Autista" },
+    { "code": "tdah", "label": "TDAH" },
+    { "code": "substancias", "label": "Substâncias / Iatrogenia" }
+  ],
+  "contexts": {
+    "episodio_delimitado": {
+      "description": "Episódio claramente delimitado com duração >= 2 dias"
+    },
+    "inicio_infancia": { "description": "Características presentes desde infância/adolescência" },
+    "psicose_alteracao_realidade": { "description": "Alteração do teste de realidade" },
+    "reducao_necessidade_sono": { "description": "Redução do sono sem sonolência (alternativa B)" },
+    "observable_by_others": { "description": "Mudança observável por terceiros" }
+  },
+  "items": [
+    {
+      "id": "dep_humor",
+      "label": "Humor deprimido",
+      "domains": ["depressao"],
+      "weight": 4,
+      "specificity": "alta",
+      "temporal_mode": "state"
+    },
+    {
+      "id": "dep_anedonia",
+      "label": "Anedonia / perda de prazer",
+      "domains": ["depressao"],
+      "weight": 4,
+      "specificity": "alta",
+      "temporal_mode": "state"
+    },
+    {
+      "id": "dep_interesse",
+      "label": "Perda de interesse",
+      "domains": ["depressao"],
+      "weight": 3,
+      "specificity": "alta",
+      "temporal_mode": "state"
+    },
+    {
+      "id": "dep_fadiga",
+      "label": "Fadiga / perda de energia",
+      "domains": ["depressao"],
+      "weight": 2,
+      "specificity": "media",
+      "temporal_mode": "state"
+    },
+    {
+      "id": "dep_sono",
+      "label": "Alteração do sono",
+      "domains": ["depressao"],
+      "weight": 2,
+      "specificity": "media",
+      "temporal_mode": "state"
+    },
+    {
+      "id": "dep_apetite",
+      "label": "Alteração do apetite",
+      "domains": ["depressao"],
+      "weight": 2,
+      "specificity": "media",
+      "temporal_mode": "state"
+    },
+    {
+      "id": "dep_peso",
+      "label": "Alteração de peso",
+      "domains": ["depressao"],
+      "weight": 2,
+      "specificity": "media",
+      "temporal_mode": "state"
+    },
+    {
+      "id": "dep_psicomotor",
+      "label": "Lentificação / agitação psicomotora",
+      "domains": ["depressao"],
+      "weight": 3,
+      "specificity": "alta",
+      "temporal_mode": "state"
+    },
+    {
+      "id": "dep_culpa",
+      "label": "Culpa excessiva",
+      "domains": ["depressao"],
+      "weight": 2,
+      "specificity": "media",
+      "temporal_mode": "state"
+    },
+    {
+      "id": "dep_desesperanca",
+      "label": "Desesperança",
+      "domains": ["depressao"],
+      "weight": 3,
+      "specificity": "alta",
+      "temporal_mode": "state"
+    },
+    {
+      "id": "dep_baixa_autoestima",
+      "label": "Baixa autoestima",
+      "domains": ["depressao"],
+      "weight": 2,
+      "specificity": "media",
+      "temporal_mode": "state"
+    },
+    {
+      "id": "dep_concentracao",
+      "label": "Dificuldade de concentração",
+      "domains": ["depressao"],
+      "weight": 1,
+      "specificity": "baixa",
+      "temporal_mode": "state"
+    },
+    {
+      "id": "dep_indecisao",
+      "label": "Indecisão",
+      "domains": ["depressao"],
+      "weight": 1,
+      "specificity": "baixa",
+      "temporal_mode": "state"
+    },
+    {
+      "id": "dep_morte",
+      "label": "Pensamentos recorrentes de morte",
+      "domains": ["depressao"],
+      "weight": 3,
+      "specificity": "alta",
+      "temporal_mode": "state"
+    },
+
+    {
+      "id": "anx_preocupacao",
+      "label": "Preocupação excessiva",
+      "domains": ["ansiedade"],
+      "weight": 4,
+      "specificity": "alta",
+      "temporal_mode": "state",
+      "subdomains": ["generalizada"]
+    },
+    {
+      "id": "anx_controle",
+      "label": "Dificuldade de controlar a preocupação",
+      "domains": ["ansiedade"],
+      "weight": 3,
+      "specificity": "alta",
+      "temporal_mode": "state",
+      "subdomains": ["generalizada"]
+    },
+    {
+      "id": "anx_inquietacao",
+      "label": "Inquietação",
+      "domains": ["ansiedade"],
+      "weight": 2,
+      "specificity": "media",
+      "temporal_mode": "state",
+      "subdomains": ["generalizada"]
+    },
+    {
+      "id": "anx_tensao",
+      "label": "Tensão muscular",
+      "domains": ["ansiedade"],
+      "weight": 2,
+      "specificity": "media",
+      "temporal_mode": "state",
+      "subdomains": ["generalizada"]
+    },
+    {
+      "id": "anx_irritabilidade",
+      "label": "Irritabilidade",
+      "domains": ["ansiedade"],
+      "weight": 1,
+      "specificity": "baixa",
+      "temporal_mode": "state",
+      "subdomains": ["generalizada"]
+    },
+    {
+      "id": "anx_fadiga",
+      "label": "Fadiga",
+      "domains": ["ansiedade"],
+      "weight": 1,
+      "specificity": "baixa",
+      "temporal_mode": "state",
+      "subdomains": ["generalizada"]
+    },
+    {
+      "id": "anx_concentracao",
+      "label": "Dificuldade de concentração",
+      "domains": ["ansiedade"],
+      "weight": 1,
+      "specificity": "baixa",
+      "temporal_mode": "state",
+      "subdomains": ["generalizada"]
+    },
+    {
+      "id": "anx_sono",
+      "label": "Alterações do sono",
+      "domains": ["ansiedade"],
+      "weight": 1,
+      "specificity": "baixa",
+      "temporal_mode": "state",
+      "subdomains": ["generalizada"]
+    },
+    {
+      "id": "anx_autonomicos",
+      "label": "Sintomas autonômicos",
+      "domains": ["ansiedade"],
+      "weight": 3,
+      "specificity": "alta",
+      "temporal_mode": "state",
+      "subdomains": ["panico", "generalizada"]
+    },
+    {
+      "id": "anx_panico",
+      "label": "Crises de pânico",
+      "domains": ["ansiedade"],
+      "weight": 3,
+      "specificity": "alta",
+      "temporal_mode": "state",
+      "subdomains": ["panico"]
+    },
+    {
+      "id": "anx_social",
+      "label": "Ansiedade social",
+      "domains": ["ansiedade"],
+      "weight": 3,
+      "specificity": "alta",
+      "temporal_mode": "state",
+      "subdomains": ["social"]
+    },
+    {
+      "id": "anx_antecipatoria",
+      "label": "Ansiedade antecipatória",
+      "domains": ["ansiedade"],
+      "weight": 2,
+      "specificity": "media",
+      "temporal_mode": "state",
+      "subdomains": ["generalizada", "situacional"]
+    },
+    {
+      "id": "anx_evitacao",
+      "label": "Comportamentos de evitação",
+      "domains": ["ansiedade"],
+      "weight": 2,
+      "specificity": "media",
+      "temporal_mode": "state",
+      "subdomains": ["social", "situacional"]
+    },
+
+    {
+      "id": "bip_humor_elevado",
+      "label": "Humor elevado",
+      "domains": ["bipolaridade", "mania_hipomania"],
+      "weight": 3,
+      "specificity": "alta",
+      "temporal_mode": "episodic"
+    },
+    {
+      "id": "bip_humor_expansivo",
+      "label": "Humor expansivo",
+      "domains": ["bipolaridade", "mania_hipomania"],
+      "weight": 4,
+      "specificity": "alta",
+      "temporal_mode": "episodic"
+    },
+    {
+      "id": "bip_irritabilidade",
+      "label": "Irritabilidade anormal",
+      "domains": ["bipolaridade", "mania_hipomania"],
+      "weight": 1,
+      "specificity": "baixa",
+      "temporal_mode": "episodic"
+    },
+    {
+      "id": "bip_energia",
+      "label": "Aumento de energia",
+      "domains": ["bipolaridade", "mania_hipomania"],
+      "weight": 3,
+      "specificity": "alta",
+      "temporal_mode": "episodic"
+    },
+    {
+      "id": "bip_atividade",
+      "label": "Aumento de atividade",
+      "domains": ["bipolaridade", "mania_hipomania"],
+      "weight": 3,
+      "specificity": "alta",
+      "temporal_mode": "episodic"
+    },
+    {
+      "id": "bip_sono_reduzido",
+      "label": "Redução da necessidade de sono",
+      "domains": ["bipolaridade", "mania_hipomania"],
+      "weight": 4,
+      "specificity": "alta",
+      "temporal_mode": "episodic",
+      "requires_context": ["reducao_necessidade_sono"]
+    },
+    {
+      "id": "bip_produtividade",
+      "label": "Aumento de produtividade",
+      "domains": ["bipolaridade", "mania_hipomania"],
+      "weight": 2,
+      "specificity": "media",
+      "temporal_mode": "episodic"
+    },
+    {
+      "id": "bip_fala",
+      "label": "Fala aumentada",
+      "domains": ["bipolaridade", "mania_hipomania"],
+      "weight": 2,
+      "specificity": "media",
+      "temporal_mode": "episodic"
+    },
+    {
+      "id": "bip_pressao_fala",
+      "label": "Pressão para falar",
+      "domains": ["bipolaridade", "mania_hipomania"],
+      "weight": 3,
+      "specificity": "alta",
+      "temporal_mode": "episodic"
+    },
+    {
+      "id": "bip_pensamentos_acelerados",
+      "label": "Pensamentos acelerados",
+      "domains": ["bipolaridade", "mania_hipomania"],
+      "weight": 3,
+      "specificity": "alta",
+      "temporal_mode": "episodic"
+    },
+    {
+      "id": "bip_fuga_ideias",
+      "label": "Fuga de ideias",
+      "domains": ["bipolaridade", "mania_hipomania"],
+      "weight": 3,
+      "specificity": "alta",
+      "temporal_mode": "episodic"
+    },
+    {
+      "id": "bip_distratibilidade",
+      "label": "Distraibilidade",
+      "domains": ["bipolaridade", "mania_hipomania"],
+      "weight": 1,
+      "specificity": "baixa",
+      "temporal_mode": "episodic"
+    },
+    {
+      "id": "bip_autoestima",
+      "label": "Aumento da autoestima",
+      "domains": ["bipolaridade", "mania_hipomania"],
+      "weight": 2,
+      "specificity": "media",
+      "temporal_mode": "episodic"
+    },
+    {
+      "id": "bip_grandiosidade",
+      "label": "Grandiosidade",
+      "domains": ["bipolaridade", "mania_hipomania"],
+      "weight": 3,
+      "specificity": "alta",
+      "temporal_mode": "episodic"
+    },
+    {
+      "id": "bip_sociabilidade",
+      "label": "Aumento de sociabilidade",
+      "domains": ["bipolaridade", "mania_hipomania"],
+      "weight": 2,
+      "specificity": "media",
+      "temporal_mode": "episodic"
+    },
+    {
+      "id": "bip_libido",
+      "label": "Aumento da libido",
+      "domains": ["bipolaridade", "mania_hipomania"],
+      "weight": 2,
+      "specificity": "media",
+      "temporal_mode": "episodic"
+    },
+    {
+      "id": "bip_impulsividade",
+      "label": "Impulsividade",
+      "domains": ["bipolaridade", "mania_hipomania"],
+      "weight": 3,
+      "specificity": "alta",
+      "temporal_mode": "episodic"
+    },
+    {
+      "id": "bip_gastos",
+      "label": "Gastos excessivos",
+      "domains": ["bipolaridade", "mania_hipomania"],
+      "weight": 2,
+      "specificity": "media",
+      "temporal_mode": "episodic"
+    },
+    {
+      "id": "bip_sexual_risco",
+      "label": "Comportamento sexual de risco",
+      "domains": ["bipolaridade", "mania_hipomania"],
+      "weight": 3,
+      "specificity": "alta",
+      "temporal_mode": "episodic"
+    },
+    {
+      "id": "bip_imprudente",
+      "label": "Comportamento imprudente",
+      "domains": ["bipolaridade", "mania_hipomania"],
+      "weight": 2,
+      "specificity": "media",
+      "temporal_mode": "episodic"
+    },
+    {
+      "id": "bip_projetos",
+      "label": "Aumento de projetos",
+      "domains": ["bipolaridade", "mania_hipomania"],
+      "weight": 2,
+      "specificity": "media",
+      "temporal_mode": "episodic"
+    },
+    {
+      "id": "bip_criatividade",
+      "label": "Aumento de criatividade",
+      "domains": ["bipolaridade", "mania_hipomania"],
+      "weight": 1,
+      "specificity": "baixa",
+      "temporal_mode": "episodic"
+    },
+    {
+      "id": "bip_capacidades_extraordinarias",
+      "label": "Sensação de capacidades extraordinárias",
+      "domains": ["bipolaridade", "mania_hipomania"],
+      "weight": 3,
+      "specificity": "alta",
+      "temporal_mode": "episodic"
+    },
+
+    {
+      "id": "psi_delirio_persecutorio",
+      "label": "Delírio persecutório",
+      "domains": ["psicose"],
+      "weight": 4,
+      "specificity": "alta",
+      "temporal_mode": "state",
+      "requires_context": ["psicose_alteracao_realidade"]
+    },
+    {
+      "id": "psi_delirio_referencia",
+      "label": "Delírio de referência",
+      "domains": ["psicose"],
+      "weight": 3,
+      "specificity": "alta",
+      "temporal_mode": "state",
+      "requires_context": ["psicose_alteracao_realidade"]
+    },
+    {
+      "id": "psi_delirio_grandiosidade",
+      "label": "Delírio de grandiosidade",
+      "domains": ["psicose"],
+      "weight": 3,
+      "specificity": "alta",
+      "temporal_mode": "state",
+      "requires_context": ["psicose_alteracao_realidade"]
+    },
+    {
+      "id": "psi_delirio_religioso",
+      "label": "Delírio religioso",
+      "domains": ["psicose"],
+      "weight": 2,
+      "specificity": "media",
+      "temporal_mode": "state",
+      "requires_context": ["psicose_alteracao_realidade"]
+    },
+    {
+      "id": "psi_delirio_ciume",
+      "label": "Delírio de ciúme",
+      "domains": ["psicose"],
+      "weight": 2,
+      "specificity": "media",
+      "temporal_mode": "state",
+      "requires_context": ["psicose_alteracao_realidade"]
+    },
+    {
+      "id": "psi_delirio_somatico",
+      "label": "Delírio somático",
+      "domains": ["psicose"],
+      "weight": 2,
+      "specificity": "media",
+      "temporal_mode": "state",
+      "requires_context": ["psicose_alteracao_realidade"]
+    },
+    {
+      "id": "psi_delirio_controle",
+      "label": "Delírio de controle/influência",
+      "domains": ["psicose"],
+      "weight": 4,
+      "specificity": "alta",
+      "temporal_mode": "state",
+      "requires_context": ["psicose_alteracao_realidade"]
+    },
+    {
+      "id": "psi_insercao",
+      "label": "Inserção de pensamento",
+      "domains": ["psicose"],
+      "weight": 4,
+      "specificity": "alta",
+      "temporal_mode": "state",
+      "requires_context": ["psicose_alteracao_realidade"]
+    },
+    {
+      "id": "psi_retirada",
+      "label": "Retirada de pensamento",
+      "domains": ["psicose"],
+      "weight": 4,
+      "specificity": "alta",
+      "temporal_mode": "state",
+      "requires_context": ["psicose_alteracao_realidade"]
+    },
+    {
+      "id": "psi_transmissao",
+      "label": "Transmissão de pensamento",
+      "domains": ["psicose"],
+      "weight": 4,
+      "specificity": "alta",
+      "temporal_mode": "state",
+      "requires_context": ["psicose_alteracao_realidade"]
+    },
+    {
+      "id": "psi_aluc_auditiva",
+      "label": "Alucinação auditiva",
+      "domains": ["psicose"],
+      "weight": 4,
+      "specificity": "alta",
+      "temporal_mode": "state",
+      "requires_context": ["psicose_alteracao_realidade"]
+    },
+    {
+      "id": "psi_aluc_visual",
+      "label": "Alucinação visual",
+      "domains": ["psicose"],
+      "weight": 3,
+      "specificity": "alta",
+      "temporal_mode": "state",
+      "requires_context": ["psicose_alteracao_realidade"]
+    },
+    {
+      "id": "psi_aluc_tatil",
+      "label": "Alucinação tátil",
+      "domains": ["psicose"],
+      "weight": 2,
+      "specificity": "media",
+      "temporal_mode": "state",
+      "requires_context": ["psicose_alteracao_realidade"]
+    },
+    {
+      "id": "psi_aluc_olfativa",
+      "label": "Alucinação olfatória",
+      "domains": ["psicose"],
+      "weight": 2,
+      "specificity": "media",
+      "temporal_mode": "state",
+      "requires_context": ["psicose_alteracao_realidade"]
+    },
+    {
+      "id": "psi_aluc_somatica",
+      "label": "Alucinação somática",
+      "domains": ["psicose"],
+      "weight": 2,
+      "specificity": "media",
+      "temporal_mode": "state",
+      "requires_context": ["psicose_alteracao_realidade"]
+    },
+    {
+      "id": "psi_discurso",
+      "label": "Discurso desorganizado",
+      "domains": ["psicose"],
+      "weight": 3,
+      "specificity": "alta",
+      "temporal_mode": "state",
+      "requires_context": ["psicose_alteracao_realidade"]
+    },
+    {
+      "id": "psi_pensamento",
+      "label": "Pensamento desorganizado",
+      "domains": ["psicose"],
+      "weight": 3,
+      "specificity": "alta",
+      "temporal_mode": "state",
+      "requires_context": ["psicose_alteracao_realidade"]
+    },
+    {
+      "id": "psi_comportamento",
+      "label": "Comportamento desorganizado",
+      "domains": ["psicose"],
+      "weight": 3,
+      "specificity": "alta",
+      "temporal_mode": "state",
+      "requires_context": ["psicose_alteracao_realidade"]
+    },
+    {
+      "id": "psi_incoerencia",
+      "label": "Incoerência",
+      "domains": ["psicose"],
+      "weight": 3,
+      "specificity": "alta",
+      "temporal_mode": "state",
+      "requires_context": ["psicose_alteracao_realidade"]
+    },
+    {
+      "id": "psi_conversacao",
+      "label": "Dificuldade importante de manter conversação",
+      "domains": ["psicose"],
+      "weight": 3,
+      "specificity": "alta",
+      "temporal_mode": "state",
+      "requires_context": ["psicose_alteracao_realidade"]
+    },
+
+    {
+      "id": "tea_reciprocidade",
+      "label": "Dificuldade de reciprocidade social",
+      "domains": ["tea"],
+      "weight": 4,
+      "specificity": "alta",
+      "temporal_mode": "trait",
+      "requires_context": ["inicio_infancia"]
+    },
+    {
+      "id": "tea_pistas_sociais",
+      "label": "Dificuldade de interpretar pistas sociais",
+      "domains": ["tea"],
+      "weight": 3,
+      "specificity": "alta",
+      "temporal_mode": "trait",
+      "requires_context": ["inicio_infancia"]
+    },
+    {
+      "id": "tea_interacao",
+      "label": "Dificuldade de iniciar/manter interação",
+      "domains": ["tea"],
+      "weight": 3,
+      "specificity": "alta",
+      "temporal_mode": "trait",
+      "requires_context": ["inicio_infancia"]
+    },
+    {
+      "id": "tea_nao_verbal",
+      "label": "Dificuldade de comunicação não verbal",
+      "domains": ["tea"],
+      "weight": 3,
+      "specificity": "alta",
+      "temporal_mode": "trait",
+      "requires_context": ["inicio_infancia"]
+    },
+    {
+      "id": "tea_contato_visual",
+      "label": "Alteração do contato visual",
+      "domains": ["tea"],
+      "weight": 3,
+      "specificity": "alta",
+      "temporal_mode": "trait",
+      "requires_context": ["inicio_infancia"]
+    },
+    {
+      "id": "tea_literal",
+      "label": "Compreensão literal",
+      "domains": ["tea"],
+      "weight": 3,
+      "specificity": "alta",
+      "temporal_mode": "trait",
+      "requires_context": ["inicio_infancia"]
+    },
+    {
+      "id": "tea_codigos_sociais",
+      "label": "Dificuldade com códigos sociais",
+      "domains": ["tea"],
+      "weight": 3,
+      "specificity": "alta",
+      "temporal_mode": "trait",
+      "requires_context": ["inicio_infancia"]
+    },
+    {
+      "id": "tea_amizades",
+      "label": "Dificuldade em amizades",
+      "domains": ["tea"],
+      "weight": 3,
+      "specificity": "alta",
+      "temporal_mode": "trait",
+      "requires_context": ["inicio_infancia"]
+    },
+    {
+      "id": "tea_regras_sociais",
+      "label": "Sensação de não compreender regras sociais",
+      "domains": ["tea"],
+      "weight": 3,
+      "specificity": "alta",
+      "temporal_mode": "trait",
+      "requires_context": ["inicio_infancia"]
+    },
+    {
+      "id": "tea_movimentos",
+      "label": "Movimentos repetitivos",
+      "domains": ["tea"],
+      "weight": 3,
+      "specificity": "alta",
+      "temporal_mode": "trait",
+      "requires_context": ["inicio_infancia"]
+    },
+    {
+      "id": "tea_rotina",
+      "label": "Necessidade de rotina",
+      "domains": ["tea"],
+      "weight": 3,
+      "specificity": "alta",
+      "temporal_mode": "trait",
+      "requires_context": ["inicio_infancia"]
+    },
+    {
+      "id": "tea_mudancas",
+      "label": "Sofrimento com mudanças",
+      "domains": ["tea"],
+      "weight": 3,
+      "specificity": "alta",
+      "temporal_mode": "trait",
+      "requires_context": ["inicio_infancia"]
+    },
+    {
+      "id": "tea_interesses",
+      "label": "Interesses altamente restritos/intensos",
+      "domains": ["tea"],
+      "weight": 4,
+      "specificity": "alta",
+      "temporal_mode": "trait",
+      "requires_context": ["inicio_infancia"]
+    },
+    {
+      "id": "tea_previsibilidade",
+      "label": "Necessidade de previsibilidade",
+      "domains": ["tea"],
+      "weight": 3,
+      "specificity": "alta",
+      "temporal_mode": "trait",
+      "requires_context": ["inicio_infancia"]
+    },
+    {
+      "id": "tea_padroes",
+      "label": "Padrões repetitivos",
+      "domains": ["tea"],
+      "weight": 3,
+      "specificity": "alta",
+      "temporal_mode": "trait",
+      "requires_context": ["inicio_infancia"]
+    },
+    {
+      "id": "tea_sensorial",
+      "label": "Hiper/hipossensibilidade sensorial",
+      "domains": ["tea"],
+      "weight": 3,
+      "specificity": "alta",
+      "temporal_mode": "trait",
+      "requires_context": ["inicio_infancia"]
+    },
+
+    {
+      "id": "tdah_desatencao",
+      "label": "Desatenção",
+      "domains": ["tdah"],
+      "weight": 4,
+      "specificity": "alta",
+      "temporal_mode": "trait",
+      "requires_context": ["inicio_infancia"]
+    },
+    {
+      "id": "tdah_procrastinacao",
+      "label": "Procrastinação",
+      "domains": ["tdah"],
+      "weight": 3,
+      "specificity": "alta",
+      "temporal_mode": "trait",
+      "requires_context": ["inicio_infancia"]
+    },
+    {
+      "id": "tdah_desorganizacao",
+      "label": "Desorganização",
+      "domains": ["tdah"],
+      "weight": 3,
+      "specificity": "alta",
+      "temporal_mode": "trait",
+      "requires_context": ["inicio_infancia"]
+    },
+    {
+      "id": "tdah_impulsividade",
+      "label": "Impulsividade",
+      "domains": ["tdah"],
+      "weight": 3,
+      "specificity": "alta",
+      "temporal_mode": "trait",
+      "requires_context": ["inicio_infancia"]
+    },
+    {
+      "id": "tdah_hiperatividade",
+      "label": "Hiperatividade",
+      "domains": ["tdah"],
+      "weight": 3,
+      "specificity": "alta",
+      "temporal_mode": "trait",
+      "requires_context": ["inicio_infancia"]
+    },
+    {
+      "id": "tdah_concluir",
+      "label": "Dificuldade de concluir tarefas",
+      "domains": ["tdah"],
+      "weight": 3,
+      "specificity": "alta",
+      "temporal_mode": "trait",
+      "requires_context": ["inicio_infancia"]
+    },
+    {
+      "id": "tdah_perda_objetos",
+      "label": "Perda de objetos",
+      "domains": ["tdah"],
+      "weight": 2,
+      "specificity": "media",
+      "temporal_mode": "trait",
+      "requires_context": ["inicio_infancia"]
+    },
+    {
+      "id": "tdah_planejamento",
+      "label": "Dificuldade de planejamento",
+      "domains": ["tdah"],
+      "weight": 3,
+      "specificity": "alta",
+      "temporal_mode": "trait",
+      "requires_context": ["inicio_infancia"]
+    },
+    {
+      "id": "tdah_distracao",
+      "label": "Distração",
+      "domains": ["tdah"],
+      "weight": 3,
+      "specificity": "alta",
+      "temporal_mode": "trait",
+      "requires_context": ["inicio_infancia"]
+    },
+    {
+      "id": "tdah_novidade",
+      "label": "Busca por novidade",
+      "domains": ["tdah"],
+      "weight": 2,
+      "specificity": "media",
+      "temporal_mode": "trait",
+      "requires_context": ["inicio_infancia"]
+    }
+  ],
+  "synergy_rules": [
+    {
+      "id": "bipolar_core_cluster",
+      "domains": ["bipolaridade", "mania_hipomania"],
+      "required_items": [
+        "bip_sono_reduzido",
+        "bip_energia",
+        "bip_grandiosidade",
+        "bip_impulsividade"
+      ],
+      "min_present": 3,
+      "bonus": 30
+    },
+    {
+      "id": "bipolar_activation_cluster",
+      "domains": ["bipolaridade", "mania_hipomania"],
+      "required_items": ["bip_sono_reduzido", "bip_energia", "bip_atividade"],
+      "min_present": 3,
+      "bonus": 15
+    },
+    {
+      "id": "tea_cluster",
+      "domains": ["tea"],
+      "required_items": ["tea_reciprocidade", "tea_rotina", "tea_interesses", "tea_sensorial"],
+      "min_present": 3,
+      "bonus": 20
+    },
+    {
+      "id": "adhd_cluster",
+      "domains": ["tdah"],
+      "required_items": ["tdah_desatencao", "tdah_impulsividade", "tdah_desorganizacao"],
+      "min_present": 3,
+      "bonus": 15
+    },
+    {
+      "id": "psychosis_core_cluster",
+      "domains": ["psicose"],
+      "required_items": [
+        "psi_delirio_persecutorio",
+        "psi_aluc_auditiva",
+        "psi_insercao",
+        "psi_delirio_controle"
+      ],
+      "min_present": 2,
+      "bonus": 25
+    }
+  ],
+  "penalty_rules": [
+    {
+      "id": "isolated_speech",
+      "domain": "mania_hipomania",
+      "item": "bip_fala",
+      "unless_context": "episodio_delimitado",
+      "penalty": 15
+    },
+    {
+      "id": "isolated_interest",
+      "domain": "tea",
+      "item": "tea_interesses",
+      "unless_context": "inicio_infancia",
+      "penalty": 20
+    },
+    {
+      "id": "depressive_psychosis",
+      "domain": "psicose",
+      "when_context": "somente_depressao",
+      "penalty": 5
+    }
+  ],
+  "mania_rules": {
+    "impairment_weights": {
+      "nenhum": 0.0,
+      "leve": 0.3,
+      "moderado": 0.6,
+      "grave": 1.0,
+      "incapacitante": 1.0
+    },
+    "hypomania_required": [
+      "episodio_delimitado",
+      "observable_by_others",
+      "reducao_necessidade_sono"
+    ],
+    "hypomania_excludes": [
+      "hospitalization",
+      "psychosis",
+      "dangerous_behavior",
+      "severe_impairment"
+    ],
+    "mania_index_gain": 25,
+    "hypomania_index_gain": 15
+  },
+  "substance_weights": {
+    "cannabis": 3,
+    "thc": 3,
+    "cbd": 1,
+    "alcool": 3,
+    "cocaina": 4,
+    "anfetaminas": 4,
+    "estimulantes": 4,
+    "antidepressivos": 3,
+    "corticoides": 3,
+    "hormonios": 2,
+    "descongestionantes": 2,
+    "cafeina": 1,
+    "outras": 2
+  },
+  "suicide": {
+    "items": [
+      {
+        "id": "pensamentos_morte",
+        "label": "Pensamentos de morte",
+        "severity": 1,
+        "high_risk": false
+      },
+      {
+        "id": "desejo_nao_viver",
+        "label": "Desejo de não estar vivo",
+        "severity": 2,
+        "high_risk": false
+      },
+      { "id": "ideacao_suicida", "label": "Ideação suicida", "severity": 3, "high_risk": false },
+      {
+        "id": "pensamento_metodo",
+        "label": "Pensamento sobre método",
+        "severity": 2,
+        "high_risk": false
+      },
+      { "id": "metodo_especifico", "label": "Método específico", "severity": 3, "high_risk": true },
+      { "id": "plano", "label": "Plano", "severity": 3, "high_risk": true },
+      { "id": "intencao", "label": "Intenção de executar", "severity": 4, "high_risk": true },
+      { "id": "acesso_meio", "label": "Acesso ao meio", "severity": 3, "high_risk": true },
+      { "id": "preparacao", "label": "Preparação", "severity": 4, "high_risk": true },
+      {
+        "id": "horizonte_temporal",
+        "label": "Data/horizonte temporal",
+        "severity": 3,
+        "high_risk": true
+      },
+      {
+        "id": "tentativa_previa",
+        "label": "Tentativas anteriores",
+        "severity": 4,
+        "high_risk": true
+      },
+      {
+        "id": "autoagressao_recente",
+        "label": "Autoagressão recente",
+        "severity": 3,
+        "high_risk": true
+      },
+      {
+        "id": "uso_alcool_drogas",
+        "label": "Uso de álcool/drogas",
+        "severity": 2,
+        "high_risk": false
+      },
+      { "id": "agitacao", "label": "Agitação", "severity": 2, "high_risk": false },
+      { "id": "impulsividade", "label": "Impulsividade", "severity": 2, "high_risk": false },
+      { "id": "psicose_risco", "label": "Psicose", "severity": 3, "high_risk": true },
+      {
+        "id": "ausencia_suporte",
+        "label": "Ausência de suporte",
+        "severity": 2,
+        "high_risk": false
+      }
+    ],
+    "protective_item": "capacidade_seguranca",
+    "thresholds": { "intermediario": 6, "alto": 12, "iminente": 20 },
+    "emergency_markers": [
+      "intencao",
+      "plano",
+      "acesso_meio",
+      "preparacao",
+      "tentativa_previa",
+      "psicose_risco",
+      "agitacao",
+      "uso_alcool_drogas"
+    ],
+    "emergency_min_markers": 3,
+    "bands": {
+      "baixo": {
+        "label": "RISCO BAIXO",
+        "color": "#2e7d32",
+        "recommendation": "Manter acompanhamento de rotina."
+      },
+      "intermediario": {
+        "label": "RISCO INTERMEDIÁRIO",
+        "color": "#f9a825",
+        "recommendation": "Investigar risco de forma estruturada; considerar avaliação especializada."
+      },
+      "alto": {
+        "label": "RISCO ALTO",
+        "color": "#ef6c00",
+        "recommendation": "Domínio que merece avaliação especializada; definir plano de segurança."
+      },
+      "iminente": {
+        "label": "RISCO IMINENTE/EMERGÊNCIA",
+        "color": "#c62828",
+        "recommendation": "ALERTA CLÍNICO: necessidade de avaliação presencial urgente/emergencial."
+      }
+    }
+  }
+}

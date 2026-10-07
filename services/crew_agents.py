@@ -205,6 +205,39 @@ def enviar_email(destinatario: str, assunto: str, corpo_html: str, corpo_texto: 
         return {"error": f"Erro ao enviar email: {str(e)}"}
 
 @tool
+def enviar_triagem_psiquiatrica(paciente_id: int, canal: str = "email", contato: str = "") -> Dict:
+    """Envia ao paciente o link da triagem de saúde mental para ele responder sozinho.
+
+    canal: 'email', 'whatsapp', 'telegram' ou 'link'. Use 'link' para apenas obter o link.
+    Requer o paciente identificado pelo ID; o tenant é resolvido do contexto logado.
+    """
+    try:
+        from flask import g
+        from services.psych_triage_invite_sender import InviteError, send_triage_invite
+
+        tenant_id = ""
+        try:
+            from routes._helpers import _resolve_tenant_id
+
+            tenant_id = _resolve_tenant_id()
+        except Exception:  # noqa: BLE001
+            assoc = getattr(g, "current_association", None)
+            tenant_id = str(getattr(assoc, "id", "") or "")
+
+        result = send_triage_invite(
+            db.session,
+            tenant_id=tenant_id,
+            patient_id=paciente_id,
+            channel=canal or "email",
+            contact=(contato or None),
+        )
+        return {"status": "sucesso", **result}
+    except InviteError as exc:
+        return {"status": "erro", "codigo": exc.code, "mensagem": exc.message}
+    except Exception as exc:  # noqa: BLE001
+        return {"error": f"Erro ao enviar triagem: {str(exc)}"}
+
+@tool
 def gerar_relatorio_paciente(paciente_id: int, tipo_relatorio: str = "clinico") -> Dict:
     """Gera relatório completo do paciente com formatação profissional"""
     from services.report_template import gerar_html_relatorio
@@ -1141,6 +1174,7 @@ def criar_agente_conversacional(llm_config: Optional[Dict] = None) -> Agent:
             buscar_paciente_por_id,
             buscar_exames_paciente,
             buscar_evolucoes_paciente,
+            enviar_triagem_psiquiatrica,
             *ALL_CRUD_TOOLS
         ],
         llm_config=llm_config
