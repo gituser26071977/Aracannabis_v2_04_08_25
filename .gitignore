@@ -44,8 +44,7 @@ lib64/
 logs/
 # Logs
 # Misc
-models/
-.next/
+/models/.next/
 # Node.js
 node_modules/
 npm-debug.log
