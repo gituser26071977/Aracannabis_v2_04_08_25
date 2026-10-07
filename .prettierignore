@@ -3,6 +3,7 @@ build
 dist
 coverage
 *.lock
+package-lock.json
 *.yaml
 *.yml
 mobile/ios
