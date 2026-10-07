@@ -87,3 +87,6 @@ class WhatsAppService:
             f"Se tiver dúvidas, estamos à disposição."
         )
         self.send_message(phone, msg)
+
+
+whatsapp_service = WhatsAppService()
