@@ -22,6 +22,8 @@ Arquitetura:
 """
 
 # Contexto
+from typing import Any
+
 from araos.platform.shared.context import TenantContext
 
 # Tenant Layer

@@ -278,7 +278,11 @@ jobs:
             siap-backend:staging-${{ github.sha }}
       - name: Run backend em background
         run: |
-          docker run -d --name siap-smoke -p 5002:5002 \
+          # --network host: o container compartilha a rede do runner, então
+          # "localhost:5432" (Postgres do service) e a porta 5002 ficam
+          # acessíveis. Sem isso, localhost dentro do container é o próprio
+          # container e o backend não alcança o DB (smoke dava HTTP 000).
+          docker run -d --name siap-smoke --network host \
             -e DATABASE_URL="$DATABASE_URL" \
             -e JWT_SECRET_KEY="$JWT_SECRET_KEY" \
             -e CSRF_TOKEN="$CSRF_TOKEN" \
