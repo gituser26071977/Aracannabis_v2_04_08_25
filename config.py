@@ -90,6 +90,16 @@ class Config:
         "yes",
     )
 
+    # PSYCH_TRIAGE_ENABLED: "true" (padrao) registra o modulo de triagem
+    # psiquiatrica (/api/psychiatry/triage e /api/public/psych-triage).
+    # Na versao enxuta/generalista (AraOS_simplificado) defina
+    # PSYCH_TRIAGE_ENABLED=false para nao carregar a especialidade.
+    PSYCH_TRIAGE_ENABLED = os.getenv("PSYCH_TRIAGE_ENABLED", "true").lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+
     # --- Engine options (P0-13 Production Readiness) ---
     # pool_size=20, max_overflow=40 → até 60 conexões concorrentes
     # pool_pre_ping=True → testa conexão antes de usar
