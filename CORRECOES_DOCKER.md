@@ -3,36 +3,47 @@
 ## ✅ Correções Realizadas
 
 ### 1. Padronização de Portas
+
 **Arquivos modificados:**
+
 - `Dockerfile.backend` - Alterado EXPOSE e CMD para porta 5002
 - `entrypoint_siap.sh` - Alterado para porta 5002
 
 ### 2. Novos Scripts Criados
+
 **`init_docker.py`** - Inicialização completa:
+
 - Aguarda banco de dados ficar disponível
 - Cria tabelas automaticamente
 - Verifica superadmin
 
 **`healthcheck.py`** - Verificação de saúde:
+
 - Testa conexão com banco
 - Verifica tabelas principais
 
 ### 3. Script de Deploy Melhorado
+
 **`deploy_docker_vps.sh`** - Agora com:
+
 - Validação de variáveis obrigatórias
 - Aguardo saudável do banco
 - Inicialização automática
 - Health check pós-deploy
 
 ### 4. Correção de Tipo de Dados
+
 **`models_extra.py`**:
-- Alterado `associacao_id` de Integer para String(36) para compatibilidade com UUID
+
+- Alterado `associacao_id` de Integer para String(36) para compatibilidade com
+  UUID
 
 ---
 
 ## ⚠️ Inconsistências Detectadas (Requer Atenção)
 
 ### Conflito de Schema: `associacoes.id`
+
 Há duas definições conflitantes para a tabela `associacoes`:
 
 1. **`saas_v1_init.sql`**: Usa `UUID` (tipo recomendado para SaaS)
@@ -43,6 +54,7 @@ Há duas definições conflitantes para a tabela `associacoes`:
 **Recomendação:** Decidir qual schema usar e padronizar.
 
 ### Tabelas que Usam `associacao_id`:
+
 - `pacientes` (UUID - do SQL)
 - `usuarios_associacoes` (String(36) - corrigido)
 - `membros_associacao` (Integer - do models.py)
@@ -54,6 +66,7 @@ Há duas definições conflitantes para a tabela `associacoes`:
 ## 🚀 Como Fazer o Deploy
 
 ### 1. Preparar o Ambiente
+
 ```bash
 # Copiar e configurar variáveis de ambiente
 cp .env.production.example .env.production
@@ -61,6 +74,7 @@ nano .env.production  # Preencher todas as variáveis
 ```
 
 ### 2. Verificar Configurações Obrigatórias
+
 ```bash
 # POSTGRES_PASSWORD - deve ser senha forte
 # SECRET_KEY - deve ser chave única e segura
@@ -68,12 +82,14 @@ nano .env.production  # Preencher todas as variáveis
 ```
 
 ### 3. Executar Deploy
+
 ```bash
 chmod +x deploy_docker_vps.sh
 ./deploy_docker_vps.sh
 ```
 
 ### 4. Criar Superadmin (se necessário)
+
 ```bash
 docker-compose -f docker-compose.prod.yml exec siap-backend python create_superadmin_simple.py
 ```
@@ -83,21 +99,25 @@ docker-compose -f docker-compose.prod.yml exec siap-backend python create_supera
 ## 🔧 Comandos de Manutenção
 
 ### Ver Logs
+
 ```bash
 docker-compose -f docker-compose.prod.yml logs -f [serviço]
 ```
 
 ### Reiniciar
+
 ```bash
 docker-compose -f docker-compose.prod.yml restart [serviço]
 ```
 
 ### Acessar Banco
+
 ```bash
 docker-compose -f docker-compose.prod.yml exec siap-db psql -U siap_user -d aracannabis
 ```
 
 ### Backup do Banco
+
 ```bash
 docker exec siap-db pg_dump -U siap_user aracannabis > backup_$(date +%Y%m%d).sql
 ```
@@ -118,6 +138,7 @@ docker exec siap-db pg_dump -U siap_user aracannabis > backup_$(date +%Y%m%d).sq
 ## 🐛 Troubleshooting
 
 ### Erro: "port already allocated"
+
 ```bash
 # Verificar processos usando porta 5002
 sudo lsof -i :5002
@@ -125,6 +146,7 @@ sudo lsof -i :5002
 ```
 
 ### Erro: "database does not exist"
+
 ```bash
 # Recriar banco
 docker-compose -f docker-compose.prod.yml down -v  # CUIDADO: apaga dados!
@@ -132,12 +154,14 @@ docker-compose -f docker-compose.prod.yml up -d
 ```
 
 ### Erro: "relation X does not exist"
+
 ```bash
 # Tabelas não criadas - executar manualmente
 docker-compose -f docker-compose.prod.yml exec siap-backend python init_docker.py
 ```
 
 ### Erro de permissão denied
+
 ```bash
 chmod +x *.sh
 ```
@@ -173,8 +197,8 @@ chmod +x *.sh
 
 ## 📞 URLs de Acesso
 
-| Ambiente | URL |
-|----------|-----|
-| Produção | https://aracannabis.com.br |
-| API | https://api.aracannabis.com.br |
-| Status | https://api.aracannabis.com.br/api/status |
+| Ambiente | URL                                       |
+| -------- | ----------------------------------------- |
+| Produção | https://www.aracannabis.com.br            |
+| API      | https://api.aracannabis.com.br            |
+| Status   | https://api.aracannabis.com.br/api/status |

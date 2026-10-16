@@ -7,7 +7,7 @@
 
 ## 1. Resumo executivo
 
-A capacidade do AraOS foi medida em **22/06/2026** via Locust contra o VPS de produção `https://api.visualsmartflow.com.br`. Os resultados **NÃO foram repetidos** nesta missão (modo somente leitura), mas os dados de `RELATORIO_TESTE_CARGA_2026_06.md` são a fonte primária.
+A capacidade do AraOS foi medida em **22/06/2026** via Locust contra o VPS de produção `https://api.aracannabis.com.br`. Os resultados **NÃO foram repetidos** nesta missão (modo somente leitura), mas os dados de `RELATORIO_TESTE_CARGA_2026_06.md` são a fonte primária.
 
 > **Capacidade REAL sustentada hoje: < 50 usuários simultâneos.**
 > **Capacidade projetada pós-correções P0+P1: 500-1500 usuários.**
@@ -112,7 +112,7 @@ SQLALCHEMY_ENGINE_OPTIONS = {
 > **3. Qual é a capacidade REAL medida?**
 > **< 50 usuários simultâneos sustentados, 80 RPS de pico, 230ms p95, 74% de falha sob saturação.**
 >
-> Medido em 22/06/2026 com Locust 2.31.0 contra `https://api.visualsmartflow.com.br`. Relatório completo: `RELATORIO_TESTE_CARGA_2026_06.md`.
+> Medido em 22/06/2026 com Locust 2.31.0 contra `https://api.aracannabis.com.br`. Relatório completo: `RELATORIO_TESTE_CARGA_2026_06.md`.
 
 ---
 

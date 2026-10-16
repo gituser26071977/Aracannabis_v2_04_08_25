@@ -32,10 +32,10 @@ $ which lhci
   "ci": {
     "collect": {
       "url": [
-        "https://staging.visualsmartflow.com.br/",
-        "https://staging.visualsmartflow.com.br/login",
-        "https://staging.visualsmartflow.com.br/dashboard",
-        "https://api.staging.visualsmartflow.com.br/api/status"
+        "https://staging.aracannabis.com.br/",
+        "https://staging.aracannabis.com.br/login",
+        "https://staging.aracannabis.com.br/dashboard",
+        "https://api.staging.aracannabis.com.br/api/status"
       ],
       "numberOfRuns": 3,
       "settings": {
@@ -56,7 +56,7 @@ $ which lhci
 ## Por que NÃO executei
 
 1. **Lighthouse CLI ausente** — `npm install -g lighthouse` ou `npx @lhci/cli` não executado.
-2. **URLs alvo exigem staging público** — `https://staging.visualsmartflow.com.br/` não está acessível sem DNS/SSL/Traefik em VPS.
+2. **URLs alvo exigem staging público** — `https://staging.aracannabis.com.br/` não está acessível sem DNS/SSL/Traefik em VPS.
 3. **Não há alternativa local** — frontend container expõe `http://localhost:3000` mas Lighthouse precisa de HTTPS para métricas confiáveis (exceto `preset: debug`).
 4. **Missão 22.2 já corrigiu docs** — POST_DEPLOY_SMOKE §16 removeu teste contra Prometheus/Grafana e não tem teste de Lighthouse.
 

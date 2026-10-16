@@ -177,7 +177,7 @@ curl -X POST http://evolution-api:8080/webhook/set/<instance> \
   -H "apikey: $EVOLUTION_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "url": "https://api.visualsmartflow.com.br/api/tenant/webhook",
+    "url": "https://api.aracannabis.com.br/api/tenant/webhook",
     "events": ["messages.upsert"],
     "webhook_by_events": false,
     "headers": {
@@ -330,11 +330,11 @@ cp .env.production .env.production.bak
 ### 8.3 Pós-deploy (verificações)
 
 - [ ] App subiu sem `RuntimeError` (startup check passou)
-- [ ] `curl https://api.visualsmartflow.com.br/api/status` retorna 200
-- [ ] `curl -X POST https://api.visualsmartflow.com.br/api/mercadopago/webhook` (sem signature) retorna **401** (não 400)
-- [ ] `curl -X POST https://api.visualsmartflow.com.br/api/modulos/webhook` (sem signature) retorna **401**
-- [ ] `curl -X POST https://api.visualsmartflow.com.br/api/tenant/webhook` (sem signature) retorna **401**
-- [ ] `curl -X POST https://api.visualsmartflow.com.br/api/dr-anderson/criar-lead` (sem internal-key) retorna **401**
+- [ ] `curl https://api.aracannabis.com.br/api/status` retorna 200
+- [ ] `curl -X POST https://api.aracannabis.com.br/api/mercadopago/webhook` (sem signature) retorna **401** (não 400)
+- [ ] `curl -X POST https://api.aracannabis.com.br/api/modulos/webhook` (sem signature) retorna **401**
+- [ ] `curl -X POST https://api.aracannabis.com.br/api/tenant/webhook` (sem signature) retorna **401**
+- [ ] `curl -X POST https://api.aracannabis.com.br/api/dr-anderson/criar-lead` (sem internal-key) retorna **401**
 
 ### 8.4 Smoke test em produção
 
@@ -417,7 +417,7 @@ Se faltar qualquer uma, `assert_required_secrets_on_startup()` em `app_cors_livr
 
 1. ✅ Aguardar revisão humana deste relatório
 2. ⏸️ Operador: provisionar secrets ANTES do deploy
-3. ⏸️ Operador: deploy em `api.visualsmartflow.com.br`
+3. ⏸️ Operador: deploy em `api.aracannabis.com.br`
 4. ⏸️ Operador: smoke test em produção (verificar 401 sem signature + 200 com signature válida)
 5. ⏸️ Iniciar FASE 5 (Rate Limit Redis) **somente após aprovação humana**
 

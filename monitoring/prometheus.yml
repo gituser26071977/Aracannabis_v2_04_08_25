@@ -54,8 +54,8 @@ scrape_configs:
       module: [http_2xx]
     static_configs:
       - targets:
-          - https://api.visualsmartflow.com.br/api/status
-          - https://visualsmartflow.com.br/
+          - https://api.aracannabis.com.br/api/status
+          - https://www.aracannabis.com.br/
         labels: { env: production }
     relabel_configs:
       - source_labels: [__address__]

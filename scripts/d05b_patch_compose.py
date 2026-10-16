@@ -31,7 +31,7 @@ else:
 
 # siap-frontend
 frontend_pat = re.compile(
-    r"(  siap-frontend:)\n    build:\n      context: \./frontend\n      dockerfile: Dockerfile\n      args:\n        REACT_APP_API_URL: https://api\.visualsmartflow\.com\.br\n        REACT_APP_WS_URL: wss://api\.visualsmartflow\.com\.br/ws\n"
+    r"(  siap-frontend:)\n    build:\n      context: \./frontend\n      dockerfile: Dockerfile\n      args:\n        REACT_APP_API_URL: https://api\.aracannabis\.com\.br\n        REACT_APP_WS_URL: wss://api\.aracannabis\.com\.br/ws\n"
 )
 if frontend_pat.search(s):
     s = frontend_pat.sub(

@@ -102,7 +102,7 @@
 | 9.4 | Rolling restart backend | SRE | 2min | `docker-compose up -d --no-deps siap-backend` | Container novo healthy | Container não sobe | `docker-compose up -d --no-deps siap-backend` (anterior) |
 | 9.5 | Smoke backend | SRE | 30s | `./scripts/smoke.sh --env=production` | 6 endpoints OK | Qualquer FAIL | `rollback.sh` |
 | 9.6 | Rolling restart frontend | SRE | 2min | `docker-compose up -d --no-deps siap-frontend` | Frontend OK | Falha | `rollback.sh` |
-| 9.7 | Smoke frontend | SRE | 30s | `curl -I https://visualsmartflow.com.br/` | 200 | !=200 | `rollback.sh` |
+| 9.7 | Smoke frontend | SRE | 30s | `curl -I https://www.aracannabis.com.br/` | 200 | !=200 | `rollback.sh` |
 
 ---
 
@@ -114,7 +114,7 @@
 |---|------|-------------|-------|---------|-------------|-------------------|
 | 10.1 | Logs de erro | SRE | 2min | `docker logs siap-backend --since 15m 2>&1 \| grep -i "error\|exception" \| head -20` | <5 erros | ≥5 erros incomuns |
 | 10.2 | Taxa 5xx | SRE | 1min | `docker logs siap-backend --since 15m 2>&1 \| grep -c " 500 "` | <10 | ≥50 |
-| 10.3 | Healthcheck | SRE | 30s | `curl https://api.visualsmartflow.com.br/api/health` | 404 (estado conhecido) | 503 | Não considerar 404 como falha — ver BLOQUEADOR #4 |
+| 10.3 | Healthcheck | SRE | 30s | `curl https://api.aracannabis.com.br/api/health` | 404 (estado conhecido) | 503 | Não considerar 404 como falha — ver BLOQUEADOR #4 |
 | 10.4 | Comunicação "deploy OK" | SRE | 1min | Slack | OK | — |
 
 ### 11. Validação H+30min

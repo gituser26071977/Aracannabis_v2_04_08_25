@@ -12,7 +12,7 @@
 
 set -euo pipefail
 
-API_BASE="${API_BASE:-https://api.visualsmartflow.com.br}"
+API_BASE="${API_BASE:-https://api.aracannabis.com.br}"
 ADMIN_USER="${ADMIN_USER:-tester.modulos@araos.dev}"
 ADMIN_PASS="${ADMIN_PASS:-Tester@2025}"
 LOGIN_URL="${API_BASE}/api/auth/login"

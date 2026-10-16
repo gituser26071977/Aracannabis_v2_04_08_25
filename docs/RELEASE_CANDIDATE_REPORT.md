@@ -62,7 +62,7 @@ LOC do test file: 434 linhas
 
 ### 3.3 Capacidade real (herdada de MISSÃO 17 — já medida)
 
-Fonte: `RELATORIO_TESTE_CARGA_2026_06.md` (56.323 requests executados em 23 min contra `api.visualsmartflow.com.br`):
+Fonte: `RELATORIO_TESTE_CARGA_2026_06.md` (56.323 requests executados em 23 min contra `api.aracannabis.com.br`):
 
 | Cenário | Usuários | RPS médio | Falhas | p95 latência |
 |---------|----------|-----------|--------|--------------|

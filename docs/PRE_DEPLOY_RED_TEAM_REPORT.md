@@ -8,7 +8,7 @@
 
 ## 1. Sumário executivo
 
-Auditoria completa de **6 fases** (Security, LGPD, Multi-tenant, Performance, Disaster, UX Break) sobre o AraOS em **branch `main` (HEAD `d562424`)** e ambiente de produção `https://api.visualsmartflow.com.br`.
+Auditoria completa de **6 fases** (Security, LGPD, Multi-tenant, Performance, Disaster, UX Break) sobre o AraOS em **branch `main` (HEAD `d562424`)** e ambiente de produção `https://api.aracannabis.com.br`.
 
 **Total de achados:** **47 P0-P2 em Security + 6 P0 LGPD + 4 P0 Multi-tenant + 10 Performance + 8 Disaster + 12 UX**
 

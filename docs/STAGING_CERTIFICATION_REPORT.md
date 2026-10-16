@@ -29,10 +29,10 @@ $ grep -E "(STAGING|staging)" .env.example docker-compose*.yml
 | Ambiente | Status | URL |
 |----------|--------|-----|
 | **dev local** | existe | `localhost:5002` |
-| **prod** | existe (ativo) | `api.visualsmartflow.com.br` |
+| **prod** | existe (ativo) | `api.aracannabis.com.br` |
 | **staging** | **NÃO existe** | — |
 
-Não há manifesto `docker-compose.staging.yml`, não há `STAGING_*` env vars, não há DNS `staging.visualsmartflow.com.br`. Implantar em prod para "certificar" seria equivalente a testar em prod — fora do escopo da missão e arriscado.
+Não há manifesto `docker-compose.staging.yml`, não há `STAGING_*` env vars, não há DNS `staging.aracannabis.com.br`. Implantar em prod para "certificar" seria equivalente a testar em prod — fora do escopo da missão e arriscado.
 
 ### 2.2 Sem ferramenta de E2E com screenshots
 
@@ -90,8 +90,8 @@ Syntax errors: 0
 ### 3.3 HTTP probe de prod (read-only)
 
 ```
-GET https://api.visualsmartflow.com.br/api/status → 200 (1.90s)
-GET https://api.visualsmartflow.com.br/             → 302 (0.27s)
+GET https://api.aracannabis.com.br/api/status → 200 (1.90s)
+GET https://api.aracannabis.com.br/             → 302 (0.27s)
 ```
 
 Serviço responde, latência normal para endpoint público.
@@ -215,7 +215,7 @@ Para que a MISSÃO 19 possa ser executada **de fato** (não apenas reportada com
 ### 6.1 Provisionar staging
 
 1. Criar `docker-compose.staging.yml` (cópia de `docker-compose.prod.yml` com portas/dir diferentes)
-2. Provisionar VPS ou subdomínio `staging.visualsmartflow.com.br`
+2. Provisionar VPS ou subdomínio `staging.aracannabis.com.br`
 3. Criar banco PG de staging (separado do prod)
 4. Criar Redis de staging (separado do prod)
 5. Configurar DNS / Traefik

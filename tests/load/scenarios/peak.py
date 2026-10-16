@@ -2,7 +2,7 @@
 
 Use:
     locust -f tests/load/locustfile.py --headless -u 200 -r 20 -t 3m \\
-        --host=https://api.visualsmartflow.com.br \\
+        --host=https://api.aracannabis.com.br \\
         --html reports/load_peak.html \\
         --csv reports/load_peak
 """

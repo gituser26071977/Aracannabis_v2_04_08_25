@@ -31,7 +31,7 @@
 
 ## Resultados do Teste de Carga
 
-Execução em 22/06/2026 contra `https://api.visualsmartflow.com.br`.
+Execução em 22/06/2026 contra `https://api.aracannabis.com.br`.
 
 ### Resumo Comparativo
 

@@ -10,7 +10,7 @@ pós-deploy rc.11
 
 | Item                                              | Status                                       | Onde                         |
 | REDACTED | REDACTED | ---------------------------- |
-| SIAP backend rc.11 em produção                    | ✅ UP                                        | `api.visualsmartflow.com.br` |
+| SIAP backend rc.11 em produção                    | ✅ UP                                        | `api.aracannabis.com.br` |
 | D05j deploy_guard sync                            | ✅ TODAS colunas presentes                   | `/api/schema-version`        |
 | Webhook `/api/mercadopago/webhook` (SIAP)         | ✅ Validando HMAC                            | `routes/mercadopago.py`      |
 | Webhook `/api/modulos/webhook` (SIAP)             | ✅ Validando HMAC                            | `routes/modulos.py`          |
@@ -22,10 +22,10 @@ pós-deploy rc.11
 
 ## 1. Estado final de produção (2026-07-03)
 
-### 1.1 SIAP backend (api.visualsmartflow.com.br)
+### 1.1 SIAP backend (api.aracannabis.com.br)
 
 ```
-$ curl https://api.visualsmartflow.com.br/api/schema-version | jq .
+$ curl https://api.aracannabis.com.br/api/schema-version | jq .
 {
   "alembic": {
     "current": "REDACTED",
@@ -76,7 +76,7 @@ Validação `assert_required_secrets_on_startup` em
 
 ## 2. Mapeamento de webhooks por serviço
 
-### 2.1 SIAP backend (api.visualsmartflow.com.br)
+### 2.1 SIAP backend (api.aracannabis.com.br)
 
 | Endpoint                   | Secret                               | Validação                            |
 | -------------------------- | REDACTED | REDACTED |
@@ -87,9 +87,9 @@ Validação `assert_required_secrets_on_startup` em
 
 O MercadoPago Developers precisa ser configurado para apontar para estas URLs:
 
-- `https://api.visualsmartflow.com.br/api/mercadopago/webhook` (com secret Y =
+- `https://api.aracannabis.com.br/api/mercadopago/webhook` (com secret Y =
   `MERCADOPAGO_WEBHOOK_SECRET`)
-- `https://api.visualsmartflow.com.br/api/modulos/webhook` (com mesmo secret)
+- `https://api.aracannabis.com.br/api/modulos/webhook` (com mesmo secret)
 
 ### 2.2 Dr.Anderson SDR (sdr.dranderson.aracannabis.com.br)
 
@@ -181,7 +181,7 @@ Provisionar **2 webhooks separados** com 2 secrets diferentes:
 
 | URL                                                              | Secret to provision                                                                 |
 | REDACTED | REDACTED |
-| `https://api.visualsmartflow.com.br/api/mercadopago/webhook`     | `MERCADOPAGO_WEBHOOK_SECRET` (43 chars, do `.env.production`)                       |
+| `https://api.aracannabis.com.br/api/mercadopago/webhook`     | `MERCADOPAGO_WEBHOOK_SECRET` (43 chars, do `.env.production`)                       |
 | `https://sdr.dranderson.aracannabis.com.br/webhooks/mercadopago` | `MERCADO_PAGO_WEBHOOK_SECRET` (64 chars hex, do `landing-dr-anderson/backend/.env`) |
 
 ### 5.2 Telegram (substitui Evolution)

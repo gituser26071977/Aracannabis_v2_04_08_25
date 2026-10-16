@@ -15,10 +15,10 @@
 |------|--------|
 | `.env` real em produção (VPS) | **Inacessível** daqui — operador precisa rodar lá |
 | Secrets reais dos webhooks | **Não configurados** ainda (5 env vars novas da FASE 4 ainda não foram provisionadas) |
-| Produção atual (`api.visualsmartflow.com.br`) | Rodando versão **pré-FASE 4** — ver §1.2 |
+| Produção atual (`api.aracannabis.com.br`) | Rodando versão **pré-FASE 4** — ver §1.2 |
 | Banco PostgreSQL real | Não disponível neste sandbox |
 
-### 1.2 Verificação direta da produção (`api.visualsmartflow.com.br`)
+### 1.2 Verificação direta da produção (`api.aracannabis.com.br`)
 
 **Testado em 2026-06-22:**
 
@@ -151,7 +151,7 @@ Total: 10 | Passou: 10 | Falhou: 0
 
 ### 4.1 Achado #1 — Produção ainda roda versão pré-FASE 4
 
-Confirmado via curl direto em `api.visualsmartflow.com.br`:
+Confirmado via curl direto em `api.aracannabis.com.br`:
 - MP webhook retorna `400 {"status":"error"}` em vez de `401 {"error":"invalid signature"}`
 - Modulos webhook retorna `400 {"error":"payload inválido"}` em vez de `401`
 - Evolution webhooks (W2, W4) retornam `200 {"reason":"not_upsert"}` — entram no handler sem auth
@@ -209,7 +209,7 @@ Para reproduzir atomicidade de UNIQUE constraint em SQLite, foi necessário lock
 ### Q5. Você aprova produção imediata da camada de webhooks?
 **APROVAÇÃO CONDICIONAL — após 3 ações do operador:**
 
-1. ✅ Deploy da FASE 4 + FASE 4.1 em `api.visualsmartflow.com.br`
+1. ✅ Deploy da FASE 4 + FASE 4.1 em `api.aracannabis.com.br`
 2. ✅ Provisionar os 5 secrets no `.env.production` (e secret MP no painel MP)
 3. ✅ Configurar Evolution API para enviar header `x-webhook-signature`
 

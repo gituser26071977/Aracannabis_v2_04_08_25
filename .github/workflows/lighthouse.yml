@@ -7,7 +7,7 @@ on:
       base_url:
         description: 'URL base para auditoria'
         required: false
-        default: 'https://staging.visualsmartflow.com.br'
+        default: 'https://staging.aracannabis.com.br'
 
 jobs:
   lighthouse-desktop:

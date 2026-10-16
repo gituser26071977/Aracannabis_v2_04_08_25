@@ -2,10 +2,10 @@
   "ci": {
     "collect": {
       "url": [
-        "https://visualsmartflow.com.br/",
-        "https://visualsmartflow.com.br/login",
-        "https://visualsmartflow.com.br/dashboard",
-        "https://api.visualsmartflow.com.br/api/status"
+        "https://www.aracannabis.com.br/",
+        "https://www.aracannabis.com.br/login",
+        "https://www.aracannabis.com.br/dashboard",
+        "https://api.aracannabis.com.br/api/status"
       ],
       "numberOfRuns": 3,
       "settings": {
@@ -17,10 +17,10 @@
     "assert": {
       "preset": "lighthouse:recommended",
       "assertions": {
-        "categories:performance":     ["error", { "minScore": 0.80 }],
-        "categories:accessibility":   ["error", { "minScore": 0.90 }],
-        "categories:best-practices":  ["error", { "minScore": 0.85 }],
-        "categories:seo":             ["error", { "minScore": 0.85 }]
+        "categories:performance": ["error", { "minScore": 0.8 }],
+        "categories:accessibility": ["error", { "minScore": 0.9 }],
+        "categories:best-practices": ["error", { "minScore": 0.85 }],
+        "categories:seo": ["error", { "minScore": 0.85 }]
       }
     },
     "upload": {

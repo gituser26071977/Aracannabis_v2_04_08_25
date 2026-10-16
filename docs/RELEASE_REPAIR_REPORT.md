@@ -29,7 +29,7 @@ def downgrade():
 | Ambiente | Coluna `data_revogacao` | `alembic_version` | Como chegou aqui |
 |----------|-------------------------|-------------------|-------------------|
 | **Staging** | ✅ Existe (criada por `db.create_all()` no startup M23) | ❌ Sem registro (alembic nunca rodou — `flask db upgrade` falha porque colunas já existem via `create_all`) | DB criado via `db.create_all()` no provisionamento, sem migrations |
-| **Produção** (`api.visualsmartflow.com.br`) | ❌ **NÃO existe** | ❓ Sem acesso direto (somente API) | DB de produção foi provisionado antes desta coluna ser adicionada ao modelo, e **nenhum deploy subsequente rodou `flask db upgrade`** |
+| **Produção** (`api.aracannabis.com.br`) | ❌ **NÃO existe** | ❓ Sem acesso direto (somente API) | DB de produção foi provisionado antes desta coluna ser adicionada ao modelo, e **nenhum deploy subsequente rodou `flask db upgrade`** |
 
 ### Por que produção ainda não possui `data_revogacao`?
 

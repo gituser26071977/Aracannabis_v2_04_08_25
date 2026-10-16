@@ -354,7 +354,7 @@ docker ps --format '{{.Names}}\t{{.Status}}' \
 
 **Comando:**
 ```bash
-curl -fsS https://api.visualsmartflow.com.br/api/health -o /dev/null -w "%{http_code}\n"
+curl -fsS https://api.aracannabis.com.br/api/health -o /dev/null -w "%{http_code}\n"
 ```
 
 **Esperado:** `200`.
@@ -365,7 +365,7 @@ curl -fsS https://api.visualsmartflow.com.br/api/health -o /dev/null -w "%{http_
 
 **Comando:**
 ```bash
-curl -fsSI https://visualsmartflow.com.br/ | head -1
+curl -fsSI https://www.aracannabis.com.br/ | head -1
 ```
 
 **Esperado:** `HTTP/2 200`.

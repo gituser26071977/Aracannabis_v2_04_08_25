@@ -185,16 +185,16 @@ Lista parcial de comandos que **passaram** na auditoria M22.1 e **continuam** v�
 - `docker exec siap-redis redis-cli ping` — ✅
 - `docker exec siap-db pg_isready -U siap_user -d aracannabis` — ✅
 - `docker exec siap-db psql -U siap_user -d aracannabis -c "SELECT 1;"` — ✅
-- `curl https://api.visualsmartflow.com.br/api/status` — ✅
-- `curl https://api.visualsmartflow.com.br/api/csrf-token` — ✅
-- `curl -X POST https://api.visualsmartflow.com.br/api/auth/login` — ✅
-- `curl https://api.visualsmartflow.com.br/api/pacientes` — ✅
-- `curl https://api.visualsmartflow.com.br/api/consultas` — ✅
-- `curl https://api.visualsmartflow.com.br/api/prescricoes` — ✅
-- `curl https://api.visualsmartflow.com.br/api/cannabis` — ✅
-- `curl https://api.visualsmartflow.com.br/api/planos` — ✅
-- `curl -X POST https://api.visualsmartflow.com.br/api/mercadopago/webhook` — ✅
-- `curl https://api.visualsmartflow.com.br/api/lgpd/politica-privacidade` — ✅
+- `curl https://api.aracannabis.com.br/api/status` — ✅
+- `curl https://api.aracannabis.com.br/api/csrf-token` — ✅
+- `curl -X POST https://api.aracannabis.com.br/api/auth/login` — ✅
+- `curl https://api.aracannabis.com.br/api/pacientes` — ✅
+- `curl https://api.aracannabis.com.br/api/consultas` — ✅
+- `curl https://api.aracannabis.com.br/api/prescricoes` — ✅
+- `curl https://api.aracannabis.com.br/api/cannabis` — ✅
+- `curl https://api.aracannabis.com.br/api/planos` — ✅
+- `curl -X POST https://api.aracannabis.com.br/api/mercadopago/webhook` — ✅
+- `curl https://api.aracannabis.com.br/api/lgpd/politica-privacidade` — ✅
 - `crontab -l | grep backup` — ✅
 - `sha256sum backup.sql.gz` — ✅
 - `ls -lh /var/backups/siap/db_*.sql.gz` — ✅

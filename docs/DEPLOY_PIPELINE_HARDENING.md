@@ -278,7 +278,7 @@ Adicionar **3 novos steps** entre o deploy e o post-deploy-smoke:
 - name: Schema check (HTTP)
   run: |
     sleep 30
-    schema=$(curl -s https://api.visualsmartflow.com.br/api/schema-version)
+    schema=$(curl -s https://api.aracannabis.com.br/api/schema-version)
     ok=$(echo "$schema" | jq -r '.schema.all_critical_columns_present')
     [[ "$ok" == "true" ]] || { echo "✗ Schema divergente"; exit 1; }
     echo "✓ Schema OK"

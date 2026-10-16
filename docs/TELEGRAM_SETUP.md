@@ -57,7 +57,7 @@ Com o token em mãos, registrar a URL pública do webhook:
 curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook" \
   -H "Content-Type: application/json" \
   -d '{
-    "url": "https://api.visualsmartflow.com.br/webhooks/telegram",
+    "url": "https://api.aracannabis.com.br/webhooks/telegram",
     "secret_token": "<32+ chars aleatórios>",
     "drop_pending_updates": true
   }'
@@ -108,7 +108,7 @@ curl https://api.telegram.org/bot<TOKEN>/getMe
 
 # 5.2 — webhook configurado?
 curl https://api.telegram.org/bot<TOKEN>/getWebhookInfo
-# esperado: url = "https://api.visualsmartflow.com.br/webhooks/telegram"
+# esperado: url = "https://api.aracannabis.com.br/webhooks/telegram"
 
 # 5.3 — enviar mensagem de teste
 curl -X POST "https://api.telegram.org/bot<TOKEN>/sendMessage" \
@@ -132,7 +132,7 @@ resolve via header `X-Telegram-Bot-Api-Secret-Token` + lookup em
    - `telegram_webhook_secret` — 32+ chars (header `secret_token`)
    - `telegram_notification_chat_id` — chat_id onde enviar notificações
 3. Cliente aponta o webhook do bot para o endpoint multi-tenant do SIAP:
-   `https://api.visualsmartflow.com.br/api/tenant/webhooks/telegram`
+   `https://api.aracannabis.com.br/api/tenant/webhooks/telegram`
 4. Backend valida o secret por tenant e despacha para `DynamicTenantAgent`.
 
 > **Operação cara**: cada bot precisa de aprovação via @BotFather. Para escalar

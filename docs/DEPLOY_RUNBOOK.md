@@ -92,7 +92,7 @@ docker-compose -f docker-compose.prod.yml --env-file .env.production up -d --no-
 ## 9. Smoke test do frontend
 
 ```bash
-curl -sk -o /dev/null -w "%{http_code}" https://visualsmartflow.com.br/
+curl -sk -o /dev/null -w "%{http_code}" https://www.aracannabis.com.br/
 ```
 
 **Critério OK:** 200.
@@ -125,7 +125,7 @@ docker exec siap-db psql -U siap_user -d aracannabis -c "SELECT 1;"
 ## 13. Healthcheck endpoint
 
 ```bash
-curl -sk https://api.visualsmartflow.com.br/api/health | jq .
+curl -sk https://api.aracannabis.com.br/api/health | jq .
 ```
 
 **Critério OK:** `"status": "ok"`.
@@ -136,12 +136,12 @@ curl -sk https://api.visualsmartflow.com.br/api/health | jq .
 
 ```bash
 # Login usuário de teste (tester.modulos@araos.dev criado em seeds)
-TOKEN_A=$(curl -sk -X POST https://api.visualsmartflow.com.br/api/auth/login \
+TOKEN_A=$(curl -sk -X POST https://api.aracannabis.com.br/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"identifier":"tester.modulos@araos.dev","password":"Tester@2025"}' | jq -r .access_token)
 
 # Listar pacientes
-curl -sk https://api.visualsmartflow.com.br/api/pacientes \
+curl -sk https://api.aracannabis.com.br/api/pacientes \
   -H "Authorization: Bearer $TOKEN_A" | jq '.[] | .associacao_id' | sort -u
 
 # Esperado: 1 único associacao_id
@@ -154,7 +154,7 @@ curl -sk https://api.visualsmartflow.com.br/api/pacientes \
 
 ```bash
 # Disparar webhook de teste (somente se ALLOW_WEBHOOK_SIMULATION=1)
-curl -sk -X POST https://api.visualsmartflow.com.br/api/mercadopago/webhook \
+curl -sk -X POST https://api.aracannabis.com.br/api/mercadopago/webhook \
   -H "Content-Type: application/json" \
   -d '{"type":"payment","data":{"id":"test_deploy_001"}}'
 ```

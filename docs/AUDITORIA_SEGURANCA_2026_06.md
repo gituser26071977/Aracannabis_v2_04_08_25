@@ -4,7 +4,7 @@
 **Escopo:** Backend Flask (`routes/`, `services/`, `security_config.py`, `app_cors_livre.py`, `docker-compose.prod.yml`, `requirements.txt`)
 **Método:** Análise estática de código + leitura de configurações + leitura de logs de produção
 **Branch:** `main` @ `ce141c5`
-**Produção:** VPS `147.93.33.253` (domínios `visualsmartflow.com.br` / `araos.visualsmartflow.com.br`)
+**Produção:** VPS `147.93.33.253` (domínios `www.aracannabis.com.br` / `www.aracannabis.com.br`)
 
 ---
 
@@ -245,7 +245,7 @@
 
 ## Validação Empírica (teste de carga — 2026-06-22)
 
-O teste de carga executado contra `https://api.visualsmartflow.com.br` confirmou vários achados:
+O teste de carga executado contra `https://api.aracannabis.com.br` confirmou vários achados:
 
 - **Cenário peak (200 usuários, 3 min):** 46/200 logins falharam com `429 Too Many Requests: 60 per 1 minute` — confirmando que rate-limit não estava aplicado em escala (C4).
 - **GET /api/dashboard/stats:** 820 falhas com `500 Internal Server Error: column pacientes.data_revogacao does not exist` — bug real descoberto durante o teste (não estava na lista de achados anteriores).

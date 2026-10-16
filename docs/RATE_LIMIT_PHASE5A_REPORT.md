@@ -359,7 +359,7 @@ docker exec siap-redis redis-cli -n 1 KEYS 'LIMITS:*' | head -10
 # 3. Smoke test contra prod (curl + login 11 vezes)
 for i in {1..11}; do
   curl -s -o /dev/null -w "%{http_code}\n" \
-    -X POST https://api.visualsmartflow.com.br/api/auth/login \
+    -X POST https://api.aracannabis.com.br/api/auth/login \
     -H 'Content-Type: application/json' \
     -d '{"email":"tester.modulos@araos.dev","senha":"ERRADO"}'
 done
@@ -368,7 +368,7 @@ done
 
 # 4. Validar webhook continua funcionando (não bloqueado por IP)
 curl -s -o /dev/null -w "%{http_code}\n" \
-  -X POST https://api.visualsmartflow.com.br/api/mercadopago/webhook \
+  -X POST https://api.aracannabis.com.br/api/mercadopago/webhook \
   -H 'Content-Type: application/json' \
   -d '{}'
 # esperado: 401 (assinatura ausente), nunca 429

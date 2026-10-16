@@ -247,7 +247,7 @@ Nova matriz de compatibilidade:
 
 ```json
 {
-  "url": "https://api.visualsmartflow.com.br/api/tenant/webhook",
+  "url": "https://api.aracannabis.com.br/api/tenant/webhook",
   "events": ["messages.upsert"],
   "webhook_by_events": false,
   "headers": {

@@ -3,7 +3,7 @@
 **Data:** 2026-06-27
 **Modo:** EXECUTE (somente identificação, sem correções)
 **Origem:** M30 — Descobrir exatamente por que produção ≠ repositório
-**Alvo:** `https://api.visualsmartflow.com.br` (produção real)
+**Alvo:** `https://api.aracannabis.com.br` (produção real)
 
 ---
 

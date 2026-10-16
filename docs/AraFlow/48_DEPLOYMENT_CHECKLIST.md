@@ -89,7 +89,7 @@ Use este checklist ANTES de cada deploy manual no VPS. Marque cada item como ✅
 
 ## I. AraOS — não-impact verificado
 
-- [ ] `curl -fsS https://api.visualsmartflow.com.br/api/health` ainda retorna 200.
+- [ ] `curl -fsS https://api.aracannabis.com.br/api/health` ainda retorna 200.
 - [ ] `docker ps --format '{{.Names}}\t{{.Status}}' | grep siap-` mostra os 5 containers sem restart (< 1 minuto de uptime > 0 dias anterior).
 - [ ] Nenhum log de erro do Traefik sobre `siap-*` desde o deploy do araflow.
 

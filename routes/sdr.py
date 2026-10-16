@@ -9,7 +9,7 @@ import base64
 
 sdr_bp = Blueprint("sdr", __name__)
 
-SIAP_API_URL = os.getenv("SIAP_API_URL", "https://api.visualsmartflow.com.br")
+SIAP_API_URL = os.getenv("SIAP_API_URL", "https://api.aracannabis.com.br")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 PROFISSIONAL_ID_DR_ANDERSON = 2
 

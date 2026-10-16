@@ -129,9 +129,9 @@ ALLOWED_ORIGINS = [
     'http://localhost:5003',
     'http://localhost:5010',
     'http://backend:5002',
-    'https://visualsmartflow.com.br',
-    'https://www.visualsmartflow.com.br',
-    'https://araos.visualsmartflow.com.br',
+    'https://www.aracannabis.com.br',
+    'https://aracannabis.com.br',
+    'https://api.aracannabis.com.br',
     # Tenant Vittalis (prontuário + API)
     'https://siap.vittalis.site',
     'https://api.vittalis.site',

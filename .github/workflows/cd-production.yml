@@ -18,7 +18,7 @@ permissions:
 env:
   PYTHON_VERSION: '3.12'
   NODE_VERSION: '20.18.0'
-  PROD_URL: https://api.visualsmartflow.com.br
+  PROD_URL: https://api.aracannabis.com.br
   PROD_HOST: ${{ secrets.PROD_SSH_HOST }}
   PROD_SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
   PROD_DEPLOY_USER: ${{ secrets.PROD_DEPLOY_USER }}
@@ -267,8 +267,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: [smoke]
-    # D05l — staging.visualsmartflow.com.br NAO existe (NXDOMAIN). Apontado
-    # para visualsmartflow.com.br (producao) via BASE_URL. Mantido
+    # D05l — staging.aracannabis.com.br NAO existe (NXDOMAIN). Apontado
+    # para www.aracannabis.com.br (producao) via BASE_URL. Mantido
     # continue-on-error:true porque rodar E2E contra prod real pode ser
     # flaky por concorrencia com usuarios reais.
     continue-on-error: true
@@ -279,7 +279,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
       - run: pip install playwright pytest-playwright && playwright install --with-deps chromium
       - run: pytest tests/e2e/ -v --tb=short --maxfail=1
-        env: { BASE_URL: https://visualsmartflow.com.br }   # D05l — staging não existe; usa prod
+        env: { BASE_URL: https://www.aracannabis.com.br }   # D05l — staging não existe; usa prod
       - uses: actions/upload-artifact@v4
         if: always()
         with: { name: playwright-prod, path: test-results/, retention-days: 14 }
@@ -290,8 +290,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: [smoke]
-    # D05l — staging.visualsmartflow.com.br NAO existe (NXDOMAIN); apontado
-    # para visualsmartflow.com.br (producao). Mantido continue-on-error:true
+    # D05l — staging.aracannabis.com.br NAO existe (NXDOMAIN); apontado
+    # para www.aracannabis.com.br (producao). Mantido continue-on-error:true
     # porque o desempenho de prod real pode oscilar e nao deve bloquear deploy.
     continue-on-error: true
     steps:
@@ -336,7 +336,7 @@ jobs:
     needs: [pre-deploy-backup]
     environment:
       name: production
-      url: https://visualsmartflow.com.br
+      url: https://www.aracannabis.com.br
     steps:
       - name: Deploy produção (D05b — inline)
         # D02 FASE 2 — valida imagem no GHCR antes de tocar VPS; abort se não existir.

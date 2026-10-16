@@ -20,7 +20,7 @@
 
 ### BLOQUEADOR #1: P0-05 (CSP) não está em produção
 
-- **Evidência:** `curl -D - https://api.visualsmartflow.com.br/api/csrf-token` retorna CSP com `'unsafe-inline' 'unsafe-eval'`
+- **Evidência:** `curl -D - https://api.aracannabis.com.br/api/csrf-token` retorna CSP com `'unsafe-inline' 'unsafe-eval'`
 - **Impacto:** XSS + RCE no navegador se houver endpoint que renderize user input
 - **Código correto:** `security_config.py:262-274` (add_security_headers remove unsafe-inline/eval)
 - **Causa provável:** deploy parcial / branch errado / servidor de prod em SHA anterior
@@ -28,7 +28,7 @@
 
 ### BLOQUEADOR #2: P0-12 (X-Association-ID) não está em produção
 
-- **Evidência:** `curl -D - https://api.visualsmartflow.com.br/api/csrf-token` retorna `access-control-expose-headers: ... X-Association-ID ...`
+- **Evidência:** `curl -D - https://api.aracannabis.com.br/api/csrf-token` retorna `access-control-expose-headers: ... X-Association-ID ...`
 - **Impacto:** tenant spoof cross-tenant (atacante envia header e escolhe tenant)
 - **Código correto:** `app_cors_livre.py:98` remove X-Association-ID de allow/expose
 - **Causa provável:** mesmo deploy parcial do BLOQUEADOR #1
@@ -41,7 +41,7 @@
 
 ### BLOQUEADOR #4: /api/health (M20) não deployado
 
-- **Evidência:** `curl https://api.visualsmartflow.com.br/api/health` → 404
+- **Evidência:** `curl https://api.aracannabis.com.br/api/health` → 404
 - **Impacto:** sem healthcheck, monitoring/load-balancer não sabem quando parar de mandar tráfego
 - **Código correto:** `app_cors_livre.py:168-205`
 - **Causa:** deploy parcial

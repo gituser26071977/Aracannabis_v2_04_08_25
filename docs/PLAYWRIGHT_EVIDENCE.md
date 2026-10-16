@@ -38,7 +38,7 @@ $ pip install playwright
 | 13 | `tests/e2e/test_02_logout.py` | (existe) | Logout |
 | 14 | `tests/e2e/conftest.py` | (existe) | Fixtures Playwright |
 
-**14 arquivos Python presentes** em `tests/e2e/`, prontos para uso **quando Playwright estiver instalado** e **staging público acessível** (`https://staging.visualsmartflow.com.br/`).
+**14 arquivos Python presentes** em `tests/e2e/`, prontos para uso **quando Playwright estiver instalado** e **staging público acessível** (`https://staging.aracannabis.com.br/`).
 
 ## Credenciais usadas pelos testes
 

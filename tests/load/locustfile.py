@@ -7,17 +7,17 @@ operações de prontuário + dashboard + IA + módulos).
 Uso:
     # baseline (50 usuários, 5min)
     locust -f tests/load/locustfile.py --headless -u 50 -r 5 -t 5m \
-        --host=https://api.visualsmartflow.com.br \
+        --host=https://api.aracannabis.com.br \
         --html reports/load_baseline.html --csv reports/load_baseline
 
     # peak (200 usuários, 3min)
     locust -f tests/load/locustfile.py --headless -u 200 -r 20 -t 3m \
-        --host=https://api.visualsmartflow.com.br \
+        --host=https://api.aracannabis.com.br \
         --html reports/load_peak.html --csv reports/load_peak
 
     # soak (100 usuários, 15min)
     locust -f tests/load/locustfile.py --headless -u 100 -r 10 -t 15m \
-        --host=https://api.visualsmartflow.com.br \
+        --host=https://api.aracannabis.com.br \
         --html reports/load_soak.html --csv reports/load_soak
 
 IMPORTANTE: usa o usuário tester.modulos@araos.dev já criado no banco

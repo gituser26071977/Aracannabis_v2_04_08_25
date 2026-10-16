@@ -1,4 +1,4 @@
-# D05c — TRAEFIK ROOT CAUSE (HTTP 404 em api.visualsmartflow.com.br)
+# D05c — TRAEFIK ROOT CAUSE (HTTP 404 em api.aracannabis.com.br)
 
 **Data:** 2026-07-01
 **Status:** **BLOQUEADO** — diagnóstico objetivo não pôde ser completado
@@ -13,7 +13,7 @@ A pipeline `cd-production.yml` executou o deploy de rc.10 com sucesso técnico
 MAS o smoke pós-deploy reportou `✗ API status [404 — esperado 200]` e o job 9/9
 terminou em `failure`.
 
-A API `https://api.visualsmartflow.com.br` continua retornando **HTTP 404 em
+A API `https://api.aracannabis.com.br` continua retornando **HTTP 404 em
 todos endpoints**, com o body `404 page not found` (body **típico do Traefik**,
 não do backend Flask).
 
@@ -27,7 +27,7 @@ GitHub não indexar é desconhecida.
 
 ## EVIDÊNCIAS DISPONÍVEIS (apenas externas)
 
-### Estado externo do domínio `api.visualsmartflow.com.br`
+### Estado externo do domínio `api.aracannabis.com.br`
 
 | Endpoint | HTTP | Tempo | Body |
 |----------|------|-------|------|
@@ -40,15 +40,15 @@ GitHub não indexar é desconhecida.
 
 | DNS | TLS | Resultado |
 |-----|-----|-----------|
-| `dig +short api.visualsmartflow.com.br` | `147.93.33.253` | OK |
-| `openssl s_client -servername api.visualsmartflow.com.br` | CN Let's Encrypt YR2 | `Verify return code 0 (ok)` |
+| `dig +short api.aracannabis.com.br` | `147.93.33.253` | OK |
+| `openssl s_client -servername api.aracannabis.com.br` | CN Let's Encrypt YR2 | `Verify return code 0 (ok)` |
 
-### Estado externo do frontend `visualsmartflow.com.br`
+### Estado externo do frontend `www.aracannabis.com.br`
 
 | Endpoint | HTTP |
 |----------|------|
-| `https://visualsmartflow.com.br/` | **200** (ttfb 481ms) |
-| `https://araos.visualsmartflow.com.br/` | **200** |
+| `https://www.aracannabis.com.br/` | **200** (ttfb 481ms) |
+| `https://www.aracannabis.com.br/` | **200** |
 | `https://api.arapath.com.br/api/health` | **404** |
 
 ### Logs do deploy `cd-production.yml` (run 28545806530)
@@ -69,7 +69,7 @@ GitHub não indexar é desconhecida.
 20:43:31  ✅ Successfully executed commands to all hosts.
 ```
 
-Containers subiram. Mas smoke pós-deploy em `https://api.visualsmartflow.com.br`
+Containers subiram. Mas smoke pós-deploy em `https://api.aracannabis.com.br`
 detectou 404 e disparou auto-rollback (sem efeito visível, container
 continua rodando).
 
@@ -104,7 +104,7 @@ siap-backend:REDACTED
 | **G) Outro (específico)** | possível | Pré-existente — API estava 404 **antes** deste deploy |
 
 **Conclusão:** A causa raiz é da família **C/D/E/F** (Traefik não está
-roteando `api.visualsmartflow.com.br` para `siap-backend:5002`), mas **NÃO
+roteando `api.aracannabis.com.br` para `siap-backend:5002`), mas **NÃO
 PODE SER CONFIRMADA por evidência objetiva** sem `docker ps`,
 `docker inspect`, ou acesso à API Traefik no VPS.
 
@@ -140,7 +140,7 @@ anterior que foi bloqueada pelo classificador)
 
 **1. Qual era a causa raiz?**
 **NÃO CONFIRMADA** — evidência externa aponta para família C/D/E/F
-(Traefik não roteia api.visualsmartflow.com.br para siap-backend:5002),
+(Traefik não roteia api.aracannabis.com.br para siap-backend:5002),
 mas a causa específica (router ausente, service errado, network perdida,
 labels sumidas) não pôde ser diferenciada.
 
@@ -157,9 +157,9 @@ Saúde em produção **desconhecida** — não foi possível testar diretamente.
 
 **4. O Traefik estava roteando?**
 **NÃO** — evidência externa indica Traefik tem TLS válido para
-`api.visualsmartflow.com.br` e responde com **body típico do 404 do Traefik**
+`api.aracannabis.com.br` e responde com **body típico do 404 do Traefik**
 "404 page not found". Isso significa que **Traefik RECEBEU a request MAS NÃO
-ENCONTROU nenhum router/service que match o host** `api.visualsmartflow.com.br`.
+ENCONTROU nenhum router/service que match o host** `api.aracannabis.com.br`.
 
 **5. O problema era infraestrutura ou aplicação?**
 **INFRAESTRUTURA** (Traefik/Docker network/labels) — e não código da aplicação.
@@ -190,8 +190,8 @@ em `secrets.PROD_SSH_HOST`). Rodar:
 docker ps -a --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}\t{{.RestartCount}}'
 docker inspect siap-backend --format '{{range $net,$conf := .NetworkSettings.Networks}}{{$net}} {{end}}'
 docker network inspect web --format '{{range .Containers}}{{.Name}}({{.IPv4Address}}) {{end}}'
-curl -s http://localhost:8080/api/http/routers | jq '.[] | select(.rule | contains("visualsmartflow"))'
-docker logs --tail 100 traefik | grep -E "siap-api|404|visualsmartflow"
+curl -s http://localhost:8080/api/http/routers | jq '.[] | select(.rule | contains("aracannabis"))'
+docker logs --tail 100 traefik | grep -E "siap-api|404|aracannabis"
 ```
 
 **Opção 2 — Corrigir com base na hipótese (ARRISCADO sem evidência)**:

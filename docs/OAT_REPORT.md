@@ -18,7 +18,7 @@ A FASE 1 da MISSÃO 21 pedia **execução real** do fluxo completo (Login → Ca
 3. **Sem janela** para testes que criem pacientes/consultas reais.
 4. **Multi-tenant** exige 2 tenants configurados simultaneamente.
 
-Foi feita **coleta read-only de evidência observacional** contra `api.visualsmartflow.com.br` para validar comportamento público do sistema, complementada pela suíte de 31 testes P0 da MISSÃO 18.
+Foi feita **coleta read-only de evidência observacional** contra `api.aracannabis.com.br` para validar comportamento público do sistema, complementada pela suíte de 31 testes P0 da MISSÃO 18.
 
 ---
 
@@ -76,9 +76,9 @@ Evidências:
 | Item | Valor |
 |------|-------|
 | TLS válido | sim (Let's Encrypt, expira 2026-09-07) |
-| Subject | `CN=api.visualsmartflow.com.br` |
+| Subject | `CN=api.aracannabis.com.br` |
 | DNS prod | `147.93.33.253` |
-| Frontend | `visualsmartflow.com.br` e `araos.visualsmartflow.com.br` → 200 |
+| Frontend | `www.aracannabis.com.br` e `www.aracannabis.com.br` → 200 |
 
 ### 2.6 Regressão P0 (read-only)
 

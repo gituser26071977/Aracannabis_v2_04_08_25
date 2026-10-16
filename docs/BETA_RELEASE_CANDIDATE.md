@@ -16,7 +16,7 @@
 
 ## FASE 1 — Smoke completo (evidência)
 
-Ambiente: **PRODUÇÃO** (`https://api.visualsmartflow.com.br`)
+Ambiente: **PRODUÇÃO** (`https://api.aracannabis.com.br`)
 
 | # | Categoria | Endpoint | Status HTTP | Veredito |
 |---|-----------|----------|-------------|----------|

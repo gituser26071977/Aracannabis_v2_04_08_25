@@ -237,7 +237,7 @@ docker volume ls | grep -E "letsencrypt|cert"
 # Listar certs emitidos (dentro do volume)
 docker run --rm -v $(docker volume ls -q | grep letsencrypt | head -1):/certs \
   alpine sh -c "ls -la /certs/ 2>/dev/null | head"
-# Esperado: arquivos .pem para visualsmartflow.com.br existentes
+# Esperado: arquivos .pem para www.aracannabis.com.br existentes
 # Para flow.arapath.com.br: AINDA NÃO EXISTE (será criado no primeiro boot)
 ```
 
@@ -291,8 +291,8 @@ tailscale status
 ### 4.1 Convenção AraOS
 
 Domínios existentes (de `docker-compose.prod.yml`):
-- `api.visualsmartflow.com.br` → siap-api
-- `visualsmartflow.com.br` / `araos.visualsmartflow.com.br` → siap-web
+- `api.aracannabis.com.br` → siap-api
+- `www.aracannabis.com.br` / `www.aracannabis.com.br` → siap-web
 
 **AraFlow segue a mesma família de subdomínio da rebrand:** `*.arapath.com.br` (alinhado com `aracannabis@arapath.com.br` e `admin@arapath.com.br` já em uso).
 

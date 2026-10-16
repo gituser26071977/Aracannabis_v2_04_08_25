@@ -11,10 +11,10 @@ for arg in "$@"; do [[ "$arg" == --env=* ]] && ENV="${arg#*=}"; done
 
 case "$ENV" in
   staging)
-    BASE="https://api.staging.visualsmartflow.com.br"
+    BASE="https://api.staging.aracannabis.com.br"
     ;;
   production)
-    BASE="https://api.visualsmartflow.com.br"
+    BASE="https://api.aracannabis.com.br"
     ;;
   *) echo "ENV inválida"; exit 1 ;;
 esac

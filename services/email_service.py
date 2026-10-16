@@ -19,7 +19,7 @@ class EmailService:
         self.email_from_name = os.getenv('EMAIL_FROM_NAME', 'AraOS — Clinical Intelligence Operating System')
         self.development_mode = os.getenv('EMAIL_DEVELOPMENT_MODE', 'False').lower() == 'true'
         # D05l (trial 14d): URL do site para CTA nos emails de boas-vindas/expiração
-        self.site_url = os.getenv('ARAOS_SITE_URL', 'https://araos.aracannabis.com.br').strip()
+        self.site_url = os.getenv('ARAOS_SITE_URL', 'https://www.aracannabis.com.br').strip()
         print(f"DEBUG: EmailService initialized. User={self.username}, DevMode={self.development_mode}")
         
     def test_connection(self):

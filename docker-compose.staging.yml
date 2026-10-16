@@ -5,7 +5,7 @@ version: '3.8'
 # Espelho do docker-compose.prod.yml com:
 #   - portas/dir distintos
 #   - secrets PRÓPRIOS (NÃO reutilizar prod)
-#   - subdomínio staging.visualsmartflow.com.br
+#   - subdomínio staging.aracannabis.com.br
 #   - gunicorn com --workers 1 (apenas validação)
 #   - logs em volume dedicado
 # ================================================================
@@ -56,8 +56,8 @@ services:
       - ENVIRONMENT=staging
       - FLASK_ENV=staging
       - DATABASE_URL=postgresql://${POSTGRES_USER:-siap_staging}:${POSTGRES_PASSWORD}@siap-db-staging:5432/${POSTGRES_DB:-aracannabis_staging}
-      - FRONTEND_BASE_URL=https://staging.visualsmartflow.com.br
-      - CORS_ORIGINS=https://staging.visualsmartflow.com.br,https://www.staging.visualsmartflow.com.br
+      - FRONTEND_BASE_URL=https://staging.aracannabis.com.br
+      - CORS_ORIGINS=https://staging.aracannabis.com.br,https://www.staging.aracannabis.com.br
       - REDIS_URL=redis://siap-redis-staging:6379/0
       - OTEL_SDK_DISABLED=true
       - CREWAI_DISABLE_TELEMETRY=true
@@ -75,12 +75,12 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=web"
-      - "traefik.http.routers.siap-api-staging.rule=Host(`api.staging.visualsmartflow.com.br`)"
+      - "traefik.http.routers.siap-api-staging.rule=Host(`api.staging.aracannabis.com.br`)"
       - "traefik.http.routers.siap-api-staging.entrypoints=websecure"
       - "traefik.http.routers.siap-api-staging.tls=true"
       - "traefik.http.routers.siap-api-staging.tls.certresolver=letsencrypt"
       - "traefik.http.services.siap-api-staging.loadbalancer.server.port=5002"
-      - "traefik.http.routers.siap-api-staging-http.rule=Host(`api.staging.visualsmartflow.com.br`)"
+      - "traefik.http.routers.siap-api-staging-http.rule=Host(`api.staging.aracannabis.com.br`)"
       - "traefik.http.routers.siap-api-staging-http.entrypoints=web"
       - "traefik.http.routers.siap-api-staging-http.middlewares=siap-redirect-https"
     command: [ "gunicorn", "--bind", "0.0.0.0:5002", "--timeout", "300", "--workers", "1", "--threads", "2", "app_cors_livre:create_app()" ]
@@ -96,8 +96,8 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        REACT_APP_API_URL: https://api.staging.visualsmartflow.com.br
-        REACT_APP_WS_URL: wss://api.staging.visualsmartflow.com.br/ws
+        REACT_APP_API_URL: https://api.staging.aracannabis.com.br
+        REACT_APP_WS_URL: wss://api.staging.aracannabis.com.br/ws
     container_name: siap-frontend-staging
     restart: unless-stopped
     networks:
@@ -108,12 +108,12 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=web"
-      - "traefik.http.routers.siap-web-staging.rule=Host(`staging.visualsmartflow.com.br`) || Host(`www.staging.visualsmartflow.com.br`)"
+      - "traefik.http.routers.siap-web-staging.rule=Host(`staging.aracannabis.com.br`) || Host(`www.staging.aracannabis.com.br`)"
       - "traefik.http.routers.siap-web-staging.entrypoints=websecure"
       - "traefik.http.routers.siap-web-staging.tls=true"
       - "traefik.http.routers.siap-web-staging.tls.certresolver=letsencrypt"
       - "traefik.http.services.siap-web-staging.loadbalancer.server.port=3000"
-      - "traefik.http.routers.siap-web-staging-http.rule=Host(`staging.visualsmartflow.com.br`) || Host(`www.staging.visualsmartflow.com.br`)"
+      - "traefik.http.routers.siap-web-staging-http.rule=Host(`staging.aracannabis.com.br`) || Host(`www.staging.aracannabis.com.br`)"
       - "traefik.http.routers.siap-web-staging-http.entrypoints=web"
       - "traefik.http.routers.siap-web-staging-http.middlewares=siap-redirect-https"
     healthcheck:

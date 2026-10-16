@@ -130,7 +130,7 @@ def telegram_webhook():
 
     Configurar no BotFather/setWebhook o header
     `secret_token=<DR_ANDERSON_WEBHOOK_SECRET>` apontando para
-    https://api.visualsmartflow.com.br/api/dr-anderson/webhooks/telegram.
+    https://api.aracannabis.com.br/api/dr-anderson/webhooks/telegram.
     """
     import hmac
 

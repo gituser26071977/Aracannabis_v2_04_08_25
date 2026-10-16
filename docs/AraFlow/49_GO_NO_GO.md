@@ -29,7 +29,7 @@ pronta para receber o deploy do AraFlow RC1?
 | TLS cert                                    | ✅ Let's Encrypt YR1 (ACME HTTP-01)                                                 |
 | Containers `araflow-*`                      | ✅ `araflow-api` + `araflow-web` healthy                                            |
 | AraOS não-impact                            | ✅ `siap-backend` 4 dias, `siap-frontend` 4 dias, `siap-db` 13 dias — todos healthy |
-| `api.visualsmartflow.com.br`                | ✅ HTTP 200                                                                         |
+| `api.aracannabis.com.br`                | ✅ HTTP 200                                                                         |
 
 ---
 

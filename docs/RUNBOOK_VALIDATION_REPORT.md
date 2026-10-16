@@ -163,7 +163,7 @@ docker exec siap-backend flask db upgrade
 | `pytest tests/e2e/ --env=prod` | POST_DEPLOY_SMOKE §12.1 | ❌ pytest **não tem parâmetro `--env`**. Variável de ambiente seria `ENV` ou similar — não documentado em conftest |
 | `curl http://localhost:9090/-/healthy` | POST_DEPLOY_SMOKE §16 | ⚠️ Prometheus configurado em `monitoring/docker-compose.monitoring.yml` mas **não há evidência de estar deployado em prod** |
 | `curl http://localhost:3001/api/health` | POST_DEPLOY_SMOKE §16 | ⚠️ Grafana NÃO provisionado |
-| `curl https://api.visualsmartflow.com.br/metrics` | POST_DEPLOY_SMOKE §15 | ❌ Backend **NÃO expõe `/metrics`** — verificado em `app_cors_livre.py` (rotas app são apenas `/api/csrf-token`, `/`, `/api`, `/api/status`, `/api/health`) |
+| `curl https://api.aracannabis.com.br/metrics` | POST_DEPLOY_SMOKE §15 | ❌ Backend **NÃO expõe `/metrics`** — verificado em `app_cors_livre.py` (rotas app são apenas `/api/csrf-token`, `/`, `/api`, `/api/status`, `/api/health`) |
 | `git tag v*.*.*+1` | ROLLBACK_PLAYBOOK §8.3 | ⚠️ Sintaxe git tag não permite `+1` em nome de tag; convenção SemVer seria `v*.*.*+hotfix` |
 
 ---
@@ -193,15 +193,15 @@ docker exec siap-backend flask db upgrade
 
 | # | Passo impossível | Por quê | Doc |
 |---|------------------|---------|-----|
-| 1 | `curl https://api.visualsmartflow.com.br/api/profissionais/me` | Rota **NÃO EXISTE** (404 garantido) | POST_DEPLOY_SMOKE §3 |
-| 2 | `curl https://api.visualsmartflow.com.br/api/nutrologia` | Rota **NÃO EXISTE** (404 garantido) | POST_DEPLOY_SMOKE §8 |
-| 3 | `curl -X POST https://api.visualsmartflow.com.br/api/ai-chat-simples/perguntar` | Rota **NÃO EXISTE** (404 garantido; rota real `/api/chat-simples`) | POST_DEPLOY_SMOKE §9 |
-| 4 | `curl https://api.visualsmartflow.com.br/api/billing/meu-plano` | Rota **NÃO EXISTE** (404 garantido; rota real `/api/planos/meu-plano`) | POST_DEPLOY_SMOKE §10 |
-| 5 | `curl https://api.visualsmartflow.com.br/api/billing/history` | Rota **NÃO EXISTE** (404 garantido) | POST_DEPLOY_SMOKE §10 |
-| 6 | `curl -X POST https://api.visualsmartflow.com.br/api/evolution/webhook` | Rota **NÃO EXISTE** (404 garantido; rota real `/api/dr-anderson/webhook`) | POST_DEPLOY_SMOKE §12 |
+| 1 | `curl https://api.aracannabis.com.br/api/profissionais/me` | Rota **NÃO EXISTE** (404 garantido) | POST_DEPLOY_SMOKE §3 |
+| 2 | `curl https://api.aracannabis.com.br/api/nutrologia` | Rota **NÃO EXISTE** (404 garantido) | POST_DEPLOY_SMOKE §8 |
+| 3 | `curl -X POST https://api.aracannabis.com.br/api/ai-chat-simples/perguntar` | Rota **NÃO EXISTE** (404 garantido; rota real `/api/chat-simples`) | POST_DEPLOY_SMOKE §9 |
+| 4 | `curl https://api.aracannabis.com.br/api/billing/meu-plano` | Rota **NÃO EXISTE** (404 garantido; rota real `/api/planos/meu-plano`) | POST_DEPLOY_SMOKE §10 |
+| 5 | `curl https://api.aracannabis.com.br/api/billing/history` | Rota **NÃO EXISTE** (404 garantido) | POST_DEPLOY_SMOKE §10 |
+| 6 | `curl -X POST https://api.aracannabis.com.br/api/evolution/webhook` | Rota **NÃO EXISTE** (404 garantido; rota real `/api/dr-anderson/webhook`) | POST_DEPLOY_SMOKE §12 |
 | 7 | `docker exec siap-backend alembic upgrade head` | Comando **NÃO EXISTE** (sem `alembic` instalado) | DEPLOY_RUNBOOK §5 |
 | 8 | `docker exec siap-backend cat /opt/araos/REVISION` | Arquivo **NÃO EXISTE** no container | ROLLBACK_PLAYBOOK §5 |
-| 9 | `curl https://api.visualsmartflow.com.br/metrics` | Endpoint **NÃO EXISTE** (backend não expõe) | POST_DEPLOY_SMOKE §15 |
+| 9 | `curl https://api.aracannabis.com.br/metrics` | Endpoint **NÃO EXISTE** (backend não expõe) | POST_DEPLOY_SMOKE §15 |
 | 10 | `curl http://localhost:9090/-/healthy` em prod | Prometheus **NÃO está deployado** em prod (apenas compose existe em `monitoring/`) | POST_DEPLOY_SMOKE §16 |
 | 11 | `curl http://localhost:3001/api/health` em prod | Grafana **NÃO está deployado** em prod | POST_DEPLOY_SMOKE §16 |
 | 12 | `pytest tests/e2e/ --env=prod` | Flag `--env` **NÃO existe** em pytest | POST_DEPLOY_SMOKE §12.1 |
@@ -336,15 +336,15 @@ Detalhamento:
 | `docker logs siap-backend --since 5m` | DEPLOY_RUNBOOK §16 | ✅ comando docker padrão |
 | `docker ps | grep siap-backend` | DEPLOY_RUNBOOK §6 | ✅ idem |
 | `docker exec siap-backend ps aux | grep gunicorn | wc -l` | DEPLOY_RUNBOOK §10 | ✅ idem |
-| `curl -sk https://api.visualsmartflow.com.br/api/csrf-token` | TODOS | ✅ rota existe em `app_cors_livre.py:122` |
-| `curl -sk -X POST https://api.visualsmartflow.com.br/api/auth/login` | POST_DEPLOY_SMOKE §3 | ✅ rota existe em `routes/auth.py:83` |
-| `curl -sk https://api.visualsmartflow.com.br/api/pacientes` | POST_DEPLOY_SMOKE §4 | ✅ rota existe |
-| `curl -sk https://api.visualsmartflow.com.br/api/consultas` | POST_DEPLOY_SMOKE §5 | ✅ idem |
-| `curl -sk https://api.visualsmartflow.com.br/api/prescricoes` | POST_DEPLOY_SMOKE §6 | ✅ idem |
-| `curl -sk https://api.visualsmartflow.com.br/api/cannabis` | POST_DEPLOY_SMOKE §7 | ✅ idem |
-| `curl -sk https://api.visualsmartflow.com.br/api/planos` | POST_DEPLOY_SMOKE §10 | ✅ idem |
-| `curl -sk -X POST https://api.visualsmartflow.com.br/api/mercadopago/webhook` | POST_DEPLOY_SMOKE §11 | ✅ rota existe em `routes/mercadopago.py:131` |
-| `curl -sk https://api.visualsmartflow.com.br/api/lgpd/politica-privacidade` | POST_DEPLOY_SMOKE §13 | ✅ idem |
+| `curl -sk https://api.aracannabis.com.br/api/csrf-token` | TODOS | ✅ rota existe em `app_cors_livre.py:122` |
+| `curl -sk -X POST https://api.aracannabis.com.br/api/auth/login` | POST_DEPLOY_SMOKE §3 | ✅ rota existe em `routes/auth.py:83` |
+| `curl -sk https://api.aracannabis.com.br/api/pacientes` | POST_DEPLOY_SMOKE §4 | ✅ rota existe |
+| `curl -sk https://api.aracannabis.com.br/api/consultas` | POST_DEPLOY_SMOKE §5 | ✅ idem |
+| `curl -sk https://api.aracannabis.com.br/api/prescricoes` | POST_DEPLOY_SMOKE §6 | ✅ idem |
+| `curl -sk https://api.aracannabis.com.br/api/cannabis` | POST_DEPLOY_SMOKE §7 | ✅ idem |
+| `curl -sk https://api.aracannabis.com.br/api/planos` | POST_DEPLOY_SMOKE §10 | ✅ idem |
+| `curl -sk -X POST https://api.aracannabis.com.br/api/mercadopago/webhook` | POST_DEPLOY_SMOKE §11 | ✅ rota existe em `routes/mercadopago.py:131` |
+| `curl -sk https://api.aracannabis.com.br/api/lgpd/politica-privacidade` | POST_DEPLOY_SMOKE §13 | ✅ idem |
 | `sha256sum backup.sql.gz` | GO_LIVE_CHECKLIST 5.3 | ✅ comando Linux padrão |
 | `ls -lh /var/backups/siap/db_*.sql.gz | tail -1` | GO_LIVE_CHECKLIST 5.2 | ✅ glob casa com `db_${ENV}_${TIMESTAMP}.sql.gz` |
 | `crontab -l | grep backup` | POST_DEPLOY_SMOKE §14 | ✅ setup_cron.sh instala |

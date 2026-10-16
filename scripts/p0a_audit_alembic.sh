@@ -18,7 +18,7 @@ DB_USER="${POSTGRES_USER:-siap_user}"
 DB_NAME="${POSTGRES_DB:-siap_db}"
 DB_PASSWORD="${POSTGRES_PASSWORD:-}"
 FLASK_APP_PATH="${FLASK_APP_PATH:-/opt/siap/app_cors_livre.py}"
-API_BASE="${API_BASE:-https://api.visualsmartflow.com.br}"
+API_BASE="${API_BASE:-https://api.aracannabis.com.br}"
 
 C_GREEN='\033[0;32m'
 C_BLUE='\033[0;34m'

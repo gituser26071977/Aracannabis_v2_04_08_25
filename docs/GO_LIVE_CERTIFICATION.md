@@ -3,7 +3,7 @@
 **Data:** 2026-06-27
 **Modo:** EXECUTE (somente validação, sem correções)
 **Origem:** M29 — Go-Live Certification contra PRODUÇÃO REAL
-**Alvo:** `https://api.visualsmartflow.com.br` (produção real)
+**Alvo:** `https://api.aracannabis.com.br` (produção real)
 
 ---
 
@@ -33,7 +33,7 @@
 ### Evidência objetiva
 
 ```bash
-$ curl -i https://api.visualsmartflow.com.br/api/schema-version
+$ curl -i https://api.aracannabis.com.br/api/schema-version
 HTTP/1.1 404 NOT FOUND
 ```
 
@@ -56,7 +56,7 @@ HTTP/1.1 404 NOT FOUND
 ### Evidência objetiva
 
 ```bash
-$ curl -s https://api.visualsmartflow.com.br/api/pacientes/ -H "Authorization: Bearer $TOK" | head
+$ curl -s https://api.aracannabis.com.br/api/pacientes/ -H "Authorization: Bearer $TOK" | head
 {"error":"Erro ao listar pacientes: (psycopg2.errors.UndefinedColumn) column \"data_revogacao\" of relation \"pacientes\" does not exist\nLINE 1: ...tamanho, consentimento_lgpd, data_consentimento, data_revog..."}
 ```
 
@@ -155,7 +155,7 @@ A produção aguenta 5 usuários sustentados sem degradação. p95 < 500ms é ex
 ### Evidência objetiva
 
 ```bash
-$ curl -i https://api.visualsmartflow.com.br/api/health
+$ curl -i https://api.aracannabis.com.br/api/health
 HTTP/1.1 404 NOT FOUND
 ```
 

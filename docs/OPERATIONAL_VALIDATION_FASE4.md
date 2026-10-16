@@ -54,10 +54,10 @@ def validate_mercadopago_signature(
 
 ### 1.3 Probe em produção (W1 — `/api/mercadopago/webhook`)
 
-**Testado em 2026-06-23 contra `api.visualsmartflow.com.br`:**
+**Testado em 2026-06-23 contra `api.aracannabis.com.br`:**
 
 ```bash
-curl -X POST https://api.visualsmartflow.com.br/api/mercadopago/webhook \
+curl -X POST https://api.aracannabis.com.br/api/mercadopago/webhook \
   -H "Content-Type: application/json" \
   -d '{"data":{"id":"test"},"type":"payment"}'
 ```
@@ -124,7 +124,7 @@ def webhook_mercadopago():
 ### 2.4 Probe em produção (W5 — `/api/modulos/webhook`)
 
 ```bash
-curl -X POST https://api.visualsmartflow.com.br/api/modulos/webhook \
+curl -X POST https://api.aracannabis.com.br/api/modulos/webhook \
   -H "Content-Type: application/json" \
   -d '{"modulo":"base","prof":1}'
 ```
@@ -184,7 +184,7 @@ W5 deveria usar `@mercadopago_webhook_required(get_data_id=...)` (mesmo padrão 
 
 ```bash
 # W2
-curl -X POST https://api.visualsmartflow.com.br/api/tenant/webhook \
+curl -X POST https://api.aracannabis.com.br/api/tenant/webhook \
   -H "Content-Type: application/json" \
   -d '{"event":"messages.upsert","instance":"smoke","data":{}}'
 ```
@@ -193,7 +193,7 @@ curl -X POST https://api.visualsmartflow.com.br/api/tenant/webhook \
 
 ```bash
 # W4
-curl -X POST https://api.visualsmartflow.com.br/api/dr-anderson/webhook \
+curl -X POST https://api.aracannabis.com.br/api/dr-anderson/webhook \
   -H "Content-Type: application/json" \
   -d '{"event":"messages.upsert","data":{}}'
 ```
@@ -322,7 +322,7 @@ A FASE 4 + 4.1, no estado atual do código, **NÃO pode ser deployada em produç
 
 ### 7.1 Probe 1 — W1 MP sem signature
 ```bash
-$ curl -X POST https://api.visualsmartflow.com.br/api/mercadopago/webhook \
+$ curl -X POST https://api.aracannabis.com.br/api/mercadopago/webhook \
     -H "Content-Type: application/json" \
     -d '{"data":{"id":"test"},"type":"payment"}'
 HTTP 400 {"status":"error"}
@@ -331,7 +331,7 @@ HTTP 400 {"status":"error"}
 
 ### 7.2 Probe 2 — W2 Evolution sem signature
 ```bash
-$ curl -X POST https://api.visualsmartflow.com.br/api/tenant/webhook \
+$ curl -X POST https://api.aracannabis.com.br/api/tenant/webhook \
     -H "Content-Type: application/json" \
     -d '{"event":"messages.upsert","instance":"smoke","data":{}}'
 HTTP 200 {"reason":"ai_not_configured_or_inactive","status":"ignored"}
@@ -340,7 +340,7 @@ HTTP 200 {"reason":"ai_not_configured_or_inactive","status":"ignored"}
 
 ### 7.3 Probe 3 — W5 Modulos sem signature
 ```bash
-$ curl -X POST https://api.visualsmartflow.com.br/api/modulos/webhook \
+$ curl -X POST https://api.aracannabis.com.br/api/modulos/webhook \
     -H "Content-Type: application/json" \
     -d '{"modulo":"base","prof":1}'
 HTTP 200 {"expira_em":"2026-07-23T16:43:59.627484","modulo":"base","ok":true,"profissional_id":1,"simulate":false,"status":"active"}

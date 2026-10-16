@@ -141,7 +141,7 @@ class Config:
     REDIS_URL = os.getenv("REDIS_URL", "").strip() or None
 
     # --- Site URL (links em emails) ---
-    ARAOS_SITE_URL = os.getenv("ARAOS_SITE_URL", "https://araos.aracannabis.com.br").strip()
+    ARAOS_SITE_URL = os.getenv("ARAOS_SITE_URL", "https://www.aracannabis.com.br").strip()
 
     # --- Upload de arquivos (P0-07) ---
     UPLOAD_FOLDER_EXAMES = os.path.join(os.getcwd(), "uploads", "exames")

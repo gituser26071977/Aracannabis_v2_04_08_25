@@ -22,7 +22,7 @@ import redis
 logger = logging.getLogger(__name__)
 
 
-VSF_BASE_URL = os.getenv("VSF_BASE_URL", "https://visualsmartflow.com.br/api")
+VSF_BASE_URL = os.getenv("VSF_BASE_URL", "https://www.aracannabis.com.br/api")
 VSF_EMAIL = os.getenv("VSF_EMAIL", "admin@arapath.com.br")
 VSF_PASSWORD = os.getenv("VSF_PASSWORD", "")
 VSF_ORG_ID = os.getenv("VSF_ORG_ID", "araos-org-001")

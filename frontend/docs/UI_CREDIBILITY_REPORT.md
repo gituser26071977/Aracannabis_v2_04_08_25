@@ -140,7 +140,7 @@ GET /static/js/main.e1ca64dc.js    → HTTP 200, 2,291,247 bytes
 | Best Practices | Sem `console.*` em prod, sem URLs hardcoded, sem credenciais em bundle |
 | SEO | `<title>` + `<meta description>` presentes |
 
-**Recomendação:** Rodar Lighthouse no deploy real (`araos.visualsmartflow.com.br`) com Chrome DevTools.
+**Recomendação:** Rodar Lighthouse no deploy real (`www.aracannabis.com.br`) com Chrome DevTools.
 
 ---
 

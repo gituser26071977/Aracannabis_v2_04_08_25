@@ -163,8 +163,8 @@ for f in glob.glob('tests/e2e/*.py'):
 ### Compilação do app (sem quebrar)
 
 ```
-GET https://api.visualsmartflow.com.br/api/status → 200
-GET https://api.visualsmartflow.com.br/            → 302
+GET https://api.aracannabis.com.br/api/status → 200
+GET https://api.aracannabis.com.br/            → 302
 .app_cors_livre.py compila (0 erros)
 ```
 
@@ -205,7 +205,7 @@ Nenhuma alteração em:
 
 **Limitação:** para reproduzir staging em outra máquina é preciso:
 - VPS com Docker
-- DNS `staging.visualsmartflow.com.br` apontando para o VPS
+- DNS `staging.aracannabis.com.br` apontando para o VPS
 - Traefik no VPS para emitir Let's Encrypt
 - `.env.staging` com secrets ≥32 chars
 

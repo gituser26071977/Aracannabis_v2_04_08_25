@@ -3,7 +3,7 @@ version: '3.8'
 # ================================================================
 # AraOS — Clinical Intelligence Operating System
 # Docker Compose de PRODUÇÃO — Hostinger VPS
-# Domínio: visualsmartflow.com.br / araos.visualsmartflow.com.br
+# Domínio: www.aracannabis.com.br (frontend) / api.aracannabis.com.br (backend)
 # Traefik v3 via rede externa "web"
 # Portas validadas no VPS (sem conflito)
 # ================================================================
@@ -52,8 +52,8 @@ services:
     environment:
       - FLASK_ENV=production
       - DATABASE_URL=postgresql://${POSTGRES_USER:-siap_user}:${POSTGRES_PASSWORD}@siap-db:5432/${POSTGRES_DB:-aracannabis}
-      - FRONTEND_BASE_URL=https://visualsmartflow.com.br
-      - CORS_ORIGINS=https://visualsmartflow.com.br,https://www.visualsmartflow.com.br,https://araos.visualsmartflow.com.br
+      - FRONTEND_BASE_URL=https://www.aracannabis.com.br
+      - CORS_ORIGINS=https://www.aracannabis.com.br,https://aracannabis.com.br,https://api.aracannabis.com.br
       - OLLAMA_BASE_URL=http://host.docker.internal:11434
       - ANONYMIZATION_SERVICE_URL=http://siap-anonymization:8000
       - OTEL_SDK_DISABLED=true
@@ -63,7 +63,7 @@ services:
       - BIRD_ID_CLIENT_SECRET=${BIRD_ID_CLIENT_SECRET:-}
       - BIRD_ID_BASE_URL=${BIRD_ID_BASE_URL:-https://cess.lab.vaultid.com.br}
       # Visual Smart Flow Integration
-      - VSF_BASE_URL=https://visualsmartflow.com.br/api
+      - VSF_BASE_URL=https://www.aracannabis.com.br/api
       - VSF_EMAIL=admin@arapath.com.br
       - VSF_PASSWORD=AraPathVSF2026!Secure
       - VSF_ORG_ID=araos-org-001
@@ -83,20 +83,20 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=web"
-      # Roteamento via subdomínio api.visualsmartflow.com.br
-      - "traefik.http.routers.siap-api.rule=Host(`api.visualsmartflow.com.br`)"
+      # Roteamento via subdomínio api.aracannabis.com.br
+      - "traefik.http.routers.siap-api.rule=Host(`api.aracannabis.com.br`)"
       - "traefik.http.routers.siap-api.entrypoints=websecure"
       - "traefik.http.routers.siap-api.tls=true"
       - "traefik.http.routers.siap-api.tls.certresolver=letsencrypt"
       - "traefik.http.services.siap-api.loadbalancer.server.port=5002"
       # Redirect HTTP → HTTPS
-      - "traefik.http.routers.siap-api-http.rule=Host(`api.visualsmartflow.com.br`)"
+      - "traefik.http.routers.siap-api-http.rule=Host(`api.aracannabis.com.br`)"
       - "traefik.http.routers.siap-api-http.entrypoints=web"
       - "traefik.http.routers.siap-api-http.middlewares=siap-redirect-https"
       - "traefik.http.middlewares.siap-redirect-https.redirectscheme.scheme=https"
       - "traefik.http.middlewares.siap-redirect-https.redirectscheme.permanent=true"
       # Middleware para booking API (CORS adicional)
-      - "traefik.http.middlewares.siap-booking-cors.headers.accesscontrolalloworiginlist=https://visualsmartflow.com.br,https://www.visualsmartflow.com.br"
+      - "traefik.http.middlewares.siap-booking-cors.headers.accesscontrolalloworiginlist=https://www.aracannabis.com.br,https://aracannabis.com.br"
       - "traefik.http.middlewares.siap-booking-cors.headers.accesscontrolallowmethods=GET,POST,OPTIONS"
       - "traefik.http.middlewares.siap-booking-cors.headers.accesscontrolallowheaders=Content-Type,Authorization"
       - "traefik.http.middlewares.siap-booking-cors.headers.accesscontrolmaxage=600"
@@ -116,36 +116,36 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=web"
-      # Frontend: visualsmartflow.com.br / araos.visualsmartflow.com.br
-      - "traefik.http.routers.siap-web.rule=Host(`visualsmartflow.com.br`) || Host(`araos.visualsmartflow.com.br`)"
+      # Frontend: www.aracannabis.com.br (canônico)
+      - "traefik.http.routers.siap-web.rule=Host(`www.aracannabis.com.br`)"
       - "traefik.http.routers.siap-web.entrypoints=websecure"
       - "traefik.http.routers.siap-web.tls=true"
       - "traefik.http.routers.siap-web.tls.certresolver=letsencrypt"
       - "traefik.http.services.siap-web.loadbalancer.server.port=3000"
       # Public booking page → Flask backend (não React)
-      - "traefik.http.routers.siap-agendar.rule=Host(`visualsmartflow.com.br`) && PathPrefix(`/agendar`)"
+      - "traefik.http.routers.siap-agendar.rule=Host(`www.aracannabis.com.br`) && PathPrefix(`/agendar`)"
       - "traefik.http.routers.siap-agendar.priority=100"
       - "traefik.http.routers.siap-agendar.entrypoints=websecure"
       - "traefik.http.routers.siap-agendar.tls=true"
       - "traefik.http.routers.siap-agendar.tls.certresolver=letsencrypt"
       - "traefik.http.routers.siap-agendar.service=siap-api"
       # HTTP redirect for agendar
-      - "traefik.http.routers.siap-agendar-http.rule=Host(`visualsmartflow.com.br`) && PathPrefix(`/agendar`)"
+      - "traefik.http.routers.siap-agendar-http.rule=Host(`www.aracannabis.com.br`) && PathPrefix(`/agendar`)"
       - "traefik.http.routers.siap-agendar-http.entrypoints=web"
       - "traefik.http.routers.siap-agendar-http.middlewares=siap-redirect-https"
-      # Frontend www → naked redirect
-      - "traefik.http.routers.siap-web-www.rule=Host(`www.visualsmartflow.com.br`)"
-      - "traefik.http.routers.siap-web-www.entrypoints=websecure"
-      - "traefik.http.routers.siap-web-www.tls=true"
-      - "traefik.http.routers.siap-web-www.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.siap-web-www.middlewares=siap-www-redirect"
-      - "traefik.http.routers.siap-web-www.service=siap-web"
-      # Middleware www → naked (compartilhado com o backend)
-      - "traefik.http.middlewares.siap-www-redirect.redirectregex.regex=^https://www\\.visualsmartflow\\.com\\.br(.*)"
-      - "traefik.http.middlewares.siap-www-redirect.redirectregex.replacement=https://visualsmartflow.com.br$${1}"
-      - "traefik.http.middlewares.siap-www-redirect.redirectregex.permanent=true"
-      # Redirect HTTP → HTTPS (naked e www)
-      - "traefik.http.routers.siap-web-http.rule=Host(`visualsmartflow.com.br`) || Host(`www.visualsmartflow.com.br`) || Host(`araos.visualsmartflow.com.br`)"
+      # APEX → www redirect (aracannabis.com.br → www.aracannabis.com.br)
+      - "traefik.http.routers.siap-web-apex.rule=Host(`aracannabis.com.br`)"
+      - "traefik.http.routers.siap-web-apex.entrypoints=websecure"
+      - "traefik.http.routers.siap-web-apex.tls=true"
+      - "traefik.http.routers.siap-web-apex.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.siap-web-apex.middlewares=siap-apex-redirect"
+      - "traefik.http.routers.siap-web-apex.service=siap-web"
+      # Middleware apex → www
+      - "traefik.http.middlewares.siap-apex-redirect.redirectregex.regex=^https://aracannabis\\.com\\.br(.*)"
+      - "traefik.http.middlewares.siap-apex-redirect.redirectregex.replacement=https://www.aracannabis.com.br$${1}"
+      - "traefik.http.middlewares.siap-apex-redirect.redirectregex.permanent=true"
+      # Redirect HTTP → HTTPS (apex e www)
+      - "traefik.http.routers.siap-web-http.rule=Host(`aracannabis.com.br`) || Host(`www.aracannabis.com.br`)"
       - "traefik.http.routers.siap-web-http.entrypoints=web"
       - "traefik.http.routers.siap-web-http.middlewares=siap-redirect-https"
     healthcheck:

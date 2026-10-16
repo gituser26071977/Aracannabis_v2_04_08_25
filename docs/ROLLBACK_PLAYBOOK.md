@@ -62,7 +62,7 @@ Após executar `rollback.sh --env=production`:
 
 ```bash
 # 1. Health endpoint
-curl -sk https://api.visualsmartflow.com.br/api/health
+curl -sk https://api.aracannabis.com.br/api/health
 # Esperado: 200 (ou 404 se ainda não deployado)
 
 # 2. Smoke

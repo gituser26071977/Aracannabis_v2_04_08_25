@@ -339,7 +339,7 @@ docker ps --format '{{.Names}}\t{{.Status}}' \
 **Como validar:**
 ```bash
 # API AraOS ainda responde?
-curl -fsS https://api.visualsmartflow.com.br/api/health -o /dev/null -w "%{http_code}\n"
+curl -fsS https://api.aracannabis.com.br/api/health -o /dev/null -w "%{http_code}\n"
 # Esperado: 200
 ```
 
@@ -577,7 +577,7 @@ docker compose -f docker-compose.araflow.yml --env-file .env.araflow down --rmi 
 Independente do cenário:
 
 - [ ] AraOS ainda intacto: `docker ps` mostra 5 containers `siap-*` rodando.
-- [ ] `curl https://api.visualsmartflow.com.br/api/health` retorna 200.
+- [ ] `curl https://api.aracannabis.com.br/api/health` retorna 200.
 - [ ] Logs Traefik não mostram erros novos relacionados a `araflow-*` (após restart/down).
 - [ ] `docker network ls | grep web` ainda mostra a rede.
 - [ ] Sem containers araflow órfãos: `docker ps -a | grep araflow` vazio (ou apenas healthy se restart).

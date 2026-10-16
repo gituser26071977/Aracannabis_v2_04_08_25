@@ -4,7 +4,7 @@
 
 O pipeline `cd-production.yml` falhou no run `28825810720` (tag `v1.0.0-rc.13`):
 
-- 6/9 Playwright E2E → failure (DNS NXDOMAIN em `staging.visualsmartflow.com.br`)
+- 6/9 Playwright E2E → failure (DNS NXDOMAIN em `staging.aracannabis.com.br`)
 - 7/9 Lighthouse → failure (mesmo motivo)
 - **8/9 Backup pré-deploy → failure** (Tailscale `authkey` deprecado) → **9/9 Deploy skipped**
 
@@ -38,13 +38,13 @@ Aplicado em **4 pontos** do `cd-production.yml`:
 
 ### 2. URLs staging → produção
 
-`staging.visualsmartflow.com.br` **NÃO EXISTE** (NXDOMAIN). O conftest do Playwright e o `.lighthouserc.json` foram apontados para `visualsmartflow.com.br` (que resolve para 147.93.33.253).
+`staging.aracannabis.com.br` **NÃO EXISTE** (NXDOMAIN). O conftest do Playwright e o `.lighthouserc.json` foram apontados para `www.aracannabis.com.br` (que resolve para 147.93.33.253).
 
 | Arquivo | Antes | Depois |
 |---------|-------|--------|
-| `tests/e2e/conftest.py` | `BASE_URL = staging.visualsmartflow.com.br` | `BASE_URL = visualsmartflow.com.br` |
-| `.github/workflows/cd-production.yml` (Playwright step) | `BASE_URL: https://staging.visualsmartflow.com.br` | `BASE_URL: https://visualsmartflow.com.br` |
-| `.lighthouserc.json` (4 URLs) | staging.visualsmartflow.com.br | visualsmartflow.com.br |
+| `tests/e2e/conftest.py` | `BASE_URL = staging.aracannabis.com.br` | `BASE_URL = www.aracannabis.com.br` |
+| `.github/workflows/cd-production.yml` (Playwright step) | `BASE_URL: https://staging.aracannabis.com.br` | `BASE_URL: https://www.aracannabis.com.br` |
+| `.lighthouserc.json` (4 URLs) | staging.aracannabis.com.br | www.aracannabis.com.br |
 
 ### 3. Plano desconto 40% → 20%
 

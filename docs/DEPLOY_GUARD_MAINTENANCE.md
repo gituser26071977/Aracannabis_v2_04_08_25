@@ -172,7 +172,7 @@ Esperado: `23 passed`.
 pytest tests/test_deploy_guard_sync.py -v --tb=long
 
 # 2. Estado real do banco via /api/schema-version
-curl -s https://api.visualsmartflow.com.br/api/schema-version | jq .
+curl -s https://api.aracannabis.com.br/api/schema-version | jq .
 
 # 3. Estado das migrations
 docker exec siap-backend flask db current

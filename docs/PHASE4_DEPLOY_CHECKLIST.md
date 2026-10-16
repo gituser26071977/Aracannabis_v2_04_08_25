@@ -2,7 +2,7 @@
 
 **Data:** 2026-06-22
 **Branch:** `feat/clinica-management`
-**Destino:** VPS Hostinger (`api.visualsmartflow.com.br`)
+**Destino:** VPS Hostinger (`api.aracannabis.com.br`)
 
 ---
 
@@ -42,9 +42,9 @@ ALLOW_WEBHOOK_SIMULATION=0
 ### Provisionar MercadoPago
 
 1. Acessar [Mercado Pago Developers → Suas integrações → Webhooks](https://www.mercadopago.com.br/developers/panel/notifications/webhooks)
-2. Configurar a URL: `https://api.visualsmartflow.com.br/api/mercadopago/webhook`
+2. Configurar a URL: `https://api.aracannabis.com.br/api/mercadopago/webhook`
 3. **Provisionar o mesmo secret** usado para `MERCADOPAGO_WEBHOOK_SECRET` no campo "Secret"
-4. **Provisionar o mesmo secret** também para URL `https://api.visualsmartflow.com.br/api/modulos/webhook`
+4. **Provisionar o mesmo secret** também para URL `https://api.aracannabis.com.br/api/modulos/webhook`
 
 ### Provisionar Evolution API
 
@@ -54,7 +54,7 @@ curl -X POST http://evolution-api:8080/webhook/set/<instance> \
   -H "apikey: $EVOLUTION_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "url": "https://api.visualsmartflow.com.br/api/tenant/webhook",
+    "url": "https://api.aracannabis.com.br/api/tenant/webhook",
     "events": ["messages.upsert"],
     "webhook_by_events": false,
     "headers": {
@@ -142,7 +142,7 @@ AraOS SERVER STARTED!
 ### Smoke test 1 — Aplicação subiu?
 
 ```bash
-curl -sS -o /dev/null -w "HTTP %{http_code}\n" https://api.visualsmartflow.com.br/api/status
+curl -sS -o /dev/null -w "HTTP %{http_code}\n" https://api.aracannabis.com.br/api/status
 # Esperado: HTTP 200
 ```
 
@@ -155,35 +155,35 @@ curl -sS -o /dev/null -w "HTTP %{http_code}\n" https://api.visualsmartflow.com.b
 curl -sS -o /dev/null -w "W1 MP: HTTP %{http_code}\n" -X POST \
   -H "Content-Type: application/json" \
   -d '{"test":"smoke"}' \
-  https://api.visualsmartflow.com.br/api/mercadopago/webhook
+  https://api.aracannabis.com.br/api/mercadopago/webhook
 # Esperado: HTTP 401
 
 # W5 Modulos
 curl -sS -o /dev/null -w "W5 Modulos: HTTP %{http_code}\n" -X POST \
   -H "Content-Type: application/json" \
   -d '{"modulo":"nutrologia","prof":1}' \
-  https://api.visualsmartflow.com.br/api/modulos/webhook
+  https://api.aracannabis.com.br/api/modulos/webhook
 # Esperado: HTTP 401
 
 # W2 Evolution tenant
 curl -sS -o /dev/null -w "W2 Tenant: HTTP %{http_code}\n" -X POST \
   -H "Content-Type: application/json" \
   -d '{"event":"messages.upsert","instance":"clinica01","data":{}}' \
-  https://api.visualsmartflow.com.br/api/tenant/webhook
+  https://api.aracannabis.com.br/api/tenant/webhook
 # Esperado: HTTP 401
 
 # W4 Evolution Dr.Anderson
 curl -sS -o /dev/null -w "W4 DrAnderson: HTTP %{http_code}\n" -X POST \
   -H "Content-Type: application/json" \
   -d '{"event":"messages.upsert","data":{}}' \
-  https://api.visualsmartflow.com.br/api/dr-anderson/webhook
+  https://api.aracannabis.com.br/api/dr-anderson/webhook
 # Esperado: HTTP 401
 
 # W3 criar-lead (sem internal-key)
 curl -sS -o /dev/null -w "W3 Lead: HTTP %{http_code}\n" -X POST \
   -H "Content-Type: application/json" \
   -d '{"nome":"Test"}' \
-  https://api.visualsmartflow.com.br/api/dr-anderson/criar-lead
+  https://api.aracannabis.com.br/api/dr-anderson/criar-lead
 # Esperado: HTTP 401
 ```
 
@@ -226,7 +226,7 @@ x_signature = f"ts={ts},v1={sig}"
 payload = {"data": {"id": data_id}, "type": "payment"}
 
 resp = requests.post(
-    "https://api.visualsmartflow.com.br/api/mercadopago/webhook",
+    "https://api.aracannabis.com.br/api/mercadopago/webhook",
     headers={
         "Content-Type": "application/json",
         "x-signature": x_signature,
@@ -257,7 +257,7 @@ body = json.dumps({
 sig = hmac.new(SECRET.encode(), body.encode(), hashlib.sha256).hexdigest()
 
 resp = requests.post(
-    "https://api.visualsmartflow.com.br/api/tenant/webhook",
+    "https://api.aracannabis.com.br/api/tenant/webhook",
     headers={
         "Content-Type": "application/json",
         "x-webhook-signature": f"sha256={sig}",
@@ -277,7 +277,7 @@ curl -sS -o /dev/null -w "W3: HTTP %{http_code}\n" -X POST \
   -H "Content-Type: application/json" \
   -H "X-Internal-Key: $INTERNAL_SERVICE_KEY" \
   -d '{"nome":"Smoke Test","data_nascimento":"1990-01-01"}' \
-  https://api.visualsmartflow.com.br/api/dr-anderson/criar-lead
+  https://api.aracannabis.com.br/api/dr-anderson/criar-lead
 # Esperado: HTTP 201 (criado) ou 500 (se paciente duplicado) — NUNCA 401/403
 ```
 
@@ -329,7 +329,7 @@ cp .env.production.bak.pre_fase4 .env.production
 docker compose -f docker-compose.prod.yml up -d siap-backend
 
 # 5. Verificar
-curl -sS https://api.visualsmartflow.com.br/api/status
+curl -sS https://api.aracannabis.com.br/api/status
 docker logs siap-backend 2>&1 | tail -20
 ```
 

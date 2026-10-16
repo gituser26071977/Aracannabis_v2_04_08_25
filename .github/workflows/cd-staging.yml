@@ -14,7 +14,7 @@ permissions:
 env:
   PYTHON_VERSION: '3.12'
   NODE_VERSION: '20.18.0'
-  STAGING_URL: https://api.staging.visualsmartflow.com.br
+  STAGING_URL: https://api.staging.aracannabis.com.br
   STAGING_HOST: ${{ secrets.STAGING_SSH_HOST }}
   STAGING_SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
   STAGING_DEPLOY_USER: ${{ secrets.STAGING_DEPLOY_USER }}
@@ -334,7 +334,7 @@ jobs:
       - name: Run 13 E2E flows
         run: pytest tests/e2e/ -v --tb=short --maxfail=1
         env:
-          BASE_URL: https://staging.visualsmartflow.com.br
+          BASE_URL: https://staging.aracannabis.com.br
       - name: Upload screenshots
         if: always()
         uses: actions/upload-artifact@v4
@@ -396,7 +396,7 @@ jobs:
     needs: [pre-deploy-backup]
     environment:
       name: staging
-      url: https://staging.visualsmartflow.com.br
+      url: https://staging.aracannabis.com.br
     steps:
       - uses: actions/checkout@v4
 
@@ -458,7 +458,7 @@ jobs:
             :rocket: *Staging deploy ${{ job.status }}*
             Branch: `${{ github.ref }}`
             SHA: `${{ github.sha }}`
-            <https://staging.visualsmartflow.com.br|Open staging>
+            <https://staging.aracannabis.com.br|Open staging>
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         continue-on-error: true

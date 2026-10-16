@@ -224,15 +224,15 @@ ssh root@147.93.33.253 'cd /root/projetos/araos && git rev-parse HEAD && git des
 # Esperado: REDACTED v1.0.0-rc.10
 
 # Schema version
-curl -sk https://api.visualsmartflow.com.br/api/schema-version
+curl -sk https://api.aracannabis.com.br/api/schema-version
 # Esperado: versão atual do schema no DB
 
 # Health
-curl -sk https://api.visualsmartflow.com.br/api/health
+curl -sk https://api.aracannabis.com.br/api/health
 # Esperado: 200 com JSON {"status":"healthy", ...}
 
 # Carga leve (não destrutiva)
-hey -n 200 -c 10 https://api.visualsmartflow.com.br/api/status
+hey -n 200 -c 10 https://api.aracannabis.com.br/api/status
 # Esperado: 200 em todas, p95 < 500ms
 ```
 
@@ -434,8 +434,8 @@ A pipeline `cd-production.yml` foi executada via `workflow_dispatch` 4 vezes dur
 
 - **Smoke pós-deploy (9/9)** reportou `✗ API status [404 — esperado 200]`
 - **Auto-rollback** disparado
-- **Verificação manual via curl**: `https://api.visualsmartflow.com.br/` retorna **HTTP 404** (body "404 page not found" típico do Traefik) em **todos endpoints** testados
-- **Frontend (`visualsmartflow.com.br`)** continua HTTP 200
+- **Verificação manual via curl**: `https://api.aracannabis.com.br/` retorna **HTTP 404** (body "404 page not found" típico do Traefik) em **todos endpoints** testados
+- **Frontend (`www.aracannabis.com.br`)** continua HTTP 200
 
 ---
 
@@ -493,7 +493,7 @@ Evidência EXTERNA indica:
 - TLS válido (Let's Encrypt) e DNS correto (147.93.33.253)
 - Smoke efêmero prova que **a imagem funciona isoladamente**
 
-Hipótese mais provável: **Traefik sem router para `api.visualsmartflow.com.br`** (família C/D/E/F — não diferenciável sem SSH VPS).
+Hipótese mais provável: **Traefik sem router para `api.aracannabis.com.br`** (família C/D/E/F — não diferenciável sem SSH VPS).
 
 **Crítico:** o mesmo 404 foi observado em runs anteriores ao D05b (rc.3-rc.9 também falharam no smoke pós-deploy com mesma assinatura). **O problema é provavelmente PRÉ-EXISTENTE**, não introduzido por D05b.
 
