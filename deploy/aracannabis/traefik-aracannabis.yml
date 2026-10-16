@@ -1,0 +1,56 @@
+# ── Traefik (file provider) — rotas de aracannabis.com.br ──────────────
+# Aplicado idempotentemente por deploy/aracannabis/apply-traefik.sh sobre
+# /opt/traefik-dynamic.yml. NÃO edite o arquivo de produção à mão; edite aqui.
+http:
+  routers:
+    aracannabis-api-https:
+      rule: Host(`api.aracannabis.com.br`)
+      service: siap-api
+      entryPoints: [websecure]
+      tls:
+        certresolver: letsencrypt
+    aracannabis-api-http:
+      rule: Host(`api.aracannabis.com.br`)
+      service: siap-api
+      entryPoints: [web]
+      middlewares: [redirect-to-https]
+    aracannabis-www-https:
+      rule: Host(`www.aracannabis.com.br`)
+      service: siap-web
+      entryPoints: [websecure]
+      tls:
+        certresolver: letsencrypt
+    aracannabis-www-http:
+      rule: Host(`www.aracannabis.com.br`)
+      service: siap-web
+      entryPoints: [web]
+      middlewares: [redirect-to-https]
+    aracannabis-bare-https:
+      rule: Host(`aracannabis.com.br`)
+      service: siap-web
+      entryPoints: [websecure]
+      middlewares: [aracannabis-www-redirect]
+      tls:
+        certresolver: letsencrypt
+    aracannabis-bare-http:
+      rule: Host(`aracannabis.com.br`)
+      service: siap-web
+      entryPoints: [web]
+      middlewares: [redirect-to-https]
+
+  services:
+    siap-api:
+      loadBalancer:
+        servers:
+          - url: http://siap-backend-final:5002
+    siap-web:
+      loadBalancer:
+        servers:
+          - url: http://siap-frontend-aracannabis:3000
+
+  middlewares:
+    aracannabis-www-redirect:
+      redirectRegex:
+        regex: ^https://aracannabis\.com\.br/(.*)
+        replacement: https://www.aracannabis.com.br/${1}
+        permanent: true
