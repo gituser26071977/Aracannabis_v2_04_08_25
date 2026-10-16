@@ -15,6 +15,7 @@ import { useNavigate } from 'react-router-dom';
 import { DarkMode, LightMode } from '@mui/icons-material';
 import { useColorMode } from '../../contexts/ThemeContext';
 import api from '../../services/api';
+import PasswordField from '../../components/PasswordField';
 
 const PatientLogin = () => {
     const navigate = useNavigate();
@@ -155,10 +156,9 @@ const PatientLogin = () => {
                         }}
                     />
 
-                    <TextField
+                    <PasswordField
                         fullWidth
                         label="Senha"
-                        type="password"
                         variant="outlined"
                         value={senha}
                         onChange={(e) => setSenha(e.target.value)}

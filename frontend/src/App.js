@@ -24,6 +24,7 @@ import PatientEditPage from './pages/PatientEditPage';
 import SecurityPage from './pages/SecurityPage';
 import ConsultasPage from './pages/ConsultasPage';
 import SimpleLogin from './components/SimpleLogin';
+import PasswordField from './components/PasswordField';
 import CadastroProfissionaisPage from './pages/CadastroProfissionaisPage';
 import PagamentoPage from './pages/PagamentoPage';
 import PlanosPage from './pages/PlanosPage';
@@ -328,9 +329,8 @@ function LoginPage() {
               },
             }}
           />
-          <TextField
+          <PasswordField
             label="🔒 Senha"
-            type="password"
             variant="outlined"
             fullWidth
             margin="normal"

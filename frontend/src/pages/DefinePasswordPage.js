@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { Box, Button, Paper, TextField, Typography, Alert } from '@mui/material';
+import { Box, Button, Paper, Typography, Alert } from '@mui/material';
 import { authService } from '../services/api';
+import PasswordField from '../components/PasswordField';
 
 const DefinePasswordPage = () => {
   const [searchParams] = useSearchParams();
@@ -61,9 +62,8 @@ const DefinePasswordPage = () => {
       )}
 
       <Box component="form" onSubmit={handleSubmit}>
-        <TextField
+        <PasswordField
           label="Nova senha"
-          type="password"
           variant="outlined"
           fullWidth
           margin="normal"
@@ -71,9 +71,8 @@ const DefinePasswordPage = () => {
           onChange={(e) => setNovaSenha(e.target.value)}
           required
         />
-        <TextField
+        <PasswordField
           label="Confirmar senha"
-          type="password"
           variant="outlined"
           fullWidth
           margin="normal"

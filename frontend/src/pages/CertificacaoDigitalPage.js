@@ -18,6 +18,7 @@ import {
 } from '@mui/material';
 import { VerifiedUser, Save, UploadFile } from '@mui/icons-material';
 import api from '../services/api';
+import PasswordField from '../components/PasswordField';
 
 function CertificacaoDigitalPage() {
   const [config, setConfig] = useState(null);
@@ -152,10 +153,9 @@ function CertificacaoDigitalPage() {
                   value={form.client_id}
                   onChange={set('client_id')}
                 />
-                <TextField
+                <PasswordField
                   size="small"
                   label="Client Secret"
-                  type="password"
                   value={form.client_secret}
                   placeholder={config ? '(deixe vazio para manter o atual)' : ''}
                   onChange={set('client_secret')}

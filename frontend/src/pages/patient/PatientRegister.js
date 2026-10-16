@@ -22,6 +22,7 @@ import {
 import CloseIcon from '@mui/icons-material/Close';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
+import PasswordField from '../../components/PasswordField';
 import PrivacyPolicy from '../../components/PrivacyPolicy';
 
 import useNotifier from '../../hooks/useNotifier';
@@ -195,10 +196,9 @@ const PatientRegister = () => {
                             sx={{ mb: 2 }}
                         />
 
-                        <TextField
+                        <PasswordField
                             fullWidth
                             label="Senha"
-                            type="password"
                             value={senha}
                             onChange={(e) => setSenha(e.target.value)}
                             required
@@ -206,10 +206,9 @@ const PatientRegister = () => {
                             sx={{ mb: 2 }}
                         />
 
-                        <TextField
+                        <PasswordField
                             fullWidth
                             label="Confirmar Senha"
-                            type="password"
                             value={confirmarSenha}
                             onChange={(e) => setConfirmarSenha(e.target.value)}
                             required

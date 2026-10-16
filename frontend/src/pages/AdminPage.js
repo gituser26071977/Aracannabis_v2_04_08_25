@@ -48,6 +48,7 @@ import { useNavigate } from 'react-router-dom';
 
 import useNotifier from '../hooks/useNotifier';
 import useConfirm from '../hooks/useConfirm';
+import PasswordField from '../components/PasswordField';
 // --- HELPER FUNCTIONS ---
 
 function calculateDaysRemaining(endDate) {
@@ -777,10 +778,9 @@ function UserCreateDialog({ open, onClose, onSuccess }) {
                 required
                 fullWidth
               />
-              <TextField
+              <PasswordField
                 label="Senha"
                 name="senha"
-                type="password"
                 value={formData.senha}
                 onChange={handleChange}
                 required

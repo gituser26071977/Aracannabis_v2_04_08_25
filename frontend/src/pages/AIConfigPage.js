@@ -46,6 +46,7 @@ import {
   Edit as EditIcon
 } from '@mui/icons-material';
 import { aiConfigService, aiManagementService } from '../services/api';
+import PasswordField from '../components/PasswordField';
 
 function AIConfigPage() {
   const [providers, setProviders] = useState({});
@@ -574,10 +575,9 @@ function AIConfigPage() {
 
                   {providers[selectedProvider].requires_api_key && (
                     <Grid item xs={12}>
-                      <TextField
+                      <PasswordField
                         fullWidth
                         label="API Key"
-                        type="password"
                         value={apiKey}
                         onChange={(e) => setApiKey(e.target.value)}
                         placeholder="Insira sua API key..."
@@ -718,11 +718,10 @@ function AIConfigPage() {
                         </Select>
                       </FormControl>
                     )}
-                    <TextField
+                    <PasswordField
                       fullWidth
                       size="small"
                       label="API Key (opcional)"
-                      type="password"
                       value={visionApiKey}
                       onChange={(e) => setVisionApiKey(e.target.value)}
                       placeholder="Deixe em branco para usar a chave salva"
@@ -837,11 +836,10 @@ function AIConfigPage() {
                         </Select>
                       </FormControl>
                     )}
-                    <TextField
+                    <PasswordField
                       fullWidth
                       size="small"
                       label="API Key (opcional)"
-                      type="password"
                       value={multimodalApiKey}
                       onChange={(e) => setMultimodalApiKey(e.target.value)}
                       placeholder="Deixe em branco para usar a chave salva"

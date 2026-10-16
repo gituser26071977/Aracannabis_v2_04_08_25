@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Button, TextField, Paper, Typography, Box, Alert, Link as MuiLink } from '@mui/material';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import PasswordField from './PasswordField';
 
 /**
  * SimpleLogin — rota de teste de diagnóstico (apenas em dev/staging).
@@ -60,9 +61,8 @@ function SimpleLogin() {
           autoComplete="username"
           required
         />
-        <TextField
+        <PasswordField
           label="Senha"
-          type="password"
           variant="outlined"
           fullWidth
           margin="normal"
