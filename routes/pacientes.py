@@ -658,12 +658,15 @@ def excluir_paciente(paciente_id):
     current_user_id = get_jwt_identity()
     profissional_id = int(current_user_id)
     
-    # Verificar acesso completo (apenas responsável pode excluir)
+    # Verificar acesso completo (responsável ou admin/superadmin podem excluir)
     tem_acesso, eh_responsavel, nivel_acesso = verificar_acesso_paciente(
         profissional_id, paciente_id, 'completo'
     )
-    
-    if not tem_acesso or not eh_responsavel:
+
+    user = Profissional.query.get(profissional_id)
+    is_global_admin = bool(user and user.role in ['admin', 'superadmin'])
+
+    if not tem_acesso or (not eh_responsavel and not is_global_admin):
         return jsonify({'error': 'Apenas o profissional responsável pode excluir pacientes'}), 403
     
     paciente = carregar_paciente(profissional_id, paciente_id)
