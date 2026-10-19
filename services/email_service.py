@@ -286,3 +286,24 @@ class EmailService:
         html_body += "<p>Atenciosamente,<br>Equipe AraOS</p>"
         
         return self.send_email(email, subject, html_body)
+
+    def send_admin_registration_approved_email(self, nome, email, usuario, conselho_tipo, crm, uf_crm):
+        """Avisa a administração que um novo cadastro foi aprovado.
+
+        Destinatário configurável via CADASTRO_NOTIFY_EMAIL (default lia@agentesinteligentes.pro).
+        """
+        recipient = os.getenv('CADASTRO_NOTIFY_EMAIL', 'lia@agentesinteligentes.pro').strip()
+        if not recipient:
+            logger.warning("CADASTRO_NOTIFY_EMAIL não configurado; aviso de aprovação não enviado.")
+            return False
+
+        subject = "✅ Novo cadastro aprovado - AraOS"
+        html_body = "<p>Um novo cadastro foi aprovado no AraOS.</p>"
+        html_body += "<ul>"
+        html_body += f"<li><strong>Nome:</strong> {nome}</li>"
+        html_body += f"<li><strong>Email:</strong> {email}</li>"
+        html_body += f"<li><strong>Usuário:</strong> {usuario}</li>"
+        html_body += f"<li><strong>Conselho:</strong> {conselho_tipo or '-'}</li>"
+        html_body += f"<li><strong>Registro:</strong> {crm or '-'}/{uf_crm or '-'}</li>"
+        html_body += "</ul>"
+        return self.send_email(recipient, subject, html_body)

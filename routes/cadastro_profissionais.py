@@ -343,6 +343,19 @@ def processar_aprovacao(solicitacao_id):
         except Exception as e:
             current_app.logger.error(f"Erro ao enviar email/telegram de aprovação para {solicitacao.email}: {e}")
 
+        # Aviso à administração (lia@) sobre a aprovação do cadastro
+        try:
+            email_service.send_admin_registration_approved_email(
+                solicitacao.nome,
+                solicitacao.email,
+                usuario,
+                conselho_tipo,
+                solicitacao.crm,
+                solicitacao.uf_crm,
+            )
+        except Exception as e:
+            current_app.logger.error(f"Erro ao enviar aviso de aprovação para a administração: {e}")
+
         return {'success': True, 'message': 'Aprovado'}, 200
 
     except Exception as e:
