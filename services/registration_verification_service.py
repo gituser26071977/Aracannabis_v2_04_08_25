@@ -60,46 +60,81 @@ class RegistrationVerificationService:
         return final_result
     
     def _verify_crm(self, solicitacao: SolicitacoesCadastro) -> dict:
-        """Verifica CRM com validacao externa no conselho"""
-        results = {}
-        
-        # Validar formato
-        format_check = validate_crm_format(solicitacao.crm, solicitacao.uf_crm)
-        results['format'] = format_check
-        
-        # Verificar duplicata
+        """Verifica o registro profissional conforme o TIPO de conselho.
+
+        Antes validava sempre como CRM (médico). Agora roteia pelo
+        `conselho_tipo` da solicitação:
+          - CRM      → validação externa no CFM (CRMValidatorService)
+          - CREFITO  → validação CREFITO (fisioterapia / terapia ocupacional)
+          - demais   → validação de formato + revisão manual (validação
+                       externa ainda não implementada para o conselho)
+        """
+        from services.conselho_validator import (
+            normalizar_tipo_conselho,
+            validar_conselho,
+            CONSELHO_CRM,
+            CONSELHO_CREFITO,
+        )
+
+        tipo = normalizar_tipo_conselho(
+            getattr(solicitacao, "conselho_tipo", None) or CONSELHO_CRM
+        )
+
+        results = {"conselho_tipo": tipo}
+
+        # Validar formato conforme o tipo de conselho
+        fmt = validar_conselho(solicitacao.crm, solicitacao.uf_crm, tipo)
+        format_check = {
+            "valid": fmt["valido"],
+            "confidence": 0.9 if fmt["valido"] else 0.4,
+            "reason": "; ".join(fmt["erros"]) if fmt["erros"] else "Formato válido",
+        }
+        results["format"] = format_check
+
+        # Verificar duplicidade (número + UF)
         duplicate_check = check_duplicate_crm(solicitacao.crm, solicitacao.uf_crm, exclude_id=solicitacao.id)
-        results['duplicate'] = duplicate_check
-        
-        # Validar no conselho via CRMValidatorService
+        results["duplicate"] = duplicate_check
+
+        # Validar externamente conforme o conselho
         external_check = {"valid": False, "confidence": 0.0}
         try:
-            from services.crm_validator_service import CRMValidatorService
-            ext_result = CRMValidatorService.validate_crm(solicitacao.crm, solicitacao.uf_crm)
+            if tipo == CONSELHO_CREFITO:
+                from services.crefito_validator_service import CREFITOValidatorService
+                ext_result = CREFITOValidatorService.validate_crefito(solicitacao.crm, solicitacao.uf_crm)
+            elif tipo == CONSELHO_CRM:
+                from services.crm_validator_service import CRMValidatorService
+                ext_result = CRMValidatorService.validate_crm(solicitacao.crm, solicitacao.uf_crm)
+            else:
+                ext_result = {
+                    "status": "not_supported",
+                    "error": f"Validação externa para o conselho {tipo} ainda não implementada — revisão manual.",
+                }
+
+            status = ext_result.get("status")
             external_check = {
-                "valid": ext_result.get("status") in ("validated", "possible_match"),
-                "confidence": 0.8 if ext_result.get("status") == "validated" else 0.4,
+                "valid": status in ("validated", "possible_match"),
+                "confidence": 0.8 if status == "validated" else (0.4 if status == "possible_match" else 0.0),
                 "details": ext_result,
-                "recommendation": "approve" if ext_result.get("status") in ("validated", "possible_match") else "review",
+                "recommendation": "approve" if status in ("validated", "possible_match") else "review",
             }
             results["external"] = external_check
         except Exception as e:
-            logger.warning(f"Validacao externa CRM indisponivel: {e}")
+            logger.warning(f"Validacao externa ({tipo}) indisponivel: {e}")
             results["external"] = {"valid": False, "confidence": 0.0, "error": str(e)}
-        
+
         # Determinar se é válido
-        is_valid = format_check['valid'] and not duplicate_check['duplicate']
+        is_valid = format_check["valid"] and not duplicate_check["duplicate"]
         confidence = min(
-            format_check['confidence'],
-            duplicate_check['confidence'],
+            format_check["confidence"],
+            duplicate_check["confidence"],
             external_check.get("confidence", 0.5),
         )
-        
+
         return {
             "valid": is_valid,
             "confidence": confidence,
             "details": results,
-            "recommendation": "approve" if is_valid else "reject"
+            "recommendation": "approve" if is_valid else "reject",
         }
     
     def _verify_email(self, solicitacao: SolicitacoesCadastro) -> dict:
@@ -180,7 +215,8 @@ class RegistrationVerificationService:
                 "email": solicitacao.email,
                 "crm": solicitacao.crm,
                 "uf": solicitacao.uf_crm,
-                "especialidade": solicitacao.especialidade
+                "especialidade": solicitacao.especialidade,
+                "conselho_tipo": crm_result.get("details", {}).get("conselho_tipo"),
             },
             "validacoes": {
                 "crm": crm_result,
@@ -189,15 +225,29 @@ class RegistrationVerificationService:
             }
         }
 
-        system_prompt = """Você é um Auditor de Conformidade Médica da Arapath. 
-        Analise os dados de validação técnica e decida se o profissional deve ser aprovado, 
+        system_prompt = """Você é um Auditor de Conformidade de Cadastros Profissionais da Arapath.
+        Analise os dados de validação técnica e decida se o profissional deve ser aprovado,
         revisado manualmente ou rejeitado.
-        
+
+        IMPORTANTE — o profissional pode ter DIFERENTES conselhos de classe:
+          - CRM     → Médico
+          - CREFITO → Fisioterapeuta / Terapeuta Ocupacional
+          - CRP     → Psicólogo
+          - COREN   → Enfermeiro
+          - CRN     → Nutricionista
+          - CRFa    → Fonoaudiólogo
+        Valide o número contra o conselho declarado (campo "conselho_tipo").
+        NUNCA aponte incompatibilidade apenas porque o profissional NÃO tem CRM —
+        fisioterapeutas usam CREFITO, psicólogos usam CRP, etc.
+
         CRITÉRIOS DE AUTO-APROVAÇÃO:
-        1. CRM válido e sem duplicidade.
+        1. Número de registro válido (formato correto para o tipo de conselho) e sem duplicidade.
         2. Email válido, corporativo/comum (não descartável) e sem duplicidade.
         3. Risco de fraude baixo.
         4. Alta confiança nas ferramentas técnicas (>85%).
+        Se a validação externa do conselho não estiver disponível (ex.: o portal do
+        CREFITO exige verificação humana/CAPTCHA), recomende "manual_review" — NUNCA
+        "reject" — e explique que falta verificação externa, sem inventar reprovação.
 
         Retorne EXCLUSIVAMENTE um JSON no seguinte formato:
         {
@@ -256,6 +306,7 @@ class RegistrationVerificationService:
         return {
             "auto_approve": auto_approve,
             "overall_confidence": ai_decision.get("confidence_score", 0.0),
+            "conselho_tipo": crm_result.get("details", {}).get("conselho_tipo"),
             "crm_validation": crm_result,
             "email_validation": email_result,
             "fraud_detection": fraud_result,
