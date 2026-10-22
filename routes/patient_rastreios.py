@@ -15,6 +15,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import (
     db,
     Paciente,
+    Profissional,
     PHQ9Teste,
     GAD7Teste,
     BeckDepressionTeste,
@@ -433,7 +434,7 @@ def _alertar_risco(paciente, tipo, teste, nivel):
             prof = getattr(paciente, "profissional_responsavel", None)
             destino = getattr(prof, "email", None) if prof else None
 
-        copia = os.environ.get("ALERTA_RASTREIO_COPIA") or "anderson@agentesinteligentes.pro"
+        copia = os.environ.get("ALERTA_RASTREIO_COPIA") or _email_admin()
 
         destinatarios = []
         for endereco in (destino, copia):
@@ -513,6 +514,18 @@ def _alertar_risco(paciente, tipo, teste, nivel):
                 logger.exception("Falha ao enviar alerta de risco por WhatsApp")
     except Exception:
         logger.exception("Erro inesperado ao processar alerta de risco de rastreio")
+
+
+def _email_admin():
+    """Email do 1o admin ativo (copia fixa dos alertas de risco)."""
+    try:
+        admin = (Profissional.query
+                 .filter_by(role="admin", status_conta="active")
+                 .order_by(Profissional.id).first())
+        return getattr(admin, "email", None) if admin else None
+    except Exception:
+        logger.exception("Falha ao resolver o email do admin (copia do alerta)")
+        return None
 
 
 @patient_rastreios_bp.route('/me/rastreios', methods=['GET'])
