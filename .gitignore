@@ -157,3 +157,10 @@ tests/e2e/screenshots/
 /SPRINT_*.md
 /proposta_*.md
 .venv
+
+# --- segredos e artefatos locais do host (21/10/2026) ---
+.env.production
+.env.araflow
+.env.production.bak_*
+.env.*.bak_*
+models/
