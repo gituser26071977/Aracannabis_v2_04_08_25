@@ -433,7 +433,16 @@ def _alertar_risco(paciente, tipo, teste, nivel):
             prof = getattr(paciente, "profissional_responsavel", None)
             destino = getattr(prof, "email", None) if prof else None
 
-        if not destino:
+        copia = os.environ.get("ALERTA_RASTREIO_COPIA") or "anderson@agentesinteligentes.pro"
+
+        destinatarios = []
+        for endereco in (destino, copia):
+            if not endereco:
+                continue
+            if endereco.lower() not in [d.lower() for d in destinatarios]:
+                destinatarios.append(endereco)
+
+        if not destinatarios:
             logger.warning(
                 "Alerta de risco (%s/%s): nenhum destinatario configurado "
                 "(ALERTA_RASTREIO_EMAIL vazio e profissional sem email).",
@@ -472,18 +481,26 @@ def _alertar_risco(paciente, tipo, teste, nivel):
         try:
             from services.email_service import EmailService
             email_service = EmailService()
-            enviado = email_service.send_email(destino, assunto, html_body, text_body)
-            if getattr(email_service, "development_mode", False):
-                logger.warning(
-                    "Alerta de risco: EmailService em modo desenvolvimento; "
-                    "email NAO foi entregue de fato (destino=%s).", destino,
-                )
-            elif enviado:
-                logger.info("Alerta de risco enviado por email para %s", destino)
-            else:
-                logger.warning(
-                    "Alerta de risco: falha ao enviar email (destino=%s).", destino,
-                )
+            for endereco in destinatarios:
+                try:
+                    enviado = email_service.send_email(
+                        endereco, assunto, html_body, text_body
+                    )
+                    if getattr(email_service, "development_mode", False):
+                        logger.warning(
+                            "Alerta de risco: EmailService em modo desenvolvimento; "
+                            "email NAO foi entregue de fato (destino=%s).", endereco,
+                        )
+                    elif enviado:
+                        logger.info("Alerta de risco enviado por email para %s", endereco)
+                    else:
+                        logger.warning(
+                            "Alerta de risco: falha ao enviar email (destino=%s).", endereco,
+                        )
+                except Exception:
+                    logger.warning(
+                        "Alerta de risco: falha ao enviar email (destino=%s).", endereco,
+                    )
         except Exception:
             logger.exception("Falha ao enviar alerta de risco por email")
 
