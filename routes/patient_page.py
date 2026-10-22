@@ -100,6 +100,16 @@ _PAGE = r"""<!doctype html>
       <h2>Minhas medicações</h2>
       <div id="medicacoes"></div>
     </div>
+
+    <div class="card">
+      <h2>Escalas de acompanhamento</h2>
+      <p class="muted">Responda você mesmo(a). As respostas ficam disponíveis para o seu profissional de saúde.</p>
+      <div id="rastreiosCatalogo"></div>
+      <div id="rastreioArea" class="hide"></div>
+      <div id="rastreioResultado"></div>
+      <h2 style="margin-top:16px">Histórico</h2>
+      <div id="rastreioHistorico"></div>
+    </div>
   </div>
 </div>
 
@@ -211,6 +221,127 @@ async function carregar(){
       return "<div class='item'><b>"+nome+"</b>"+pos+"</div>";
     }).join("") : "<p class='muted'>Nenhuma medicação registrada ainda.</p>";
   }catch(e){ el("medicacoes").innerHTML = "<p class='muted'>Medicações indisponíveis no momento.</p>"; }
+
+  carregarRastreios();
+}
+
+let rastreioCatalogo = {}, rastreioAtual = null;
+
+function nivelClasse(n){ return "pill"; }
+
+async function carregarRastreios(){
+  try{
+    const d = await api("/patient-portal/me/rastreios");
+    rastreioCatalogo = {};
+    (d.catalogo||[]).forEach(c => { rastreioCatalogo[c.chave] = c; });
+    const cat = d.catalogo || [];
+    el("rastreiosCatalogo").innerHTML = cat.length ? cat.map(c => {
+      const aviso = (c.publico === "responsavel")
+        ? "<div class='muted' style='margin:4px 0'>"+ (c.aviso || "Este questionário deve ser respondido pelo pai/mãe/responsável, pensando na criança.") +" <span class='pill'>respondido pelo responsável</span></div>"
+        : "";
+      return "<div class='item'><b>"+c.nome+"</b>"+
+      "<span class='muted'>"+c.descricao+" · "+c.n_itens+" itens</span>"+
+      aviso+
+      "<button data-tipo='"+c.chave+"' class='btnRastreio'>Responder agora</button></div>";
+    }).join("") : "<p class='muted'>Nenhuma escala disponível no momento.</p>";
+    document.querySelectorAll(".btnRastreio").forEach(b => {
+      b.onclick = () => abrirRastreio(b.getAttribute("data-tipo"));
+    });
+    renderHistoricoRastreios(d.historico||[]);
+  }catch(e){
+    el("rastreiosCatalogo").innerHTML = "<p class='muted'>Escalas indisponíveis no momento.</p>";
+  }
+}
+
+function renderHistoricoRastreios(hist){
+  if(!hist.length){ el("rastreioHistorico").innerHTML = "<p class='muted'>Nenhum resultado registrado ainda.</p>"; return; }
+  el("rastreioHistorico").innerHTML = hist.map(h => {
+    const nivel = h.nivel_label || h.nivel || "";
+    const pontos = (h.pontuacao_total === null || h.pontuacao_total === undefined)
+      ? "Desatenção: <b>"+(h.pontos_desatencao ?? 0)+"</b>/9 · Hiperatividade: <b>"+(h.pontos_hiperatividade ?? 0)+"</b>/9"
+      : "Pontuação: <b>"+h.pontuacao_total+"</b>/"+(h.pontuacao_maxima||"");
+    return "<div class='item'><b>"+(h.nome||h.tipo)+"</b>"+
+      "<span class='muted'>"+(h.data_realizacao?fmtBR(h.data_realizacao)+" · ":"")+
+      pontos+"</span>"+
+      "<div><span class='"+nivelClasse(h.nivel)+"'>"+nivel+"</span></div></div>";
+  }).join("");
+}
+
+async function abrirRastreio(tipo){
+  el("rastreioResultado").innerHTML = "";
+  el("rastreioArea").innerHTML = "<p class='muted'>Carregando...</p>";
+  show("rastreioArea");
+  try{
+    const d = await api("/patient-portal/me/rastreios/"+encodeURIComponent(tipo));
+    rastreioAtual = { dados:d, respostas:{}, idx:0 };
+    renderPerguntaRastreio();
+  }catch(e){
+    el("rastreioArea").innerHTML = "<div class='erro'>"+e.message+"</div>";
+  }
+}
+
+function renderPerguntaRastreio(){
+  const s = rastreioAtual;
+  const pergunta = s.dados.perguntas[s.idx];
+  const total = s.dados.perguntas.length;
+  const opcoes = s.dados.opcoes.map(o =>
+    "<label style='display:flex;justify-content:space-between;align-items:center;border:1px solid var(--borda);border-radius:10px;padding:10px 12px;margin:6px 0;cursor:pointer'>"+
+    "<span>"+o.label+"</span><input type='radio' name='rastreioOpt' value='"+o.valor+"' "+
+    (s.respostas[pergunta.campo]===o.valor?"checked":"")+"></label>"
+  ).join("");
+  const ultimo = s.idx === total-1;
+  el("rastreioArea").innerHTML =
+    "<div class='muted' style='margin-bottom:8px'>"+s.dados.nome+" · Item "+(s.idx+1)+" de "+total+"</div>"+
+    "<div class='item'><b>"+pergunta.numero+". "+pergunta.texto+"</b></div>"+
+    "<div class='muted' style='margin:6px 0 10px'>"+s.dados.instrucoes+"</div>"+
+    "<div id='rastreioOpcoes'>"+opcoes+"</div>"+
+    "<div class='row' style='margin-top:12px'>"+
+    (s.idx>0?"<div><button id='btnRastreioVoltar' style='background:#667'>Voltar</button></div>":"")+
+    "<div><button id='btnRastreioProx'>"+(ultimo?"Enviar respostas":"Próxima")+"</button></div>"+
+    "<div><button id='btnRastreioCancelar' style='background:#667'>Cancelar</button></div>"+
+    "</div>";
+
+  document.querySelectorAll("input[name='rastreioOpt']").forEach(r => {
+    r.onchange = () => { s.respostas[pergunta.campo] = parseInt(r.value); };
+  });
+  if(s.idx>0) el("btnRastreioVoltar").onclick = () => { s.idx--; renderPerguntaRastreio(); };
+  el("btnRastreioCancelar").onclick = () => { rastreioAtual = null; hide("rastreioArea"); el("rastreioArea").innerHTML=""; };
+  el("btnRastreioProx").onclick = () => {
+    if(s.respostas[pergunta.campo]===undefined){ msg("Escolha uma opção para continuar.","erro"); return; }
+    if(!ultimo){ s.idx++; renderPerguntaRastreio(); return; }
+    enviarRastreio();
+  };
+}
+
+async function enviarRastreio(){
+  const s = rastreioAtual;
+  if(!s) return;
+  if(s.dados.perguntas.some(p => s.respostas[p.campo]===undefined)){ msg("Responda todos os itens.","erro"); return; }
+  const btn = el("btnRastreioProx");
+  if(btn) btn.disabled = true;
+  try{
+    const d = await api("/patient-portal/me/rastreios/"+encodeURIComponent(s.dados.chave),{
+      method:"POST", body:JSON.stringify(s.respostas)
+    });
+    const r = d.resultado || {};
+    const corpo = (r.pontos_desatencao !== undefined || r.pontos_hiperatividade !== undefined)
+      ? "Desatenção: <b>"+(r.pontos_desatencao ?? 0)+"</b> de 9<br>"+
+        "Hiperatividade/Impulsividade: <b>"+(r.pontos_hiperatividade ?? 0)+"</b> de 9<br>"+
+        "Nível: <b>"+(r.nivel_label||r.nivel||"")+"</b>"
+      : "Pontuação: <b>"+r.pontuacao_total+"</b>/"+(r.pontuacao_maxima||"")+"<br>"+
+        "Nível: <b>"+(r.nivel_label||r.nivel||"")+"</b>";
+    el("rastreioResultado").innerHTML =
+      "<div class='ok' style='margin-top:12px'><b>Resultado — "+s.dados.nome+"</b><br>"+
+      corpo+"</div>";
+    rastreioAtual = null;
+    hide("rastreioArea");
+    el("rastreioArea").innerHTML = "";
+    msg("Respostas enviadas. Obrigado!","ok");
+    carregarRastreios();
+  }catch(e){
+    msg(e.message,"erro");
+    if(btn) btn.disabled = false;
+  }
 }
 </script>
 </body>
