@@ -417,6 +417,13 @@ def create_app(config_obj=None):
     app.register_blueprint(patient_auth_bp, url_prefix="/api/patient-auth")
     app.register_blueprint(patient_portal_bp, url_prefix="/api/patient-portal")
 
+    # Patient OTP (código no WhatsApp) + Página do Paciente (portal)
+    from routes.patient_otp import patient_otp_bp
+    from routes.patient_page import patient_page_bp
+
+    app.register_blueprint(patient_otp_bp, url_prefix="/api/patient-auth")
+    app.register_blueprint(patient_page_bp)
+
     # [NEW] Ara Intake → AraOS (Clinical Events Fase 0)
     from routes.clinical_intake import clinical_intake_bp
 

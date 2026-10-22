@@ -8,7 +8,7 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from models import db, Paciente, Consulta, Prescricao, Exame, Evolucao
 from datetime import datetime
-from sqlalchemy import desc
+from sqlalchemy import desc, text
 
 patient_portal_bp = Blueprint('patient_portal', __name__)
 
@@ -127,7 +127,7 @@ def get_my_exams():
     
     exames = Exame.query.filter_by(
         paciente_id=paciente_id
-    ).order_by(desc(Exame.data)).all()
+    ).order_by(desc(Exame.data_exame)).all()
     
     return jsonify({
         'total': len(exames),
@@ -267,3 +267,59 @@ def change_password():
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': f'Erro ao alterar senha: {str(e)}'}), 500
+
+
+# ─── Registros informados PELO paciente (sintomas/diário) ──────────────────
+def _ensure_registros_table():
+    db.session.execute(text(
+        """
+        CREATE TABLE IF NOT EXISTS patient_registros (
+            id SERIAL PRIMARY KEY,
+            paciente_id INTEGER NOT NULL,
+            data DATE NOT NULL DEFAULT CURRENT_DATE,
+            sintoma VARCHAR(200),
+            intensidade INTEGER,
+            observacao TEXT,
+            created_at TIMESTAMP NOT NULL DEFAULT NOW()
+        )
+        """
+    ))
+    db.session.commit()
+
+
+@patient_portal_bp.route('/me/registros', methods=['GET'])
+@jwt_required()
+def list_my_registros():
+    error = require_patient()
+    if error: return error
+    _ensure_registros_table()
+    paciente_id = get_jwt_identity()
+    rows = db.session.execute(text(
+        "SELECT id, data, sintoma, intensidade, observacao FROM patient_registros "
+        "WHERE paciente_id=:p ORDER BY id DESC LIMIT 100"
+    ), {"p": paciente_id}).mappings().all()
+    return jsonify({'total': len(rows), 'registros': [dict(r) for r in rows]}), 200
+
+
+@patient_portal_bp.route('/me/registro', methods=['POST'])
+@jwt_required()
+def add_my_registro():
+    error = require_patient()
+    if error: return error
+    _ensure_registros_table()
+    paciente_id = get_jwt_identity()
+    data = request.get_json(silent=True) or {}
+    sintoma = (data.get('sintoma') or '').strip()[:200] or None
+    observacao = (data.get('observacao') or '').strip() or None
+    try:
+        intensidade = int(data.get('intensidade')) if data.get('intensidade') is not None else None
+    except (ValueError, TypeError):
+        intensidade = None
+    if not sintoma and not observacao:
+        return jsonify({'error': 'Informe ao menos o sintoma ou uma observação.'}), 400
+    db.session.execute(text(
+        "INSERT INTO patient_registros (paciente_id, sintoma, intensidade, observacao) "
+        "VALUES (:p, :s, :i, :o)"
+    ), {"p": paciente_id, "s": sintoma, "i": intensidade, "o": observacao})
+    db.session.commit()
+    return jsonify({'status': 'ok', 'message': 'Registro salvo.'}), 201
