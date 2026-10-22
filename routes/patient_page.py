@@ -235,11 +235,15 @@ async function carregarRastreios(){
     rastreioCatalogo = {};
     (d.catalogo||[]).forEach(c => { rastreioCatalogo[c.chave] = c; });
     const cat = d.catalogo || [];
-    el("rastreiosCatalogo").innerHTML = cat.length ? cat.map(c =>
-      "<div class='item'><b>"+c.nome+"</b>"+
+    el("rastreiosCatalogo").innerHTML = cat.length ? cat.map(c => {
+      const aviso = (c.publico === "responsavel")
+        ? "<div class='muted' style='margin:4px 0'>"+ (c.aviso || "Este questionário deve ser respondido pelo pai/mãe/responsável, pensando na criança.") +" <span class='pill'>respondido pelo responsável</span></div>"
+        : "";
+      return "<div class='item'><b>"+c.nome+"</b>"+
       "<span class='muted'>"+c.descricao+" · "+c.n_itens+" itens</span>"+
-      "<button data-tipo='"+c.chave+"' class='btnRastreio'>Responder agora</button></div>"
-    ).join("") : "<p class='muted'>Nenhuma escala disponível no momento.</p>";
+      aviso+
+      "<button data-tipo='"+c.chave+"' class='btnRastreio'>Responder agora</button></div>";
+    }).join("") : "<p class='muted'>Nenhuma escala disponível no momento.</p>";
     document.querySelectorAll(".btnRastreio").forEach(b => {
       b.onclick = () => abrirRastreio(b.getAttribute("data-tipo"));
     });
@@ -253,9 +257,12 @@ function renderHistoricoRastreios(hist){
   if(!hist.length){ el("rastreioHistorico").innerHTML = "<p class='muted'>Nenhum resultado registrado ainda.</p>"; return; }
   el("rastreioHistorico").innerHTML = hist.map(h => {
     const nivel = h.nivel_label || h.nivel || "";
+    const pontos = (h.pontuacao_total === null || h.pontuacao_total === undefined)
+      ? "Desatenção: <b>"+(h.pontos_desatencao ?? 0)+"</b>/9 · Hiperatividade: <b>"+(h.pontos_hiperatividade ?? 0)+"</b>/9"
+      : "Pontuação: <b>"+h.pontuacao_total+"</b>/"+(h.pontuacao_maxima||"");
     return "<div class='item'><b>"+(h.nome||h.tipo)+"</b>"+
       "<span class='muted'>"+(h.data_realizacao?fmtBR(h.data_realizacao)+" · ":"")+
-      "Pontuação: <b>"+h.pontuacao_total+"</b>/"+(h.pontuacao_maxima||"")+"</span>"+
+      pontos+"</span>"+
       "<div><span class='"+nivelClasse(h.nivel)+"'>"+nivel+"</span></div></div>";
   }).join("");
 }
@@ -317,10 +324,15 @@ async function enviarRastreio(){
       method:"POST", body:JSON.stringify(s.respostas)
     });
     const r = d.resultado || {};
+    const corpo = (r.pontos_desatencao !== undefined || r.pontos_hiperatividade !== undefined)
+      ? "Desatenção: <b>"+(r.pontos_desatencao ?? 0)+"</b> de 9<br>"+
+        "Hiperatividade/Impulsividade: <b>"+(r.pontos_hiperatividade ?? 0)+"</b> de 9<br>"+
+        "Nível: <b>"+(r.nivel_label||r.nivel||"")+"</b>"
+      : "Pontuação: <b>"+r.pontuacao_total+"</b>/"+(r.pontuacao_maxima||"")+"<br>"+
+        "Nível: <b>"+(r.nivel_label||r.nivel||"")+"</b>";
     el("rastreioResultado").innerHTML =
       "<div class='ok' style='margin-top:12px'><b>Resultado — "+s.dados.nome+"</b><br>"+
-      "Pontuação: <b>"+r.pontuacao_total+"</b>/"+(r.pontuacao_maxima||"")+"<br>"+
-      "Nível: <b>"+(r.nivel_label||r.nivel||"")+"</b></div>";
+      corpo+"</div>";
     rastreioAtual = null;
     hide("rastreioArea");
     el("rastreioArea").innerHTML = "";
