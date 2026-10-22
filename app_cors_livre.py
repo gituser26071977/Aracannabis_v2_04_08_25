@@ -413,9 +413,11 @@ def create_app(config_obj=None):
     # Patient Portal (NEW)
     from routes.patient_auth import patient_auth_bp
     from routes.patient_portal import patient_portal_bp
+    from routes.patient_rastreios import patient_rastreios_bp
 
     app.register_blueprint(patient_auth_bp, url_prefix="/api/patient-auth")
     app.register_blueprint(patient_portal_bp, url_prefix="/api/patient-portal")
+    app.register_blueprint(patient_rastreios_bp, url_prefix="/api/patient-portal")
 
     # Patient OTP (código no WhatsApp) + Página do Paciente (portal)
     from routes.patient_otp import patient_otp_bp
