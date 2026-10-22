@@ -60,3 +60,9 @@ Backup/
 .ruff_cache/
 *.log
 nohup.out
+
+# segredos: nao embutir credenciais na imagem — adicionado 22/10/2026
+.env.production
+.env.production.*
+.env.araflow
+.env.staging
