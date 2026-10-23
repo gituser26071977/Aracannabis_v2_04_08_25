@@ -327,9 +327,39 @@ def add_my_registro():
 
 
 # ─── Check-in do paciente: sintomas em 1 toque + observacao por audio ───────
+def _http_transcrever(url, path):
+    """POST multipart (stdlib) do audio para o servico local de transcricao."""
+    import json as _json
+    import os as _os
+    import urllib.request as _url
+    import uuid as _uuid
+    boundary = "----hermes" + _uuid.uuid4().hex
+    with open(path, "rb") as fh:
+        conteudo = fh.read()
+    nome = _os.path.basename(path)
+    corpo = b""
+    corpo += ("--%s\r\n" % boundary).encode()
+    corpo += ('Content-Disposition: form-data; name="audio"; filename="%s"\r\n' % nome).encode()
+    corpo += b"Content-Type: application/octet-stream\r\n\r\n"
+    corpo += conteudo + b"\r\n"
+    corpo += ("--%s--\r\n" % boundary).encode()
+    req = _url.Request(url.rstrip("/") + "/transcrever", data=corpo,
+                       headers={"Content-Type": "multipart/form-data; boundary=%s" % boundary})
+    with _url.urlopen(req, timeout=180) as r:
+        return (_json.loads(r.read().decode("utf-8", "replace")).get("texto") or "").strip()
+
+
 def _transcrever_local(path, modelo="small"):
     """Transcricao LOCAL (LGPD) — o audio e descartado logo apos.
     Retorna o texto, ou None se o motor de transcricao nao estiver disponivel."""
+    import os as _os
+    url = _os.environ.get("TRANSCRICAO_URL")
+    if url:
+        try:
+            texto = _http_transcrever(url, path)
+            return texto if texto else None
+        except Exception:
+            return None
     global _WHISPER_CACHE
     try:
         from faster_whisper import WhisperModel
