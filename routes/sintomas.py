@@ -252,23 +252,22 @@ def registrar_sintoma_personalizado():
         return jsonify({'error': 'Este sintoma já existe na lista padrão'}), 400
     
     try:
-        # Verificar se já existe na tabela de personalizados para este paciente
+        # Catálogo GLOBAL de sintomas personalizados (compartilhado pelo consultório)
         from sqlalchemy import text
         result = db.session.execute(text("""
             SELECT id FROM sintomas_personalizados 
-            WHERE nome = :nome AND paciente_id = :paciente_id
-        """), {'nome': nome_sintoma, 'paciente_id': paciente_id})
+            WHERE nome = :nome
+        """), {'nome': nome_sintoma})
         
         if result.fetchone():
-            return jsonify({'error': 'Este sintoma já existe para este paciente'}), 400
+            return jsonify({'error': 'Este sintoma já existe'}), 400
         
         # Inserir na tabela de sintomas personalizados
         db.session.execute(text("""
-            INSERT INTO sintomas_personalizados (nome, paciente_id) 
-            VALUES (:nome, :paciente_id)
+            INSERT INTO sintomas_personalizados (nome) 
+            VALUES (:nome)
         """), {
-            'nome': nome_sintoma,
-            'paciente_id': paciente_id
+            'nome': nome_sintoma
         })
         
         # Registrar atividade
@@ -288,7 +287,8 @@ def registrar_sintoma_personalizado():
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': f'Erro ao registrar sintoma personalizado: {str(e)}'}), 500
+        print(f"Erro ao registrar sintoma personalizado: {str(e)}")
+        return jsonify({'error': 'Erro ao registrar sintoma personalizado'}), 500
 
 @sintomas_bp.route('/sintoma-personalizado/<int:sintoma_id>', methods=['DELETE'])
 @jwt_required()
