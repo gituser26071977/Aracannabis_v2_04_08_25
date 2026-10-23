@@ -41,6 +41,16 @@ _PAGE = r"""<!doctype html>
   .ok{background:#eafaf0;color:#17623b;border:1px solid #bfe8cf;border-radius:10px;padding:10px 12px;font-size:14px}
   .hide{display:none}
   canvas{max-height:260px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 4px}
+  .chip{border:1px solid var(--borda);background:#fff;color:var(--verde);border-radius:999px;padding:12px 16px;font-size:15px;font-weight:600;cursor:pointer;margin:0}
+  .chip.on{background:var(--verde);color:#fff;border-color:var(--verde)}
+  .regua{border:1px solid var(--borda);border-radius:12px;padding:10px 12px;margin:8px 0}
+  .regua .top{display:flex;justify-content:space-between;align-items:center;font-size:14px}
+  .regua input[type=range]{width:100%;height:34px}
+  .face{color:var(--cinza);font-size:13px}
+  button.ghost{background:#fff;color:var(--verde);border:1px solid var(--verde)}
+  button.rec{background:#a11;border-color:#a11}
+
 </style>
 </head>
 <body>
@@ -75,19 +85,17 @@ _PAGE = r"""<!doctype html>
 
     <div class="card">
       <h2>Como estou hoje</h2>
-      <div class="row">
-        <div>
-          <label>Sintoma / observação</label>
-          <input id="regSintoma" placeholder="Ex.: dor, sono, ansiedade...">
-        </div>
-        <div style="max-width:150px">
-          <label>Intensidade (0–10)</label>
-          <input id="regInt" type="number" min="0" max="10" value="5">
-        </div>
+      <p class="muted">Toque no que voce esta sentindo e ajuste de 0 a 10. Leva segundos.</p>
+      <div id="chips" class="chips"></div>
+      <div id="reguas"></div>
+      <label>Quer contar mais? (opcional)</label>
+      <textarea id="regObs" rows="2" placeholder="Como voce esta se sentindo..."></textarea>
+      <div class="row" style="margin-top:10px">
+        <div><button id="btnReg">Salvar</button></div>
+        <div><button id="btnAudio" class="ghost" type="button">Falar em vez de escrever</button></div>
       </div>
-      <label>Detalhes (opcional)</label>
-      <textarea id="regObs" rows="3" placeholder="Conte como está se sentindo..."></textarea>
-      <button id="btnReg">Registrar</button>
+      <div id="audioBox"></div>
+      <div id="historicoCheckin" style="margin-top:14px"></div>
     </div>
 
     <div class="card">
@@ -154,14 +162,16 @@ el("btnEntrar").onclick = async () => {
 };
 
 el("btnReg").onclick = async () => {
+  const nomes = Object.keys(selSintomas);
+  const obs = (el("regObs").value||"").trim();
+  if(!nomes.length && !obs){ msg("Toque em um sintoma ou escreva algo.","erro"); return; }
   el("btnReg").disabled = true;
   try{
-    await api("/patient-portal/me/registro",{method:"POST",body:JSON.stringify({
-      sintoma: el("regSintoma").value, intensidade: parseInt(el("regInt").value||"0"),
-      observacao: el("regObs").value
-    })});
-    msg("Registro enviado. Obrigado!","ok");
-    el("regSintoma").value=""; el("regObs").value="";
+    const sintomas = nomes.map(n => ({nome:n, intensidade: selSintomas[n]}));
+    const d = await api("/patient-portal/me/checkin",{method:"POST", body:JSON.stringify({sintomas:sintomas, observacao: obs||null})});
+    msg(d.message || "Registrado. Obrigado!","ok");
+    selSintomas = {}; el("regObs").value="";
+    renderChips(); renderReguas(); carregarCheckin();
   }catch(e){ msg(e.message,"erro"); }
   el("btnReg").disabled = false;
 };
@@ -223,6 +233,8 @@ async function carregar(){
   }catch(e){ el("medicacoes").innerHTML = "<p class='muted'>Medicações indisponíveis no momento.</p>"; }
 
   carregarRastreios();
+  carregarCatalogoCheckin();
+  carregarCheckin();
 }
 
 let rastreioCatalogo = {}, rastreioAtual = null;
@@ -343,6 +355,122 @@ async function enviarRastreio(){
     if(btn) btn.disabled = false;
   }
 }
+/* ===== Check-in de 1 toque + observacao por audio ===== */
+const SINTOMAS_PADRAO = ["Dor","Ansiedade","Insônia","Depressão"];
+let catalogoSintomas = SINTOMAS_PADRAO.slice();
+let selSintomas = {};
+let mediaRec = null, audioChunks = [], audioTimer = null;
+
+function faceEmoji(v){ if(v<=2) return "😌"; if(v<=4) return "🙂"; if(v<=6) return "😕"; if(v<=8) return "😣"; return "😖"; }
+
+function renderChips(){
+  const box = el("chips"); if(!box) return;
+  box.innerHTML = catalogoSintomas.map(function(n){
+    return "<button type='button' class='chip"+(selSintomas[n]!==undefined?" on":"")+"' data-s='"+n+"'>"+n+"</button>";
+  }).join("");
+  document.querySelectorAll(".chip").forEach(function(b){
+    b.onclick = function(){
+      const n = b.getAttribute("data-s");
+      if(selSintomas[n]!==undefined){ delete selSintomas[n]; } else { selSintomas[n] = 5; }
+      renderChips(); renderReguas();
+    };
+  });
+}
+
+function renderReguas(){
+  const box = el("reguas"); if(!box) return;
+  const nomes = Object.keys(selSintomas);
+  box.innerHTML = nomes.map(function(n,i){
+    return "<div class='regua'><div class='top'><b>"+n+"</b><span id='valr_"+i+"' class='face'>"+selSintomas[n]+" "+faceEmoji(selSintomas[n])+"</span></div>"+
+           "<input type='range' min='0' max='10' step='1' value='"+selSintomas[n]+"' data-r='"+n+"' data-i='"+i+"'></div>";
+  }).join("");
+  document.querySelectorAll("#reguas input[type=range]").forEach(function(r){
+    r.oninput = function(){
+      const n = r.getAttribute("data-r"), i = r.getAttribute("data-i");
+      selSintomas[n] = parseInt(r.value);
+      const sp = el("valr_"+i); if(sp) sp.textContent = selSintomas[n]+" "+faceEmoji(selSintomas[n]);
+    };
+  });
+}
+
+async function carregarCatalogoCheckin(){
+  try{
+    const d = await api("/patient-portal/me/sintomas-catalogo");
+    if(d && d.sintomas && d.sintomas.length) catalogoSintomas = d.sintomas;
+  }catch(e){}
+  renderChips(); renderReguas();
+}
+
+async function carregarCheckin(){
+  try{
+    const d = await api("/patient-portal/me/checkin/resumo");
+    const streak = d.streak||0;
+    const regs = d.registros||[];
+    const topo = streak>0 ? "<div class='ok' style='margin-bottom:8px'>"+streak+" dia(s) seguido(s) de registro. Continue!</div>" : "";
+    const itens = regs.slice(0,6).map(function(r){
+      const q = r.sintoma ? ("<b>"+r.sintoma+"</b>"+(r.intensidade!=null?(" — "+r.intensidade+"/10"):"")) : "";
+      const o = r.observacao ? ("<div class='muted'>"+String(r.observacao).replace(/</g,"&lt;")+"</div>") : "";
+      return "<div class='item'>"+q+"<span class='muted'>"+(r.data?fmtBR(r.data)+" · ":"")+"</span>"+o+"</div>";
+    }).join("");
+    el("historicoCheckin").innerHTML = topo + (itens || "<p class='muted'>Sem registros ainda.</p>");
+  }catch(e){ var h=el("historicoCheckin"); if(h) h.innerHTML=""; }
+}
+
+function audioMsg(txt,tipo){ var b=el("audioBox"); if(b) b.innerHTML = txt ? ("<div class='"+(tipo||"ok")+"'>"+txt+"</div>") : ""; }
+
+el("btnAudio").onclick = async () => {
+  if(mediaRec && mediaRec.state === "recording"){ mediaRec.stop(); return; }
+  if(!navigator.mediaDevices || !window.MediaRecorder){ audioMsg("Seu navegador nao permite gravar audio aqui. Use o campo de texto.","erro"); return; }
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+    audioChunks = [];
+    mediaRec = new MediaRecorder(stream);
+    mediaRec.ondataavailable = function(e){ if(e.data && e.data.size) audioChunks.push(e.data); };
+    mediaRec.onstop = function(){
+      stream.getTracks().forEach(function(t){t.stop();});
+      el("btnAudio").textContent = "Falar em vez de escrever";
+      el("btnAudio").classList.remove("rec");
+      clearTimeout(audioTimer);
+      enviarAudio(new Blob(audioChunks, {type: mediaRec.mimeType || "audio/webm"}));
+    };
+    mediaRec.start(); audioChunks = [];
+    el("btnAudio").textContent = "Parar e enviar";
+    el("btnAudio").classList.add("rec");
+    audioMsg("Gravando... fale como esta se sentindo.","ok");
+    audioTimer = setTimeout(function(){ if(mediaRec && mediaRec.state==="recording"){ audioMsg("Limite de 60s atingido. Enviando...","ok"); mediaRec.stop(); } }, 60000);
+  }catch(e){ audioMsg("Nao foi possivel acessar o microfone. Verifique a permissao do navegador.","erro"); }
+};
+
+async function enviarAudio(blob){
+  audioMsg("Transcrevendo... aguarde.","ok");
+  try{
+    const fd = new FormData();
+    fd.append("audio", blob, "observacao.webm");
+    const r = await fetch(API+"/patient-portal/me/observacao-audio", {method:"POST", headers: token?{Authorization:"Bearer "+token}:{}, body: fd});
+    const txt = await r.text(); let d; try{d=JSON.parse(txt)}catch(e){d={raw:txt}}
+    if(!r.ok) throw new Error((d && d.error) || ("Erro "+r.status));
+    const texto = (d.texto||"").trim();
+    el("audioBox").innerHTML =
+      "<label>Confirme o que entendi (pode editar):</label>"+
+      "<textarea id='audioTxt' rows='3'>"+texto.replace(/</g,"&lt;")+"</textarea>"+
+      "<div class='row'><div><button id='audioSalvar'>Salvar observacao</button></div>"+
+      "<div><button id='audioDescartar' class='ghost' type='button'>Descartar</button></div></div>";
+    el("audioSalvar").onclick = async () => {
+      const t = el("audioTxt").value.trim();
+      if(!t){ audioMsg("Nada para salvar.","erro"); return; }
+      el("audioSalvar").disabled = true;
+      try{
+        await api("/patient-portal/me/registro",{method:"POST", body:JSON.stringify({observacao:t})});
+        audioMsg("Observacao salva. Obrigado!","ok");
+        carregarCheckin();
+      }catch(e){ audioMsg(e.message,"erro"); el("audioSalvar").disabled=false; }
+    };
+    el("audioDescartar").onclick = function(){ audioMsg(""); };
+  }catch(e){
+    audioMsg(e.message + " Use o campo de texto como alternativa.","erro");
+  }
+}
+
 </script>
 </body>
 </html>"""
