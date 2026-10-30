@@ -5,11 +5,16 @@ from datetime import datetime, timedelta
 
 dosagens_bp = Blueprint('dosagens', __name__)
 
-def _assoc_id():
-    """Resolve o associacao_id atual (tenant) via middleware (P0-12)."""
+def _assoc_id(fallback=None):
+    """Resolve o associacao_id atual (tenant) via middleware (P0-12).
+
+    `fallback` cobre o caso em que o request nao tem tenant resolvido
+    (profissional sem associacao ativa): sem ele, o hook P0-08 do
+    tenant_lib bloqueia o INSERT/UPDATE por associacao_id NULL.
+    """
     from flask import g
     assoc = getattr(g, "current_association", None)
-    return getattr(assoc, "id", None)
+    return getattr(assoc, "id", None) or fallback
 
 
 
@@ -51,7 +56,7 @@ def listar_dosagens(paciente_id):
     # Registrar atividade
     log = LogAtividade(
         profissional_id=profissional_id,
-        associacao_id=_assoc_id(),
+        associacao_id=_assoc_id(paciente.associacao_id),
         acao='Consulta',
         detalhes=f'Listagem de dosagens do paciente ID {paciente_id}'
     )
@@ -85,6 +90,7 @@ def registrar_dosagem(paciente_id):
         
         # Criar nova dosagem com os novos campos
         nova_dosagem = Dosagem(
+            associacao_id=_assoc_id(paciente.associacao_id),
             paciente_id=paciente_id,
             data=data_dosagem,
             dosagem=data['dosagem'],
@@ -111,7 +117,7 @@ def registrar_dosagem(paciente_id):
         # Registrar atividade
         log = LogAtividade(
             profissional_id=profissional_id,
-            associacao_id=_assoc_id(),
+            associacao_id=_assoc_id(paciente.associacao_id),
             acao='Registro',
             detalhes=f'Nova dosagem registrada para paciente ID {paciente_id}: {data["dosagem"]}'
         )
@@ -167,13 +173,14 @@ def excluir_dosagem(dosagem_id):
     try:
         paciente_id = dosagem.paciente_id
         dosagem_valor = dosagem.dosagem
+        associacao_fallback = dosagem.associacao_id
         
         db.session.delete(dosagem)
         
         # Registrar atividade antes de confirmar a exclusão
         log = LogAtividade(
             profissional_id=profissional_id,
-            associacao_id=_assoc_id(),
+            associacao_id=_assoc_id(associacao_fallback),
             acao='Exclusão',
             detalhes=f'Dosagem excluída: {dosagem_valor} (ID {dosagem_id}) do paciente ID {paciente_id}'
         )
