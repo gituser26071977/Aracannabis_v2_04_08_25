@@ -1,0 +1,801 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meu Portal — Área do Paciente</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root{--verde:#003030;--verde2:#0b4a45;--dourado:#B08030;--cinza:#667;--bg:#f4f6f6;--card:#fff;--borda:#e3e7e7;--ok:#17623b;--erro:#a11}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:#1b2323}
+  header{background:var(--verde);color:#fff;padding:14px 18px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:20}
+  header b{font-size:18px;letter-spacing:.3px}
+  header span{color:#d9c79a;font-size:12px}
+  header .who{margin-left:auto;font-size:13px;color:#d9c79a;text-align:right}
+  .wrap{max-width:1000px;margin:0 auto;padding:16px}
+  nav.tabs{display:flex;gap:6px;overflow-x:auto;padding:10px 4px;position:sticky;top:58px;background:var(--bg);z-index:15}
+  nav.tabs button{white-space:nowrap;background:#fff;border:1px solid var(--borda);color:var(--verde);border-radius:999px;padding:9px 14px;font-size:14px;font-weight:600;cursor:pointer;margin:0}
+  nav.tabs button.on{background:var(--verde);color:#fff;border-color:var(--verde)}
+  .card{background:var(--card);border:1px solid var(--borda);border-radius:14px;padding:16px 18px;margin:12px 0;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+  h2{margin:0 0 10px;font-size:16px;color:var(--verde)}
+  h3{margin:14px 0 8px;font-size:14px;color:var(--verde)}
+  label{display:block;font-size:13px;color:var(--cinza);margin:10px 0 4px}
+  input,textarea,select{width:100%;padding:11px 12px;border:1px solid var(--borda);border-radius:10px;font-size:15px;background:#fff}
+  button{background:var(--verde);color:#fff;border:0;border-radius:10px;padding:11px 15px;font-size:14px;font-weight:600;cursor:pointer;margin-top:10px}
+  button:disabled{opacity:.55;cursor:default}
+  button.ghost{background:#fff;color:var(--verde);border:1px solid var(--verde)}
+  button.rec{background:var(--erro);border-color:var(--erro)}
+  button.mini{padding:6px 10px;font-size:12px;margin:0}
+  .row{display:flex;gap:12px;flex-wrap:wrap}
+  .row>div{flex:1;min-width:140px}
+  .muted{color:var(--cinza);font-size:13px}
+  .pill{display:inline-block;background:#eef4f4;color:var(--verde);border-radius:999px;padding:3px 10px;font-size:12px;margin:2px 4px 2px 0}
+  .pill.neutral{background:#eee;color:#555}
+  .item{border-top:1px solid var(--borda);padding:11px 0}
+  .item:first-child{border-top:0}
+  .item b{font-size:14px}
+  .erro{background:#fdecec;color:var(--erro);border:1px solid #f3c9c9;border-radius:10px;padding:10px 12px;font-size:14px}
+  .ok{background:#eafaf0;color:var(--ok);border:1px solid #bfe8cf;border-radius:10px;padding:10px 12px;font-size:14px}
+  .hide{display:none!important}
+  canvas{max-height:260px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+  .kpi{background:linear-gradient(160deg,#fff,#f1f6f5);border:1px solid var(--borda);border-radius:14px;padding:14px}
+  .kpi .n{font-size:26px;font-weight:800;color:var(--verde);line-height:1.1}
+  .kpi .l{font-size:12px;color:var(--cinza);margin-top:4px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 4px}
+  .chip{border:1px solid var(--borda);background:#fff;color:var(--verde);border-radius:999px;padding:11px 15px;font-size:15px;font-weight:600;cursor:pointer;margin:0}
+  .chip.on{background:var(--verde);color:#fff;border-color:var(--verde)}
+  .regua{border:1px solid var(--borda);border-radius:12px;padding:10px 12px;margin:8px 0}
+  .regua .top{display:flex;justify-content:space-between;align-items:center;font-size:14px}
+  .regua input[type=range]{width:100%;height:34px}
+  .face{color:var(--cinza);font-size:13px}
+  .filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
+  .filters select,.filters input{width:auto;min-width:130px;padding:8px 10px;font-size:14px}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+  th,td{text-align:left;border-bottom:1px solid var(--borda);padding:7px 8px}
+  th{color:var(--cinza);font-weight:600}
+  .doc{display:flex;gap:10px;align-items:center;border:1px solid var(--borda);border-radius:12px;padding:10px 12px;margin:8px 0;background:#fff}
+  .doc .ic{width:38px;height:38px;border-radius:10px;background:#eef4f4;color:var(--verde);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex:0 0 auto}
+  .doc .info{flex:1;min-width:0}
+  .doc .info b{display:block;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tl{position:relative;margin-left:8px;border-left:2px solid var(--borda);padding-left:16px}
+  .tl .ev{position:relative;margin:0 0 14px}
+  .tl .ev:before{content:"";position:absolute;left:-23px;top:4px;width:10px;height:10px;border-radius:50%;background:var(--dourado)}
+  .tl .ev.consulta:before{background:var(--verde)}
+  .tl .ev.exame:before{background:#2b7a78}
+  .tl .ev.prescricao:before{background:#5b3fa1}
+  .tl .ev .when{font-size:12px;color:var(--cinza)}
+  .toolbar{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+  .toolbar h2{margin:0}
+</style>
+</head>
+<body>
+<header>
+  <div style="width:34px;height:34px;border-radius:8px;background:var(--dourado);display:flex;align-items:center;justify-content:center;font-weight:800;color:#003030">V</div>
+  <div><b>Meu Portal</b><br><span>Área do paciente · Instituto Vittalis</span></div>
+  <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
+    <div class="who hide" id="who"></div>
+    <button id="btnSair" class="ghost hide" type="button" style="margin:0;padding:7px 12px;font-size:13px;background:transparent;color:#d9c79a;border:1px solid #d9c79a">Sair</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <div id="msg"></div>
+
+  <!-- LOGIN -->
+  <div id="login" class="card">
+    <h2>Acessar meu portal</h2>
+    <p class="muted">Informe seu CPF e enviaremos um código de acesso no seu WhatsApp.</p>
+    <label>CPF</label>
+    <input id="cpf" inputmode="numeric" placeholder="000.000.000-00" autocomplete="off">
+    <button id="btnPedir">Receber código no WhatsApp</button>
+    <div id="passo2" class="hide">
+      <label>Código recebido</label>
+      <input id="codigo" inputmode="numeric" placeholder="000000" autocomplete="one-time-code">
+      <button id="btnEntrar">Entrar</button>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="portal" class="hide">
+    <nav class="tabs" id="tabs">
+      <button data-tab="inicio" class="on">Início</button>
+      <button data-tab="prontuario">Prontuário</button>
+      <button data-tab="exames">Exames</button>
+      <button data-tab="documentos">Documentos</button>
+      <button data-tab="medicacoes">Medicações</button>
+      <button data-tab="escalas">Escalas</button>
+      <button data-tab="checkin">Como estou hoje</button>
+    </nav>
+
+    <!-- INÍCIO -->
+    <section data-sec="inicio">
+      <div class="card">
+        <h2 id="saudacao">Olá</h2>
+        <div id="resumo"></div>
+      </div>
+      <div class="card">
+        <div class="cards" id="kpis"></div>
+      </div>
+      <div class="card">
+        <h2>Próximas consultas</h2>
+        <div id="proximas"></div>
+      </div>
+      <div class="card">
+        <h2>Últimos exames</h2>
+        <div id="inicioExames"></div>
+      </div>
+      <div class="card">
+        <h2>Últimas atualizações do prontuário</h2>
+        <div id="inicioEvolucoes"></div>
+      </div>
+    </section>
+
+    <!-- PRONTUÁRIO -->
+    <section data-sec="prontuario" class="hide">
+      <div class="card">
+        <div class="toolbar">
+          <h2>Linha do tempo clínica</h2>
+          <div class="filters">
+            <select id="filtroProntuario">
+              <option value="tudo">Tudo</option>
+              <option value="consulta">Consultas</option>
+              <option value="evolucao">Evoluções</option>
+              <option value="exame">Exames</option>
+              <option value="prescricao">Prescrições</option>
+            </select>
+          </div>
+        </div>
+        <div id="prontuario"></div>
+      </div>
+    </section>
+
+    <!-- EXAMES -->
+    <section data-sec="exames" class="hide">
+      <div class="card">
+        <div class="toolbar">
+          <h2>Exames e resultados</h2>
+          <div class="filters">
+            <input id="buscaExame" placeholder="Buscar por nome...">
+            <select id="tipoExame">
+              <option value="">Todos os tipos</option>
+              <option value="numerico">Numéricos</option>
+              <option value="texto">Texto</option>
+              <option value="arquivo">Com arquivo</option>
+            </select>
+          </div>
+        </div>
+        <div id="graficoBox" class="hide"><canvas id="grafico"></canvas></div>
+        <div id="exames"></div>
+      </div>
+    </section>
+
+    <!-- DOCUMENTOS -->
+    <section data-sec="documentos" class="hide">
+      <div class="card">
+        <div class="toolbar">
+          <h2>Documentos, laudos e relatórios</h2>
+          <div class="filters">
+            <select id="filtroDoc">
+              <option value="">Todas as categorias</option>
+              <option value="Exame">Exames</option>
+              <option value="Laudo">Laudos</option>
+              <option value="Documento">Documentos</option>
+            </select>
+          </div>
+        </div>
+        <div id="documentos"></div>
+      </div>
+    </section>
+
+    <!-- MEDICAÇÕES -->
+    <section data-sec="medicacoes" class="hide">
+      <div class="card">
+        <h2>Minhas medicações</h2>
+        <div id="medicacoes"></div>
+      </div>
+    </section>
+
+    <!-- ESCALAS -->
+    <section data-sec="escalas" class="hide">
+      <div class="card">
+        <h2>Escalas de acompanhamento</h2>
+        <p class="muted">Responda você mesmo(a). As respostas ficam disponíveis para o seu profissional de saúde.</p>
+        <div id="rastreiosCatalogo"></div>
+        <div id="rastreioArea" class="hide"></div>
+        <div id="rastreioResultado"></div>
+        <h2 style="margin-top:16px">Histórico</h2>
+        <div id="rastreioHistorico"></div>
+      </div>
+    </section>
+
+    <!-- CHECK-IN -->
+    <section data-sec="checkin" class="hide">
+      <div class="card">
+        <h2>Como estou hoje</h2>
+        <p class="muted">Toque no que você está sentindo e ajuste de 0 a 10. Leva segundos.</p>
+        <div id="chips" class="chips"></div>
+        <div id="reguas"></div>
+        <label>Quer contar mais? (opcional)</label>
+        <textarea id="regObs" rows="2" placeholder="Como você está se sentindo..."></textarea>
+        <div class="row" style="margin-top:10px">
+          <div><button id="btnReg">Salvar</button></div>
+          <div><button id="btnAudio" class="ghost" type="button">Falar em vez de escrever</button></div>
+        </div>
+        <div id="audioBox"></div>
+        <div id="historicoCheckin" style="margin-top:14px"></div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+const API = "/api";
+let token = null, cpfAtual = "";
+let dados = { dashboard:{}, prontuario:null, exames:null, documentos:null,
+              prescricoes:null, rastreios:null };
+const carregado = {};
+
+// Sessão: token guardado em sessionStorage (sobrevive a recarregar na mesma
+// aba, mas não fica no aparelho depois de fechar o navegador).
+const SESSAO_KEY = "patient_token", NOME_KEY = "patient_nome";
+function salvarSessao(t, nome){ try{ sessionStorage.setItem(SESSAO_KEY, t); if(nome) sessionStorage.setItem(NOME_KEY, nome); }catch(e){} }
+function limparSessao(){ try{ sessionStorage.removeItem(SESSAO_KEY); sessionStorage.removeItem(NOME_KEY); }catch(e){} }
+function resetEstado(){
+  ["inicio","prontuario","exames","documentos","medicacoes","escalas","checkin"].forEach(k => { carregado[k] = false; });
+  dados = { dashboard:{}, prontuario:null, exames:null, documentos:null, prescricoes:null, rastreios:null };
+}
+function mostrarPortal(nome){
+  hide("login"); show("portal"); show("btnSair");
+  if(nome){ el("who").innerHTML = esc(nome); show("who"); }
+  irPara("inicio");
+}
+function sairParaLogin(aviso){
+  token = null; limparSessao(); resetEstado();
+  hide("portal"); hide("btnSair"); hide("who");
+  show("login");
+  if(aviso) msg(aviso, "erro");
+}
+el("btnSair").onclick = () => { sairParaLogin(""); msg("Sessão encerrada.","ok"); };
+
+function el(id){return document.getElementById(id)}
+function show(id){el(id).classList.remove("hide")}
+function hide(id){el(id).classList.add("hide")}
+function msg(txt, tipo){const c=el("msg"); c.innerHTML = txt ? '<div class="'+(tipo||"ok")+'">'+txt+'</div>' : ""}
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+function fmtBR(s){ if(!s) return ""; const d=new Date(s); return isNaN(d)?s:d.toLocaleDateString("pt-BR"); }
+function fmtDataHora(s){ if(!s) return ""; const d=new Date(s); return isNaN(d)?s:d.toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}); }
+
+async function api(path, opts){
+  opts = opts || {};
+  opts.headers = Object.assign({"Content-Type":"application/json"}, opts.headers||{});
+  if(token) opts.headers["Authorization"] = "Bearer "+token;
+  const r = await fetch(API+path, opts);
+  const txt = await r.text();
+  let data; try{data = JSON.parse(txt)}catch(e){data={raw:txt}}
+  if(!r.ok){
+    if(r.status === 401) sairParaLogin("Sua sessão expirou. Entre novamente.");
+    throw new Error((data && (data.error||data.message)) || ("Erro "+r.status));
+  }
+  return data;
+}
+
+/* ---------- LOGIN ---------- */
+el("btnPedir").onclick = async () => {
+  cpfAtual = el("cpf").value;
+  if(cpfAtual.replace(/\D/g,"").length!==11){ msg("Informe um CPF válido (11 dígitos).","erro"); return; }
+  el("btnPedir").disabled = true; msg("");
+  try{
+    const d = await api("/patient-auth/otp/request",{method:"POST",body:JSON.stringify({cpf:cpfAtual})});
+    msg(d.message||"Código enviado no WhatsApp.","ok"); show("passo2");
+  }catch(e){ msg(e.message,"erro"); }
+  el("btnPedir").disabled = false;
+};
+
+el("btnEntrar").onclick = async () => {
+  el("btnEntrar").disabled = true; msg("");
+  try{
+    const d = await api("/patient-auth/otp/verify",{method:"POST",body:JSON.stringify({cpf:cpfAtual,codigo:el("codigo").value})});
+    token = d.access_token;
+    salvarSessao(token, d.user && d.user.nome);
+    resetEstado();
+    mostrarPortal((d.user && d.user.nome) || "");
+  }catch(e){ msg(e.message,"erro"); }
+  el("btnEntrar").disabled = false;
+};
+
+/* ---------- NAVEGAÇÃO ---------- */
+document.querySelectorAll("#tabs button").forEach(b => {
+  b.onclick = () => irPara(b.getAttribute("data-tab"));
+});
+
+function irPara(tab){
+  document.querySelectorAll("#tabs button").forEach(x => x.classList.toggle("on", x.getAttribute("data-tab")===tab));
+  document.querySelectorAll("section[data-sec]").forEach(s => s.classList.toggle("hide", s.getAttribute("data-sec")!==tab));
+  msg("");
+  carregarAba(tab);
+}
+
+function carregarAba(tab){
+  if(tab==="inicio" && !carregado.inicio) carregarInicio();
+  if(tab==="prontuario" && !carregado.prontuario) carregarProntuario();
+  if(tab==="exames" && !carregado.exames) carregarExames();
+  if(tab==="documentos" && !carregado.documentos) carregarDocumentos();
+  if(tab==="medicacoes" && !carregado.medicacoes) carregarMedicacoes();
+  if(tab==="escalas" && !carregado.escalas) carregarRastreios();
+  if(tab==="checkin" && !carregado.checkin){ carregarCatalogoCheckin(); carregarCheckin(); }
+}
+
+/* ---------- INÍCIO ---------- */
+async function carregarInicio(){
+  try{
+    const d = await api("/patient-portal/me/dashboard");
+    dados.dashboard = d; carregado.inicio = true;
+    const p = d.perfil || {};
+    el("saudacao").textContent = "Olá, " + (p.primeiro_nome || "");
+    const linhas = [];
+    if(p.data_nascimento) linhas.push("Nascimento: "+fmtBR(p.data_nascimento));
+    if(p.condicao_medica) linhas.push("<b>Quadro:</b> "+esc(p.condicao_medica));
+    if(p.composicao) linhas.push("<b>Tratamento:</b> "+esc(p.composicao));
+    if(p.dosagem) linhas.push("<b>Dosagem:</b> "+esc(p.dosagem));
+    if(p.horarios) linhas.push("<b>Horários:</b> "+esc(p.horarios));
+    if(p.profissional_responsavel) linhas.push("Profissional responsável: "+esc(p.profissional_responsavel));
+    el("resumo").innerHTML = linhas.length? linhas.map(l=>"<div class='muted' style='margin:4px 0'>"+l+"</div>").join("")
+      : "<p class='muted'>Sem resumo cadastrado ainda.</p>";
+
+    const ind = d.indicadores || {};
+    const kpi = (n,l)=>`<div class="kpi"><div class="n">${n??0}</div><div class="l">${l}</div></div>`;
+    el("kpis").innerHTML =
+      kpi(ind.consultas,"Consultas") +
+      kpi(ind.exames,"Exames") +
+      kpi(ind.prescricoes_ativas,"Medicações ativas") +
+      kpi(ind.documentos,"Documentos") +
+      kpi(ind.evolucoes,"Evoluções") +
+      kpi(ind.dias_seguidos_checkin,"Dias de check-in seguidos");
+
+    const prox = (d.proximas_consultas||[]);
+    el("proximas").innerHTML = prox.length ? prox.map(c=>itemConsulta(c,false)).join("")
+      : "<p class='muted'>Nenhuma consulta futura agendada.</p>";
+
+    const ex = (d.ultimos_exames||[]).slice(0,3);
+    el("inicioExames").innerHTML = ex.length ? ex.map(exameCard).join("")
+      : "<p class='muted'>Nenhum exame registrado ainda.</p>";
+
+    const ev = (d.ultimas_evolucoes||[]);
+    el("inicioEvolucoes").innerHTML = ev.length ? ev.map(evolucaoCard).join("")
+      : "<p class='muted'>Nenhuma evolução registrada ainda.</p>";
+    bindBaixar();
+  }catch(e){
+    carregado.inicio = false;
+    msg("Não foi possível carregar o resumo: "+e.message, "erro");
+  }
+}
+
+function itemConsulta(c, futura){
+  const dh = c.data_hora || c.data;
+  const tipo = c.tipo_consulta || "";
+  const status = c.status || "";
+  return `<div class="item"><b>${esc(tipo||"Consulta")} · ${fmtDataHora(dh)}</b>
+    <span class="muted">${esc(c.profissional_nome||"")}</span>
+    <div>${status?`<span class="pill">${esc(status)}</span>`:""}${futura?`<span class="pill neutral">agendada</span>`:""}</div>
+    ${c.observacoes?`<div class="muted" style="white-space:pre-wrap">${esc(c.observacoes)}</div>`:""}</div>`;
+}
+
+/* ---------- PRONTUÁRIO ---------- */
+async function carregarProntuario(){
+  try{
+    const d = await api("/patient-portal/me/prontuario");
+    dados.prontuario = d; carregado.prontuario = true;
+    renderProntuario();
+  }catch(e){ carregado.prontuario=false; el("prontuario").innerHTML = `<div class="erro">${esc(e.message)}</div>`; }
+}
+
+function renderProntuario(){
+  const d = dados.prontuario || {};
+  const filtro = el("filtroProntuario").value;
+  const eventos = [];
+  (d.historico_consultas||[]).forEach(c => eventos.push({tipo:"consulta", data:c.data_hora, html:itemConsulta(c,false)}));
+  (d.evolucoes||[]).forEach(e => eventos.push({tipo:"evolucao", data:e.data_evolucao, html:evolucaoCard(e)}));
+  (d.prescricoes||[]).forEach(p => eventos.push({tipo:"prescricao", data:(p.data||p.data_emissao||p.data_criacao), html:prescricaoCard(p)}));
+  eventos.sort((a,b)=> new Date(b.data||0) - new Date(a.data||0));
+  const lista = filtro==="tudo"? eventos : eventos.filter(e=>e.tipo===filtro);
+  el("prontuario").innerHTML = lista.length
+    ? "<div class='tl'>"+lista.map(e=>`<div class="ev ${e.tipo}">${e.html}</div>`).join("")+"</div>"
+    : "<p class='muted'>Nada por aqui ainda.</p>";
+  bindBaixar();
+}
+el("filtroProntuario").onchange = renderProntuario;
+
+function evolucaoCard(e){
+  return `<div class="item"><div class="when">${fmtDataHora(e.data_evolucao)} · ${esc(e.profissional_nome||"Equipe")}</div>
+    ${e.resumo?`<b>Resumo</b><div style="white-space:pre-wrap">${esc(e.resumo)}</div>`:""}
+    ${e.plano?`<div class="muted" style="margin-top:6px"><b style="color:var(--verde)">Plano</b><div style="white-space:pre-wrap">${esc(e.plano)}</div></div>`:""}
+    ${e.sinais_vitais && Object.keys(e.sinais_vitais).length?`<div class="muted" style="margin-top:6px">Sinais vitais: ${esc(Object.entries(e.sinais_vitais).map(([k,v])=>k+": "+v).join(" · "))}</div>`:""}
+  </div>`;
+}
+
+function prescricaoCard(p){
+  const meds = Array.isArray(p.medicamentos) ? p.medicamentos : [];
+  let corpo = "";
+  if(meds.length){
+    corpo = meds.map(m=>{
+      const nome = m.nome || m.medicamento || m.produto || m.descricao || m.titulo || "";
+      const pos = m.posologia || m.dosagem || m.instrucoes || m.modo || "";
+      return `<div class="muted" style="margin:3px 0">• <b style="color:#1b2323">${esc(nome)}</b>${pos?(" — "+esc(pos)):""}</div>`;
+    }).join("");
+  }else if(p.observacoes){
+    corpo = `<div class="muted" style="white-space:pre-wrap">${esc(p.observacoes)}</div>`;
+  }
+  const data = p.data || p.data_emissao || p.data_criacao;
+  return `<div class="item"><b>${esc(nomeMedicamentoFallback(meds))}</b>
+    <div class="muted">${fmtBR(data)}</div>${corpo}
+    ${p.tem_arquivo?`<button class="mini btnBaixar" data-tipo="prescricao" data-ref="${esc(String(p.id))}" data-nome="Prescricao_${fmtBR(data).replace(/\//g,"")}.pdf">Baixar receita</button>`:""}</div>`;
+}
+function nomeMedicamentoFallback(meds){
+  if(meds && meds.length===1){ const m=meds[0]; return m.nome||m.medicamento||m.produto||m.descricao||m.titulo||"Prescrição"; }
+  return meds && meds.length ? "Prescrição" : "Prescrição";
+}
+
+/* ---------- EXAMES ---------- */
+async function carregarExames(){
+  try{
+    const d = await api("/patient-portal/me/exames");
+    dados.exames = d.exames || []; carregado.exames = true;
+    renderExames();
+  }catch(e){ carregado.exames=false; el("exames").innerHTML = `<div class="erro">${esc(e.message)}</div>`; }
+}
+
+function renderExames(){
+  const busca = (el("buscaExame").value||"").toLowerCase();
+  const tipo = el("tipoExame").value;
+  let ex = dados.exames || [];
+  if(tipo) ex = ex.filter(e=>e.tipo_exame===tipo);
+  if(busca) ex = ex.filter(e=>((e.titulo||e.tipo_exame||"")+"").toLowerCase().includes(busca));
+  el("exames").innerHTML = ex.length ? ex.map(exameCard).join("")
+    : "<p class='muted'>Nenhum exame encontrado com esse filtro.</p>";
+  bindBaixar();
+  renderGrafico(dados.exames || []);
+}
+el("buscaExame").oninput = renderExames;
+el("tipoExame").onchange = renderExames;
+
+function exameCard(e){
+  const nome = e.titulo || e.tipo_exame || "Exame";
+  const val = (e.tipo_exame==="numerico" && e.valor!=null)? ` — <b>${e.valor}${e.unidade?(" "+esc(e.unidade)):""}</b>` : "";
+  const desc = e.descricao? `<div class="muted" style="white-space:pre-wrap">${esc(e.descricao)}</div>` : "";
+  let res = "";
+  if((e.resultados_lab||[]).length){
+    res += "<table><tr><th>Exame</th><th>Resultado</th><th>Referência</th></tr>" +
+      e.resultados_lab.map(r=>`<tr><td>${esc(r.teste_nome)}</td><td><b>${r.valor}${r.unidade?(" "+esc(r.unidade)):""}</b></td><td class="muted">${esc(r.valor_referencia||"")}</td></tr>`).join("") +
+      "</table>";
+  }
+  let imgs = "";
+  (e.imagens||[]).forEach(img=>{
+    imgs += `<div class="doc"><div class="ic">${(img.arquivo_nome||"").toLowerCase().endsWith(".pdf")?"PDF":"IMG"}</div>
+      <div class="info"><b>${esc(img.arquivo_nome)}</b>
+      ${img.laudo?`<div class="muted" style="white-space:pre-wrap">${esc(img.laudo)}</div>`:""}</div>
+      ${img.tem_arquivo?`<button class="mini btnBaixar" data-tipo="exame_imagem" data-ref="${esc(String(img.id))}" data-nome="${esc(img.arquivo_nome)}">Baixar</button>`:""}
+    </div>`;
+  });
+  return `<div class="item"><b>${esc(nome)}</b>${val}
+    <div class="muted">${e.data_exame?fmtBR(e.data_exame)+" · ":""}${esc(e.tipo_exame||"")}</div>
+    ${desc}${res}${imgs}</div>`;
+}
+
+function renderGrafico(exames){
+  const box = el("graficoBox");
+  const num = (exames||[]).filter(e=>e.tipo_exame==="numerico" && e.valor!=null)
+    .sort((a,b)=> new Date(a.data_exame)-new Date(b.data_exame));
+  if(num.length<2){ box.classList.add("hide"); return; }
+  const titulos = [...new Set(num.map(e=>e.titulo))];
+  const cores = ["#003030","#B08030","#2b7a78","#a11","#5b3fa1","#17623b"];
+  const ds = titulos.map((t,i)=>({
+    label:t, borderColor:cores[i%cores.length], backgroundColor:cores[i%cores.length],
+    data: num.filter(e=>e.titulo===t).map(e=>({x:e.data_exame,y:e.valor})), tension:.25
+  }));
+  box.classList.remove("hide");
+  if(!window.Chart){
+    box.classList.add("hide");
+    return;
+  }
+  try{
+    if(window._chart) window._chart.destroy();
+    window._chart = new Chart(el("grafico"),{type:"line",data:{datasets:ds},options:{
+      responsive:true, parsing:false,
+      scales:{x:{type:"time",time:{unit:"month"},title:{display:true,text:"Data"}},y:{title:{display:true,text:"Valor"}}},
+      plugins:{legend:{position:"bottom"}}}});
+  }catch(e){ box.classList.add("hide"); }
+}
+
+/* ---------- DOCUMENTOS ---------- */
+async function carregarDocumentos(){
+  try{
+    const d = await api("/patient-portal/me/documentos");
+    dados.documentos = d.documentos || []; carregado.documentos = true;
+    renderDocumentos();
+  }catch(e){ carregado.documentos=false; el("documentos").innerHTML = `<div class="erro">${esc(e.message)}</div>`; }
+}
+
+function renderDocumentos(){
+  const cat = el("filtroDoc").value;
+  let docs = dados.documentos || [];
+  if(cat) docs = docs.filter(d=>d.categoria===cat);
+  el("documentos").innerHTML = docs.length ? docs.map(d=>{
+    const ic = (d.mime||"").includes("pdf")?"PDF":((d.mime||"").startsWith("image")?"IMG":"DOC");
+    return `<div class="doc"><div class="ic">${ic}</div>
+      <div class="info"><b>${esc(d.titulo||d.nome_arquivo)}</b>
+        <span class="muted">${esc(d.categoria)} · ${fmtBR(d.data)}</span>
+        ${d.laudo?`<div class="muted" style="white-space:pre-wrap">${esc(d.laudo)}</div>`:""}</div>
+      ${d.tem_arquivo?`<button class="mini btnBaixar" data-tipo="${esc(d.tipo)}" data-ref="${esc(d.ref)}" data-nome="${esc(d.nome_arquivo)}">Baixar</button>`:""}
+    </div>`;
+  }).join("") : "<p class='muted'>Nenhum documento disponível ainda.</p>";
+  bindBaixar();
+}
+el("filtroDoc").onchange = renderDocumentos;
+
+function bindBaixar(){
+  document.querySelectorAll(".btnBaixar").forEach(b => {
+    b.onclick = () => baixar(b.getAttribute("data-tipo"), b.getAttribute("data-ref"), b.getAttribute("data-nome"));
+  });
+}
+
+async function baixar(tipo, ref, nome){
+  msg("");
+  try{
+    const r = await fetch(`${API}/patient-portal/me/documentos/${tipo}/${encodeURIComponent(ref)}/arquivo`,
+      {headers: token?{Authorization:"Bearer "+token}:{}});
+    if(!r.ok){ let t=await r.text(); let d; try{d=JSON.parse(t)}catch(e){d={}}; throw new Error(d.error||("Erro "+r.status)); }
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href=url; a.download = nome || "documento"; document.body.appendChild(a); a.click();
+    a.remove(); setTimeout(()=>URL.revokeObjectURL(url), 4000);
+  }catch(e){ msg("Não foi possível baixar: "+e.message, "erro"); }
+}
+
+/* ---------- MEDICAÇÕES ---------- */
+async function carregarMedicacoes(){
+  try{
+    const d = await api("/patient-portal/me/prescricoes");
+    const pr = d.prescricoes || []; carregado.medicacoes = true;
+    el("medicacoes").innerHTML = pr.length ? pr.map(prescricaoCard).join("")
+      : "<p class='muted'>Nenhuma medicação registrada ainda.</p>";
+    bindBaixar();
+  }catch(e){ carregado.medicacoes=false; el("medicacoes").innerHTML = `<div class="erro">${esc(e.message)}</div>`; }
+}
+
+/* ---------- ESCALAS ---------- */
+let rastreioCatalogo = {}, rastreioAtual = null;
+function nivelClasse(){ return "pill"; }
+
+async function carregarRastreios(){
+  try{
+    const d = await api("/patient-portal/me/rastreios");
+    carregado.escalas = true;
+    rastreioCatalogo = {};
+    (d.catalogo||[]).forEach(c => { rastreioCatalogo[c.chave] = c; });
+    const cat = d.catalogo || [];
+    el("rastreiosCatalogo").innerHTML = cat.length ? cat.map(c => {
+      const aviso = (c.publico === "responsavel")
+        ? `<div class="muted" style="margin:4px 0">${esc(c.aviso || "Este questionário deve ser respondido pelo pai/mãe/responsável, pensando na criança.")} <span class="pill">respondido pelo responsável</span></div>`
+        : "";
+      return `<div class="item"><b>${esc(c.nome)}</b>
+        <span class="muted">${esc(c.descricao)} · ${c.n_itens} itens</span>${aviso}
+        <button data-tipo="${esc(c.chave)}" class="btnRastreio">Responder agora</button></div>`;
+    }).join("") : "<p class='muted'>Nenhuma escala disponível no momento.</p>";
+    document.querySelectorAll(".btnRastreio").forEach(b => { b.onclick = () => abrirRastreio(b.getAttribute("data-tipo")); });
+    renderHistoricoRastreios(d.historico||[]);
+  }catch(e){ carregado.escalas=false; el("rastreiosCatalogo").innerHTML = `<div class="erro">${esc(e.message)}</div>`; }
+}
+
+function renderHistoricoRastreios(hist){
+  if(!hist.length){ el("rastreioHistorico").innerHTML = "<p class='muted'>Nenhum resultado registrado ainda.</p>"; return; }
+  el("rastreioHistorico").innerHTML = hist.map(h => {
+    const nivel = h.nivel_label || h.nivel || "";
+    const pontos = (h.pontuacao_total === null || h.pontuacao_total === undefined)
+      ? `Desatenção: <b>${h.pontos_desatencao ?? 0}</b>/9 · Hiperatividade: <b>${h.pontos_hiperatividade ?? 0}</b>/9`
+      : `Pontuação: <b>${h.pontuacao_total}</b>/${h.pontuacao_maxima||""}`;
+    return `<div class="item"><b>${esc(h.nome||h.tipo)}</b>
+      <span class="muted">${h.data_realizacao?fmtBR(h.data_realizacao)+" · ":""}${pontos}</span>
+      <div><span class="${nivelClasse(h.nivel)}">${esc(nivel)}</span></div></div>`;
+  }).join("");
+}
+
+async function abrirRastreio(tipo){
+  el("rastreioResultado").innerHTML = "";
+  el("rastreioArea").innerHTML = "<p class='muted'>Carregando...</p>";
+  show("rastreioArea");
+  try{
+    const d = await api("/patient-portal/me/rastreios/"+encodeURIComponent(tipo));
+    rastreioAtual = { dados:d, respostas:{}, idx:0 };
+    renderPerguntaRastreio();
+  }catch(e){ el("rastreioArea").innerHTML = "<div class='erro'>"+esc(e.message)+"</div>"; }
+}
+
+function renderPerguntaRastreio(){
+  const s = rastreioAtual;
+  const pergunta = s.dados.perguntas[s.idx];
+  const total = s.dados.perguntas.length;
+  const opcoes = s.dados.opcoes.map(o =>
+    `<label style="display:flex;justify-content:space-between;align-items:center;border:1px solid var(--borda);border-radius:10px;padding:10px 12px;margin:6px 0;cursor:pointer">
+     <span>${esc(o.label)}</span><input type="radio" name="rastreioOpt" value="${o.valor}" ${s.respostas[pergunta.campo]===o.valor?"checked":""}></label>`
+  ).join("");
+  const ultimo = s.idx === total-1;
+  el("rastreioArea").innerHTML =
+    `<div class="muted" style="margin-bottom:8px">${esc(s.dados.nome)} · Item ${s.idx+1} de ${total}</div>
+     <div class="item"><b>${pergunta.numero}. ${esc(pergunta.texto)}</b></div>
+     <div class="muted" style="margin:6px 0 10px">${esc(s.dados.instrucoes)}</div>
+     <div id="rastreioOpcoes">${opcoes}</div>
+     <div class="row" style="margin-top:12px">
+       ${s.idx>0?"<div><button id='btnRastreioVoltar' style='background:#667'>Voltar</button></div>":""}
+       <div><button id="btnRastreioProx">${ultimo?"Enviar respostas":"Próxima"}</button></div>
+       <div><button id="btnRastreioCancelar" style="background:#667">Cancelar</button></div>
+     </div>`;
+  document.querySelectorAll("input[name='rastreioOpt']").forEach(r => { r.onchange = () => { s.respostas[pergunta.campo] = parseInt(r.value); }; });
+  if(s.idx>0) el("btnRastreioVoltar").onclick = () => { s.idx--; renderPerguntaRastreio(); };
+  el("btnRastreioCancelar").onclick = () => { rastreioAtual = null; hide("rastreioArea"); el("rastreioArea").innerHTML=""; };
+  el("btnRastreioProx").onclick = () => {
+    if(s.respostas[pergunta.campo]===undefined){ msg("Escolha uma opção para continuar.","erro"); return; }
+    if(!ultimo){ s.idx++; renderPerguntaRastreio(); return; }
+    enviarRastreio();
+  };
+}
+
+async function enviarRastreio(){
+  const s = rastreioAtual;
+  if(!s) return;
+  if(s.dados.perguntas.some(p => s.respostas[p.campo]===undefined)){ msg("Responda todos os itens.","erro"); return; }
+  const btn = el("btnRastreioProx");
+  if(btn) btn.disabled = true;
+  try{
+    const d = await api("/patient-portal/me/rastreios/"+encodeURIComponent(s.dados.chave),{method:"POST", body:JSON.stringify(s.respostas)});
+    const r = d.resultado || {};
+    const corpo = (r.pontos_desatencao !== undefined || r.pontos_hiperatividade !== undefined)
+      ? `Desatenção: <b>${r.pontos_desatencao ?? 0}</b> de 9<br>Hiperatividade/Impulsividade: <b>${r.pontos_hiperatividade ?? 0}</b> de 9<br>Nível: <b>${esc(r.nivel_label||r.nivel||"")}</b>`
+      : `Pontuação: <b>${r.pontuacao_total}</b>/${r.pontuacao_maxima||""}<br>Nível: <b>${esc(r.nivel_label||r.nivel||"")}</b>`;
+    el("rastreioResultado").innerHTML = `<div class="ok" style="margin-top:12px"><b>Resultado — ${esc(s.dados.nome)}</b><br>${corpo}</div>`;
+    rastreioAtual = null; hide("rastreioArea"); el("rastreioArea").innerHTML = "";
+    msg("Respostas enviadas. Obrigado!","ok");
+    carregarRastreios();
+  }catch(e){ msg(e.message,"erro"); if(btn) btn.disabled = false; }
+}
+
+/* ---------- CHECK-IN ---------- */
+const SINTOMAS_PADRAO = ["Dor","Ansiedade","Insônia","Depressão"];
+let catalogoSintomas = SINTOMAS_PADRAO.slice();
+let selSintomas = {};
+let mediaRec = null, audioChunks = [], audioTimer = null;
+
+function faceEmoji(v){ if(v<=2) return "😌"; if(v<=4) return "🙂"; if(v<=6) return "😕"; if(v<=8) return "😣"; return "😖"; }
+
+function renderChips(){
+  const box = el("chips"); if(!box) return;
+  box.innerHTML = catalogoSintomas.map(n =>
+    `<button type="button" class="chip${selSintomas[n]!==undefined?" on":""}" data-s="${esc(n)}">${esc(n)}</button>`
+  ).join("");
+  document.querySelectorAll(".chip").forEach(b => {
+    b.onclick = () => {
+      const n = b.getAttribute("data-s");
+      if(selSintomas[n]!==undefined){ delete selSintomas[n]; } else { selSintomas[n] = 5; }
+      renderChips(); renderReguas();
+    };
+  });
+}
+
+function renderReguas(){
+  const box = el("reguas"); if(!box) return;
+  const nomes = Object.keys(selSintomas);
+  box.innerHTML = nomes.map((n,i) =>
+    `<div class="regua"><div class="top"><b>${esc(n)}</b><span id="valr_${i}" class="face">${selSintomas[n]} ${faceEmoji(selSintomas[n])}</span></div>
+     <input type="range" min="0" max="10" step="1" value="${selSintomas[n]}" data-r="${esc(n)}" data-i="${i}"></div>`
+  ).join("");
+  document.querySelectorAll("#reguas input[type=range]").forEach(r => {
+    r.oninput = () => {
+      const n = r.getAttribute("data-r"), i = r.getAttribute("data-i");
+      selSintomas[n] = parseInt(r.value);
+      const sp = el("valr_"+i); if(sp) sp.textContent = selSintomas[n]+" "+faceEmoji(selSintomas[n]);
+    };
+  });
+}
+
+el("btnReg").onclick = async () => {
+  const nomes = Object.keys(selSintomas);
+  const obs = (el("regObs").value||"").trim();
+  if(!nomes.length && !obs){ msg("Toque em um sintoma ou escreva algo.","erro"); return; }
+  el("btnReg").disabled = true;
+  try{
+    const sintomas = nomes.map(n => ({nome:n, intensidade: selSintomas[n]}));
+    const d = await api("/patient-portal/me/checkin",{method:"POST", body:JSON.stringify({sintomas:sintomas, observacao: obs||null})});
+    msg(d.message || "Registrado. Obrigado!","ok");
+    selSintomas = {}; el("regObs").value="";
+    renderChips(); renderReguas(); carregarCheckin();
+  }catch(e){ msg(e.message,"erro"); }
+  el("btnReg").disabled = false;
+};
+
+async function carregarCatalogoCheckin(){
+  try{
+    const d = await api("/patient-portal/me/sintomas-catalogo");
+    if(d && d.sintomas && d.sintomas.length) catalogoSintomas = d.sintomas;
+  }catch(e){}
+  renderChips(); renderReguas();
+}
+
+async function carregarCheckin(){
+  try{
+    const d = await api("/patient-portal/me/checkin/resumo");
+    carregado.checkin = true;
+    const streak = d.streak||0;
+    const regs = d.registros||[];
+    const topo = streak>0 ? `<div class="ok" style="margin-bottom:8px">${streak} dia(s) seguido(s) de registro. Continue!</div>` : "";
+    const itens = regs.slice(0,6).map(r => {
+      const q = r.sintoma ? `<b>${esc(r.sintoma)}</b>${r.intensidade!=null?(" — "+r.intensidade+"/10"):""}` : "";
+      const o = r.observacao ? `<div class="muted">${esc(r.observacao)}</div>` : "";
+      return `<div class="item">${q}<span class="muted">${r.data?fmtBR(r.data)+" · ":""}</span>${o}</div>`;
+    }).join("");
+    el("historicoCheckin").innerHTML = topo + (itens || "<p class='muted'>Sem registros ainda.</p>");
+  }catch(e){ const h=el("historicoCheckin"); if(h) h.innerHTML=""; }
+}
+
+function audioMsg(txt,tipo){ const b=el("audioBox"); if(b) b.innerHTML = txt ? `<div class="${tipo||"ok"}">${esc(txt)}</div>` : ""; }
+
+el("btnAudio").onclick = async () => {
+  if(mediaRec && mediaRec.state === "recording"){ mediaRec.stop(); return; }
+  if(!navigator.mediaDevices || !window.MediaRecorder){ audioMsg("Seu navegador não permite gravar áudio aqui. Use o campo de texto.","erro"); return; }
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+    audioChunks = [];
+    mediaRec = new MediaRecorder(stream);
+    mediaRec.ondataavailable = e => { if(e.data && e.data.size) audioChunks.push(e.data); };
+    mediaRec.onstop = () => {
+      stream.getTracks().forEach(t => t.stop());
+      el("btnAudio").textContent = "Falar em vez de escrever";
+      el("btnAudio").classList.remove("rec");
+      clearTimeout(audioTimer);
+      enviarAudio(new Blob(audioChunks, {type: mediaRec.mimeType || "audio/webm"}));
+    };
+    mediaRec.start(); audioChunks = [];
+    el("btnAudio").textContent = "Parar e enviar";
+    el("btnAudio").classList.add("rec");
+    audioMsg("Gravando... fale como está se sentindo.","ok");
+    audioTimer = setTimeout(() => { if(mediaRec && mediaRec.state==="recording"){ audioMsg("Limite de 60s atingido. Enviando...","ok"); mediaRec.stop(); } }, 60000);
+  }catch(e){ audioMsg("Não foi possível acessar o microfone. Verifique a permissão do navegador.","erro"); }
+};
+
+async function enviarAudio(blob){
+  audioMsg("Transcrevendo... aguarde.","ok");
+  try{
+    const fd = new FormData();
+    fd.append("audio", blob, "observacao.webm");
+    const r = await fetch(API+"/patient-portal/me/observacao-audio", {method:"POST", headers: token?{Authorization:"Bearer "+token}:{}, body: fd});
+    const txt = await r.text(); let d; try{d=JSON.parse(txt)}catch(e){d={raw:txt}}
+    if(!r.ok) throw new Error((d && d.error) || ("Erro "+r.status));
+    const texto = (d.texto||"").trim();
+    el("audioBox").innerHTML =
+      `<label>Confirme o que entendi (pode editar):</label>
+       <textarea id="audioTxt" rows="3">${esc(texto)}</textarea>
+       <div class="row"><div><button id="audioSalvar">Salvar observação</button></div>
+       <div><button id="audioDescartar" class="ghost" type="button">Descartar</button></div></div>`;
+    el("audioSalvar").onclick = async () => {
+      const t = el("audioTxt").value.trim();
+      if(!t){ audioMsg("Nada para salvar.","erro"); return; }
+      el("audioSalvar").disabled = true;
+      try{
+        await api("/patient-portal/me/registro",{method:"POST", body:JSON.stringify({observacao:t})});
+        audioMsg("Observação salva. Obrigado!","ok");
+        carregarCheckin();
+      }catch(e){ audioMsg(e.message,"erro"); el("audioSalvar").disabled=false; }
+    };
+    el("audioDescartar").onclick = () => audioMsg("");
+  }catch(e){ audioMsg(e.message + " Use o campo de texto como alternativa.","erro"); }
+}
+
+/* ---------- RESTAURAÇÃO DE SESSÃO ---------- */
+(function restaurarSessao(){
+  let t = null, nome = null;
+  try{ t = sessionStorage.getItem(SESSAO_KEY); nome = sessionStorage.getItem(NOME_KEY); }catch(e){}
+  if(t){ token = t; resetEstado(); mostrarPortal(nome || ""); }
+})();
+</script>
+</body>
+</html>

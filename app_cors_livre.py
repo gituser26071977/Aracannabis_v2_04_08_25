@@ -419,6 +419,11 @@ def create_app(config_obj=None):
     app.register_blueprint(patient_portal_bp, url_prefix="/api/patient-portal")
     app.register_blueprint(patient_rastreios_bp, url_prefix="/api/patient-portal")
 
+    # Dashboard do paciente (agregação + documentos/laudos/download seguro)
+    from routes.patient_dashboard import patient_dashboard_bp
+
+    app.register_blueprint(patient_dashboard_bp, url_prefix="/api/patient-portal")
+
     # Patient OTP (código no WhatsApp) + Página do Paciente (portal)
     from routes.patient_otp import patient_otp_bp
     from routes.patient_page import patient_page_bp
@@ -547,6 +552,13 @@ def create_app(config_obj=None):
         identity = get_jwt_identity()
         if identity is None:
             return None  # anônimo: deixa o @jwt_required da rota tratar
+        # Pacientes (portal) não têm perfil profissional: o escopo é garantido
+        # pelo require_patient() das rotas do portal. Não tentar resolvê-los
+        # como Profissional (evita 404 e confusão de identidade por colisão de id).
+        from flask_jwt_extended import get_jwt as _get_jwt
+
+        if (_get_jwt() or {}).get("user_type") == "patient":
+            return None
         from models import Profissional
         from services.perfil_acesso import verificar_acesso
 
