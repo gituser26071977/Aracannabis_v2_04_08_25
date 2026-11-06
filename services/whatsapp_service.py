@@ -7,7 +7,15 @@ logger = logging.getLogger(__name__)
 class WhatsAppService:
     def __init__(self, instance_name: str = None):
         self.api_url = os.environ.get('WHATSAPP_API_URL', 'http://localhost:8080')
-        self.instance_name = instance_name or os.environ.get('WHATSAPP_INSTANCE_NAME', 'siap')
+        # A instância ativa no Evolution pode estar configurada em
+        # WHATSAPP_INSTANCE_NAME ou, no deploy atual, em
+        # DR_ANDERSON_WHATSAPP_INSTANCE (ex.: "EuSouLIA").
+        self.instance_name = (
+            instance_name
+            or os.environ.get('WHATSAPP_INSTANCE_NAME')
+            or os.environ.get('DR_ANDERSON_WHATSAPP_INSTANCE')
+            or 'siap'
+        )
         self.api_key = os.environ.get('WHATSAPP_API_KEY')
         self.admin_phone = os.environ.get('WHATSAPP_ADMIN_PHONE') # Telefone do Super Admin
 
