@@ -76,6 +76,14 @@ def register_tenant_middleware(app):
             if not identity:
                 return
 
+            # Pacientes (portal) não pertencem a um consultório/profissional:
+            # não resolver tenant nem criar associação para o id do paciente.
+            from flask_jwt_extended import get_jwt
+
+            if (get_jwt() or {}).get("user_type") == "patient":
+                g.current_association = None
+                return
+
             user_id = int(identity)
             profissional = Profissional.query.get(user_id)
             

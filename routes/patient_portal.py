@@ -54,12 +54,23 @@ def get_my_medical_records():
     # Buscar consultas para montar histórico
     consultas = Consulta.query.filter_by(
         paciente_id=paciente_id
-    ).order_by(desc(Consulta.data)).all()
+    ).order_by(desc(Consulta.data_hora)).all()
     
+    prescricoes = Prescricao.query.filter_by(
+        paciente_id=paciente_id
+    ).order_by(desc(Prescricao.data_emissao)).all()
+
+    evolucoes = Evolucao.query.filter_by(
+        paciente_id=paciente_id
+    ).order_by(desc(Evolucao.data_evolucao)).all()
+
     return jsonify({
         'paciente': paciente.to_dict(),
         'historico_consultas': [c.to_dict() for c in consultas],
-        'total_consultas': len(consultas)
+        'total_consultas': len(consultas),
+        'prescricoes': [_prescricao_paciente(p) for p in prescricoes],
+        'evolucoes': [_evolucao_curada(e) for e in evolucoes],
+        'total_evolucoes': len(evolucoes)
     }), 200
 
 
@@ -78,7 +89,7 @@ def get_my_consultations():
     
     consultas_query = Consulta.query.filter_by(
         paciente_id=paciente_id
-    ).order_by(desc(Consulta.data))
+    ).order_by(desc(Consulta.data_hora))
     
     total = consultas_query.count()
     consultas = consultas_query.limit(limit).offset(offset).all()
@@ -91,66 +102,124 @@ def get_my_consultations():
     }), 200
 
 
+def _prescricao_paciente(prescricao):
+    """Prescrição no formato do portal: inclui os medicamentos do snapshot JSON.
+
+    `arquivo_path` (caminho físico) nunca é exposto ao paciente; o PDF é
+    obtido pela rota de download com validação de posse.
+    """
+    dados = prescricao.to_dict()
+    dados.pop('arquivo_path', None)
+    dados['data'] = dados.get('data_emissao')
+    dados['tem_arquivo'] = bool(prescricao.arquivo_path)
+    conteudo = prescricao.conteudo_json or {}
+    medicamentos = conteudo.get('medicamentos') if isinstance(conteudo, dict) else None
+    dados['medicamentos'] = medicamentos or []
+    return dados
+
+
 @patient_portal_bp.route('/me/prescricoes', methods=['GET'])
 @jwt_required()
 def get_my_prescriptions():
-    """Prescrições do paciente"""
+    """Prescrições (medicações) do paciente, com os medicamentos do snapshot."""
     error = require_patient()
     if error: return error
-    
+
     paciente_id = get_jwt_identity()
-    
-    # Filtro: apenas ativas ou todas
-    apenas_ativas = request.args.get('ativas', type=bool, default=False)
-    
-    query = Prescricao.query.filter_by(paciente_id=paciente_id)
-    
-    if apenas_ativas:
-        query = query.filter_by(ativo=True)
-    
-    prescricoes = query.order_by(desc(Prescricao.data_criacao)).all()
-    
+
+    prescricoes = Prescricao.query.filter_by(
+        paciente_id=paciente_id
+    ).order_by(desc(Prescricao.data_emissao)).all()
+
     return jsonify({
         'total': len(prescricoes),
-        'prescricoes': [p.to_dict() for p in prescricoes]
+        'prescricoes': [_prescricao_paciente(p) for p in prescricoes]
     }), 200
+
+
+def _exame_paciente(exame):
+    """Exame no formato do portal: inclui valores laboratoriais, imagens e laudos.
+
+    O paciente só recebe metadados de arquivos (nunca o caminho físico); o
+    download passa por rota própria com validação de posse.
+    """
+    dados = exame.to_dict()
+    dados['imagens'] = [
+        {
+            'id': img.id,
+            'arquivo_nome': img.arquivo_nome,
+            'laudo': img.laudo,
+            'created_at': img.created_at.isoformat() if img.created_at else None,
+            'tem_arquivo': bool(img.arquivo_caminho),
+        }
+        for img in (exame.imagens or [])
+    ]
+    dados['resultados_lab'] = [
+        r.to_dict() for r in (exame.resultados_lab or [])
+    ]
+    return dados
 
 
 @patient_portal_bp.route('/me/exames', methods=['GET'])
 @jwt_required()
 def get_my_exams():
-    """Exames realizados pelo paciente"""
+    """Exames realizados pelo paciente (valores, imagens e laudos)"""
     error = require_patient()
     if error: return error
-    
+
     paciente_id = get_jwt_identity()
-    
+
     exames = Exame.query.filter_by(
         paciente_id=paciente_id
     ).order_by(desc(Exame.data_exame)).all()
-    
+
     return jsonify({
         'total': len(exames),
-        'exames': [e.to_dict() for e in exames]
+        'exames': [_exame_paciente(e) for e in exames]
     }), 200
+
+
+def _evolucao_curada(ev):
+    """Evolução clínica em versão curada para o paciente.
+
+    Expõe o essencial para o acompanhamento (resumo/avaliação, plano e sinais
+    vitais), sem despejar anotações internas cruas (anamnese/exame físico).
+    """
+    resumo = (ev.avaliacao or '').strip()
+    if not resumo and ev.nota_evolucao:
+        resumo = ev.nota_evolucao.strip()
+    profissional = None
+    try:
+        profissional = ev.profissional.nome if ev.profissional else None
+    except Exception:  # noqa: BLE001
+        profissional = None
+    return {
+        'id': ev.id,
+        'data_evolucao': ev.data_evolucao.isoformat() if ev.data_evolucao else None,
+        'profissional_nome': profissional,
+        'resumo': resumo or None,
+        'plano': (ev.plano or '').strip() or None,
+        'sinais_vitais': ev.sinais_vitais,
+        'fonte_origem': ev.fonte_origem,
+    }
 
 
 @patient_portal_bp.route('/me/evolucoes', methods=['GET'])
 @jwt_required()
 def get_my_evolutions():
-    """Evoluções médicas do paciente"""
+    """Evoluções médicas do paciente (resumo curado)"""
     error = require_patient()
     if error: return error
-    
+
     paciente_id = get_jwt_identity()
-    
+
     evolucoes = Evolucao.query.filter_by(
         paciente_id=paciente_id
-    ).order_by(desc(Evolucao.data)).all()
-    
+    ).order_by(desc(Evolucao.data_evolucao)).all()
+
     return jsonify({
         'total': len(evolucoes),
-        'evolucoes': [e.to_dict() for e in evolucoes]
+        'evolucoes': [_evolucao_curada(e) for e in evolucoes]
     }), 200
 
 
@@ -201,22 +270,20 @@ def get_my_stats():
     # Contar registros
     total_consultas = Consulta.query.filter_by(paciente_id=paciente_id).count()
     total_prescricoes = Prescricao.query.filter_by(paciente_id=paciente_id).count()
-    prescricoes_ativas = Prescricao.query.filter_by(
-        paciente_id=paciente_id, 
-        ativo=True
-    ).count()
+    # O modelo Prescricao não possui flag `ativo`; consideramos emitidas.
+    prescricoes_ativas = total_prescricoes
     total_exames = Exame.query.filter_by(paciente_id=paciente_id).count()
     
     # Última consulta
     ultima_consulta = Consulta.query.filter_by(
         paciente_id=paciente_id
-    ).order_by(desc(Consulta.data)).first()
+    ).order_by(desc(Consulta.data_hora)).first()
     
     # Próxima consulta (futura)
     proxima_consulta = Consulta.query.filter(
         Consulta.paciente_id == paciente_id,
-        Consulta.data > datetime.utcnow()
-    ).order_by(Consulta.data).first()
+        Consulta.data_hora > datetime.utcnow()
+    ).order_by(Consulta.data_hora).first()
     
     return jsonify({
         'total_consultas': total_consultas,
