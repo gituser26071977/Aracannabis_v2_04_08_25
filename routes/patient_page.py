@@ -13,9 +13,10 @@ próprio SIAP (mesma origem):
   * Como estou hoje — check-in de sintomas + observação por áudio
 """
 
+import secrets
 from pathlib import Path
 
-from flask import Blueprint, Response, current_app
+from flask import Blueprint, Response, current_app, g
 
 patient_page_bp = Blueprint("patient_page", __name__)
 
@@ -32,6 +33,14 @@ def patient_page():
             status=503,
             mimetype="text/plain; charset=utf-8",
         )
+
+    # CSP (P0-05) sem 'unsafe-inline': o HTML é estático, então geramos o
+    # nonce aqui e o aplicamos a todos os <script>. O mesmo valor vai para o
+    # header via `g.csp_nonce` (security_config.add_security_headers).
+    nonce = secrets.token_urlsafe(16)
+    g.csp_nonce = nonce
+    html = html.replace("<script", f'<script nonce="{nonce}"')
+
     resp = Response(html, mimetype="text/html")
     resp.headers["Cache-Control"] = "no-store"
     return resp

@@ -9,6 +9,7 @@ Cobrem:
 from __future__ import annotations
 
 import datetime as dt
+import re
 
 import pytest
 from flask_jwt_extended import create_access_token
@@ -176,3 +177,21 @@ def test_download_tipo_desconhecido(ctx):
     resp = client.get("/api/patient-portal/me/documentos/xyz/1/arquivo",
                       headers=_hdr(app, "PATIENT_TOK"))
     assert resp.status_code == 400
+
+
+def test_pagina_paciente_aplica_nonce_do_csp(ctx):
+    """A CSP não permite inline sem nonce: todos os <script> devem recebê-lo."""
+    app = ctx
+    client = app.test_client()
+    resp = client.get("/paciente")
+    assert resp.status_code == 200
+
+    csp = resp.headers.get("Content-Security-Policy", "")
+    match = re.search(r"nonce-([^']+)", csp)
+    assert match, csp
+    nonce = match.group(1)
+
+    html = resp.get_data(as_text=True)
+    assert html.count("<script") == html.count(f'nonce="{nonce}"')
+    assert "cdn.jsdelivr.net" not in html
+    assert "/static/vendor/chart.umd.min.js" in html

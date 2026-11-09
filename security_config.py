@@ -7,7 +7,7 @@ import os
 import re
 import logging
 from functools import wraps
-from flask import request, jsonify, current_app
+from flask import request, jsonify, current_app, g
 import secrets
 import string
 from flask_limiter import Limiter
@@ -269,7 +269,7 @@ def add_security_headers(response):
     Gera nonce por-request e o embute no header Content-Security-Policy.
     """
     # Gera nonce determinístico por request (cacheado em flask.g)
-    nonce = getattr(g, "csp_nonce", None) if "g" in dir() else None
+    nonce = getattr(g, "csp_nonce", None)
     if nonce is None:
         import secrets as _secrets
         nonce = _secrets.token_urlsafe(16)
