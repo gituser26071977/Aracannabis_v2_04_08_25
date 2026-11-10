@@ -19,17 +19,19 @@ class WhatsAppService:
         self.api_key = os.environ.get('WHATSAPP_API_KEY')
         self.admin_phone = os.environ.get('WHATSAPP_ADMIN_PHONE') # Telefone do Super Admin
 
-    def send_message(self, phone, message):
+    def send_text(self, phone, message):
         """
-        Envia mensagem de texto via Evolution API
+        Envia mensagem de texto via Evolution API.
+
+        Retorna um dict: {ok, status_code, data, provider_id, erro}.
         """
         if not self.api_key:
             logger.warning("WHATSAPP_API_KEY não configurada. Mensagem não enviada.")
-            return False
+            return {"ok": False, "erro": "WHATSAPP_API_KEY não configurada"}
 
         if not phone:
-             logger.warning("Telefone de destino não fornecido.")
-             return False
+            logger.warning("Telefone de destino não fornecido.")
+            return {"ok": False, "erro": "Telefone de destino não fornecido"}
 
         # Formatar telefone (ex: remover +)
         phone = phone.replace('+', '').replace('-', '').replace(' ', '')
@@ -50,15 +52,66 @@ class WhatsAppService:
 
         try:
             response = requests.post(url, json=payload, headers=headers, timeout=10)
-            if response.status_code == 201 or response.status_code == 200:
-                 logger.info(f"Mensagem WhatsApp enviada para {phone}")
-                 return True
+            try:
+                data = response.json()
+            except Exception:  # noqa: BLE001
+                data = None
+
+            ok = response.status_code in (201, 200)
+            provider_id = None
+            if isinstance(data, dict):
+                provider_id = (data.get("key") or {}).get("id")
+
+            if ok:
+                logger.info(f"Mensagem WhatsApp enviada para {phone}")
             else:
-                 logger.error(f"Erro ao enviar WhatsApp: {response.text}")
-                 return False
+                logger.error(f"Erro ao enviar WhatsApp: {response.text}")
+
+            return {
+                "ok": ok,
+                "status_code": response.status_code,
+                "data": data,
+                "provider_id": provider_id,
+                "erro": None if ok else response.text[:500],
+            }
         except Exception as e:
             logger.error(f"Exceção ao enviar WhatsApp: {e}")
-            return False
+            return {"ok": False, "erro": str(e)}
+
+    def send_message(self, phone, message):
+        """Compatibilidade: envia texto e retorna bool."""
+        return bool(self.send_text(phone, message).get("ok"))
+
+    def check_numbers(self, numbers):
+        """Consulta na Evolution se os números existem no WhatsApp.
+
+        Retorna um dict {numero: {"exists": bool, "jid": str, ...}}.
+        Números ausentes no retorno são considerados inexistentes.
+        """
+        if not self.api_key or not numbers:
+            return {}
+        url = f"{self.api_url}/chat/whatsappNumbers/{self.instance_name}"
+        headers = {"apikey": self.api_key, "Content-Type": "application/json"}
+        try:
+            response = requests.post(
+                url, headers=headers, json={"numbers": list(numbers)}, timeout=20
+            )
+            if response.status_code != 200:
+                logger.error(
+                    "Erro ao verificar números no WhatsApp: %s", response.text[:300]
+                )
+                return {}
+            data = response.json()
+            if not isinstance(data, list):
+                return {}
+            return {
+                str(item.get("number")): item
+                for item in data
+                if isinstance(item, dict)
+            }
+        except Exception as e:  # noqa: BLE001
+            logger.error("Exceção ao verificar números no WhatsApp: %s", e)
+            return {}
 
     def notify_admin_new_registration(self, nome, email, crm, uf_crm, auto_approved=False):
         """

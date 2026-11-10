@@ -89,6 +89,87 @@ def registrar_consentimento(paciente_id):
         db.session.rollback()
         return jsonify({'error': f'Erro ao atualizar consentimento LGPD: {str(e)}'}), 500
 
+
+def _comunicacao_payload(paciente):
+    return {
+        'paciente_id': paciente.id,
+        'aceita_comunicacao_whatsapp': paciente.aceita_comunicacao_whatsapp,
+        'opt_out_em': paciente.opt_out_em.isoformat() if paciente.opt_out_em else None,
+        'opt_out_motivo': paciente.opt_out_motivo,
+        'convite_portal_enviado_em': paciente.convite_portal_enviado_em.isoformat()
+        if paciente.convite_portal_enviado_em
+        else None,
+    }
+
+
+@lgpd_bp.route('/comunicacao/<int:paciente_id>', methods=['GET'])
+@jwt_required()
+def obter_comunicacao(paciente_id):
+    """Status de consentimento/opt-out de comunicação do paciente."""
+    paciente = Paciente.query.get(paciente_id)
+    if not paciente:
+        return jsonify({'error': 'Paciente não encontrado'}), 404
+    return jsonify(_comunicacao_payload(paciente)), 200
+
+
+@lgpd_bp.route('/comunicacao/<int:paciente_id>', methods=['POST'])
+@jwt_required()
+def registrar_comunicacao(paciente_id):
+    """Registra consentimento de comunicação e/ou opt-out.
+
+    Body aceito:
+      {"aceita_comunicacao_whatsapp": true|false}
+      {"opt_out": true|false, "opt_out_motivo": "..."}
+    """
+    profissional_id = int(get_jwt_identity())
+    paciente = Paciente.query.get(paciente_id)
+    if not paciente:
+        return jsonify({'error': 'Paciente não encontrado'}), 404
+
+    data = request.get_json(silent=True) or {}
+    alterou = False
+
+    if 'aceita_comunicacao_whatsapp' in data:
+        paciente.aceita_comunicacao_whatsapp = bool(data['aceita_comunicacao_whatsapp'])
+        alterou = True
+
+    if 'opt_out' in data:
+        if data['opt_out']:
+            paciente.opt_out_em = datetime.utcnow()
+            paciente.aceita_comunicacao_whatsapp = False
+        else:
+            paciente.opt_out_em = None
+        alterou = True
+
+    if 'opt_out_motivo' in data:
+        paciente.opt_out_motivo = (data.get('opt_out_motivo') or '')[:255]
+        alterou = True
+
+    if not alterou:
+        return jsonify({'error': 'Informe aceita_comunicacao_whatsapp ou opt_out.'}), 400
+
+    try:
+        db.session.commit()
+        db.session.add(LogAtividade(
+            profissional_id=profissional_id,
+            associacao_id=_assoc_id(),
+            acao='Atualização',
+            detalhes=(
+                f'Comunicação/opt-out do paciente ID {paciente_id}: '
+                f'aceita={paciente.aceita_comunicacao_whatsapp} '
+                f'opt_out={"sim" if paciente.opt_out_em else "não"}'
+            ),
+        ))
+        db.session.commit()
+        return jsonify({
+            'message': 'Preferências de comunicação atualizadas',
+            **_comunicacao_payload(paciente),
+        }), 200
+    except Exception as e:  # noqa: BLE001
+        db.session.rollback()
+        return jsonify({'error': f'Erro ao atualizar comunicação: {str(e)}'}), 500
+
+
 @lgpd_bp.route('/politica-privacidade', methods=['GET'])
 def obter_politica_privacidade():
     """Endpoint para obter a política de privacidade"""

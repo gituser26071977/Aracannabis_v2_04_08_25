@@ -233,6 +233,13 @@ class Paciente(db.Model):
     # P0-05 (Fase 1): data em que o titular revogou consentimento
     # (separada de data_consentimento para fins de auditoria LGPD)
     data_revogacao = db.Column(db.DateTime)
+
+    # Comunicação do portal (LGPD): NULL = não informado, True = autorizado,
+    # False = recusado. `opt_out_em` marca o descadastro de comunicações.
+    aceita_comunicacao_whatsapp = db.Column(db.Boolean, nullable=True)
+    opt_out_em = db.Column(db.DateTime)
+    opt_out_motivo = db.Column(db.String(255))
+    convite_portal_enviado_em = db.Column(db.DateTime)
     # Novo campo para TDAH
     tdah_positivo = db.Column(db.Boolean, default=False, nullable=True)
     # Novo campo para depressão
@@ -322,6 +329,11 @@ class Paciente(db.Model):
             "data_consentimento": self.data_consentimento.isoformat()
             if self.data_consentimento
             else None,
+            "aceita_comunicacao_whatsapp": self.aceita_comunicacao_whatsapp,
+            "opt_out_em": self.opt_out_em.isoformat() if self.opt_out_em else None,
+            "convite_portal_enviado_em": self.convite_portal_enviado_em.isoformat()
+            if self.convite_portal_enviado_em
+            else None,
             # New auth fields
             "is_active": getattr(self, "is_active", False),
             "email_verified": getattr(self, "email_verified", False),
@@ -332,6 +344,48 @@ class Paciente(db.Model):
             "face_enrolled": self.face_enrolled,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+class PatientConvite(db.Model):
+    """Log de convites/komunicação enviados ao paciente (auditoria LGPD).
+
+    Uma linha por tentativa de envio, permitindo saber quem foi convidado,
+    por qual canal, quando e com qual resultado — e servindo de base para
+    não reenviar em duplicidade.
+    """
+
+    __tablename__ = "patient_convites"
+
+    id = db.Column(db.Integer, primary_key=True)
+    associacao_id = db.Column(
+        db.Integer, db.ForeignKey("associacoes.id", ondelete="CASCADE"), nullable=True
+    )
+    paciente_id = db.Column(
+        db.Integer, db.ForeignKey("pacientes.id", ondelete="CASCADE"), nullable=False
+    )
+    canal = db.Column(db.String(20), nullable=False, default="whatsapp")
+    template = db.Column(db.String(40))
+    status = db.Column(db.String(20), nullable=False, default="pendente")
+    provider_id = db.Column(db.String(120))
+    erro = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+    paciente = db.relationship("Paciente", backref="convites_portal", lazy=True)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "paciente_id": self.paciente_id,
+            "canal": self.canal,
+            "template": self.template,
+            "status": self.status,
+            "provider_id": self.provider_id,
+            "erro": self.erro,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
 
